@@ -1,0 +1,138 @@
+import React, { useState } from 'react';
+import { useQiyamStore } from '@/store/useQiyamStore';
+import { X, Send, Sparkles, Phone, User, MessageSquare } from 'lucide-react';
+
+export const WhatsAppSimulatorModal: React.FC = () => {
+  const { isSimulatorOpen, setIsSimulatorOpen, simulateInboundWhatsApp, setActiveTab } = useQiyamStore();
+  const [name, setName] = useState('Amit Verma');
+  const [phone, setPhone] = useState('+91 98765 43210');
+  const [message, setMessage] = useState('I need AC service tomorrow in Koyilandy.');
+
+  if (!isSimulatorOpen) return null;
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    simulateInboundWhatsApp(name, phone, message);
+    setIsSimulatorOpen(false);
+    setActiveTab('conversations');
+  };
+
+  const quickPrompts = [
+    { label: 'AC Repair Inquiry', text: 'I need AC service tomorrow in Koyilandy.' },
+    { label: 'Deep Cleaning Quote', text: 'Can I get the quotation for full 3 BHK cleaning?' },
+    { label: 'Electrical Emergency', text: 'Power trip issue on main circuit breaker. Can technician visit now?' },
+    { label: 'Confirm Booking Slot', text: 'Yes, please confirm the 10:00 AM AC repair booking.' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">WhatsApp Inbound Message Simulator</h3>
+              <p className="text-[11px] text-emerald-100">Simulate incoming customer WhatsApp webhook & AI triggers</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsSimulatorOpen(false)}
+            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <form onSubmit={handleSend} className="p-5 space-y-4 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Customer Name</label>
+              <div className="relative">
+                <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Phone Number (WhatsApp)</label>
+              <div className="relative">
+                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Incoming Message Body</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              className="w-full p-3 border border-slate-200 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"
+              placeholder="Type incoming customer message..."
+              required
+            />
+          </div>
+
+          {/* Quick Pre-filled Prompts */}
+          <div>
+            <label className="block font-semibold text-slate-500 mb-1.5 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>Or pick a test scenario:</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {quickPrompts.map((qp, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setMessage(qp.text)}
+                  className="text-left p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-800 transition-all text-[11px]"
+                >
+                  <div className="font-semibold">{qp.label}</div>
+                  <div className="text-[10px] text-slate-500 truncate">{qp.text}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Modal Footer Actions */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSimulatorOpen(false)}
+              className="px-3.5 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm shadow-emerald-700/20 transition-all"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Send & Trigger AI Flow</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
