@@ -47,8 +47,8 @@ export const WorkflowBuilderView: React.FC = () => {
 
   const handleRunTest = () => {
     setIsTesting(true);
-    setTimeout(() => {
-      const result = runWorkflowTest(currentWorkflow.id, testInput);
+    setTimeout(async () => {
+      const result = await runWorkflowTest(currentWorkflow.id, testInput);
       setTestResult(result);
       setIsTesting(false);
     }, 600);
