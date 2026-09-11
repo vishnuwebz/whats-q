@@ -39,11 +39,34 @@ export const apiClient = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return await res.json();
-    } catch (e) {
+      const dataJson = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errorMsg = dataJson?.error || dataJson?.detail || `HTTP error! status: ${res.status}`;
+        console.warn(`API PUT ${endpoint} failed:`, errorMsg);
+        return { success: false, error: errorMsg, ...dataJson };
+      }
+      return dataJson;
+    } catch (e: any) {
       console.warn(`API PUT ${endpoint} failed:`, e);
-      return null;
+      return { success: false, error: e.message || 'Network error' };
+    }
+  },
+
+  async patch(endpoint: string, data: any) {
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const dataJson = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errorMsg = dataJson?.error || dataJson?.detail || `HTTP error! status: ${res.status}`;
+        return { success: false, error: errorMsg, ...dataJson };
+      }
+      return dataJson;
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Network error' };
     }
   },
 
@@ -52,7 +75,10 @@ export const apiClient = {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        console.warn(`API DELETE ${endpoint} failed:`, res.status);
+        return false;
+      }
       return true;
     } catch (e) {
       console.warn(`API DELETE ${endpoint} failed:`, e);

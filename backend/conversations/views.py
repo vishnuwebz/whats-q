@@ -6,6 +6,8 @@ from django.http import HttpResponse
 from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig
 from .meta_service import MetaWhatsAppService
 import datetime
+import hashlib
+import hmac
 import json
 import logging
 
@@ -31,6 +33,11 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = '__all__'
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['senderName'] = ret.get('sender_name', '')
+        return ret
 
 class WhatsAppTemplateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -562,6 +569,19 @@ class WhatsAppWebhookView(APIView):
         return HttpResponse('Verification token mismatch', status=403)
 
     def post(self, request):
+        config = MetaWhatsAppConfig.objects.first()
+        if config and config.app_secret:
+            signature = request.headers.get('X-Hub-Signature-256', '')
+            raw_body = request.body
+            expected = hmac.new(
+                config.app_secret.encode('utf-8'),
+                raw_body,
+                hashlib.sha256,
+            ).hexdigest()
+            if not signature or not hmac.compare_digest(signature, f'sha256={expected}'):
+                logger.warning('Meta Webhook signature verification failed')
+                return Response({'error': 'Invalid webhook signature'}, status=403)
+
         data = request.data
         logger.info(f"Meta Webhook event payload received: {json.dumps(data)[:250]}")
 

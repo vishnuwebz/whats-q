@@ -3,6 +3,7 @@ import { useQiyamStore } from './store/useQiyamStore';
 import { Sidebar } from './components/layout/Sidebar';
 import { ToastContainer } from './components/common/ToastContainer';
 import { WhatsAppSimulatorModal } from './components/common/WhatsAppSimulatorModal';
+import { SystemUpdateModal } from './components/common/SystemUpdateModal';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
@@ -55,11 +56,16 @@ import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
 
 export const App: React.FC = () => {
-  const { activeTab, loadInitialData } = useQiyamStore();
+  const { activeTab, loadInitialData, fetchVersionInfo } = useQiyamStore();
 
   React.useEffect(() => {
     loadInitialData();
-  }, [loadInitialData]);
+    fetchVersionInfo();
+    const timer = setInterval(() => {
+      fetchVersionInfo();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [loadInitialData, fetchVersionInfo]);
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -162,6 +168,7 @@ export const App: React.FC = () => {
       </main>
 
       <WhatsAppSimulatorModal />
+      <SystemUpdateModal />
       <ToastContainer />
     </div>
   );

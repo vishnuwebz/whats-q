@@ -19,6 +19,11 @@ class AutomationLogSerializer(serializers.ModelSerializer):
         model = AutomationLog
         fields = '__all__'
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['logLevel'] = ret.get('log_level', 'Info')
+        return ret
+
 class ApprovalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Approval

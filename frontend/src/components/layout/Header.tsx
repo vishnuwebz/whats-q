@@ -18,7 +18,14 @@ export const Header: React.FC<HeaderProps> = ({
   primaryActionLabel,
   onPrimaryAction,
 }) => {
-  const { activeTab, setActiveTab, setIsSimulatorOpen, addToast } = useQiyamStore();
+  const {
+    activeTab,
+    setActiveTab,
+    setIsSimulatorOpen,
+    addToast,
+    versionInfo,
+    setIsUpdateModalOpen
+  } = useQiyamStore();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
@@ -123,6 +130,22 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{primaryActionLabel}</span>
+          </button>
+        )}
+
+        {/* System Version & Live Update Button */}
+        {versionInfo && (
+          <button
+            onClick={() => setIsUpdateModalOpen(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              versionInfo.update_available
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/30 hover:brightness-105 animate-pulse'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+            }`}
+            title="WhatsQ System Update"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${versionInfo.update_available ? 'text-amber-300' : 'text-slate-500'}`} />
+            <span>{versionInfo.update_available ? 'Update Available' : `v${versionInfo.current_commit}`}</span>
           </button>
         )}
 
