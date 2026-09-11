@@ -32,8 +32,8 @@ export const Sidebar: React.FC = () => {
           </svg>
         </div>
         <div>
-          <div className="font-bold text-white tracking-wide text-base leading-tight">Qiyam</div>
-          <div className="text-[11px] text-slate-400 font-medium">Business OS</div>
+          <div className="font-bold text-white tracking-wide text-base leading-tight">WhatsQ</div>
+          <div className="text-[11px] text-emerald-400 font-medium">Qiyam Business Solutions</div>
         </div>
       </div>
 
