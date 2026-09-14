@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Search, Calendar, Filter, Download, Plus, Bell, HelpCircle,
-  X, Check, ExternalLink, Sparkles, MessageSquare, AlertCircle, ArrowRight
+  X, Check, ExternalLink, Sparkles, MessageSquare, AlertCircle, ArrowRight,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -24,7 +25,9 @@ export const Header: React.FC<HeaderProps> = ({
     setIsSimulatorOpen,
     addToast,
     versionInfo,
-    setIsUpdateModalOpen
+    setIsUpdateModalOpen,
+    isSidebarCollapsed,
+    toggleSidebarCollapse
   } = useQiyamStore();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -52,12 +55,26 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-      {/* Title & Subtitle */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          {title}
-        </h1>
-        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+      {/* Title & Subtitle with Sidebar Toggle */}
+      <div className="flex items-center gap-3.5">
+        <button
+          onClick={toggleSidebarCollapse}
+          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all border border-slate-200/80 shadow-xs cursor-pointer"
+          title={isSidebarCollapsed ? "Expand sidebar (Ctrl + B)" : "Collapse sidebar (Ctrl + B)"}
+        >
+          {isSidebarCollapsed ? (
+            <PanelLeftOpen className="w-4 h-4 text-emerald-600" />
+          ) : (
+            <PanelLeftClose className="w-4 h-4 text-slate-600" />
+          )}
+        </button>
+
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            {title}
+          </h1>
+          {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+        </div>
       </div>
 
       {/* Global Actions */}

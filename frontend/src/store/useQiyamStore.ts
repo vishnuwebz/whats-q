@@ -41,6 +41,10 @@ interface QiyamState {
   setActiveTab: (tab: TabType) => void;
   backendOnline: boolean;
 
+  isSidebarCollapsed: boolean;
+  toggleSidebarCollapse: () => void;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+
   versionInfo: VersionInfo | null;
   isUpdateModalOpen: boolean;
   isUpdatingSystem: boolean;
@@ -128,6 +132,17 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: 'dashboard',
   setActiveTab: (tab) => set({ activeTab: tab }),
   backendOnline: false,
+
+  isSidebarCollapsed: typeof window !== 'undefined' && localStorage.getItem('whatsq_sidebar_collapsed') === 'true',
+  toggleSidebarCollapse: () => set((state) => {
+    const next = !state.isSidebarCollapsed;
+    localStorage.setItem('whatsq_sidebar_collapsed', String(next));
+    return { isSidebarCollapsed: next };
+  }),
+  setIsSidebarCollapsed: (collapsed) => {
+    localStorage.setItem('whatsq_sidebar_collapsed', String(collapsed));
+    set({ isSidebarCollapsed: collapsed });
+  },
 
   versionInfo: null,
   isUpdateModalOpen: false,
