@@ -18,8 +18,14 @@ export const Sidebar: React.FC = () => {
     setIsSimulatorOpen,
     setEditingTemplate,
     isSidebarCollapsed,
-    toggleSidebarCollapse
+    toggleSidebarCollapse,
+    conversations
   } = useQiyamStore();
+
+  const unreadConversationsCount = (conversations || []).reduce(
+    (sum, c) => sum + (c.unread_count || 0),
+    0
+  );
 
   // Keyboard shortcut Ctrl+B / Cmd+B for collapse
   React.useEffect(() => {
@@ -91,7 +97,7 @@ export const Sidebar: React.FC = () => {
         {/* Conversations */}
         <button
           onClick={() => setActiveTab('conversations')}
-          title="Conversations (24 unread)"
+          title={`Conversations${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
           className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-3 py-2'} rounded-lg transition-all ${
             isActive('conversations')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
@@ -102,12 +108,14 @@ export const Sidebar: React.FC = () => {
             <MessageSquare className="w-4 h-4 shrink-0" />
             {!isSidebarCollapsed && <span>Conversations</span>}
           </div>
-          {isSidebarCollapsed ? (
-            <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          ) : (
-            <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-              24
-            </span>
+          {unreadConversationsCount > 0 && (
+            isSidebarCollapsed ? (
+              <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            ) : (
+              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                {unreadConversationsCount}
+              </span>
+            )
           )}
         </button>
 

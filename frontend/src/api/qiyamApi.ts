@@ -90,6 +90,22 @@ export const qiyamApi = {
     return rows.map(mapConversation);
   },
 
+  async markConversationRead(id: string | number): Promise<void> {
+    try {
+      await apiClient.post(`/conversations/threads/${id}/mark_read/`, {});
+    } catch (e) {
+      console.warn('Could not mark conversation read on backend:', e);
+    }
+  },
+
+  async markAllConversationsRead(): Promise<void> {
+    try {
+      await apiClient.post('/conversations/threads/mark_all_read/', {});
+    } catch (e) {
+      console.warn('Could not mark all conversations read on backend:', e);
+    }
+  },
+
   async fetchTemplates(): Promise<WhatsAppTemplateItem[]> {
     return list<WhatsAppTemplateItem>('/conversations/templates/');
   },

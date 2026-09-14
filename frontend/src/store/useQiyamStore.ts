@@ -69,6 +69,8 @@ interface QiyamState {
 
   selectedConversationId: string | number;
   setSelectedConversationId: (id: string | number) => void;
+  markConversationAsRead: (id: string | number) => Promise<void>;
+  markAllConversationsAsRead: () => Promise<void>;
   isSimulatorOpen: boolean;
   setIsSimulatorOpen: (open: boolean) => void;
   isNewWorkflowModalOpen: boolean;
@@ -251,7 +253,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         return {};
       }
       const existing = state.conversations[idx];
-      const merged = { ...existing, ...convUpdate };
+      const isCurrent = String(state.selectedConversationId) === String(convUpdate.id);
+      const merged = {
+        ...existing,
+        ...convUpdate,
+        unread_count: isCurrent ? 0 : (convUpdate.unread_count !== undefined ? convUpdate.unread_count : existing.unread_count),
+      };
       const nextConversations = [...state.conversations];
       nextConversations[idx] = merged;
       return { conversations: nextConversations };
@@ -363,7 +370,39 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   setIsUpdateModalOpen: (open) => set({ isUpdateModalOpen: open }),
 
   selectedConversationId: '',
-  setSelectedConversationId: (id) => set({ selectedConversationId: id }),
+  setSelectedConversationId: (id) => {
+    set((state) => ({
+      selectedConversationId: id,
+      conversations: state.conversations.map((c) =>
+        String(c.id) === String(id) ? { ...c, unread_count: 0 } : c
+      ),
+    }));
+    get().markConversationAsRead(id);
+  },
+
+  markConversationAsRead: async (id) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        String(c.id) === String(id) ? { ...c, unread_count: 0 } : c
+      ),
+    }));
+    try {
+      await qiyamApi.markConversationRead(id);
+    } catch (e) {
+      console.warn('Failed to mark conversation read on backend:', e);
+    }
+  },
+
+  markAllConversationsAsRead: async () => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => ({ ...c, unread_count: 0 })),
+    }));
+    try {
+      await qiyamApi.markAllConversationsRead();
+    } catch (e) {
+      console.warn('Failed to mark all conversations read on backend:', e);
+    }
+  },
   isSimulatorOpen: false,
   setIsSimulatorOpen: (open) => set({ isSimulatorOpen: open }),
   isNewWorkflowModalOpen: false,
@@ -538,9 +577,13 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
           ? conversations[0].id
           : get().selectedConversationId;
 
+      const sanitizedConversations = conversations.map((c) =>
+        String(c.id) === String(selectedConversationId) ? { ...c, unread_count: 0 } : c
+      );
+
       set({
         backendOnline: true,
-        conversations,
+        conversations: sanitizedConversations,
         templates,
         metaConfig: metaConfig || null,
         leads,
@@ -571,6 +614,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         selectedConversationId,
         selectedTemplateId: templates[0]?.id ?? null,
       });
+
+      if (selectedConversationId) {
+        get().markConversationAsRead(selectedConversationId);
+      }
 
       if (leads.length === 0 && conversations.length === 0) {
         get().addToast(

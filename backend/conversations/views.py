@@ -304,6 +304,25 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         return Response(msg_data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        conversation = self.get_object()
+        conversation.unread_count = 0
+        conversation.save(update_fields=['unread_count'])
+        emit_event('conversation.updated', {
+            'id': conversation.id,
+            'unread_count': 0
+        })
+        return Response({'success': True, 'id': conversation.id, 'unread_count': 0})
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        Conversation.objects.filter(unread_count__gt=0).update(unread_count=0)
+        emit_event('conversation.updated', {
+            'unread_count': 0
+        })
+        return Response({'success': True, 'unread_count': 0})
+
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all().order_by('created_at')
     serializer_class = MessageSerializer

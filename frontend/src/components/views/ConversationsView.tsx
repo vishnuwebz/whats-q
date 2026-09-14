@@ -15,6 +15,7 @@ export const ConversationsView: React.FC = () => {
     conversations,
     selectedConversationId,
     setSelectedConversationId,
+    markConversationAsRead,
     sendMessage,
     sendTemplateMessage,
     templates,
@@ -29,12 +30,26 @@ export const ConversationsView: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
-
   const { globalFilter } = useQiyamStore();
 
   const currentConv = conversations.find(
     (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
   ) || conversations[0];
+
+  // Automatically mark currently active conversation as read
+  React.useEffect(() => {
+    if (currentConv && (currentConv.unread_count || 0) > 0) {
+      markConversationAsRead(currentConv.id);
+    }
+  }, [currentConv?.id, currentConv?.unread_count, markConversationAsRead]);
+
+  const counts = {
+    all: conversations.length,
+    open: conversations.filter((c) => c.status === 'open').length,
+    in_progress: conversations.filter((c) => c.status === 'in_progress').length,
+    waiting: conversations.filter((c) => c.status === 'waiting').length,
+    resolved: conversations.filter((c) => c.status === 'resolved').length,
+  };
 
   const filteredConversations = conversations.filter((c) => {
     if (activeFilterTab !== 'all' && c.status !== activeFilterTab) return false;
@@ -97,7 +112,7 @@ export const ConversationsView: React.FC = () => {
                 activeFilterTab === 'all' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              All (178)
+              All ({counts.all})
             </button>
             <button
               onClick={() => setActiveFilterTab('open')}
@@ -105,7 +120,7 @@ export const ConversationsView: React.FC = () => {
                 activeFilterTab === 'open' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Open (24)
+              Open ({counts.open})
             </button>
             <button
               onClick={() => setActiveFilterTab('in_progress')}
@@ -113,7 +128,7 @@ export const ConversationsView: React.FC = () => {
                 activeFilterTab === 'in_progress' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              In Progress (15)
+              In Progress ({counts.in_progress})
             </button>
             <button
               onClick={() => setActiveFilterTab('waiting')}
@@ -121,7 +136,7 @@ export const ConversationsView: React.FC = () => {
                 activeFilterTab === 'waiting' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Waiting (6)
+              Waiting ({counts.waiting})
             </button>
             <button
               onClick={() => setActiveFilterTab('resolved')}
@@ -129,7 +144,7 @@ export const ConversationsView: React.FC = () => {
                 activeFilterTab === 'resolved' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Resolved (120)
+              Resolved ({counts.resolved})
             </button>
           </div>
 
