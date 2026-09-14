@@ -1729,20 +1729,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       try { localStorage.removeItem('whatsq_update_snooze'); } catch {}
     }
     // Close modal immediately so it never reappears for this update
-    set({ isUpdateModalOpen: false, isUpdatingSystem: true, updateProgressStep: '1/4 Creating PostgreSQL database backup...' });
+    set({ isUpdateModalOpen: false, isUpdatingSystem: true, updateProgressStep: '⚡ Applying update...' });
     try {
       const res = await apiClient.post('/core/system-update/', {});
       if (res && res.success !== false) {
-        set({ updateProgressStep: '2/4 Pulling latest Git updates...' });
-        await new Promise((r) => setTimeout(r, 2000));
-        set({ updateProgressStep: '3/4 Applying migrations and rebuilding frontend...' });
-        await new Promise((r) => setTimeout(r, 3000));
-        set({ updateProgressStep: '4/4 Reloading WhatsQ services...' });
-        await new Promise((r) => setTimeout(r, 2000));
-        set({ isUpdatingSystem: false, updateProgressStep: 'Update Complete! Refreshing...' });
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        set({ updateProgressStep: '⚡ Done! Reloading...' });
+        window.location.reload();
         return { success: true };
       } else {
         set({ isUpdatingSystem: false, updateProgressStep: '' });
