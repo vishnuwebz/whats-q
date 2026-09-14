@@ -259,7 +259,19 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         return {};
       }
 
-      const updatedMessages = [...conv.messages, message];
+      let replaced = false;
+      const updatedMessages = conv.messages.map((m) => {
+        if (String(m.id).startsWith('msg-') && m.text === message.text && m.sender === message.sender) {
+          replaced = true;
+          return message;
+        }
+        return m;
+      });
+
+      if (!replaced) {
+        updatedMessages.push(message);
+      }
+
       const isCurrent = String(state.selectedConversationId) === String(conversationId);
       const newUnreadCount = isCurrent ? 0 : (conv.unread_count || 0) + (message.sender === 'customer' ? 1 : 0);
 
@@ -672,13 +684,38 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   refreshConversations: async () => {
-    const conversations = await qiyamApi.fetchConversations();
-    if (conversations.length > 0) {
-      set({ conversations });
-      const current = get().selectedConversationId;
-      if (!current || !conversations.some((c) => c.id === current)) {
-        set({ selectedConversationId: conversations[0].id });
+    try {
+      const serverConvs = await qiyamApi.fetchConversations();
+      if (serverConvs && serverConvs.length > 0) {
+        set((state) => {
+          // Merge optimistic messages that might be pending locally
+          const merged = serverConvs.map((sConv) => {
+            const localConv = state.conversations.find((c) => String(c.id) === String(sConv.id));
+            if (!localConv) return sConv;
+
+            const optimisticMsgs = localConv.messages.filter((m) =>
+              String(m.id).startsWith('msg-') && !sConv.messages.some((sm) => sm.text === m.text && sm.sender === m.sender)
+            );
+
+            return {
+              ...sConv,
+              messages: [...sConv.messages, ...optimisticMsgs],
+            };
+          });
+
+          const current = state.selectedConversationId;
+          const nextSelected = (!current || !merged.some((c) => String(c.id) === String(current)))
+            ? merged[0].id
+            : current;
+
+          return {
+            conversations: merged,
+            selectedConversationId: nextSelected,
+          };
+        });
       }
+    } catch (e) {
+      console.warn('[Store] refreshConversations error:', e);
     }
   },
 

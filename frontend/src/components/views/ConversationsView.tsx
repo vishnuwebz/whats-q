@@ -47,6 +47,25 @@ export const ConversationsView: React.FC = () => {
     }
   }, [currentConv?.id, currentConv?.unread_count, markConversationAsRead]);
 
+  // Active real-time synchronizer: keeps conversation thread lively even across multi-worker servers
+  React.useEffect(() => {
+    useQiyamStore.getState().refreshConversations();
+
+    const interval = setInterval(() => {
+      useQiyamStore.getState().refreshConversations();
+    }, 3000);
+
+    const onFocus = () => {
+      useQiyamStore.getState().refreshConversations();
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
   // Smooth auto-scroll to latest message or typing indicator
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

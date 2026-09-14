@@ -23,6 +23,8 @@ class RealtimeSyncManager {
     if (this.isRunning) return;
     this.isRunning = true;
     this.connect();
+    this.startActiveDeltaPolling();
+    this.setupWindowListeners();
   }
 
   public stop() {
@@ -34,6 +36,16 @@ class RealtimeSyncManager {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.pollFallbackTimer) clearInterval(this.pollFallbackTimer);
     useQiyamStore.getState().setSyncStatus('offline');
+  }
+
+  private setupWindowListeners() {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && this.isRunning) {
+        this.pollDeltaEvents();
+      }
+    };
+    window.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onVisibilityChange);
   }
 
   private connect() {
@@ -146,19 +158,21 @@ class RealtimeSyncManager {
       this.connect();
     }, delay);
 
-    // If reconnecting takes longer than 3 attempts, start background delta polling fallback
-    if (this.reconnectAttempts >= 3 && !this.pollFallbackTimer) {
-      this.startDeltaPollingFallback();
+    // Ensure background delta polling is running
+    if (!this.pollFallbackTimer) {
+      this.startActiveDeltaPolling();
     }
   }
 
-  private startDeltaPollingFallback() {
+  private startActiveDeltaPolling() {
     if (this.pollFallbackTimer) return;
+    // Immediate initial sync on start
+    this.pollDeltaEvents();
     this.pollFallbackTimer = setInterval(() => {
       if (this.isRunning) {
         this.pollDeltaEvents();
       }
-    }, 4000);
+    }, 3000);
   }
 
   private async pollDeltaEvents() {

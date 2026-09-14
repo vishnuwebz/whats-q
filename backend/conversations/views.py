@@ -12,6 +12,7 @@ import hmac
 import json
 import logging
 import time
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -647,39 +648,72 @@ class WhatsAppWebhookView(APIView):
                         sender_phone = msg.get('from', '')
                         msg_id = msg.get('id', '')
                         msg_type = msg.get('type', 'text')
+
+                        # Deduplicate by Meta Message ID
+                        if msg_id and Message.objects.filter(meta_message_id=msg_id).exists():
+                            logger.info(f"[Meta Webhook] Duplicate message skipped: {msg_id}")
+                            continue
                         
                         text_body = ''
                         if msg_type == 'text':
                             text_body = msg.get('text', {}).get('body', '')
                         elif msg_type == 'button':
-                            text_body = msg.get('button', {}).get('text', '')
+                            text_body = msg.get('button', {}).get('text') or msg.get('button', {}).get('payload', '')
                         elif msg_type == 'interactive':
                             interactive = msg.get('interactive', {})
-                            if interactive.get('type') == 'button_reply':
-                                text_body = interactive.get('button_reply', {}).get('title', '')
-                            elif interactive.get('type') == 'list_reply':
-                                text_body = interactive.get('list_reply', {}).get('title', '')
+                            itype = interactive.get('type')
+                            if itype == 'button_reply':
+                                text_body = interactive.get('button_reply', {}).get('title') or interactive.get('button_reply', {}).get('id', '')
+                            elif itype == 'list_reply':
+                                text_body = interactive.get('list_reply', {}).get('title') or interactive.get('list_reply', {}).get('id', '')
+                            elif itype == 'nfm_reply':
+                                text_body = interactive.get('nfm_reply', {}).get('response_json', '')
+                            else:
+                                text_body = str(interactive)
+                        elif msg_type == 'image':
+                            text_body = msg.get('image', {}).get('caption') or '📷 Photo'
+                        elif msg_type in ['audio', 'voice']:
+                            text_body = '🎵 Voice message'
+                        elif msg_type == 'video':
+                            text_body = msg.get('video', {}).get('caption') or '🎥 Video'
+                        elif msg_type == 'document':
+                            text_body = msg.get('document', {}).get('filename') or '📄 Document'
+                        elif msg_type == 'location':
+                            text_body = '📍 Location'
                         else:
                             text_body = f"[{msg_type.capitalize()} Attachment]"
 
-                        # Find or create Conversation
-                        conv, created = Conversation.objects.get_or_create(
-                            phone_number=f"+{sender_phone}",
-                            defaults={
-                                'contact_name': profile_name,
-                                'avatar': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                                'category': 'Lead',
-                                'status': 'open',
-                                'lead_owner': 'Ramesh Kumar',
-                                'lead_stage': 'New Lead',
-                                'source': 'WhatsApp Cloud API',
-                                'location': 'Kozhikode, Kerala',
-                                'tags': ['WhatsApp Inbound'],
-                                'notes': 'Initiated contact via Meta WhatsApp Cloud API.',
-                                'unread_count': 1
-                            }
-                        )
-                        if not created and profile_name != 'WhatsApp Customer':
+                        # Robust phone number resolution across any format (+91, spaces, 10 digits)
+                        clean_sender = re.sub(r'\D', '', str(sender_phone))
+                        conv = None
+                        if clean_sender:
+                            conv = Conversation.objects.filter(phone_number=f"+{clean_sender}").first()
+                            if not conv:
+                                conv = Conversation.objects.filter(phone_number=clean_sender).first()
+                            if not conv and len(clean_sender) >= 10:
+                                last_10 = clean_sender[-10:]
+                                for c in Conversation.objects.all():
+                                    c_clean = re.sub(r'\D', '', str(c.phone_number))
+                                    if c_clean.endswith(last_10):
+                                        conv = c
+                                        break
+
+                        if not conv:
+                            conv = Conversation.objects.create(
+                                phone_number=f"+{clean_sender}",
+                                contact_name=profile_name,
+                                avatar='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                                category='Lead',
+                                status='open',
+                                lead_owner='Ramesh Kumar',
+                                lead_stage='New Lead',
+                                source='WhatsApp Cloud API',
+                                location='Kozhikode, Kerala',
+                                tags=['WhatsApp Inbound'],
+                                notes='Initiated contact via Meta WhatsApp Cloud API.',
+                                unread_count=1
+                            )
+                        elif profile_name != 'WhatsApp Customer' and conv.contact_name in ['WhatsApp Customer', '']:
                             conv.contact_name = profile_name
 
                         now_time = datetime.datetime.now().strftime('%I:%M %p')
@@ -711,6 +745,10 @@ class WhatsAppWebhookView(APIView):
                             'last_message': text_body,
                             'last_contact_date': now_full,
                             'unread_count': conv.unread_count
+                        })
+                        emit_event('conversation.typing', {
+                            'conversation_id': conv.id,
+                            'is_typing': False
                         })
                         emit_event('notification.new', {
                             'id': int(time.time() * 1000),

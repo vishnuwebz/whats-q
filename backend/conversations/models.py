@@ -89,6 +89,9 @@ class Message(models.Model):
     rich_card = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['created_at', 'id']
+
     def __str__(self):
         return f"[{self.sender}] {self.text[:30]}"
 

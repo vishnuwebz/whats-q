@@ -213,7 +213,8 @@ class EventStreamView(View):
 class EventSyncView(APIView):
     """
     Delta sync endpoint returning all events since a given timestamp.
-    Used for instant state reconciliation or when SSE is unavailable.
+    Combines in-memory/redis event bus history with database queries for
+    new messages to guarantee zero missed messages across multi-worker deployments.
     """
     def get(self, request):
         try:
@@ -221,10 +222,40 @@ class EventSyncView(APIView):
         except (ValueError, TypeError):
             since = 0.0
 
-        events = event_bus.get_events_since(since)
+        events = list(event_bus.get_events_since(since))
+        existing_event_ids = {e.get('id') for e in events}
+
+        # Query database for recent messages created or updated after 'since'
+        if since > 0:
+            try:
+                from datetime import datetime, timezone
+                from conversations.models import Message, Conversation
+                from conversations.views import MessageSerializer
+
+                since_dt = datetime.fromtimestamp(since, tz=timezone.utc)
+                recent_msgs = Message.objects.filter(created_at__gte=since_dt).order_by('id')
+                for m in recent_msgs:
+                    evt_id = f"db_msg_{m.id}"
+                    if evt_id not in existing_event_ids:
+                        events.append({
+                            'id': evt_id,
+                            'type': 'message.created',
+                            'data': {
+                                'conversation_id': m.conversation_id,
+                                'message': MessageSerializer(m).data
+                            },
+                            'timestamp': m.created_at.timestamp() if m.created_at else time.time()
+                        })
+                        existing_event_ids.add(evt_id)
+            except Exception as e:
+                logger.warning(f"[EventSyncView] DB delta check error: {e}")
+
+        events.sort(key=lambda x: x.get('timestamp', 0))
+
         return Response({
             'events': events,
             'server_time': time.time(),
             'active_subscribers': event_bus.active_subscribers_count
         })
+
 
