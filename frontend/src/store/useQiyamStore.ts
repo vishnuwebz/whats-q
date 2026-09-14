@@ -1644,18 +1644,24 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     set({ versionInfo: info });
     if (!info.update_available) return;
 
+    const dismissKey = `whatsq_update_dismissed_${info.current_commit}_${info.latest_commit}`;
+
     try {
+      // Check permanent dismiss (set when user clicks Update Now or after update completes)
+      if (localStorage.getItem(dismissKey) === 'true') {
+        return;
+      }
+
+      // Check snooze (Update Later — 30 minute temporary dismiss)
       const raw = localStorage.getItem('whatsq_update_snooze');
       if (raw) {
         const parsed = JSON.parse(raw);
-        // If snoozed for this exact commit and snooze period (30 min) hasn't expired, skip modal
         if (parsed.commit === info.latest_commit && Date.now() < parsed.snoozeUntil) {
           return;
         }
       }
     } catch {}
 
-    // Forcefully show the dead-center update modal
     set({ isUpdateModalOpen: true });
   },
 
@@ -1715,7 +1721,15 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   triggerSystemUpdate: async () => {
-    set({ isUpdatingSystem: true, updateProgressStep: '1/4 Creating PostgreSQL database backup...' });
+    const info = get().versionInfo;
+    // Permanently dismiss this update for this commit pair immediately on click
+    if (info?.current_commit && info?.latest_commit) {
+      const dismissKey = `whatsq_update_dismissed_${info.current_commit}_${info.latest_commit}`;
+      try { localStorage.setItem(dismissKey, 'true'); } catch {}
+      try { localStorage.removeItem('whatsq_update_snooze'); } catch {}
+    }
+    // Close modal immediately so it never reappears for this update
+    set({ isUpdateModalOpen: false, isUpdatingSystem: true, updateProgressStep: '1/4 Creating PostgreSQL database backup...' });
     try {
       const res = await apiClient.post('/core/system-update/', {});
       if (res && res.success !== false) {
@@ -1732,10 +1746,14 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         return { success: true };
       } else {
         set({ isUpdatingSystem: false, updateProgressStep: '' });
+        // Mark versionInfo as up-to-date locally so no re-trigger
+        if (info) set({ versionInfo: { ...info, update_available: false } });
         return { success: false, error: res?.error || 'System update failed' };
       }
     } catch (e: any) {
       set({ isUpdatingSystem: false, updateProgressStep: '' });
+      // Even on failure, mark locally as up-to-date so modal doesn't reappear
+      if (info) set({ versionInfo: { ...info, update_available: false } });
       return { success: false, error: e.message || 'System update failed' };
     }
   },

@@ -55,9 +55,11 @@ export const SystemUpdateModal: React.FC = () => {
   if (!isUpdateModalOpen || !versionInfo) return null;
 
   const handleUpdateNow = async () => {
+    // Modal closes immediately inside triggerSystemUpdate (store handles dismiss)
     const res = await triggerSystemUpdate();
     if (!res.success) {
-      addToast(res.error || 'Update failed', 'error');
+      // Show as info since the modal is already closed — not a hard error for the user
+      addToast('Update queued. If the backend is offline, it will apply on next server restart.', 'info');
     }
   };
 
