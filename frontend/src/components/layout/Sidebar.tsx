@@ -75,7 +75,7 @@ export const Sidebar: React.FC = () => {
           fixed inset-y-0 left-0 z-50 md:relative md:z-auto
           ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl ring-1 ring-white/10' : '-translate-x-full md:translate-x-0'}
           ${isCollapsed ? 'w-20' : 'w-72 md:w-64'} max-w-[85vw] md:max-w-none
-          bg-[#0B1528] text-slate-300 flex flex-col h-screen shrink-0 border-r border-[#1E293B] select-none font-sans overflow-hidden transition-all duration-300 ease-in-out relative
+          bg-[#0B1528] text-slate-300 flex flex-col h-screen shrink-0 border-r border-[#1E293B] select-none font-sans overflow-hidden transition-transform duration-300 ease-in-out
         `}
       >
         {/* Brand Header */}

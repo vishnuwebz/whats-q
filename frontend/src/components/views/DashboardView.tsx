@@ -140,7 +140,7 @@ export const DashboardView: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto overflow-x-hidden font-sans">
       <Header
         title="Dashboard"
         subtitle="Good morning, Rahul! Here's what's happening in your business today."
@@ -148,9 +148,9 @@ export const DashboardView: React.FC = () => {
         onPrimaryAction={() => setActiveTab('conversations')}
       />
 
-      <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
+      <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6 w-full max-w-full min-w-0">
         {/* Top 6 KPI Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 min-w-0">
           {/* Total Revenue */}
           <div
             onClick={() => setActiveTab('finance-overview')}
@@ -261,11 +261,11 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Main 3-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 min-w-0">
           {/* Left + Center Area (8 cols) */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-8 space-y-4 sm:space-y-6 min-w-0">
             {/* AI Alerts & Conversations Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 min-w-0">
               {/* AI Alerts Card */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
@@ -376,7 +376,7 @@ export const DashboardView: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex items-center justify-around py-2">
+                <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
                   {/* Visual Donut Ring */}
                   <div className="relative w-32 h-32 flex items-center justify-center">
                     <div className="w-32 h-32 rounded-full border-[10px] border-emerald-500 border-t-blue-500 border-r-purple-500 border-b-amber-500 flex items-center justify-center shadow-inner">
@@ -423,7 +423,7 @@ export const DashboardView: React.FC = () => {
             </div>
 
             {/* Recent Activity Stream & Top Employees Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 min-w-0">
               {/* Recent Activity */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
@@ -567,7 +567,7 @@ export const DashboardView: React.FC = () => {
                 </div>
 
                 {/* Mini Jobs Status Table */}
-                <div className="pt-4 border-t border-slate-100 grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
                   <div onClick={() => setActiveTab('ops-jobs')} className="bg-blue-50/60 p-2 rounded-lg cursor-pointer hover:bg-blue-100/60 transition-colors">
                     <div className="text-[10px] text-blue-600 font-semibold">Scheduled</div>
                     <div className="text-sm font-bold text-slate-900">31</div>
@@ -589,7 +589,7 @@ export const DashboardView: React.FC = () => {
             </div>
 
             {/* Revenue Overview Chart */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm min-w-0">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <div className="text-xs font-semibold text-slate-500">Revenue Overview</div>
@@ -607,7 +607,7 @@ export const DashboardView: React.FC = () => {
                 </select>
               </div>
 
-              <div className="h-56 w-full">
+              <div className="h-56 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={revenueData}>
                     <defs>
@@ -627,7 +627,7 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Right Sidebar: AI Assistant Copilot (4 cols) */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col h-full min-h-[560px] max-h-[720px] overflow-hidden">
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col h-full min-h-[480px] sm:min-h-[560px] max-h-[720px] overflow-hidden min-w-0">
             {/* Header */}
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-2.5">

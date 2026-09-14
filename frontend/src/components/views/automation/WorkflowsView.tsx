@@ -25,7 +25,7 @@ export const WorkflowsView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Workflows"
         subtitle="Active and scheduled automation workflows running across your branches."

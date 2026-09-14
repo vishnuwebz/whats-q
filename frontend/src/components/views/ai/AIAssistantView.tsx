@@ -42,7 +42,7 @@ export const AIAssistantView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="AI Assistant Hub"
         subtitle="Conversational business intelligence, workflow orchestration, and anomaly detection."
@@ -50,7 +50,7 @@ export const AIAssistantView: React.FC = () => {
         onPrimaryAction={() => setMessages([messages[0]])}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
         {/* Real-time AI Anomaly Insights (Matching photo_20) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div className="bg-gradient-to-br from-purple-50 to-indigo-50/50 p-4 rounded-2xl border border-purple-200 shadow-sm space-y-2">

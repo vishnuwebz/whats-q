@@ -74,7 +74,7 @@ export const DealsView: React.FC = () => {
   const totalValue = filteredDeals.reduce((acc, d) => acc + d.amount, 0);
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-hidden font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans">
       <Header
         title="Deals Pipeline"
         subtitle="Manage deal negotiations, win probabilities, and forecast revenues."

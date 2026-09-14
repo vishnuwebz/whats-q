@@ -231,7 +231,7 @@ export const ConversationsView: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-screen overflow-hidden font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans">
       <Header
         title="Conversations"
         subtitle="Manage WhatsApp multi-agent conversations, customer inquiries, and AI-assisted workflows."

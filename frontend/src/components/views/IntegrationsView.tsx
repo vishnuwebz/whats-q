@@ -9,7 +9,7 @@ export const IntegrationsView: React.FC = () => {
   const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Integrations & API Hub"
         subtitle="Connect official Meta WhatsApp Cloud API, payment gateways, accounting, and CRMs."

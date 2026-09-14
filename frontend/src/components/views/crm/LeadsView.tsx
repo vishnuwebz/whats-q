@@ -104,7 +104,7 @@ export const LeadsView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-hidden font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans">
       <Header
         title="Leads"
         subtitle="Manage and track potential customers across the conversion pipeline."

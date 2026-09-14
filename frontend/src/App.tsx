@@ -246,9 +246,9 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC]">
+    <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden bg-[#F8FAFC]">
       <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <main className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden relative">
         <ErrorBoundary>
           {renderActiveView()}
         </ErrorBoundary>

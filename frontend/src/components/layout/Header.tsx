@@ -294,7 +294,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-84 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs space-y-3 animate-in fade-in duration-100">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-84 max-w-[340px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs space-y-3 animate-in fade-in duration-100">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-slate-900 text-sm">Notifications</h4>

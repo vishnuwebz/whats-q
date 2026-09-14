@@ -118,7 +118,7 @@ export const EmployeesView: React.FC = () => {
     : null;
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans relative">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans relative">
       <Header
         title="Employee Management"
         subtitle="Manage field technicians, support staff, performance ratings, and shifts."

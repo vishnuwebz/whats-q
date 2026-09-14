@@ -1056,7 +1056,7 @@ export const WorkflowBuilderView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-screen overflow-hidden font-sans select-none">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans select-none">
       {/* ========================================================================= */}
       {/* TOP HEADER: CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)             */}
       {/* ========================================================================= */}

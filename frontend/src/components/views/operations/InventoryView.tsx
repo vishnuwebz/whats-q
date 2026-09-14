@@ -66,7 +66,7 @@ export const InventoryView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Inventory & Stock Management"
         subtitle="Manage warehouse SKU stocks, rack aisle locations, low stock alerts, and suppliers."
