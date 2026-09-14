@@ -123,7 +123,9 @@ interface QiyamState {
   updateJobStatus: (jobId: string | number, status: Job['status']) => Promise<void>;
   updateApprovalStatus: (approvalId: string | number, status: 'Approved' | 'Rejected') => Promise<void>;
   toggleTaskChecklist: (taskId: string | number, checklistId: string) => Promise<void>;
-  clockInEmployee: (employeeId: string | number) => Promise<void>;
+  clockInEmployee: (employeeId: string | number, targetStatus?: 'on_duty' | 'active' | 'on_leave') => Promise<void>;
+  addEmployee: (newEmp: Partial<Employee>) => Promise<Employee>;
+  updateEmployee: (employeeId: string | number, updates: Partial<Employee>) => Promise<void>;
   saveWorkflowNodes: (workflowId: string | number, nodes: FlowNode[]) => Promise<void>;
   runWorkflowTest: (workflowId: string | number, inputMessage: string) => Promise<{ steps: string[]; duration: string }>;
 }
@@ -589,24 +591,100 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     }
   },
 
-  clockInEmployee: async (employeeId) => {
+  clockInEmployee: async (employeeId, targetStatus) => {
     const employee = get().employees.find((e) => e.id === employeeId);
     if (!employee) return;
+    const isCurrentlyOnDuty = employee.status === 'on_duty';
+    const newStatus = targetStatus || (isCurrentlyOnDuty ? 'active' : 'on_duty');
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const res = await apiClient.put(`/operations/employees/${employeeId}/`, {
-      ...employee,
-      status: 'on_duty',
-    });
-    if (res?.id && res.success !== false) {
-      set((state) => ({
-        employees: state.employees.map((e) => (e.id === employeeId ? (res as Employee) : e)),
-        attendance: state.attendance.map((a) =>
-          a.employee_id_str === employee.employee_id_str
-            ? { ...a, check_in: `${timeStr} (On time)`, status: 'present' }
-            : a
-        ),
-      }));
-      get().addToast('Attendance check-in logged', 'success');
+
+    // Optimistic update
+    const updatedEmployee: Employee = { ...employee, status: newStatus };
+    set((state) => ({
+      employees: state.employees.map((e) => (e.id === employeeId ? updatedEmployee : e)),
+      attendance: state.attendance.map((a) =>
+        a.employee_id_str === employee.employee_id_str
+          ? {
+              ...a,
+              ...(newStatus === 'on_duty'
+                ? { check_in: `${timeStr} (On time)`, status: 'present' }
+                : { check_out: timeStr }
+              )
+            }
+          : a
+      ),
+    }));
+
+    try {
+      const res = await apiClient.put(`/operations/employees/${employeeId}/`, {
+        ...employee,
+        status: newStatus,
+      });
+      if (res?.id && res.success !== false) {
+        set((state) => ({
+          employees: state.employees.map((e) => (e.id === employeeId ? (res as Employee) : e)),
+        }));
+      }
+    } catch (err) {
+      console.warn('Could not sync status with backend:', err);
+    }
+
+    if (newStatus === 'on_duty') {
+      get().addToast(`${employee.name} clocked in at ${timeStr} (On Duty)`, 'success');
+    } else if (newStatus === 'on_leave') {
+      get().addToast(`${employee.name} marked as On Leave`, 'warning');
+    } else {
+      get().addToast(`${employee.name} clocked out at ${timeStr} (Off Duty)`, 'info');
+    }
+  },
+
+  addEmployee: async (newEmp) => {
+    const nextId = get().employees.length + 1;
+    const empData = {
+      name: newEmp.name || 'New Staff',
+      employee_id_str: newEmp.employee_id_str || `EMP-${String(nextId).padStart(3, '0')}`,
+      role: newEmp.role || 'Field Technician',
+      department: newEmp.department || 'AC Services',
+      phone: newEmp.phone || '+91 90000 00000',
+      email: newEmp.email || 'staff@qiyam.com',
+      status: newEmp.status || 'active',
+      location: newEmp.location || 'Kozhikode, Kerala',
+      rating: newEmp.rating ?? 5.0,
+      jobs_completed_month: 0,
+      on_time_percent: 100,
+      today_schedule: [],
+    };
+    try {
+      const res = await apiClient.post('/operations/employees/', empData);
+      const created = (res?.id && res.success !== false) ? (res as Employee) : { ...empData, id: nextId } as Employee;
+      set((state) => ({ employees: [created, ...state.employees] }));
+      get().addToast(`Employee "${created.name}" added successfully`, 'success');
+      return created;
+    } catch (e) {
+      const fallback = { ...empData, id: nextId } as Employee;
+      set((state) => ({ employees: [fallback, ...state.employees] }));
+      get().addToast(`Employee "${fallback.name}" added`, 'success');
+      return fallback;
+    }
+  },
+
+  updateEmployee: async (employeeId, updates) => {
+    const employee = get().employees.find((e) => e.id === employeeId);
+    if (!employee) return;
+    const merged: Employee = { ...employee, ...updates };
+    set((state) => ({
+      employees: state.employees.map((e) => (e.id === employeeId ? merged : e)),
+    }));
+    try {
+      const res = await apiClient.put(`/operations/employees/${employeeId}/`, merged);
+      if (res?.id && res.success !== false) {
+        set((state) => ({
+          employees: state.employees.map((e) => (e.id === employeeId ? (res as Employee) : e)),
+        }));
+      }
+      get().addToast(`Profile for ${employee.name} updated`, 'success');
+    } catch (e) {
+      get().addToast(`Updated ${employee.name} profile`, 'info');
     }
   },
 
