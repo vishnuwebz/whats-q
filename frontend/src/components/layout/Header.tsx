@@ -218,7 +218,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
               }`}
-              title={versionInfo.update_available ? `Update available (${versionInfo.latest_commit}) - Click to review and update` : `WhatsQ v${versionInfo.current_commit}`}
+              title={versionInfo.update_available ? `Update available (${versionInfo.latest_commit}) - Click to review and update` : `WhatsQ v${versionInfo.current_commit} • Last updated: ${versionInfo.last_updated || versionInfo.current_date}`}
             >
               <Sparkles className={`w-3.5 h-3.5 ${versionInfo.update_available ? 'text-amber-200 animate-spin' : 'text-slate-500'}`} />
               <span>{versionInfo.update_available ? `Update Ready (${versionInfo.latest_commit})` : `v${versionInfo.current_commit}`}</span>

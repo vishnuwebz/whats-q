@@ -61,10 +61,24 @@ fi
 git fetch origin main
 git reset --hard origin/main
 
+git config --global --add safe.directory "$APP_DIR" || true
+git config --system --add safe.directory "$APP_DIR" || true
+
 COMMIT_HASH=$(git rev-parse --short HEAD)
 COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
 COMMIT_MSG=$(git log -1 --pretty=format:'%s')
-COMMIT_DATE=$(git log -1 --pretty=format:'%cd' --date=format:'%b %d, %Y at %I:%M %p')
+COMMIT_DATE=$(git log -1 --pretty=format:'%cd' --date=format:'%b %d, %Y, %I:%M %p')
+
+# Generate version metadata snapshot for instant backend consumption
+cat <<EOF > "$APP_DIR/backend/version_meta.json"
+{
+  "current_commit": "$COMMIT_HASH",
+  "current_author": "$COMMIT_AUTHOR",
+  "current_date": "$COMMIT_DATE",
+  "current_message": "$COMMIT_MSG",
+  "last_updated": "$COMMIT_DATE"
+}
+EOF
 
 echo -e "${GREEN}[SUCCESS] Git repository updated!${NC}"
 echo -e "   Active Commit : ${CYAN}${COMMIT_HASH}${NC}"

@@ -2,8 +2,43 @@ import React from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Sparkles, ArrowRight, ShieldCheck, Database, RefreshCw,
-  GitBranch, CheckCircle2, Clock, AlertTriangle, X, Zap, Shield
+  GitBranch, CheckCircle2, Clock, AlertTriangle, X, Zap, Shield,
+  Calendar, Check
 } from 'lucide-react';
+
+const formatDateTime = (dateStr?: string): string => {
+  if (!dateStr) return '';
+  const trimmed = dateStr.trim();
+  if (!trimmed) return '';
+  if (trimmed.toLowerCase() === 'just now') return 'Just now';
+
+  // If it already has both date and time (e.g. "Sep 14, 2026, 05:02 PM" or "Sep 14, 2026 • 05:02 PM")
+  if (trimmed.includes('•') && (trimmed.includes('AM') || trimmed.includes('PM'))) {
+    return trimmed;
+  }
+  if (trimmed.includes(', ') && (trimmed.includes('AM') || trimmed.includes('PM'))) {
+    return trimmed.replace(', ', ' • ');
+  }
+
+  // Parse ISO date or standard format
+  try {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }).format(d).replace(', ', ' • ');
+    }
+  } catch {
+    // fallback
+  }
+
+  return trimmed;
+};
 
 export const SystemUpdateModal: React.FC = () => {
   const {
@@ -78,7 +113,7 @@ export const SystemUpdateModal: React.FC = () => {
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-950/50 shrink-0 border border-emerald-400/30">
               <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base sm:text-lg leading-snug tracking-tight text-white">
                 {versionInfo.update_available ? 'New WhatsQ Update Available' : 'WhatsQ is Up to Date'}
               </h3>
@@ -87,6 +122,20 @@ export const SystemUpdateModal: React.FC = () => {
                   ? 'A new production release is available globally. Updating now ensures enterprise security, seamless real-time messaging, and workflow stability.'
                   : 'Your system is running the latest verified production build.'}
               </p>
+
+              {/* Prominent Last Updated & Checked Meta Strip */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2.5 pt-2.5 border-t border-white/10 text-[11px] text-emerald-200/90">
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                  <span>Last Updated: <span className="text-white font-semibold">{formatDateTime(versionInfo.last_updated || versionInfo.current_date)}</span></span>
+                </span>
+                {versionInfo.last_checked && (
+                  <span className="inline-flex items-center gap-1 text-emerald-300/70 text-[10.5px]">
+                    <span className="hidden sm:inline">•</span>
+                    <span>Checked: {formatDateTime(versionInfo.last_checked)}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -96,30 +145,49 @@ export const SystemUpdateModal: React.FC = () => {
           {/* Version Comparison Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/90 p-3.5 rounded-2xl border border-slate-200 text-xs">
             {/* Previous / Current Version */}
-            <div className="space-y-1 sm:border-r border-slate-200 sm:pr-3 pb-2 sm:pb-0 border-b sm:border-b-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-slate-400" /> Current Release
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono font-bold bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded text-[11px]">
+            <div className="space-y-1.5 sm:border-r border-slate-200 sm:pr-3 pb-3 sm:pb-0 border-b sm:border-b-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-slate-400" /> Current Release
+                </span>
+                <span className="text-[9.5px] font-semibold text-slate-500 bg-slate-200/60 px-1.5 py-0.5 rounded">
+                  Installed
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-mono font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded text-[11px]">
                   {versionInfo.current_commit}
                 </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  {versionInfo.current_date || 'Active'}
+                <span className="text-[10.5px] text-slate-600 font-semibold flex items-center gap-1">
+                  {formatDateTime(versionInfo.current_date) || 'Active'}
                 </span>
               </div>
               <p className="text-slate-600 text-[11px] line-clamp-1 leading-snug">
                 {versionInfo.current_message || 'Running production build'}
               </p>
+              {versionInfo.current_author && (
+                <p className="text-[10px] text-slate-400">
+                  Deployed by <span className="font-medium text-slate-600">{versionInfo.current_author}</span>
+                </p>
+              )}
             </div>
 
             {/* Target / New Version */}
-            <div className="space-y-1 sm:pl-3 pt-1 sm:pt-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
-                <GitBranch className="w-3 h-3 text-emerald-600" /> 
-                {versionInfo.update_available ? 'Target Release' : 'Latest Release'}
-              </span>
-              <div className="flex items-center gap-1.5">
+            <div className="space-y-1.5 sm:pl-3 pt-2 sm:pt-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
+                  <GitBranch className="w-3 h-3 text-emerald-600" /> 
+                  {versionInfo.update_available ? 'Target Release' : 'Latest Release'}
+                </span>
+                <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                  versionInfo.update_available 
+                    ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300' 
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {versionInfo.update_available ? 'New' : 'Verified'}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${
                   versionInfo.update_available
                     ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-400/40'
@@ -127,15 +195,18 @@ export const SystemUpdateModal: React.FC = () => {
                 }`}>
                   {versionInfo.latest_commit}
                 </span>
-                {versionInfo.update_available && (
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    New
-                  </span>
-                )}
+                <span className="text-[10.5px] text-emerald-800 font-semibold">
+                  {formatDateTime(versionInfo.latest_date || versionInfo.current_date)}
+                </span>
               </div>
               <p className="text-slate-700 text-[11px] font-medium line-clamp-1 leading-snug">
                 {versionInfo.latest_message || 'Up to date with origin/main'}
               </p>
+              {versionInfo.latest_author && (
+                <p className="text-[10px] text-slate-400">
+                  Release by <span className="font-medium text-slate-600">{versionInfo.latest_author}</span>
+                </p>
+              )}
             </div>
           </div>
 

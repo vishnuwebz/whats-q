@@ -34,6 +34,8 @@ export interface VersionInfo {
   latest_message: string;
   update_available: boolean;
   is_git: boolean;
+  last_updated?: string;
+  last_checked?: string;
 }
 
 export interface QNotification {
@@ -1624,17 +1626,28 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         get().addToast('Global Update Broadcast simulated!', 'info');
       }
     } catch (e) {
+      const nowFormatted = new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }).format(new Date());
+
       const simulated: VersionInfo = {
-        current_commit: get().versionInfo?.current_commit || '731c43b',
+        current_commit: get().versionInfo?.current_commit || '2a7383e',
         current_author: 'Vishnu G',
-        current_date: 'Sep 14, 2026',
+        current_date: get().versionInfo?.current_date || nowFormatted,
         current_message: 'System running production release',
         latest_commit: '89ef12c',
         latest_author: 'WhatsQ Core Team',
-        latest_date: 'Just now',
+        latest_date: nowFormatted,
         latest_message: 'Critical Security Shields & High-Concurrency Engine v2.4.2',
         update_available: true,
         is_git: true,
+        last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,
+        last_checked: nowFormatted,
       };
       try {
         localStorage.removeItem('whatsq_update_snooze');
