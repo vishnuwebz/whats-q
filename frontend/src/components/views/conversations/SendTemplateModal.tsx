@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Send, Sparkles, Check, AlertCircle, FileText, Phone, ExternalLink } from 'lucide-react';
+﻿import React, { useState, useRef, useEffect } from 'react';
+import { X, Send, Sparkles, ChevronDown, Check, Search } from 'lucide-react';
 import { WhatsAppTemplateItem, Conversation } from '@/types';
 
 interface SendTemplateModalProps {
@@ -22,18 +22,37 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     approvedTemplates[0]?.id || templates[0]?.id || ''
   );
   const [variables, setVariables] = useState<Record<string, string>>({});
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedTemplate = templates.find(t => String(t.id) === String(selectedTemplateId)) || approvedTemplates[0];
 
-  // Populate default variables based on customer context
-  React.useEffect(() => {
+  const filtered = search.trim()
+    ? approvedTemplates.filter(t =>
+        t.name.toLowerCase().includes(search.toLowerCase()) ||
+        (t.category || '').toLowerCase().includes(search.toLowerCase())
+      )
+    : approvedTemplates;
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
     if (selectedTemplate) {
       const vars: Record<string, string> = {};
       const templateVars = selectedTemplate.body_variables || {};
       const contactName = currentConversation?.contact_name || 'Customer';
       const serviceNeeded = currentConversation?.service_needed || 'AC Repair';
-      const estValue = `₹${currentConversation?.estimated_value || 2800}`;
-      
+      const estValue = `â‚¹${currentConversation?.estimated_value || 2800}`;
+
       Object.keys(templateVars).forEach((k, idx) => {
         if (idx === 0) vars[k] = contactName;
         else if (idx === 1) vars[k] = serviceNeeded;
@@ -41,7 +60,6 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
         else vars[k] = templateVars[k] || `Value ${k}`;
       });
 
-      // Also detect from body text if body_variables not populated
       const matches = (selectedTemplate.body_text || selectedTemplate.body || '').match(/\{\{(\d+)\}\}/g) || [];
       matches.forEach((m, idx) => {
         const num = m.replace(/[{}]/g, '');
@@ -51,7 +69,6 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
           else vars[num] = `Sample ${num}`;
         }
       });
-
       setVariables(vars);
     }
   }, [selectedTemplateId, currentConversation]);
@@ -64,7 +81,6 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     onClose();
   };
 
-  // Render preview message
   const renderPreview = () => {
     if (!selectedTemplate) return '';
     let text = selectedTemplate.body_text || selectedTemplate.body || '';
@@ -74,100 +90,190 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     return text;
   };
 
+  const categoryColor = (cat?: string) => {
+    const c = (cat || '').toUpperCase();
+    if (c.includes('MARKET')) return 'bg-amber-100 text-amber-800';
+    if (c.includes('AUTH')) return 'bg-blue-100 text-blue-800';
+    return 'bg-emerald-100 text-emerald-800';
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 max-h-[92dvh]">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0">
-              <Sparkles className="w-4 h-4" />
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg flex flex-col font-sans animate-in fade-in zoom-in-95 max-h-[90dvh]">
+
+        {/* â”€â”€ Header â”€â”€ */}
+        <div className="px-5 py-4 flex items-center justify-between shrink-0 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900">Send WhatsApp Template</h3>
-              <p className="text-[11px] text-slate-500 truncate max-w-[200px] sm:max-w-none">
-                To: <span className="font-semibold text-slate-800">{currentConversation.contact_name}</span> ({currentConversation.phone_number})
+              <h3 className="font-bold text-sm text-white leading-tight">Send WhatsApp Template</h3>
+              <p className="text-[11px] text-emerald-100 mt-0.5">
+                To: <span className="font-semibold text-white">{currentConversation?.contact_name || 'Customer'}</span>
+                {currentConversation?.phone_number && (
+                  <span className="ml-1 opacity-75">({currentConversation.phone_number})</span>
+                )}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 text-xs overflow-y-auto">
-          {/* Template Select */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Select Approved Template</label>
-            <select
-              value={selectedTemplateId}
-              onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 text-sm sm:text-xs outline-none"
-            >
-              {approvedTemplates.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name} • {t.meta_category || t.category} ({t.language || 'en_US'})
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* â”€â”€ Scrollable Body â”€â”€ */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
 
-          {/* Dynamic Variables Inputs */}
-          {Object.keys(variables).length > 0 && (
-            <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <span className="font-bold text-slate-800 text-[11px] block">Fill Template Variables</span>
-              <div className="space-y-2">
-                {Object.keys(variables).map(k => (
-                  <div key={k} className="flex items-center gap-2">
-                    <span className="w-16 px-2 py-1 bg-white border border-slate-200 rounded text-center font-mono font-bold text-emerald-700 shrink-0">
-                      {`{{${k}}}`}
-                    </span>
+          {/* Custom Dropdown */}
+          <div ref={dropdownRef} className="relative z-50">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Select Approved Template
+            </label>
+
+            {/* Trigger */}
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(o => !o)}
+              className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 bg-slate-50 border rounded-xl transition-all text-left cursor-pointer ${
+                dropdownOpen ? 'border-emerald-400 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-emerald-300'
+              }`}
+            >
+              {selectedTemplate ? (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-xs text-slate-900 truncate">{selectedTemplate.name}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${categoryColor(selectedTemplate.meta_category || selectedTemplate.category)}`}>
+                        {selectedTemplate.meta_category || selectedTemplate.category || 'UTILITY'}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{selectedTemplate.language || 'en_US'}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-slate-400 text-xs">Choose a template...</span>
+              )}
+              <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180 text-emerald-500' : ''}`} />
+            </button>
+
+            {/* Dropdown panel â€” position absolute, no overflow clipping */}
+            {dropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[99999] overflow-hidden">
+                <div className="p-2.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                    <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <input
+                      autoFocus
                       type="text"
-                      value={variables[k]}
-                      onChange={(e) => setVariables(prev => ({ ...prev, [k]: e.target.value }))}
-                      className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm sm:text-xs outline-none focus:border-emerald-500"
+                      placeholder="Search templates..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="flex-1 text-xs bg-transparent outline-none text-slate-800 placeholder-slate-400"
                     />
                   </div>
-                ))}
+                </div>
+                <div className="max-h-48 overflow-y-auto divide-y divide-slate-50">
+                  {filtered.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">No templates found</div>
+                  ) : filtered.map(t => {
+                    const isSel = String(t.id) === String(selectedTemplateId);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => { setSelectedTemplateId(t.id); setDropdownOpen(false); setSearch(''); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer ${isSel ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isSel ? 'bg-emerald-600' : 'bg-slate-100'}`}>
+                          {isSel
+                            ? <Check className="w-3.5 h-3.5 text-white" />
+                            : <Sparkles className="w-3.5 h-3.5 text-slate-400" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-semibold text-xs truncate ${isSel ? 'text-emerald-700' : 'text-slate-800'}`}>{t.name}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${categoryColor(t.meta_category || t.category)}`}>
+                              {t.meta_category || t.category || 'UTILITY'}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{t.language || 'en_US'}</span>
+                          </div>
+                        </div>
+                        {isSel && <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Template Variables */}
+          {Object.keys(variables).length > 0 && (
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Template Variables</span>
+              {Object.keys(variables).map(k => (
+                <div key={k} className="flex items-center gap-2.5">
+                  <span className="w-12 text-center px-2 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg font-mono font-bold text-emerald-700 text-[10px] shrink-0">
+                    {`{{${k}}}`}
+                  </span>
+                  <input
+                    type="text"
+                    value={variables[k]}
+                    onChange={(e) => setVariables(prev => ({ ...prev, [k]: e.target.value }))}
+                    className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition-all"
+                  />
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Live Message Preview */}
-          <div className="space-y-1.5">
-            <span className="font-bold text-slate-700 text-[11px] block">WhatsApp Chat Bubble Preview</span>
-            <div className="bg-[#EFEAE2] p-3.5 rounded-xl border border-slate-200">
-              <div className="bg-white rounded-xl rounded-tl-none p-3 shadow-sm border border-slate-200/60 max-w-sm space-y-2">
+          {/* Preview */}
+          <div>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">WhatsApp Preview</span>
+            <div className="bg-[#EFEAE2] p-4 rounded-xl border border-slate-200 min-h-[80px]">
+              <div className="bg-white rounded-2xl rounded-tl-none px-3.5 py-3 shadow-sm border border-slate-100 max-w-[85%] space-y-1.5">
                 {selectedTemplate?.header_text && (
-                  <div className="font-bold text-xs text-slate-900 border-b border-slate-100 pb-1">
-                    {selectedTemplate.header_text}
-                  </div>
+                  <div className="font-bold text-[11px] text-slate-900 border-b border-slate-100 pb-1.5">{selectedTemplate.header_text}</div>
                 )}
                 <div className="text-[11px] text-slate-800 whitespace-pre-line leading-relaxed">
-                  {renderPreview()}
+                  {renderPreview() || <span className="text-slate-400 italic">Select a template to preview...</span>}
                 </div>
                 {selectedTemplate?.footer_text && (
-                  <div className="text-[10px] text-slate-400">
-                    {selectedTemplate.footer_text}
-                  </div>
+                  <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-100">{selectedTemplate.footer_text}</div>
                 )}
+                <div className="text-[9px] text-slate-400 text-right">
+                  {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
             </div>
           </div>
+
         </div>
 
-        <div className="px-4 sm:px-6 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
+        {/* â”€â”€ Footer â”€â”€ */}
+        <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 shrink-0 rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs cursor-pointer text-center"
+            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSend}
-            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
+            disabled={!selectedTemplate}
+            className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Send Template Message</span>
