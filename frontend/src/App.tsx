@@ -54,18 +54,99 @@ import { AISettingsView } from './components/views/ai/AISettingsView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
+import { TabType } from './types';
+
+const TAB_TO_PATH: Record<TabType, string> = {
+  'dashboard': '/dashboard',
+  'conversations': '/conversations',
+  'crm-leads': '/crm/leads',
+  'crm-deals': '/crm/deals',
+  'crm-followups': '/crm/followups',
+  'crm-customers': '/crm/customers',
+  'ops-jobs': '/operations/jobs',
+  'ops-appointments': '/operations/appointments',
+  'ops-employees': '/operations/employees',
+  'ops-schedule': '/operations/schedule',
+  'ops-attendance': '/operations/attendance',
+  'ops-tasks': '/operations/tasks',
+  'ops-routes': '/operations/routes',
+  'ops-inventory': '/operations/inventory',
+  'finance-overview': '/finance/overview',
+  'finance-transactions': '/finance/transactions',
+  'finance-invoices': '/finance/invoices',
+  'finance-expenses': '/finance/expenses',
+  'finance-budget': '/finance/budget',
+  'finance-payments': '/finance/payments',
+  'finance-accounts': '/finance/accounts',
+  'finance-reports': '/finance/reports',
+  'automation-builder': '/automation/builder',
+  'automation-workflows': '/automation/workflows',
+  'automation-templates': '/automation/templates',
+  'automation-branches': '/automation/branches',
+  'automation-logs': '/automation/logs',
+  'automation-approvals': '/automation/approvals',
+  'ai-overview': '/ai/overview',
+  'ai-branches': '/ai/branches',
+  'ai-knowledgebase': '/ai/knowledgebase',
+  'ai-templates': '/ai/templates',
+  'template-hub': '/template-hub',
+  'template-create': '/template-create',
+  'ai-settings': '/ai/settings',
+  'analytics': '/analytics',
+  'integrations': '/integrations',
+  'settings': '/settings',
+};
+
+const resolveTabFromPath = (path: string): TabType => {
+  const normalized = path.toLowerCase().replace(/\/$/, '') || '/dashboard';
+  for (const [tab, p] of Object.entries(TAB_TO_PATH)) {
+    if (p === normalized || `/${tab}` === normalized) {
+      return tab as TabType;
+    }
+  }
+  return 'dashboard';
+};
 
 export const App: React.FC = () => {
-  const { activeTab, loadInitialData, fetchVersionInfo } = useQiyamStore();
+  const { activeTab, setActiveTab, loadInitialData, fetchVersionInfo } = useQiyamStore();
 
+  // 1. Initial URL routing on mount + popstate listener for browser back/forward buttons
   React.useEffect(() => {
     loadInitialData();
     fetchVersionInfo();
+
+    const initialTab = resolveTabFromPath(window.location.pathname);
+    setActiveTab(initialTab);
+
+    if (window.location.pathname === '/' || window.location.pathname === '') {
+      window.history.replaceState(null, '', TAB_TO_PATH[initialTab]);
+    }
+
+    const handlePopState = () => {
+      const poppedTab = resolveTabFromPath(window.location.pathname);
+      setActiveTab(poppedTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
     const timer = setInterval(() => {
       fetchVersionInfo();
     }, 60000);
-    return () => clearInterval(timer);
-  }, [loadInitialData, fetchVersionInfo]);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      clearInterval(timer);
+    };
+  }, [loadInitialData, fetchVersionInfo, setActiveTab]);
+
+  // 2. Sync URL address bar whenever activeTab changes
+  React.useEffect(() => {
+    const canonicalPath = TAB_TO_PATH[activeTab] || '/dashboard';
+    const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    const altPath = `/${activeTab}`;
+    if (currentPath !== canonicalPath && currentPath !== altPath) {
+      window.history.pushState(null, '', canonicalPath);
+    }
+  }, [activeTab]);
 
   const renderActiveView = () => {
     switch (activeTab) {

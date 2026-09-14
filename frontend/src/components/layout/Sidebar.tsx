@@ -476,6 +476,23 @@ export const Sidebar: React.FC = () => {
           <SettingsIcon className="w-4 h-4" />
           <span>Settings</span>
         </button>
+
+        {/* API Endpoints & Swagger Hub */}
+        <a
+          href="/api/docs/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-slate-400 hover:text-emerald-400 hover:bg-[#16233B] border border-dashed border-slate-700/60 my-1 group"
+          title="Open WhatsQ Cloud API Docs & Swagger UI"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">&lt;/&gt;</span>
+            <span className="text-xs font-medium text-slate-300 group-hover:text-emerald-300">API Endpoints</span>
+          </div>
+          <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono group-hover:bg-emerald-950 group-hover:text-emerald-300">
+            Swagger
+          </span>
+        </a>
       </nav>
 
       {/* WhatsApp Connection Card & Simulator Trigger */}
