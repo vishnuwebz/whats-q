@@ -37,6 +37,17 @@ fi
 # 2. GIT UPDATE
 cd "$APP_DIR"
 echo -e "\n${YELLOW}[2/5] Pulling latest updates from Git...${NC}"
+
+# Auto-configure authenticated Git remote if token file or env exists
+if [ -f "/etc/whatsq.token" ]; then
+    TOKEN=$(cat /etc/whatsq.token | tr -d '\r\n ')
+    if [ -n "$TOKEN" ]; then
+        git remote set-url origin "https://qbscalicut:${TOKEN}@github.com/qbscalicut/whats-q.git"
+    fi
+elif [ -n "$GITHUB_TOKEN" ]; then
+    git remote set-url origin "https://qbscalicut:${GITHUB_TOKEN}@github.com/qbscalicut/whats-q.git"
+fi
+
 git fetch origin main
 git reset --hard origin/main
 
@@ -75,6 +86,10 @@ npm run build
 echo -e "\n${YELLOW}[5/5] Restarting WhatsQ Services...${NC}"
 sudo systemctl restart whatsq-backend
 sudo systemctl reload nginx
+
+# Sync update script binary
+sudo cp "$APP_DIR/deploy.sh" /usr/local/bin/update-whatsq 2>/dev/null || true
+sudo chmod +x /usr/local/bin/update-whatsq 2>/dev/null || true
 
 echo -e "\n${CYAN}======================================================${NC}"
 echo -e "${GREEN}        WHATSQ SYSTEM UPDATE COMPLETED!               ${NC}"
