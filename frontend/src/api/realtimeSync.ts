@@ -129,6 +129,15 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('message.reaction', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing message.reaction event:', err);
+        }
+      });
+
       this.eventSource.onerror = () => {
         console.warn('[RealtimeSync] Event stream connection dropped. Reconnecting with exponential backoff...');
         if (this.eventSource) {
@@ -248,6 +257,14 @@ class RealtimeSyncManager {
         const { conversation_id, message_id, status } = event.data || {};
         if (conversation_id && message_id && status) {
           store.applyMessageStatus(conversation_id, message_id, status);
+        }
+        break;
+      }
+
+      case 'message.reaction': {
+        const { conversation_id, message_id, emoji, from } = event.data || {};
+        if (conversation_id && message_id && emoji) {
+          store.applyMessageReaction(conversation_id, message_id, emoji, from || 'customer');
         }
         break;
       }

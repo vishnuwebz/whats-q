@@ -6,6 +6,19 @@ import type {
 
 export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
   const status = String(raw.status || 'sent').toLowerCase() as WhatsAppMessage['status'];
+  const richCardRaw = (raw.rich_card || raw.richCard) as Record<string, unknown> | undefined;
+  // Reactions are stored inside rich_card.reactions on the backend
+  const reactionsRaw = richCardRaw?.reactions as { emoji: string; from: string }[] | undefined;
+  const reactions: WhatsAppMessage['reactions'] = reactionsRaw?.length
+    ? reactionsRaw.map((r) => ({
+        emoji: r.emoji,
+        from: (r.from || 'customer') as WhatsAppMessage['reactions'][0]['from'],
+      }))
+    : undefined;
+  // Strip reactions out of richCard before passing to frontend richCard type
+  const richCard = richCardRaw
+    ? (Object.fromEntries(Object.entries(richCardRaw).filter(([k]) => k !== 'reactions')) as WhatsAppMessage['richCard'])
+    : undefined;
   return {
     id: raw.id as string | number,
     sender: raw.sender as WhatsAppMessage['sender'],
@@ -13,7 +26,8 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     text: String(raw.text || ''),
     timestamp: String(raw.timestamp || ''),
     status: ['sent', 'delivered', 'read', 'pending'].includes(status) ? status : 'sent',
-    richCard: (raw.rich_card || raw.richCard) as WhatsAppMessage['richCard'],
+    richCard,
+    reactions,
   };
 }
 

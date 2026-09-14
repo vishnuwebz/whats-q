@@ -621,6 +621,28 @@ export const ConversationsView: React.FC = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* WhatsApp-style Emoji Reaction Bubbles */}
+                      {msg.reactions && msg.reactions.length > 0 && (
+                        <div className={`flex gap-1 mt-0.5 ${isCustomer ? 'justify-start pl-1' : 'justify-end pr-1'}`}>
+                          {/* Group same emojis and show count */}
+                          {Object.entries(
+                            msg.reactions.reduce((acc, r) => {
+                              acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                              return acc;
+                            }, {} as Record<string, number>)
+                          ).map(([emoji, count]) => (
+                            <span
+                              key={emoji}
+                              className="inline-flex items-center gap-0.5 bg-white border border-slate-200 shadow-sm rounded-full px-1.5 py-0.5 text-sm leading-none select-none"
+                              title={`${count} reaction${count > 1 ? 's' : ''}`}
+                            >
+                              <span>{emoji}</span>
+                              {count > 1 && <span className="text-[10px] font-semibold text-slate-500">{count}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

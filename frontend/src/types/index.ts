@@ -45,6 +45,7 @@ export interface WhatsAppMessage {
   text: string;
   timestamp: string;
   status: 'sent' | 'delivered' | 'read' | 'pending';
+  reactions?: { emoji: string; from: 'customer' | 'agent' | 'bot' | 'system' }[];
   richCard?: {
     type: 'booking' | 'payment' | 'quotation';
     title: string;

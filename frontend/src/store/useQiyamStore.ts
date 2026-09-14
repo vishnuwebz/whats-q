@@ -197,6 +197,7 @@ interface QiyamState {
   typingUsers: Record<string, boolean>;
   setClientTyping: (conversationId: string | number, isTyping: boolean) => void;
   applyMessageStatus: (conversationId: string | number, messageId: string | number, status: 'sent' | 'delivered' | 'read') => void;
+  applyMessageReaction: (conversationId: string | number, messageId: string | number, emoji: string, from: 'customer' | 'agent' | 'bot' | 'system') => void;
   applyRealtimeMessage: (conversationId: string | number, message: WhatsAppMessage) => void;
   applyRealtimeConversation: (convUpdate: Partial<Conversation> & { id: string | number }) => void;
   applyRealtimeNotification: (notif: QNotification) => void;
@@ -243,6 +244,26 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
           };
         }
         return c;
+      }),
+    }));
+  },
+
+  applyMessageReaction: (conversationId, messageId, emoji, from) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (String(c.id) !== String(conversationId)) return c;
+        return {
+          ...c,
+          messages: c.messages.map((m) => {
+            if (String(m.id) !== String(messageId)) return m;
+            const existing = m.reactions || [];
+            // Remove old reaction from same sender, then add new (toggle off if same emoji)
+            const filtered = existing.filter((r) => r.from !== from);
+            const sameReaction = existing.find((r) => r.from === from && r.emoji === emoji);
+            const newReactions = sameReaction ? filtered : [...filtered, { emoji, from }];
+            return { ...m, reactions: newReactions };
+          }),
+        };
       }),
     }));
   },

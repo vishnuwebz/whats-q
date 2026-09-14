@@ -731,6 +731,49 @@ class WhatsAppWebhookView(APIView):
                             text_body = msg.get('document', {}).get('filename') or '📄 Document'
                         elif msg_type == 'location':
                             text_body = '📍 Location'
+                        elif msg_type == 'reaction':
+                            # WhatsApp reaction (👍 👎 ❤️ etc.) on a previous message
+                            reaction_data = msg.get('reaction', {})
+                            reacted_to_id = reaction_data.get('message_id', '')  # wamid of the original message
+                            emoji = reaction_data.get('emoji', '')  # empty string = reaction removed
+
+                            if reacted_to_id and emoji:
+                                # Find the original message and attach the reaction
+                                target_msg = Message.objects.filter(meta_message_id=reacted_to_id).first()
+                                if target_msg:
+                                    rc = target_msg.rich_card or {}
+                                    reactions = rc.get('reactions', [])
+                                    # Remove any existing reaction from this sender phone
+                                    reactions = [r for r in reactions if r.get('phone') != clean_sender]
+                                    reactions.append({'emoji': emoji, 'from': 'customer', 'phone': clean_sender})
+                                    rc['reactions'] = reactions
+                                    target_msg.rich_card = rc
+                                    target_msg.save()
+
+                                    # Emit reaction event to frontend
+                                    emit_event('message.reaction', {
+                                        'conversation_id': target_msg.conversation_id,
+                                        'message_id': target_msg.id,
+                                        'emoji': emoji,
+                                        'from': 'customer',
+                                    })
+                                    logger.info(f"[Webhook] Reaction '{emoji}' from {clean_sender} on message {reacted_to_id}")
+                            elif reacted_to_id and not emoji:
+                                # Empty emoji = reaction removed
+                                target_msg = Message.objects.filter(meta_message_id=reacted_to_id).first()
+                                if target_msg:
+                                    rc = target_msg.rich_card or {}
+                                    reactions = [r for r in rc.get('reactions', []) if r.get('phone') != clean_sender]
+                                    rc['reactions'] = reactions
+                                    target_msg.rich_card = rc
+                                    target_msg.save()
+                                    emit_event('message.reaction', {
+                                        'conversation_id': target_msg.conversation_id,
+                                        'message_id': target_msg.id,
+                                        'emoji': '',
+                                        'from': 'customer',
+                                    })
+                            continue  # Reactions don't create a new message row
                         else:
                             text_body = f"[{msg_type.capitalize()} Attachment]"
 
