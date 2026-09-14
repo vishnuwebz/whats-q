@@ -5,11 +5,13 @@ from rest_framework.decorators import action
 from django.http import HttpResponse
 from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig
 from .meta_service import MetaWhatsAppService
+from core.events import emit_event
 import datetime
 import hashlib
 import hmac
 import json
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +186,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation.last_contact_date = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
         conversation.save()
 
-        return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+        msg_data = MessageSerializer(msg).data
+        emit_event('message.created', {
+            'conversation_id': conversation.id,
+            'message': msg_data
+        })
+        emit_event('conversation.updated', {
+            'id': conversation.id,
+            'last_message': text,
+            'last_contact_date': conversation.last_contact_date,
+            'unread_count': conversation.unread_count
+        })
+
+        return Response(msg_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def send_template(self, request, pk=None):
@@ -276,7 +290,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation.last_contact_date = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
         conversation.save()
 
-        return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+        msg_data = MessageSerializer(msg).data
+        emit_event('message.created', {
+            'conversation_id': conversation.id,
+            'message': msg_data
+        })
+        emit_event('conversation.updated', {
+            'id': conversation.id,
+            'last_message': rendered_text,
+            'last_contact_date': conversation.last_contact_date,
+            'unread_count': conversation.unread_count
+        })
+
+        return Response(msg_data, status=status.HTTP_201_CREATED)
 
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all().order_by('created_at')
@@ -640,7 +666,7 @@ class WhatsAppWebhookView(APIView):
                         now_time = datetime.datetime.now().strftime('%I:%M %p')
                         now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
 
-                        Message.objects.create(
+                        created_msg = Message.objects.create(
                             conversation=conv,
                             sender='customer',
                             text=text_body,
@@ -653,6 +679,30 @@ class WhatsAppWebhookView(APIView):
                         conv.last_contact_date = now_full
                         conv.status = 'open'
                         conv.save()
+
+                        msg_payload = MessageSerializer(created_msg).data
+                        emit_event('message.created', {
+                            'conversation_id': conv.id,
+                            'message': msg_payload
+                        })
+                        emit_event('conversation.updated', {
+                            'id': conv.id,
+                            'contact_name': conv.contact_name,
+                            'phone_number': conv.phone_number,
+                            'last_message': text_body,
+                            'last_contact_date': now_full,
+                            'unread_count': conv.unread_count
+                        })
+                        emit_event('notification.new', {
+                            'id': int(time.time() * 1000),
+                            'title': f"New message from {conv.contact_name}",
+                            'text': text_body[:80],
+                            'time': 'Just now',
+                            'unread': True,
+                            'target': 'conversations',
+                            'itemId': conv.id,
+                            'itemType': 'conversation'
+                        })
 
                     # Message status updates (sent, delivered, read, failed)
                     statuses = value.get('statuses', [])
@@ -757,9 +807,39 @@ class SimulateWhatsAppMessageView(APIView):
         conv.status = 'in_progress'
         conv.save()
 
+        user_msg_data = MessageSerializer(user_msg).data
+        bot_msg_data = MessageSerializer(bot_msg).data
+
+        emit_event('message.created', {
+            'conversation_id': conv.id,
+            'message': user_msg_data
+        })
+        emit_event('message.created', {
+            'conversation_id': conv.id,
+            'message': bot_msg_data
+        })
+        emit_event('conversation.updated', {
+            'id': conv.id,
+            'contact_name': conv.contact_name,
+            'phone_number': conv.phone_number,
+            'last_message': reply_text,
+            'last_contact_date': now_full,
+            'unread_count': conv.unread_count
+        })
+        emit_event('notification.new', {
+            'id': int(time.time() * 1000),
+            'title': f"Live Simulator: {conv.contact_name}",
+            'text': reply_text[:80],
+            'time': 'Just now',
+            'unread': True,
+            'target': 'conversations',
+            'itemId': conv.id,
+            'itemType': 'conversation'
+        })
+
         return Response({
             'status': 'success',
             'conversation': ConversationSerializer(conv).data,
-            'customer_message': MessageSerializer(user_msg).data,
-            'bot_reply': MessageSerializer(bot_msg).data
+            'customer_message': user_msg_data,
+            'bot_reply': bot_msg_data
         }, status=status.HTTP_200_OK)

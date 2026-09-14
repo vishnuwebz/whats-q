@@ -132,6 +132,11 @@ class GlobalSearchView(APIView):
         return Response(results[:25])
 
 from .update_service import SystemUpdateService
+from .events import event_bus
+from django.http import StreamingHttpResponse
+import json
+import time
+import queue
 
 class SystemVersionView(APIView):
     """
@@ -149,4 +154,63 @@ class SystemUpdateView(APIView):
         result = SystemUpdateService.apply_update()
         status_code = 200 if result.get('success') else 400
         return Response(result, status=status_code)
+
+class EventStreamView(APIView):
+    """
+    Server-Sent Events (SSE) streaming endpoint.
+    Keeps an open HTTP connection and streams real-time updates as they happen.
+    Includes heartbeat pings every 15s to maintain connection across proxies and load balancers.
+    """
+    def get(self, request):
+        def event_generator():
+            client_queue = event_bus.subscribe()
+            try:
+                # Send initial connected handshake
+                init_data = json.dumps({
+                    'type': 'system.connected',
+                    'timestamp': time.time(),
+                    'active_clients': event_bus.active_subscribers_count
+                })
+                yield f"data: {init_data}\n\n"
+
+                last_heartbeat = time.time()
+                while True:
+                    try:
+                        # Wait up to 5 seconds for an event
+                        event = client_queue.get(timeout=5.0)
+                        payload = json.dumps(event)
+                        yield f"id: {event['id']}\nevent: {event['type']}\ndata: {payload}\n\n"
+                    except queue.Empty:
+                        pass
+
+                    # Periodic heartbeat to keep socket open
+                    now = time.time()
+                    if now - last_heartbeat > 15.0:
+                        yield f": heartbeat {int(now)}\n\n"
+                        last_heartbeat = now
+            finally:
+                event_bus.unsubscribe(client_queue)
+
+        response = StreamingHttpResponse(event_generator(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache, no-transform'
+        response['X-Accel-Buffering'] = 'no' # Disable Nginx proxy buffering for instant delivery
+        return response
+
+class EventSyncView(APIView):
+    """
+    Delta sync endpoint returning all events since a given timestamp.
+    Used for instant state reconciliation or when SSE is unavailable.
+    """
+    def get(self, request):
+        try:
+            since = float(request.GET.get('since', 0))
+        except (ValueError, TypeError):
+            since = 0.0
+
+        events = event_bus.get_events_since(since)
+        return Response({
+            'events': events,
+            'server_time': time.time(),
+            'active_subscribers': event_bus.active_subscribers_count
+        })
 

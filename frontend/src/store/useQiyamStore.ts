@@ -171,6 +171,14 @@ interface QiyamState {
   addBranch: (b: Partial<BranchItem>) => Promise<BranchItem>;
   addKnowledgeArticle: (art: Partial<KnowledgeArticle>) => Promise<KnowledgeArticle>;
   addPaymentAccount: (acc: Partial<PaymentAccount>) => Promise<PaymentAccount>;
+
+  syncStatus: 'connected' | 'reconnecting' | 'offline';
+  setSyncStatus: (status: 'connected' | 'reconnecting' | 'offline') => void;
+  applyRealtimeMessage: (conversationId: string | number, message: WhatsAppMessage) => void;
+  applyRealtimeConversation: (convUpdate: Partial<Conversation> & { id: string | number }) => void;
+  applyRealtimeNotification: (notif: QNotification) => void;
+  applyRealtimeLead: (leadUpdate: Partial<Lead> & { id: string | number }) => void;
+  applyRealtimeJob: (jobUpdate: Partial<Job> & { id: string | number }) => void;
 }
 
 const INITIAL_NOTIFICATIONS: QNotification[] = [
@@ -186,6 +194,81 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: 'dashboard',
   setActiveTab: (tab) => set({ activeTab: tab }),
   backendOnline: false,
+
+  syncStatus: 'connected',
+  setSyncStatus: (status) => set({ syncStatus: status }),
+
+  applyRealtimeMessage: (conversationId, message) => {
+    set((state) => {
+      const convIndex = state.conversations.findIndex((c) => String(c.id) === String(conversationId));
+      if (convIndex === -1) {
+        get().refreshConversations();
+        return {};
+      }
+
+      const conv = state.conversations[convIndex];
+      if (conv.messages.some((m) => String(m.id) === String(message.id))) {
+        return {};
+      }
+
+      const updatedMessages = [...conv.messages, message];
+      const isCurrent = String(state.selectedConversationId) === String(conversationId);
+      const newUnreadCount = isCurrent ? 0 : (conv.unread_count || 0) + (message.sender === 'customer' ? 1 : 0);
+
+      const updatedConv: Conversation = {
+        ...conv,
+        messages: updatedMessages,
+        last_contact_date: message.timestamp || conv.last_contact_date,
+        unread_count: newUnreadCount,
+      };
+
+      const nextConversations = [...state.conversations];
+      nextConversations.splice(convIndex, 1);
+      nextConversations.unshift(updatedConv);
+
+      return {
+        conversations: nextConversations,
+      };
+    });
+  },
+
+  applyRealtimeConversation: (convUpdate) => {
+    set((state) => {
+      const idx = state.conversations.findIndex((c) => String(c.id) === String(convUpdate.id));
+      if (idx === -1) {
+        get().refreshConversations();
+        return {};
+      }
+      const existing = state.conversations[idx];
+      const merged = { ...existing, ...convUpdate };
+      const nextConversations = [...state.conversations];
+      nextConversations[idx] = merged;
+      return { conversations: nextConversations };
+    });
+  },
+
+  applyRealtimeNotification: (notif) => {
+    set((state) => {
+      if (state.notifications.some((n) => n.id === notif.id)) {
+        return {};
+      }
+      return {
+        notifications: [notif, ...state.notifications],
+      };
+    });
+  },
+
+  applyRealtimeLead: (leadUpdate) => {
+    set((state) => ({
+      leads: state.leads.map((l) => String(l.id) === String(leadUpdate.id) ? { ...l, ...leadUpdate } : l)
+    }));
+  },
+
+  applyRealtimeJob: (jobUpdate) => {
+    set((state) => ({
+      jobs: state.jobs.map((j) => String(j.id) === String(jobUpdate.id) ? { ...j, ...jobUpdate } : j)
+    }));
+  },
 
   isSidebarCollapsed: typeof window !== 'undefined' && localStorage.getItem('whatsq_sidebar_collapsed') === 'true',
   toggleSidebarCollapse: () => set((state) => {

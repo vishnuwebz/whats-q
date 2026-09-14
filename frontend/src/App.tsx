@@ -4,6 +4,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { ToastContainer } from './components/common/ToastContainer';
 import { WhatsAppSimulatorModal } from './components/common/WhatsAppSimulatorModal';
 import { SystemUpdateModal } from './components/common/SystemUpdateModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { realtimeSyncManager } from './api/realtimeSync';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
@@ -114,6 +116,7 @@ export const App: React.FC = () => {
   React.useEffect(() => {
     loadInitialData();
     fetchVersionInfo();
+    realtimeSyncManager.start();
 
     const initialTab = resolveTabFromPath(window.location.pathname);
     setActiveTab(initialTab);
@@ -135,6 +138,7 @@ export const App: React.FC = () => {
     return () => {
       window.removeEventListener('popstate', handlePopState);
       clearInterval(timer);
+      realtimeSyncManager.stop();
     };
   }, [loadInitialData, fetchVersionInfo, setActiveTab]);
 
@@ -245,7 +249,9 @@ export const App: React.FC = () => {
     <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC]">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {renderActiveView()}
+        <ErrorBoundary>
+          {renderActiveView()}
+        </ErrorBoundary>
       </main>
 
       <WhatsAppSimulatorModal />

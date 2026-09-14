@@ -1,0 +1,213 @@
+import { useQiyamStore } from '../store/useQiyamStore';
+import { mapMessage } from './mappers';
+
+export interface RealtimeEvent {
+  id: string;
+  type: string;
+  data: any;
+  timestamp: number;
+}
+
+export type SyncStatus = 'connected' | 'reconnecting' | 'offline';
+
+class RealtimeSyncManager {
+  private eventSource: EventSource | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private reconnectTimer: any = null;
+  private pollFallbackTimer: any = null;
+  private lastTimestamp: number = Date.now() / 1000;
+  private isRunning = false;
+
+  public start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.connect();
+  }
+
+  public stop() {
+    this.isRunning = false;
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.pollFallbackTimer) clearInterval(this.pollFallbackTimer);
+    useQiyamStore.getState().setSyncStatus('offline');
+  }
+
+  private connect() {
+    if (!this.isRunning) return;
+
+    try {
+      if (this.eventSource) {
+        this.eventSource.close();
+      }
+
+      useQiyamStore.getState().setSyncStatus('reconnecting');
+      this.eventSource = new EventSource('/api/core/events/stream/');
+
+      this.eventSource.onopen = () => {
+        this.reconnectAttempts = 0;
+        useQiyamStore.getState().setSyncStatus('connected');
+        console.log('[RealtimeSync] Connected to live event stream');
+      };
+
+      this.eventSource.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Could not parse SSE message:', err);
+        }
+      };
+
+      // Custom event listener for typed events
+      this.eventSource.addEventListener('message.created', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing message.created event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('conversation.updated', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing conversation.updated event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('notification.new', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing notification.new event:', err);
+        }
+      });
+
+      this.eventSource.onerror = () => {
+        console.warn('[RealtimeSync] Event stream connection dropped. Reconnecting with exponential backoff...');
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+        useQiyamStore.getState().setSyncStatus('reconnecting');
+        this.scheduleReconnect();
+      };
+    } catch (err) {
+      console.warn('[RealtimeSync] Failed to initialize EventSource:', err);
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect() {
+    if (!this.isRunning) return;
+
+    this.reconnectAttempts++;
+    // Exponential backoff: 1s, 2s, 4s, 8s up to 10s max
+    const delay = Math.min(1000 * Math.pow(1.8, this.reconnectAttempts), 10000);
+
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
+      // Run a delta poll to catch any missed events while disconnected
+      this.pollDeltaEvents();
+      this.connect();
+    }, delay);
+
+    // If reconnecting takes longer than 3 attempts, start background delta polling fallback
+    if (this.reconnectAttempts >= 3 && !this.pollFallbackTimer) {
+      this.startDeltaPollingFallback();
+    }
+  }
+
+  private startDeltaPollingFallback() {
+    if (this.pollFallbackTimer) return;
+    this.pollFallbackTimer = setInterval(() => {
+      if (this.isRunning) {
+        this.pollDeltaEvents();
+      }
+    }, 4000);
+  }
+
+  private async pollDeltaEvents() {
+    try {
+      const res = await fetch(`/api/core/events/sync/?since=${this.lastTimestamp}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.events && Array.isArray(data.events)) {
+        for (const evt of data.events) {
+          this.handleEvent(evt);
+        }
+      }
+      if (data.server_time) {
+        this.lastTimestamp = data.server_time;
+      }
+    } catch (err) {
+      console.warn('[RealtimeSync] Delta sync poll error:', err);
+    }
+  }
+
+  private handleEvent(event: RealtimeEvent) {
+    if (!event || !event.type) return;
+    if (event.timestamp) {
+      this.lastTimestamp = Math.max(this.lastTimestamp, event.timestamp);
+    }
+
+    const store = useQiyamStore.getState();
+
+    switch (event.type) {
+      case 'message.created': {
+        const { conversation_id, message } = event.data || {};
+        if (conversation_id && message) {
+          const mapped = mapMessage(message);
+          store.applyRealtimeMessage(conversation_id, mapped);
+        }
+        break;
+      }
+
+      case 'conversation.updated': {
+        if (event.data && event.data.id) {
+          store.applyRealtimeConversation(event.data);
+        }
+        break;
+      }
+
+      case 'notification.new': {
+        if (event.data) {
+          store.applyRealtimeNotification(event.data);
+        }
+        break;
+      }
+
+      case 'lead.updated': {
+        if (event.data && event.data.id) {
+          store.applyRealtimeLead(event.data);
+        }
+        break;
+      }
+
+      case 'job.updated': {
+        if (event.data && event.data.id) {
+          store.applyRealtimeJob(event.data);
+        }
+        break;
+      }
+
+      case 'system.connected': {
+        store.setSyncStatus('connected');
+        break;
+      }
+
+      default:
+        // Handle generic updates
+        break;
+    }
+  }
+}
+
+export const realtimeSyncManager = new RealtimeSyncManager();

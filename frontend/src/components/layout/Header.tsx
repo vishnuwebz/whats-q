@@ -223,6 +223,41 @@ export const Header: React.FC<HeaderProps> = ({
             <HelpCircle className="w-4 h-4" />
           </button>
 
+          {/* Live Real-time Sync Status Capsule */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border ${
+              store.syncStatus === 'connected'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : store.syncStatus === 'reconnecting'
+                ? 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse'
+                : 'bg-rose-50 text-rose-800 border-rose-200'
+            }`}
+            title={`Real-time sync engine: ${
+              store.syncStatus === 'connected'
+                ? 'Connected and streaming live updates with zero page refresh'
+                : store.syncStatus === 'reconnecting'
+                ? 'Reconnecting to event stream...'
+                : 'Offline'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                store.syncStatus === 'connected'
+                  ? 'bg-emerald-500 animate-pulse'
+                  : store.syncStatus === 'reconnecting'
+                  ? 'bg-amber-500'
+                  : 'bg-rose-500'
+              }`}
+            />
+            <span className="hidden sm:inline">
+              {store.syncStatus === 'connected'
+                ? 'Live Sync'
+                : store.syncStatus === 'reconnecting'
+                ? 'Reconnecting'
+                : 'Offline'}
+            </span>
+          </div>
+
           {/* Notifications Icon with Interactive Dropdown & Item Routing */}
           <div className="relative">
             <button
@@ -232,7 +267,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Bell className="w-4 h-4" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-bounce">
                   {unreadNotifsCount}
                 </span>
               )}
