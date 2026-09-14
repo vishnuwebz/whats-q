@@ -1,6 +1,7 @@
 from rest_framework import serializers, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.views import View
 from django.db.models import Q
 from .models import Workspace, Branch, Integration
 from crm.models import Lead, Deal, Customer
@@ -168,7 +169,7 @@ class SystemUpdateBroadcastView(APIView):
         event_bus.publish('system.update_available', info)
         return Response({'success': True, 'broadcast': info})
 
-class EventStreamView(APIView):
+class EventStreamView(View):
     """
     Server-Sent Events (SSE) streaming endpoint.
     Keeps an open HTTP connection and streams real-time updates as they happen.
