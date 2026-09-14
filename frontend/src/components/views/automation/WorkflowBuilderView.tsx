@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   GitBranch, List, Plus, Play, Save, RotateCcw, RotateCw,
@@ -8,7 +8,7 @@ import {
   CheckCircle2, Clock, Calendar, Paperclip, ChevronRight,
   ExternalLink, Sparkles, AlertCircle, ArrowRight, CornerDownRight,
   Move, Sliders, DollarSign, RefreshCw, Eye, BookOpen, Info,
-  ShieldCheck, ShoppingCart, Send
+  ShieldCheck, ShoppingCart, Send, Compass
 } from 'lucide-react';
 
 // Types for Flow Canvas
@@ -62,7 +62,14 @@ export interface DaySchedule {
 }
 
 export const WorkflowBuilderView: React.FC = () => {
-  const { addToast } = useQiyamStore();
+  const {
+    addToast,
+    setActiveTab,
+    saveWorkflow,
+    activeWorkflowId,
+    activeWorkflowTitle,
+    activeWorkflowGroups,
+  } = useQiyamStore();
 
   // Top Mode Switcher: 'canvas' | 'keyword_rules'
   const [activeMode, setActiveMode] = useState<'canvas' | 'keyword_rules'>('canvas');
@@ -79,10 +86,15 @@ export const WorkflowBuilderView: React.FC = () => {
   const [botTitle, setBotTitle] = useState('Chatbot 1');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
+  // Canvas Scrolling & Panning State (Grab & Pan anywhere)
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [scrollStart, setScrollStart] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+
   // Dragging State for Canvas Cards
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Configure Element Modal State (Matching screenshots media_1789380608034.png & media_1789380618719.png)
   const [configModal, setConfigModal] = useState<{
@@ -314,7 +326,17 @@ export const WorkflowBuilderView: React.FC = () => {
     }
   ]);
 
-  // Initial Keyword Rules (Exact matching Screenshot 2)
+  // Load selected workflow from store if available
+  useEffect(() => {
+    if (activeWorkflowTitle) {
+      setBotTitle(activeWorkflowTitle);
+    }
+    if (activeWorkflowGroups && Array.isArray(activeWorkflowGroups) && activeWorkflowGroups.length > 0) {
+      setGroups(activeWorkflowGroups);
+    }
+  }, [activeWorkflowTitle, activeWorkflowGroups]);
+
+  // Initial Keyword Rules
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>([
     {
       id: 'rule-1',
@@ -351,7 +373,7 @@ export const WorkflowBuilderView: React.FC = () => {
     }
   ]);
 
-  // Working Hours (Exact matching Screenshot 2)
+  // Working Hours
   const [workingHours, setWorkingHours] = useState<DaySchedule[]>([
     { day: 'Monday', time: '9:30 AM – 7:30 PM', enabled: true },
     { day: 'Tuesday', time: '9:30 AM – 7:30 PM', enabled: true },
@@ -362,11 +384,26 @@ export const WorkflowBuilderView: React.FC = () => {
     { day: 'Sunday', time: 'Closed', enabled: false },
   ]);
 
-  // ==========================================
-  // DRAG AND DROP ENGINE FOR CANVAS CARDS
-  // ==========================================
+  // =========================================================================
+  // CANVAS PAN & CARD DRAGGING ENGINE (Seamless 360-degree Grab & Pan)
+  // =========================================================================
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    // If clicked inside an interactive card, button, input, or toolbar, don't initiate canvas pan
+    if ((e.target as HTMLElement).closest('.group-card, button, input, textarea, select, .no-pan')) return;
+
+    setIsPanning(true);
+    setPanStart({ x: e.clientX, y: e.clientY });
+    if (canvasRef.current) {
+      setScrollStart({
+        left: canvasRef.current.scrollLeft,
+        top: canvasRef.current.scrollTop,
+      });
+    }
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
   const handlePointerDownGroup = (e: React.PointerEvent, groupId: string) => {
-    // If clicked inside an interactive button, input, or item config, don't initiate drag
+    // If clicked inside an interactive button or element, don't initiate drag
     if ((e.target as HTMLElement).closest('button, input, textarea, select')) return;
 
     const group = groups.find((g) => g.id === groupId);
@@ -381,21 +418,102 @@ export const WorkflowBuilderView: React.FC = () => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  const handlePointerMoveCanvas = (e: React.PointerEvent) => {
-    if (!draggedGroupId) return;
+  const handleCanvasPointerMove = (e: React.PointerEvent) => {
+    // 1. If currently dragging a group card
+    if (draggedGroupId) {
+      // Edge auto-pan: when dragging card close to edges, scroll canvas smoothly
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const edgeThreshold = 80;
+        const scrollSpeed = 16;
 
-    const newX = Math.max(10, Math.round(e.clientX / zoom - dragOffset.x));
-    const newY = Math.max(10, Math.round(e.clientY / zoom - dragOffset.y));
+        if (e.clientX > rect.right - edgeThreshold) {
+          canvasRef.current.scrollLeft += scrollSpeed;
+        } else if (e.clientX < rect.left + edgeThreshold) {
+          canvasRef.current.scrollLeft -= scrollSpeed;
+        }
 
-    setGroups((prev) =>
-      prev.map((g) => (g.id === draggedGroupId ? { ...g, x: newX, y: newY } : g))
-    );
+        if (e.clientY > rect.bottom - edgeThreshold) {
+          canvasRef.current.scrollTop += scrollSpeed;
+        } else if (e.clientY < rect.top + edgeThreshold) {
+          canvasRef.current.scrollTop -= scrollSpeed;
+        }
+      }
+
+      const newX = Math.max(10, Math.round(e.clientX / zoom - dragOffset.x));
+      const newY = Math.max(10, Math.round(e.clientY / zoom - dragOffset.y));
+
+      setGroups((prev) =>
+        prev.map((g) => (g.id === draggedGroupId ? { ...g, x: newX, y: newY } : g))
+      );
+      return;
+    }
+
+    // 2. If panning canvas (click & drag background)
+    if (isPanning && canvasRef.current) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      canvasRef.current.scrollLeft = scrollStart.left - dx;
+      canvasRef.current.scrollTop = scrollStart.top - dy;
+    }
   };
 
-  const handlePointerUpCanvas = (e: React.PointerEvent) => {
+  const handleCanvasPointerUp = (e: React.PointerEvent) => {
+    if (isPanning) {
+      setIsPanning(false);
+    }
     if (draggedGroupId) {
       setDraggedGroupId(null);
     }
+  };
+
+  // Fit View: Scales and centers all nodes on screen
+  const handleFitView = () => {
+    if (!canvasRef.current || groups.length === 0) return;
+    const minX = Math.min(...groups.map((g) => g.x));
+    const maxX = Math.max(...groups.map((g) => g.x + 320));
+    const minY = Math.min(...groups.map((g) => g.y));
+    const maxY = Math.max(...groups.map((g) => g.y + 450));
+
+    const containerWidth = canvasRef.current.clientWidth;
+    const containerHeight = canvasRef.current.clientHeight;
+
+    const contentWidth = maxX - minX + 120;
+    const contentHeight = maxY - minY + 120;
+
+    const fitZoom = Math.min(Math.max(Math.min(containerWidth / contentWidth, containerHeight / contentHeight), 0.45), 1);
+    setZoom(Number(fitZoom.toFixed(2)));
+
+    canvasRef.current.scrollTo({
+      left: Math.max(0, minX * fitZoom - 50),
+      top: Math.max(0, minY * fitZoom - 50),
+      behavior: 'smooth',
+    });
+    addToast('Fitted all nodes to view', 'info');
+  };
+
+  // Smooth jump to specific group
+  const handleJumpToGroup = (grp: FlowGroup) => {
+    if (!canvasRef.current) return;
+    canvasRef.current.scrollTo({
+      left: Math.max(0, grp.x * zoom - 80),
+      top: Math.max(0, grp.y * zoom - 60),
+      behavior: 'smooth',
+    });
+  };
+
+  // =========================================================================
+  // WORKFLOW PERSISTENCE (Saves directly to database and Workflows list)
+  // =========================================================================
+  const handleSaveWorkflowToStore = async () => {
+    await saveWorkflow({
+      id: activeWorkflowId || undefined,
+      name: botTitle,
+      description: `Interactive WhatsApp bot flow with ${groups.length} node groups and configured elements.`,
+      trigger_type: 'New WhatsApp Message',
+      nodes: groups,
+      edges: [],
+    });
   };
 
   // Add Group to Canvas
@@ -586,7 +704,6 @@ export const WorkflowBuilderView: React.FC = () => {
       setBotTitle('Custom WhatsApp Bot');
       addToast('Blank canvas ready!', 'info');
     } else if (templateType === 'university') {
-      // Restore screenshot structure
       setBotTitle('University Admissions & Stripe Checkout Bot');
       setShowTutorialHud(true);
       setTutorialStep(1);
@@ -970,8 +1087,17 @@ export const WorkflowBuilderView: React.FC = () => {
           </button>
         </div>
 
-        {/* Action Buttons: Create Workflow & Add Rule */}
+        {/* Action Buttons: Templates & Go To Workflows */}
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setActiveTab('automation-workflows')}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            title="View all saved workflows"
+          >
+            <Layers className="w-4 h-4 text-emerald-600" />
+            <span>Workflows List</span>
+          </button>
+
           <button
             onClick={() => setIsTemplatesModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
@@ -1005,7 +1131,7 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* ========================================================================= */}
       {activeMode === 'canvas' && (
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Subheader: Bot Title, Toggles, Test Bot, Autosave */}
+          {/* Subheader: Bot Title, Toggles, Test Bot, Autosave, Real Save Button */}
           <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-2.5 flex items-center justify-between text-xs shrink-0 z-10">
             {/* Left: Chatbot Title & Variable Toggles */}
             <div className="flex items-center gap-6">
@@ -1024,7 +1150,7 @@ export const WorkflowBuilderView: React.FC = () => {
                   <span
                     onClick={() => setIsEditingTitle(true)}
                     className="font-bold text-sm text-slate-900 cursor-pointer hover:text-emerald-700 transition flex items-center gap-1.5"
-                    title="Click to rename chatbot"
+                    title="Click to rename workflow"
                   >
                     <span>{botTitle}</span>
                     <Edit3 className="w-3.5 h-3.5 text-slate-400" />
@@ -1078,7 +1204,7 @@ export const WorkflowBuilderView: React.FC = () => {
               </button>
             </div>
 
-            {/* Right: Autosave, Undo/Redo, Save */}
+            {/* Right: Autosave, Undo/Redo, Real Save */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-slate-600 font-medium">Autosave</span>
@@ -1113,9 +1239,11 @@ export const WorkflowBuilderView: React.FC = () => {
                 </button>
               </div>
 
+              {/* Real Save Workflow Button (persists to store and Workflows page) */}
               <button
-                onClick={() => addToast('Workflow saved and deployed live to WhatsApp API!', 'success')}
+                onClick={handleSaveWorkflowToStore}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-bold shadow-sm transition cursor-pointer active:scale-95"
+                title="Save workflow to database and activate on Workflows page"
               >
                 <Check className="w-4 h-4" />
                 <span>Save</span>
@@ -1125,24 +1253,24 @@ export const WorkflowBuilderView: React.FC = () => {
 
           {/* Floating Apple-Style Interactive Tutorial HUD */}
           {showTutorialHud && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-slate-900/90 backdrop-blur-md text-white px-5 py-2.5 rounded-2xl shadow-xl border border-slate-700/60 flex items-center gap-4 text-xs animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-slate-900/90 backdrop-blur-md text-white px-5 py-2.5 rounded-2xl shadow-xl border border-slate-700/60 flex items-center gap-4 text-xs animate-in fade-in slide-in-from-top-4 duration-300 no-pan">
               <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
                 {tutorialStep}
               </div>
               <div className="max-w-md leading-relaxed">
                 {tutorialStep === 1 && (
                   <span>
-                    <strong className="text-emerald-400">Draggable Nodes:</strong> Click and drag the card header of any Group to reposition it freely across the canvas.
+                    <strong className="text-emerald-400">Pan Anywhere:</strong> Click and drag on the canvas background to slide across all nodes effortlessly without using scrollbars!
                   </span>
                 )}
                 {tutorialStep === 2 && (
                   <span>
-                    <strong className="text-emerald-400">Configure Element Inspector:</strong> Click on any block (e.g. <em>Field of study</em> or <em>Stripe Checkout</em>) to edit fields, choices & payment gateways!
+                    <strong className="text-emerald-400">Configure Element Inspector:</strong> Click on any block (e.g. <em>Field of study</em> or <em>Stripe Checkout</em>) to edit choices & payment gateways!
                   </span>
                 )}
                 {tutorialStep === 3 && (
                   <span>
-                    <strong className="text-emerald-400">Live Simulator:</strong> Click <strong>Test Bot</strong> at any time to run the complete WhatsApp interactive customer journey!
+                    <strong className="text-emerald-400">Save to Workflows:</strong> Click <strong>Save</strong> at the top right, and your chatbot flow is permanently stored in the <strong>Workflows</strong> section!
                   </span>
                 )}
               </div>
@@ -1166,8 +1294,8 @@ export const WorkflowBuilderView: React.FC = () => {
 
           {/* Main Canvas & Block Library Container */}
           <div className="flex-1 flex overflow-hidden relative">
-            {/* Floating Zoom & Add Group Toolbar (Left) */}
-            <div className="absolute top-6 left-6 z-20 bg-white/90 backdrop-blur-md border border-slate-200 rounded-2xl shadow-lg p-1.5 flex flex-col gap-1.5 text-slate-600">
+            {/* Floating Zoom & Canvas Controls Toolbar (Left) */}
+            <div className="absolute top-6 left-6 z-20 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-lg p-1.5 flex flex-col gap-1.5 text-slate-600 no-pan">
               <button
                 onClick={handleAddGroup}
                 className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold transition cursor-pointer"
@@ -1184,7 +1312,7 @@ export const WorkflowBuilderView: React.FC = () => {
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setZoom((z) => Math.max(z - 0.1, 0.5))}
+                onClick={() => setZoom((z) => Math.max(z - 0.1, 0.4))}
                 className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
                 title="Zoom Out"
               >
@@ -1197,21 +1325,34 @@ export const WorkflowBuilderView: React.FC = () => {
               >
                 {Math.round(zoom * 100)}%
               </button>
+              <div className="h-px bg-slate-200 my-0.5" />
+              {/* Fit All Nodes View Button */}
+              <button
+                onClick={handleFitView}
+                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-center transition cursor-pointer"
+                title="Fit All Nodes in Screen"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Canvas Scrollable Area */}
+            {/* Canvas Scrollable & Pannable Area */}
             <div
               ref={canvasRef}
-              onPointerMove={handlePointerMoveCanvas}
-              onPointerUp={handlePointerUpCanvas}
-              className="flex-1 overflow-auto bg-[#F4F6F5] relative p-12 select-none"
+              onPointerDown={handleCanvasPointerDown}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerUp={handleCanvasPointerUp}
+              onPointerLeave={handleCanvasPointerUp}
+              className={`flex-1 overflow-auto bg-[#F4F6F5] relative p-12 select-none ${
+                isPanning ? 'cursor-grabbing' : 'cursor-grab'
+              }`}
               style={{
                 backgroundImage: 'radial-gradient(#CBD5E1 1.2px, transparent 1.2px)',
                 backgroundSize: '24px 24px',
               }}
             >
               <div
-                className="relative min-w-[3200px] min-h-[1200px] transition-transform origin-top-left"
+                className="relative min-w-[3400px] min-h-[1400px] transition-transform origin-top-left"
                 style={{ transform: `scale(${zoom})` }}
               >
                 {/* SVG Connections between Nodes dynamically rendered */}
@@ -1234,7 +1375,7 @@ export const WorkflowBuilderView: React.FC = () => {
                       top: `${grp.y}px`,
                       cursor: draggedGroupId === grp.id ? 'grabbing' : 'default',
                     }}
-                    className={`absolute w-[300px] bg-white rounded-2xl border-2 transition-shadow z-10 flex flex-col ${
+                    className={`group-card absolute w-[300px] bg-white rounded-2xl border-2 transition-shadow z-10 flex flex-col ${
                       draggedGroupId === grp.id
                         ? 'border-emerald-600 shadow-2xl scale-[1.01]'
                         : 'border-emerald-400/80 shadow-md hover:shadow-lg'
@@ -1393,8 +1534,27 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
             </div>
 
+            {/* Bottom Floating Quick-Jump Pill Bar (Jump across nodes on the ends instantly!) */}
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-slate-200/90 flex items-center gap-2 text-xs no-pan max-w-xl overflow-x-auto">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
+                <Compass className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Jump:</span>
+              </span>
+              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                {groups.map((grp) => (
+                  <button
+                    key={grp.id}
+                    onClick={() => handleJumpToGroup(grp)}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 text-slate-700 text-[11px] font-medium transition shrink-0 cursor-pointer"
+                  >
+                    {grp.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Right Sidebar: BLOCK LIBRARY */}
-            <div className="w-64 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto font-sans text-xs z-10">
+            <div className="w-64 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto font-sans text-xs z-10 no-pan">
               {/* Library Header */}
               <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <span className="font-bold text-slate-800 tracking-wider text-[11px] uppercase">BLOCK LIBRARY</span>

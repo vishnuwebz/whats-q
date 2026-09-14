@@ -4,7 +4,25 @@ import { Header } from '@/components/layout/Header';
 import { GitBranch, Play, Plus, CheckCircle2, Clock, Zap, ArrowRight } from 'lucide-react';
 
 export const WorkflowsView: React.FC = () => {
-  const { workflows, setActiveTab, addToast } = useQiyamStore();
+  const { workflows, setActiveTab, setActiveWorkflowId, setActiveWorkflowTitle, setActiveWorkflowGroups } = useQiyamStore();
+
+  const handleEditWorkflow = (wf: any) => {
+    setActiveWorkflowId(wf.id);
+    setActiveWorkflowTitle(wf.name);
+    if (wf.nodes && Array.isArray(wf.nodes) && wf.nodes.length > 0) {
+      setActiveWorkflowGroups(wf.nodes);
+    } else {
+      setActiveWorkflowGroups(null);
+    }
+    setActiveTab('automation-builder');
+  };
+
+  const handleCreateNewWorkflow = () => {
+    setActiveWorkflowId(null);
+    setActiveWorkflowTitle('New Chatbot Flow');
+    setActiveWorkflowGroups(null);
+    setActiveTab('automation-builder');
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -12,7 +30,7 @@ export const WorkflowsView: React.FC = () => {
         title="Workflows"
         subtitle="Active and scheduled automation workflows running across your branches."
         primaryActionLabel="Create Workflow"
-        onPrimaryAction={() => setActiveTab('automation-builder')}
+        onPrimaryAction={handleCreateNewWorkflow}
       />
 
       <div className="p-6 space-y-6">
@@ -20,7 +38,7 @@ export const WorkflowsView: React.FC = () => {
           {workflows.map((wf) => (
             <div
               key={wf.id}
-              onClick={() => setActiveTab('automation-builder')}
+              onClick={() => handleEditWorkflow(wf)}
               className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 cursor-pointer transition-all space-y-4"
             >
               <div className="flex items-start justify-between">
