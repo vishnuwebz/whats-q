@@ -89,36 +89,36 @@ export const AppointmentsView: React.FC = () => {
         onPrimaryAction={() => setIsBookModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
         {/* KPI Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-xs font-semibold text-slate-500">Total Bookings</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">31</div>
-            <div className="text-[11px] text-emerald-600 font-medium mt-0.5">↑ 10.3% this week</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Total Bookings</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">31</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">↑ 10.3% this week</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-xs font-semibold text-slate-500">Confirmed (Advance Paid)</div>
-            <div className="text-2xl font-black text-emerald-600 mt-1">24</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">₹21,600 collected</div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Confirmed (Advance)</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">24</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">₹21,600 collected</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-xs font-semibold text-slate-500">Awaiting Advance</div>
-            <div className="text-2xl font-black text-amber-600 mt-1">5</div>
-            <div className="text-[11px] text-amber-600 mt-0.5">Reminder sent via WhatsApp</div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Awaiting Advance</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-600 mt-1">5</div>
+            <div className="text-[10px] sm:text-[11px] text-amber-600 mt-0.5">Reminder sent</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-xs font-semibold text-slate-500">Avg. Duration</div>
-            <div className="text-2xl font-black text-purple-600 mt-1">1h 45m</div>
-            <div className="text-[11px] text-purple-600 mt-0.5">Standard service slot</div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Avg. Duration</div>
+            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">1h 45m</div>
+            <div className="text-[10px] sm:text-[11px] text-purple-600 mt-0.5">Standard slot</div>
           </div>
         </div>
 
         {/* Appointments Table */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-xs">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-2 sm:gap-0 items-start sm:items-center justify-between">
             <h3 className="font-bold text-sm text-slate-900">Scheduled Appointments</h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none">
               <button
                 onClick={() => setFilterStatus('all')}
                 className={`px-3 py-1 rounded-lg font-semibold transition-all ${
@@ -146,72 +146,74 @@ export const AppointmentsView: React.FC = () => {
             </div>
           </div>
 
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-              <tr>
-                <th className="py-3 px-4">Booking ID</th>
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4">Service</th>
-                <th className="py-3 px-4">Technician</th>
-                <th className="py-3 px-4">Slot</th>
-                <th className="py-3 px-4">Amount / Advance</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filtered.map((apt) => (
-                <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{apt.apt_id_str}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">{apt.customer_name}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">{apt.phone}</div>
-                  </td>
-                  <td className="py-3.5 px-4 font-medium">{apt.service}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-1.5 font-medium text-slate-800">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{apt.employee}</span>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="font-semibold text-slate-800">{apt.date_str}</div>
-                    <div className="text-[11px] text-slate-500">{apt.time_str} ({apt.duration})</div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">₹{apt.amount}</div>
-                    <div className="text-[10px] text-emerald-600 font-semibold">Advance: ₹{apt.advance}</div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 capitalize">
-                      {apt.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => {
-                        addToast(`WhatsApp reminder sent to ${apt.customer_name}`, 'success');
-                        setActiveTab('conversations');
-                      }}
-                      className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-semibold text-[11px]"
-                    >
-                      Remind
-                    </button>
-                  </td>
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left min-w-[720px]">
+              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4">Booking ID</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Service</th>
+                  <th className="py-3 px-4">Technician</th>
+                  <th className="py-3 px-4">Slot</th>
+                  <th className="py-3 px-4">Amount / Advance</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {filtered.map((apt) => (
+                  <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{apt.apt_id_str}</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900">{apt.customer_name}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">{apt.phone}</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-medium">{apt.service}</td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{apt.employee}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-semibold text-slate-800">{apt.date_str}</div>
+                      <div className="text-[11px] text-slate-500">{apt.time_str} ({apt.duration})</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900">₹{apt.amount}</div>
+                      <div className="text-[10px] text-emerald-600 font-semibold">Advance: ₹{apt.advance}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 capitalize">
+                        {apt.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => {
+                          addToast(`WhatsApp reminder sent to ${apt.customer_name}`, 'success');
+                          setActiveTab('conversations');
+                        }}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-semibold text-[11px] cursor-pointer"
+                      >
+                        Remind
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* Book Appointment Modal */}
       {isBookModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                <div className="p-2 rounded-xl bg-rose-50 text-rose-600 shrink-0">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
@@ -228,7 +230,7 @@ export const AppointmentsView: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateAppointment} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Customer Full Name *</label>
                   <input
@@ -237,7 +239,7 @@ export const AppointmentsView: React.FC = () => {
                     value={bookForm.customer_name}
                     onChange={(e) => setBookForm({ ...bookForm, customer_name: e.target.value })}
                     placeholder="e.g. Ramesh Kumar"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -248,19 +250,19 @@ export const AppointmentsView: React.FC = () => {
                     value={bookForm.phone}
                     onChange={(e) => setBookForm({ ...bookForm, phone: e.target.value })}
                     placeholder="e.g. +91 98470 33221"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Service</label>
                   <input
                     type="text"
                     value={bookForm.service}
                     onChange={(e) => setBookForm({ ...bookForm, service: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -268,7 +270,7 @@ export const AppointmentsView: React.FC = () => {
                   <select
                     value={bookForm.employee}
                     onChange={(e) => setBookForm({ ...bookForm, employee: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   >
                     {employees.map((emp) => (
                       <option key={emp.id} value={emp.name}>{emp.name} ({emp.role})</option>
@@ -278,14 +280,14 @@ export const AppointmentsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Date</label>
                   <input
                     type="text"
                     value={bookForm.date_str}
                     onChange={(e) => setBookForm({ ...bookForm, date_str: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -294,7 +296,7 @@ export const AppointmentsView: React.FC = () => {
                     type="text"
                     value={bookForm.time_str}
                     onChange={(e) => setBookForm({ ...bookForm, time_str: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -303,12 +305,12 @@ export const AppointmentsView: React.FC = () => {
                     type="text"
                     value={bookForm.duration}
                     onChange={(e) => setBookForm({ ...bookForm, duration: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Total Fee (₹)</label>
                   <input
@@ -318,7 +320,7 @@ export const AppointmentsView: React.FC = () => {
                       const amt = Number(e.target.value);
                       setBookForm({ ...bookForm, amount: amt, advance: Math.round(amt * 0.3) });
                     }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -327,7 +329,7 @@ export const AppointmentsView: React.FC = () => {
                     type="number"
                     value={bookForm.advance}
                     onChange={(e) => setBookForm({ ...bookForm, advance: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
               </div>

@@ -17,15 +17,15 @@ export const IntegrationsView: React.FC = () => {
         onPrimaryAction={() => setIsMetaModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 text-xs">
           {integrations.map((app) => {
             const isConnected = app.status === 'connected';
 
             return (
               <div
                 key={app.id}
-                className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
               >
                 <div>
                   <div className="flex items-start justify-between">

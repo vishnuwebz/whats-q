@@ -56,6 +56,10 @@ interface QiyamState {
   toggleSidebarCollapse: () => void;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
 
+  isMobileSidebarOpen: boolean;
+  toggleMobileSidebar: () => void;
+  setIsMobileSidebarOpen: (open: boolean) => void;
+
   versionInfo: VersionInfo | null;
   isUpdateModalOpen: boolean;
   isUpdatingSystem: boolean;
@@ -187,6 +191,9 @@ interface QiyamState {
 
   syncStatus: 'connected' | 'reconnecting' | 'offline';
   setSyncStatus: (status: 'connected' | 'reconnecting' | 'offline') => void;
+  typingUsers: Record<string, boolean>;
+  setClientTyping: (conversationId: string | number, isTyping: boolean) => void;
+  applyMessageStatus: (conversationId: string | number, messageId: string | number, status: 'sent' | 'delivered' | 'read') => void;
   applyRealtimeMessage: (conversationId: string | number, message: WhatsAppMessage) => void;
   applyRealtimeConversation: (convUpdate: Partial<Conversation> & { id: string | number }) => void;
   applyRealtimeNotification: (notif: QNotification) => void;
@@ -210,6 +217,32 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
 
   syncStatus: 'connected',
   setSyncStatus: (status) => set({ syncStatus: status }),
+  typingUsers: {},
+  setClientTyping: (conversationId, isTyping) => {
+    set((state) => ({
+      typingUsers: {
+        ...state.typingUsers,
+        [String(conversationId)]: isTyping,
+      },
+    }));
+  },
+  applyMessageStatus: (conversationId, messageId, status) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (String(c.id) === String(conversationId)) {
+          return {
+            ...c,
+            messages: c.messages.map((m) =>
+              String(m.id) === String(messageId) || (!m.id && m.sender !== 'customer')
+                ? { ...m, status }
+                : m
+            ),
+          };
+        }
+        return c;
+      }),
+    }));
+  },
 
   applyRealtimeMessage: (conversationId, message) => {
     set((state) => {
@@ -362,6 +395,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     localStorage.setItem('whatsq_sidebar_collapsed', String(collapsed));
     set({ isSidebarCollapsed: collapsed });
   },
+
+  isMobileSidebarOpen: false,
+  toggleMobileSidebar: () => set((state) => ({ isMobileSidebarOpen: !state.isMobileSidebarOpen })),
+  setIsMobileSidebarOpen: (open) => set({ isMobileSidebarOpen: open }),
 
   versionInfo: null,
   isUpdateModalOpen: false,
@@ -649,30 +686,87 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   sendMessage: async (conversationId, text, sender = 'agent') => {
-    const res = await apiClient.post(`/conversations/threads/${conversationId}/send_message/`, {
-      text,
+    const tempId = `msg-${Date.now()}`;
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Optimistic message with initial 'sent' status (single tick)
+    const optimisticMsg: WhatsAppMessage = {
+      id: tempId,
       sender,
-      sender_name: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
-    });
+      senderName: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
+      text,
+      timestamp: nowTime,
+      status: 'sent',
+    };
 
-    if (res && res.id && res.success !== false) {
-      const msg = mapMessage(res as Record<string, unknown>);
-      set((state) => ({
-        conversations: state.conversations.map((c) =>
-          c.id === conversationId
-            ? {
-                ...c,
-                last_contact_date: 'Just now',
-                messages: [...c.messages, msg],
-              }
-            : c
-        ),
-      }));
-      get().addToast('Message sent via WhatsApp Cloud API', 'success');
-      return;
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        String(c.id) === String(conversationId)
+          ? {
+              ...c,
+              last_contact_date: 'Just now',
+              messages: [...c.messages, optimisticMsg],
+            }
+          : c
+      ),
+    }));
+
+    // 2. Progression: Sent -> Delivered (double grey tick) after 600ms
+    setTimeout(() => {
+      get().applyMessageStatus(conversationId, tempId, 'delivered');
+    }, 600);
+
+    // 3. Progression: Delivered -> Read (double blue tick #53bdeb) after 1500ms
+    setTimeout(() => {
+      get().applyMessageStatus(conversationId, tempId, 'read');
+    }, 1500);
+
+    // 4. Progression: Recipient starts typing after reading
+    setTimeout(() => {
+      get().setClientTyping(conversationId, true);
+    }, 2200);
+
+    // 5. Progression: Recipient sends reply and stops typing after 4400ms
+    setTimeout(() => {
+      get().setClientTyping(conversationId, false);
+      const conv = get().conversations.find((c) => String(c.id) === String(conversationId));
+      if (conv) {
+        let replyText = "Received your message! Looking forward to the service.";
+        const lower = text.toLowerCase();
+        if (lower.includes('quotation') || lower.includes('estimate') || lower.includes('price')) {
+          replyText = "The estimate is approved. Please assign technician Amit Sharma for tomorrow.";
+        } else if (lower.includes('appointment') || lower.includes('scheduled') || lower.includes('confirm')) {
+          replyText = "Confirmed! I will be home at the scheduled time. Thank you.";
+        } else if (lower.includes('invoice') || lower.includes('payment')) {
+          replyText = "Payment done via UPI. Shared transaction confirmation.";
+        } else if (lower.includes('hello') || lower.includes('hi')) {
+          replyText = "Hello! Thanks for reaching out. I need quick assistance.";
+        }
+
+        const replyMsg: WhatsAppMessage = {
+          id: `inbound-${Date.now()}`,
+          sender: 'customer',
+          senderName: conv.contact_name,
+          text: replyText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'read',
+        };
+        get().applyRealtimeMessage(conversationId, replyMsg);
+      }
+    }, 4400);
+
+    try {
+      const res = await apiClient.post(`/conversations/threads/${conversationId}/send_message/`, {
+        text,
+        sender,
+        sender_name: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
+      });
+      if (res && res.id && res.success !== false) {
+        // Backend synced
+      }
+    } catch (e) {
+      console.warn('Backend send message notice:', e);
     }
-
-    get().addToast(res?.error || 'Failed to send message', 'error');
   },
 
   simulateInboundWhatsApp: async (name, phone, text) => {

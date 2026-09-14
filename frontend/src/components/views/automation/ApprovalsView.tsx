@@ -56,10 +56,11 @@ export const ApprovalsView: React.FC = () => {
         onPrimaryAction={() => setIsModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-xs">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left min-w-[840px]">
+              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Request ID</th>
                 <th className="py-3 px-4">Title / Description</th>
@@ -143,11 +144,12 @@ export const ApprovalsView: React.FC = () => {
           </table>
         </div>
       </div>
+    </div>
 
       {/* New Approval Request Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-4 sm:p-6 space-y-4 text-xs max-h-[92dvh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
@@ -160,7 +162,7 @@ export const ApprovalsView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -175,17 +177,17 @@ export const ApprovalsView: React.FC = () => {
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="e.g. Warehouse Spares Restock APR-1025"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Request Type</label>
                   <select
                     value={form.approval_type}
                     onChange={(e) => setForm({ ...form, approval_type: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="Purchase Order">Purchase Order</option>
                     <option value="Expense Release">Expense Release</option>
@@ -199,19 +201,19 @@ export const ApprovalsView: React.FC = () => {
                     type="text"
                     value={form.department}
                     onChange={(e) => setForm({ ...form, department: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Amount (₹)</label>
                   <input
                     type="number"
                     value={form.amount}
                     onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -220,7 +222,7 @@ export const ApprovalsView: React.FC = () => {
                     type="text"
                     value={form.requested_by}
                     onChange={(e) => setForm({ ...form, requested_by: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -229,7 +231,7 @@ export const ApprovalsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>

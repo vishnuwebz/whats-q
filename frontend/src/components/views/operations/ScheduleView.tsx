@@ -31,85 +31,87 @@ export const ScheduleView: React.FC = () => {
         onPrimaryAction={() => setIsModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* Schedule Controls */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between text-xs">
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-3">
-            <button className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"><ChevronLeft className="w-4 h-4" /></button>
+            <button className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
             <span className="font-bold text-slate-800 text-sm">May 27 – June 02, 2024</span>
-            <button className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"><ChevronRight className="w-4 h-4" /></button>
+            <button className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"><ChevronRight className="w-4 h-4" /></button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500">Legend:</span>
-            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Morning (9 AM - 6 PM)</span>
-            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">Evening (1 PM - 10 PM)</span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">Off</span>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="text-slate-500 font-medium">Legend:</span>
+            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold whitespace-nowrap">Morning (9 AM - 6 PM)</span>
+            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold whitespace-nowrap">Evening (1 PM - 10 PM)</span>
+            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold whitespace-nowrap">Off</span>
           </div>
         </div>
 
         {/* Schedule Grid Table */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-xs">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-              <tr>
-                <th className="py-3 px-4 w-48">Employee</th>
-                {days.map((day, idx) => (
-                  <th key={idx} className="py-3 px-3 text-center">{day}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {employees.map((emp) => {
-                const isTarget = targetHighlightId === emp.id || targetHighlightId === emp.name;
-                return (
-                  <tr
-                    key={emp.id}
-                    className={`transition-colors ${
-                      isTarget ? 'bg-amber-50 ring-2 ring-amber-400 font-medium' : 'hover:bg-slate-50/60'
-                    }`}
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900 flex items-center gap-2">
-                        {emp.name}
-                        {isTarget && (
-                          <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded uppercase">
-                            Target
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-slate-400">{emp.role}</div>
-                    </td>
-                    {days.map((_, idx) => {
-                      const isOff = idx === 6 || (emp.id === 4 && idx === 4);
-                      return (
-                        <td key={idx} className="p-2 text-center">
-                          <div
-                            className={`p-2 rounded-xl text-[10px] font-semibold ${
-                              isOff
-                                ? 'bg-slate-100 text-slate-400'
-                                : idx % 2 === 0
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-blue-50 text-blue-700 border border-blue-200'
-                            }`}
-                          >
-                            {isOff ? 'Off' : '09:00 - 18:00'}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left min-w-[720px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4 w-48">Employee</th>
+                  {days.map((day, idx) => (
+                    <th key={idx} className="py-3 px-3 text-center whitespace-nowrap">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {employees.map((emp) => {
+                  const isTarget = targetHighlightId === emp.id || targetHighlightId === emp.name;
+                  return (
+                    <tr
+                      key={emp.id}
+                      className={`transition-colors ${
+                        isTarget ? 'bg-amber-50 ring-2 ring-amber-400 font-medium' : 'hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900 flex items-center gap-2">
+                          {emp.name}
+                          {isTarget && (
+                            <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded uppercase">
+                              Target
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-400">{emp.role}</div>
+                      </td>
+                      {days.map((_, idx) => {
+                        const isOff = idx === 6 || (emp.id === 4 && idx === 4);
+                        return (
+                          <td key={idx} className="p-2 text-center">
+                            <div
+                              className={`p-2 rounded-xl text-[10px] font-semibold whitespace-nowrap ${
+                                isOff
+                                  ? 'bg-slate-100 text-slate-400'
+                                  : idx % 2 === 0
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+                              }`}
+                            >
+                              {isOff ? 'Off' : '09:00 - 18:00'}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* Assign Shift Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
                 <h3 className="font-bold text-base text-slate-900">Assign Work Shift</h3>
@@ -117,7 +119,7 @@ export const ScheduleView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -129,7 +131,7 @@ export const ScheduleView: React.FC = () => {
                 <select
                   value={shiftForm.employee_id}
                   onChange={(e) => setShiftForm({ ...shiftForm, employee_id: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
                 >
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -144,7 +146,7 @@ export const ScheduleView: React.FC = () => {
                 <select
                   value={shiftForm.day_idx}
                   onChange={(e) => setShiftForm({ ...shiftForm, day_idx: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
                 >
                   {days.map((day, idx) => (
                     <option key={idx} value={idx}>
@@ -159,7 +161,7 @@ export const ScheduleView: React.FC = () => {
                 <select
                   value={shiftForm.shift_type}
                   onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
                 >
                   <option value="morning">Morning (09:00 AM – 06:00 PM)</option>
                   <option value="evening">Evening (01:00 PM – 10:00 PM)</option>
@@ -172,13 +174,13 @@ export const ScheduleView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   Confirm Shift
                 </button>

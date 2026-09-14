@@ -149,12 +149,31 @@ class SystemUpdateService:
     def apply_update(cls):
         """
         Runs the automated backup and update script.
+        Robust against missing sudo, root execution, and non-Linux environments.
         """
+        import shutil
         script_path = '/usr/local/bin/update-whatsq'
         if os.path.exists(script_path):
             try:
+                bash_bin = shutil.which('bash') or '/bin/bash'
+                sudo_bin = shutil.which('sudo')
+
+                # Check if running as root
+                is_root = False
+                try:
+                    if hasattr(os, 'geteuid') and os.geteuid() == 0:
+                        is_root = True
+                except Exception:
+                    pass
+
+                # If root or sudo is not installed, run directly with bash
+                if is_root or not sudo_bin:
+                    cmd = [bash_bin, script_path]
+                else:
+                    cmd = [sudo_bin, script_path]
+
                 proc = subprocess.Popen(
-                    ['sudo', script_path],
+                    cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True
@@ -165,7 +184,22 @@ class SystemUpdateService:
                     'pid': proc.pid
                 }
             except Exception as e:
-                return {'success': False, 'error': str(e)}
+                logger.error(f"Failed to execute update script: {e}")
+                # Fallback: direct bash attempt
+                try:
+                    proc = subprocess.Popen(
+                        ['bash', script_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+                    return {
+                        'success': True,
+                        'message': 'System update initiated via fallback shell!',
+                        'pid': proc.pid
+                    }
+                except Exception as inner_e:
+                    return {'success': False, 'error': f"Update execution error: {str(e)}"}
         else:
             return {
                 'success': True,

@@ -8,7 +8,7 @@ import {
   CheckSquare, Navigation, Package, Receipt, FileText,
   CreditCard, Wallet, BookOpen, Layers, GitBranch,
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, X
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -19,8 +19,19 @@ export const Sidebar: React.FC = () => {
     setEditingTemplate,
     isSidebarCollapsed,
     toggleSidebarCollapse,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen,
     conversations
   } = useQiyamStore();
+
+  const isCollapsed = isSidebarCollapsed && !isMobileSidebarOpen;
+
+  const handleTabClick = (tab: TabType) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsMobileSidebarOpen(false);
+    }
+  };
 
   const unreadConversationsCount = (conversations || []).reduce(
     (sum, c) => sum + (c.unread_count || 0),
@@ -49,56 +60,86 @@ export const Sidebar: React.FC = () => {
   const isActive = (tab: TabType) => activeTab === tab;
 
   return (
-    <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-[#0B1528] text-slate-300 flex flex-col h-screen shrink-0 border-r border-[#1E293B] select-none font-sans overflow-hidden transition-all duration-300 ease-in-out relative`}>
-      {/* Brand Header */}
-      <div className={`p-3.5 flex items-center ${isSidebarCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between'} border-b border-[#1E293B]/60 transition-all`}>
-        <div
-          className="flex items-center gap-3 overflow-hidden cursor-pointer"
-          onClick={() => setActiveTab('dashboard')}
-          title="WhatsQ Dashboard"
-        >
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          {!isSidebarCollapsed && (
-            <div className="truncate">
-              <div className="font-bold text-white tracking-wide text-base leading-tight">WhatsQ</div>
-              <div className="text-[11px] text-emerald-400 font-medium truncate">Qiyam Business Solutions</div>
-            </div>
-          )}
-        </div>
-        <button
-          onClick={toggleSidebarCollapse}
-          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
-          title={isSidebarCollapsed ? "Expand sidebar (Ctrl + B)" : "Collapse sidebar (Ctrl + B)"}
-        >
-          {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4 text-emerald-400" /> : <PanelLeftClose className="w-4 h-4" />}
-        </button>
-      </div>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      <div
+        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 ${
+          isMobileSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsMobileSidebarOpen(false)}
+        aria-hidden="true"
+      />
 
-      {/* Navigation Links (Scrollable) */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1 text-xs font-medium scrollbar-thin scrollbar-thumb-slate-800">
-        {/* Dashboard */}
-        <button
-          onClick={() => setActiveTab('dashboard')}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 md:relative md:z-auto
+          ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl ring-1 ring-white/10' : '-translate-x-full md:translate-x-0'}
+          ${isCollapsed ? 'w-20' : 'w-72 md:w-64'} max-w-[85vw] md:max-w-none
+          bg-[#0B1528] text-slate-300 flex flex-col h-screen shrink-0 border-r border-[#1E293B] select-none font-sans overflow-hidden transition-all duration-300 ease-in-out relative
+        `}
+      >
+        {/* Brand Header */}
+        <div className={`p-3.5 flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between'} border-b border-[#1E293B]/60 transition-all`}>
+          <div
+            className="flex items-center gap-3 overflow-hidden cursor-pointer"
+            onClick={() => handleTabClick('dashboard')}
+            title="WhatsQ Dashboard"
+          >
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            {!isCollapsed && (
+              <div className="truncate">
+                <div className="font-bold text-white tracking-wide text-base leading-tight">WhatsQ</div>
+                <div className="text-[11px] text-emerald-400 font-medium truncate">Qiyam Business Solutions</div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Mobile close button */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="md:hidden p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              title="Close Navigation"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Desktop collapse toggle */}
+            <button
+              onClick={toggleSidebarCollapse}
+              className="hidden md:flex p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              title={isSidebarCollapsed ? "Expand sidebar (Ctrl + B)" : "Collapse sidebar (Ctrl + B)"}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4 text-emerald-400" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation Links (Scrollable) */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1 text-xs font-medium scrollbar-thin scrollbar-thumb-slate-800">
+          {/* Dashboard */}
+          <button
+            onClick={() => handleTabClick('dashboard')}
           title="Dashboard"
-          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
             isActive('dashboard')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
           }`}
         >
           <LayoutDashboard className="w-4 h-4 shrink-0" />
-          {!isSidebarCollapsed && <span>Dashboard</span>}
+          {!isCollapsed && <span>Dashboard</span>}
         </button>
 
         {/* Conversations */}
         <button
-          onClick={() => setActiveTab('conversations')}
+          onClick={() => handleTabClick('conversations')}
           title={`Conversations${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
-          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-3 py-2'} rounded-lg transition-all ${
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-3 py-2'} rounded-lg transition-all ${
             isActive('conversations')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
@@ -106,10 +147,10 @@ export const Sidebar: React.FC = () => {
         >
           <div className="flex items-center gap-3">
             <MessageSquare className="w-4 h-4 shrink-0" />
-            {!isSidebarCollapsed && <span>Conversations</span>}
+            {!isCollapsed && <span>Conversations</span>}
           </div>
           {unreadConversationsCount > 0 && (
-            isSidebarCollapsed ? (
+            isCollapsed ? (
               <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             ) : (
               <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
@@ -121,7 +162,7 @@ export const Sidebar: React.FC = () => {
 
         {/* CRM */}
         <div>
-          {isSidebarCollapsed ? (
+          {isCollapsed ? (
             <button
               onClick={() => {
                 toggleSidebarCollapse();
@@ -151,7 +192,7 @@ export const Sidebar: React.FC = () => {
               {crmOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
-                    onClick={() => setActiveTab('crm-leads')}
+                    onClick={() => handleTabClick('crm-leads')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('crm-leads') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -160,7 +201,7 @@ export const Sidebar: React.FC = () => {
                     <span>Leads</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('crm-customers')}
+                    onClick={() => handleTabClick('crm-customers')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('crm-customers') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -169,7 +210,7 @@ export const Sidebar: React.FC = () => {
                     <span>Customers</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('crm-deals')}
+                    onClick={() => handleTabClick('crm-deals')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('crm-deals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -178,7 +219,7 @@ export const Sidebar: React.FC = () => {
                     <span>Deals</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('crm-followups')}
+                    onClick={() => handleTabClick('crm-followups')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('crm-followups') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -194,7 +235,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Operations */}
         <div>
-          {isSidebarCollapsed ? (
+          {isCollapsed ? (
             <button
               onClick={() => {
                 toggleSidebarCollapse();
@@ -224,7 +265,7 @@ export const Sidebar: React.FC = () => {
               {opsOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
-                    onClick={() => setActiveTab('ops-jobs')}
+                    onClick={() => handleTabClick('ops-jobs')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-jobs') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -233,7 +274,7 @@ export const Sidebar: React.FC = () => {
                     <span>Jobs</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-appointments')}
+                    onClick={() => handleTabClick('ops-appointments')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-appointments') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -242,7 +283,7 @@ export const Sidebar: React.FC = () => {
                     <span>Appointments</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-employees')}
+                    onClick={() => handleTabClick('ops-employees')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-employees') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -251,7 +292,7 @@ export const Sidebar: React.FC = () => {
                     <span>Employee Management</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-schedule')}
+                    onClick={() => handleTabClick('ops-schedule')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-schedule') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -260,7 +301,7 @@ export const Sidebar: React.FC = () => {
                     <span>Schedule</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-attendance')}
+                    onClick={() => handleTabClick('ops-attendance')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-attendance') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -269,7 +310,7 @@ export const Sidebar: React.FC = () => {
                     <span>Attendance</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-tasks')}
+                    onClick={() => handleTabClick('ops-tasks')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-tasks') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -278,7 +319,7 @@ export const Sidebar: React.FC = () => {
                     <span>Tasks</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-routes')}
+                    onClick={() => handleTabClick('ops-routes')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-routes') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -287,7 +328,7 @@ export const Sidebar: React.FC = () => {
                     <span>Route Optimization</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ops-inventory')}
+                    onClick={() => handleTabClick('ops-inventory')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ops-inventory') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -303,7 +344,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Finance */}
         <div>
-          {isSidebarCollapsed ? (
+          {isCollapsed ? (
             <button
               onClick={() => {
                 toggleSidebarCollapse();
@@ -333,7 +374,7 @@ export const Sidebar: React.FC = () => {
               {financeOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
-                    onClick={() => setActiveTab('finance-overview')}
+                    onClick={() => handleTabClick('finance-overview')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-overview') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -342,7 +383,7 @@ export const Sidebar: React.FC = () => {
                     <span>Overview</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('finance-transactions')}
+                    onClick={() => handleTabClick('finance-transactions')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-transactions') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -351,7 +392,7 @@ export const Sidebar: React.FC = () => {
                     <span>Transactions</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('finance-invoices')}
+                    onClick={() => handleTabClick('finance-invoices')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-invoices') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -360,7 +401,7 @@ export const Sidebar: React.FC = () => {
                     <span>Invoices</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('finance-expenses')}
+                    onClick={() => handleTabClick('finance-expenses')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-expenses') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -369,7 +410,7 @@ export const Sidebar: React.FC = () => {
                     <span>Expenses</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('finance-payments')}
+                    onClick={() => handleTabClick('finance-payments')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-payments') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -378,7 +419,7 @@ export const Sidebar: React.FC = () => {
                     <span>Payments</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('finance-accounts')}
+                    onClick={() => handleTabClick('finance-accounts')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-accounts') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -387,7 +428,7 @@ export const Sidebar: React.FC = () => {
                     <span>Accounts</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('finance-reports')}
+                    onClick={() => handleTabClick('finance-reports')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('finance-reports') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -403,7 +444,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Automation */}
         <div>
-          {isSidebarCollapsed ? (
+          {isCollapsed ? (
             <button
               onClick={() => {
                 toggleSidebarCollapse();
@@ -433,7 +474,7 @@ export const Sidebar: React.FC = () => {
               {automationOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
-                    onClick={() => setActiveTab('automation-builder')}
+                    onClick={() => handleTabClick('automation-builder')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('automation-builder') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -442,7 +483,7 @@ export const Sidebar: React.FC = () => {
                     <span>Workflow Builder</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('automation-workflows')}
+                    onClick={() => handleTabClick('automation-workflows')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('automation-workflows') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -451,7 +492,7 @@ export const Sidebar: React.FC = () => {
                     <span>Workflows</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('automation-templates')}
+                    onClick={() => handleTabClick('automation-templates')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('automation-templates') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -460,7 +501,7 @@ export const Sidebar: React.FC = () => {
                     <span>Templates</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('automation-branches')}
+                    onClick={() => handleTabClick('automation-branches')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('automation-branches') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -469,7 +510,7 @@ export const Sidebar: React.FC = () => {
                     <span>Branches</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('automation-logs')}
+                    onClick={() => handleTabClick('automation-logs')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('automation-logs') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -478,7 +519,7 @@ export const Sidebar: React.FC = () => {
                     <span>Logs</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('automation-approvals')}
+                    onClick={() => handleTabClick('automation-approvals')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('automation-approvals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -494,7 +535,7 @@ export const Sidebar: React.FC = () => {
 
         {/* AI Assistant */}
         <div>
-          {isSidebarCollapsed ? (
+          {isCollapsed ? (
             <button
               onClick={() => {
                 toggleSidebarCollapse();
@@ -530,7 +571,7 @@ export const Sidebar: React.FC = () => {
               {aiOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
-                    onClick={() => setActiveTab('ai-overview')}
+                    onClick={() => handleTabClick('ai-overview')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ai-overview') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -539,7 +580,7 @@ export const Sidebar: React.FC = () => {
                     <span>Overview</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ai-knowledgebase')}
+                    onClick={() => handleTabClick('ai-knowledgebase')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ai-knowledgebase') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -548,7 +589,7 @@ export const Sidebar: React.FC = () => {
                     <span>Knowledge Base</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('template-hub')}
+                    onClick={() => handleTabClick('template-hub')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('template-hub') || isActive('ai-templates') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -559,7 +600,7 @@ export const Sidebar: React.FC = () => {
                   <button
                     onClick={() => {
                       setEditingTemplate(null);
-                      setActiveTab('template-create');
+                      handleTabClick('template-create');
                     }}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('template-create') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
@@ -569,7 +610,7 @@ export const Sidebar: React.FC = () => {
                     <span>Create Template</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('ai-settings')}
+                    onClick={() => handleTabClick('ai-settings')}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
                       isActive('ai-settings') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
@@ -585,44 +626,44 @@ export const Sidebar: React.FC = () => {
 
         {/* Analytics */}
         <button
-          onClick={() => setActiveTab('analytics')}
+          onClick={() => handleTabClick('analytics')}
           title="Analytics"
-          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
             isActive('analytics')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
           }`}
         >
           <BarChart3 className="w-4 h-4 shrink-0" />
-          {!isSidebarCollapsed && <span>Analytics</span>}
+          {!isCollapsed && <span>Analytics</span>}
         </button>
 
         {/* Integrations */}
         <button
-          onClick={() => setActiveTab('integrations')}
+          onClick={() => handleTabClick('integrations')}
           title="Integrations"
-          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
             isActive('integrations')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
           }`}
         >
           <Puzzle className="w-4 h-4 shrink-0" />
-          {!isSidebarCollapsed && <span>Integrations</span>}
+          {!isCollapsed && <span>Integrations</span>}
         </button>
 
         {/* Settings */}
         <button
-          onClick={() => setActiveTab('settings')}
+          onClick={() => handleTabClick('settings')}
           title="Settings"
-          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
             isActive('settings')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
           }`}
         >
           <SettingsIcon className="w-4 h-4 shrink-0" />
-          {!isSidebarCollapsed && <span>Settings</span>}
+          {!isCollapsed && <span>Settings</span>}
         </button>
 
         {/* API Endpoints & Swagger Hub */}
@@ -630,10 +671,10 @@ export const Sidebar: React.FC = () => {
           href="/api/docs/"
           target="_blank"
           rel="noopener noreferrer"
-          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-lg transition-all text-slate-400 hover:text-emerald-400 hover:bg-[#16233B] border border-dashed border-slate-700/60 my-1 group`}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-lg transition-all text-slate-400 hover:text-emerald-400 hover:bg-[#16233B] border border-dashed border-slate-700/60 my-1 group`}
           title="Open WhatsQ Cloud API Docs & Swagger UI"
         >
-          {isSidebarCollapsed ? (
+          {isCollapsed ? (
             <span className="font-mono text-xs font-bold text-emerald-400">&lt;/&gt;</span>
           ) : (
             <>
@@ -650,8 +691,8 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* WhatsApp Connection Card & Simulator Trigger */}
-      <div className={`px-3 py-2.5 border-t border-[#1E293B]/70 bg-[#070D18] ${isSidebarCollapsed ? 'flex justify-center' : ''}`}>
-        {isSidebarCollapsed ? (
+      <div className={`px-3 py-2.5 border-t border-[#1E293B]/70 bg-[#070D18] ${isCollapsed ? 'flex justify-center' : ''}`}>
+        {isCollapsed ? (
           <button
             onClick={() => setIsSimulatorOpen(true)}
             className="w-9 h-9 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition border border-emerald-500/30 cursor-pointer"
@@ -682,8 +723,8 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Tenant Selector & Profile Footer */}
-      <div className={`p-3 border-t border-[#1E293B] bg-[#09101F] ${isSidebarCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-2'}`}>
-        {isSidebarCollapsed ? (
+      <div className={`p-3 border-t border-[#1E293B] bg-[#09101F] ${isCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-2'}`}>
+        {isCollapsed ? (
           <>
             <div
               title="CoolFix Services (ID: TN2345)"
@@ -734,7 +775,7 @@ export const Sidebar: React.FC = () => {
           </>
         )}
       </div>
-    </aside>
+    </aside></>
   );
 };
 

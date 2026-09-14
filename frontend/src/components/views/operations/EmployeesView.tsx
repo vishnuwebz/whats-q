@@ -126,35 +126,35 @@ export const EmployeesView: React.FC = () => {
         onPrimaryAction={() => setIsAddModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPI Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">Total Staff</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">{employees.length}</div>
-            <div className="text-[11px] text-emerald-600 font-medium mt-0.5">Across {departments.length - 1} departments</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{employees.length}</div>
+            <div className="text-[11px] text-emerald-600 font-medium mt-0.5 truncate">Across {departments.length - 1} depts</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">On Duty (Field)</div>
-            <div className="text-2xl font-black text-emerald-600 mt-1">
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">
               {employees.filter((e) => e.status === 'on_duty').length}
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">GPS Tracking active</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">On-Time Rate</div>
-            <div className="text-2xl font-black text-purple-600 mt-1">96.4%</div>
+            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">96.4%</div>
             <div className="text-[11px] text-purple-600 mt-0.5">↑ 2.1% this month</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">Avg. Rating</div>
-            <div className="text-2xl font-black text-amber-500 mt-1">4.8 ⭐</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">4.8 ⭐</div>
             <div className="text-[11px] text-slate-500 mt-0.5">Based on 320 reviews</div>
           </div>
         </div>
 
         {/* Filter and Search Bar */}
-        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="flex items-center gap-2 w-full md:w-80 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
@@ -162,7 +162,7 @@ export const EmployeesView: React.FC = () => {
               placeholder="Search staff, role, ID, or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
+              className="bg-transparent text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
             />
             {search && (
               <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -171,12 +171,12 @@ export const EmployeesView: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1.5 md:pb-0 scrollbar-none">
             {/* Status Pills */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium text-slate-600">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium text-slate-600 shrink-0">
               <button
                 onClick={() => setStatusFilter('all')}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
                   statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'hover:text-slate-900'
                 }`}
               >
@@ -685,14 +685,14 @@ export const EmployeesView: React.FC = () => {
       {/* ADD NEW EMPLOYEE MODAL                                                   */}
       {/* ========================================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsAddModalOpen(false)}
           />
 
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200">
-            <div className="p-5 bg-[#0B1528] text-white flex items-center justify-between">
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 max-h-[92dvh] overflow-y-auto font-sans border border-slate-200">
+            <div className="p-4 sm:p-5 bg-[#0B1528] text-white flex items-center justify-between sticky top-0 z-10">
               <div>
                 <h3 className="font-bold text-base">Add New Employee</h3>
                 <p className="text-xs text-slate-400">Onboard a field technician or support staff member</p>
@@ -705,7 +705,7 @@ export const EmployeesView: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddEmployeeSubmit} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleAddEmployeeSubmit} className="p-4 sm:p-6 space-y-4 text-xs">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Full Name *</label>
                 <input
@@ -714,17 +714,17 @@ export const EmployeesView: React.FC = () => {
                   placeholder="e.g. Ramesh Kumar"
                   value={newEmployee.name}
                   onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-sm sm:text-xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Department</label>
                   <select
                     value={newEmployee.department}
                     onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer text-sm sm:text-xs"
                   >
                     <option value="AC Services">AC Services</option>
                     <option value="Support">Support</option>
@@ -742,12 +742,12 @@ export const EmployeesView: React.FC = () => {
                     placeholder="e.g. Field Technician"
                     value={newEmployee.role}
                     onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-sm sm:text-xs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">WhatsApp / Phone *</label>
                   <input
@@ -756,7 +756,7 @@ export const EmployeesView: React.FC = () => {
                     placeholder="+91 98765 43210"
                     value={newEmployee.phone}
                     onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-sm sm:text-xs"
                   />
                 </div>
 
@@ -767,7 +767,7 @@ export const EmployeesView: React.FC = () => {
                     placeholder="staff@qiyam.com"
                     value={newEmployee.email}
                     onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-sm sm:text-xs"
                   />
                 </div>
               </div>
@@ -779,7 +779,7 @@ export const EmployeesView: React.FC = () => {
                   placeholder="e.g. Kozhikode, Kerala"
                   value={newEmployee.location}
                   onChange={(e) => setNewEmployee({ ...newEmployee, location: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-sm sm:text-xs"
                 />
               </div>
 

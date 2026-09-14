@@ -22,17 +22,17 @@ export const ReportsView: React.FC = () => {
         onPrimaryAction={handleExport}
       />
 
-      <div className="p-6 max-w-4xl space-y-6 text-xs">
-        {/* P&L Statement Card (Matching photo_24) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="p-3 sm:p-6 max-w-4xl space-y-4 sm:space-y-6 text-xs">
+        {/* P&L Statement Card */}
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900">Profit & Loss Statement (May 2024)</h3>
               <p className="text-slate-500 text-[11px]">Period: May 01, 2024 – May 31, 2024 • CoolFix Services</p>
             </div>
             <button
               onClick={() => addToast('Downloading PDF Statement...', 'success')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs cursor-pointer shrink-0"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download PDF</span>

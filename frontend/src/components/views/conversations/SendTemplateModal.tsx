@@ -72,33 +72,33 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 max-h-[92dvh]">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-bold text-sm text-slate-900">Send WhatsApp Template</h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 truncate max-w-[200px] sm:max-w-none">
                 To: <span className="font-semibold text-slate-800">{currentConversation.contact_name}</span> ({currentConversation.phone_number})
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 text-xs">
+        <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 text-xs overflow-y-auto">
           {/* Template Select */}
           <div>
             <label className="block font-bold text-slate-700 mb-1">Select Approved Template</label>
             <select
               value={selectedTemplateId}
               onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 text-xs outline-none"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 text-sm sm:text-xs outline-none"
             >
               {approvedTemplates.map(t => (
                 <option key={t.id} value={t.id}>
@@ -115,14 +115,14 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
               <div className="space-y-2">
                 {Object.keys(variables).map(k => (
                   <div key={k} className="flex items-center gap-2">
-                    <span className="w-16 px-2 py-1 bg-white border border-slate-200 rounded text-center font-mono font-bold text-emerald-700">
+                    <span className="w-16 px-2 py-1 bg-white border border-slate-200 rounded text-center font-mono font-bold text-emerald-700 shrink-0">
                       {`{{${k}}}`}
                     </span>
                     <input
                       type="text"
                       value={variables[k]}
                       onChange={(e) => setVariables(prev => ({ ...prev, [k]: e.target.value }))}
-                      className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-emerald-500"
+                      className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm sm:text-xs outline-none focus:border-emerald-500"
                     />
                   </div>
                 ))}
@@ -153,18 +153,18 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
           </div>
         </div>
 
-        <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
+        <div className="px-4 sm:px-6 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs"
+            className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs cursor-pointer text-center"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSend}
-            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all"
+            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Send Template Message</span>

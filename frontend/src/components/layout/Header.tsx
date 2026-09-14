@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Search, Calendar, Filter, Download, Plus, Bell, HelpCircle,
   X, Check, ExternalLink, Sparkles, MessageSquare, AlertCircle, ArrowRight,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Menu
 } from 'lucide-react';
 import { OmniSearchModal } from './OmniSearchModal';
 import { UniversalFilterPopover } from './UniversalFilterPopover';
@@ -32,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
     setIsUpdateModalOpen,
     isSidebarCollapsed,
     toggleSidebarCollapse,
+    toggleMobileSidebar,
     globalDateRange,
     setGlobalDateRange,
     globalFilter,
@@ -72,12 +73,23 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+      <header className="bg-white border-b border-slate-200/80 px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
         {/* Title & Subtitle with Sidebar Toggle */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+          {/* Mobile hamburger menu button */}
+          <button
+            onClick={toggleMobileSidebar}
+            className="md:hidden p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+            title="Open Navigation Menu"
+            aria-label="Open Navigation Menu"
+          >
+            <Menu className="w-5 h-5 text-slate-700" />
+          </button>
+
+          {/* Desktop sidebar collapse button */}
           <button
             onClick={toggleSidebarCollapse}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all border border-slate-200/80 shadow-xs cursor-pointer"
+            className="hidden md:flex p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all border border-slate-200/80 shadow-xs cursor-pointer"
             title={isSidebarCollapsed ? 'Expand sidebar (Ctrl + B)' : 'Collapse sidebar (Ctrl + B)'}
           >
             {isSidebarCollapsed ? (
@@ -87,25 +99,33 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              {title}
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2 truncate">
+              <span className="truncate">{title}</span>
             </h1>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate hidden sm:block">{subtitle}</p>}
           </div>
         </div>
 
         {/* Global Actions */}
-        <div className="flex items-center gap-3">
-          {/* Global Search Input triggering OmniSearch */}
-          <div className="relative">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Global Search: Icon on mobile (< sm), Search Pill on sm+ */}
+          <button
+            onClick={() => setIsOmniSearchOpen(true)}
+            className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+            title="Search (Ctrl + /)"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          <div className="relative hidden sm:block">
             <button
               onClick={() => setIsOmniSearchOpen(true)}
-              className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-52 text-left cursor-pointer group"
+              className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-36 md:w-52 text-left cursor-pointer group"
             >
-              <div className="flex items-center gap-2">
-                <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-                <span className="text-slate-500 group-hover:text-slate-700">Search (Ctrl + /)</span>
+              <div className="flex items-center gap-2 truncate">
+                <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
+                <span className="text-slate-500 group-hover:text-slate-700 truncate">Search (Ctrl + /)</span>
               </div>
               <kbd className="text-[10px] font-mono font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 shadow-2xs">
                 /
@@ -113,8 +133,8 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Date Range Selector Popover */}
-          <div className="relative">
+          {/* Date Range Selector Popover (Hidden on < xl) */}
+          <div className="relative hidden xl:block">
             <button
               onClick={() => setIsDateOpen(!isDateOpen)}
               className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer"
@@ -148,14 +168,14 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative">
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer relative ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer relative ${
                 isFilterActive
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
                   : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
               }`}
             >
               <Filter className={`w-3.5 h-3.5 ${isFilterActive ? 'text-emerald-600' : 'text-slate-500'}`} />
-              <span>Filter</span>
+              <span className="hidden sm:inline">Filter</span>
               {isFilterActive && (
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
               )}
@@ -168,10 +188,10 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </div>
 
-          {/* Export Button (Real CSV File Download) */}
+          {/* Export Button (Hidden on < lg) */}
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer"
             title="Download CSV report of current tab"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
@@ -182,18 +202,18 @@ export const Header: React.FC<HeaderProps> = ({
           {primaryActionLabel && (
             <button
               onClick={onPrimaryAction}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>{primaryActionLabel}</span>
+              <span className="hidden sm:inline">{primaryActionLabel}</span>
             </button>
           )}
 
-          {/* System Version & Live Update Button */}
+          {/* System Version & Live Update Button (Hidden on mobile) */}
           {versionInfo && (
             <button
               onClick={() => setIsUpdateModalOpen(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 versionInfo.update_available
                   ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
@@ -205,19 +225,19 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Simulator Shortcut Button */}
+          {/* Simulator Shortcut Button (Hidden on < sm) */}
           <button
             onClick={() => setIsSimulatorOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer"
             title="Simulate Customer Inbound WhatsApp"
           >
             <span>💬 WhatsApp Sim</span>
           </button>
 
-          {/* Help Icon */}
+          {/* Help Icon (Hidden on < sm) */}
           <button
             onClick={() => setIsHelpOpen(true)}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+            className="hidden sm:block p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
             title="Help & Knowledge Base"
           >
             <HelpCircle className="w-4 h-4" />
@@ -225,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Live Real-time Sync Status Capsule */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border ${
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border ${
               store.syncStatus === 'connected'
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                 : store.syncStatus === 'reconnecting'
@@ -249,7 +269,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'bg-rose-500'
               }`}
             />
-            <span className="hidden sm:inline">
+            <span className="hidden md:inline">
               {store.syncStatus === 'connected'
                 ? 'Live Sync'
                 : store.syncStatus === 'reconnecting'

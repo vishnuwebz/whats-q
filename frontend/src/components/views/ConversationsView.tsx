@@ -5,7 +5,7 @@ import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
   Smile, Mic, CheckCheck, Clock, UserCheck, Calendar,
   Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
-  FileText, ExternalLink, ArrowRight, UserPlus
+  FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
@@ -23,12 +23,16 @@ export const ConversationsView: React.FC = () => {
     setActiveTab,
     addToast,
     setIsSimulatorOpen,
+    typingUsers,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const { globalFilter } = useQiyamStore();
 
@@ -42,6 +46,11 @@ export const ConversationsView: React.FC = () => {
       markConversationAsRead(currentConv.id);
     }
   }, [currentConv?.id, currentConv?.unread_count, markConversationAsRead]);
+
+  // Smooth auto-scroll to latest message or typing indicator
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentConv?.messages?.length, typingUsers[currentConv?.id]]);
 
   const counts = {
     all: conversations.length,
@@ -91,6 +100,117 @@ export const ConversationsView: React.FC = () => {
     }
   };
 
+  const renderCustomerProfile = () => (
+    <>
+      {/* Customer Avatar Card */}
+      <div className="text-center pb-4 border-b border-slate-100">
+        <img
+          src={currentConv.avatar}
+          alt={currentConv.contact_name}
+          className="w-16 h-16 rounded-full object-cover mx-auto ring-4 ring-emerald-500/10 mb-2"
+        />
+        <h4 className="font-bold text-sm text-slate-900">{currentConv.contact_name}</h4>
+        <p className="text-xs text-slate-500 font-mono">{currentConv.phone_number}</p>
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            {currentConv.category}
+          </span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+            {currentConv.lead_stage}
+          </span>
+        </div>
+      </div>
+
+      {/* Lead Information */}
+      <div className="space-y-2.5">
+        <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px] text-slate-400">
+          Lead Details
+        </h5>
+        <div className="space-y-1.5 text-slate-600">
+          <div className="flex justify-between">
+            <span className="text-slate-400">Lead Owner:</span>
+            <span className="font-semibold text-slate-800">{currentConv.lead_owner}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Service Needed:</span>
+            <span className="font-semibold text-slate-800">{currentConv.service_needed || 'AC Repair'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Estimated Value:</span>
+            <span className="font-bold text-emerald-600">₹{currentConv.estimated_value || 2800}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Source:</span>
+            <span className="font-medium text-slate-800">{currentConv.source}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Location:</span>
+            <span className="font-medium text-slate-800">{currentConv.location}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Language:</span>
+            <span className="font-medium text-slate-800">{currentConv.language}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Workflow Card */}
+      <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-bold text-purple-700 uppercase">Active Workflow</span>
+          <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+        </div>
+        <div className="font-bold text-xs text-purple-900">{currentConv.active_workflow || 'Service Booking Flow'}</div>
+        <div className="text-[10px] text-purple-600 mt-1">Step 4/6: Appointment Booked</div>
+      </div>
+
+      {/* Tags */}
+      <div>
+        <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px] text-slate-400 mb-1.5">
+          Tags
+        </h5>
+        <div className="flex flex-wrap gap-1.5">
+          {currentConv.tags.map((t, idx) => (
+            <span
+              key={idx}
+              className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[10px] flex items-center gap-1"
+            >
+              <Tag className="w-2.5 h-2.5 text-slate-400" />
+              <span>{t}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px] text-slate-400 mb-1.5">
+          Notes
+        </h5>
+        <p className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 text-[11px] leading-relaxed">
+          {currentConv.notes || 'Customer inquiry regarding AC repair services.'}
+        </p>
+      </div>
+
+      {/* Drawer Actions */}
+      <div className="pt-2 border-t border-slate-100 space-y-2">
+        <button
+          onClick={() => convertLeadToDeal(currentConv.id)}
+          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          <span>Convert to Deal</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('ops-jobs')}
+          className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-center text-xs transition-all"
+        >
+          Dispatch Job
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-screen overflow-hidden font-sans">
       <Header
@@ -102,8 +222,8 @@ export const ConversationsView: React.FC = () => {
 
       {/* Main 3-Pane WhatsApp Shared Inbox */}
       <div className="flex-1 flex overflow-hidden border-t border-slate-200">
-        {/* Pane 1: Conversation List (Left 320px) */}
-        <div className="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
+        {/* Pane 1: Conversation List (Left 320px on desktop, full width on mobile) */}
+        <div className={`w-full md:w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 ${isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           {/* Filter Tabs */}
           <div className="px-3 pt-3 border-b border-slate-100 flex items-center gap-1 overflow-x-auto scrollbar-none text-[11px] font-semibold text-slate-600">
             <button
@@ -174,7 +294,10 @@ export const ConversationsView: React.FC = () => {
               return (
                 <div
                   key={conv.id}
-                  onClick={() => setSelectedConversationId(conv.id)}
+                  onClick={() => {
+                    setSelectedConversationId(conv.id);
+                    setIsMobileChatOpen(true);
+                  }}
                   className={`p-3 cursor-pointer transition-all flex items-start gap-3 hover:bg-slate-50 ${
                     isSelected ? 'bg-emerald-50/50 border-l-4 border-emerald-600' : ''
                   }`}
@@ -196,9 +319,29 @@ export const ConversationsView: React.FC = () => {
 
                     <div className="text-[11px] text-slate-500 font-mono">{conv.phone_number}</div>
 
-                    <div className="text-xs text-slate-600 truncate mt-0.5 font-medium">
-                      {lastMessage ? lastMessage.text : 'New message...'}
-                    </div>
+                    {typingUsers[conv.id] ? (
+                      <div className="text-xs text-emerald-600 font-semibold flex items-center gap-1.5 animate-pulse mt-0.5">
+                        <span>typing</span>
+                        <span className="flex gap-0.5 items-center">
+                          <span className="w-1 h-1 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1 h-1 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1 h-1 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-600 truncate mt-0.5 font-medium flex items-center gap-1">
+                        {lastMessage && lastMessage.sender !== 'customer' && (
+                          (lastMessage.status === 'read' || !lastMessage.status) ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] stroke-[2.4] shrink-0" />
+                          ) : lastMessage.status === 'delivered' ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-slate-400 stroke-[2] shrink-0" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 text-slate-400 stroke-[2] shrink-0" />
+                          )
+                        )}
+                        <span className="truncate">{lastMessage ? lastMessage.text : 'New message...'}</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <span
@@ -226,48 +369,74 @@ export const ConversationsView: React.FC = () => {
         </div>
 
         {/* Pane 2: Active Chat Canvas (Center flex-1) */}
-        <div className="flex-1 flex flex-col bg-[#F0F2F5] min-w-0">
+        <div className={`flex-1 flex flex-col bg-[#F0F2F5] min-w-0 ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           {/* Chat Header */}
-          <div className="bg-white px-5 py-3 border-b border-slate-200 flex items-center justify-between shrink-0 shadow-sm">
-            <div className="flex items-center gap-3">
+          <div className="bg-white px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-200 flex items-center justify-between shrink-0 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* Back button on mobile */}
+              <button
+                onClick={() => setIsMobileChatOpen(false)}
+                className="md:hidden p-1.5 -ml-1 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer"
+                title="Back to conversation list"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
               <img
                 src={currentConv.avatar}
                 alt={currentConv.contact_name}
-                className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/20"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-emerald-500/20 shrink-0"
               />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm text-slate-900">{currentConv.contact_name}</h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 truncate">
+                  <h3 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{currentConv.contact_name}</h3>
+                  <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                     {currentConv.category}
                   </span>
-                  <span className="text-[10px] font-semibold text-slate-400">• Open</span>
+                  <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 hidden xs:inline">• Open</span>
                 </div>
-                <div className="text-xs text-slate-500 flex items-center gap-2">
-                  <span>{currentConv.phone_number}</span>
-                  <span>•</span>
-                  <span>Assigned to: <strong className="text-slate-700">{currentConv.lead_owner}</strong></span>
-                </div>
+                {typingUsers[currentConv.id] ? (
+                  <div className="text-[11px] sm:text-xs text-emerald-600 font-bold flex items-center gap-1.5 animate-pulse mt-0.5">
+                    <span>typing</span>
+                    <span className="flex gap-0.5 items-center">
+                      <span className="w-1 h-1 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-1 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-1 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 truncate">
+                    <span>{currentConv.phone_number}</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span className="hidden sm:inline">Assigned to: <strong className="text-slate-700">{currentConv.lead_owner}</strong></span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 onClick={() => addToast(`Calling ${currentConv.contact_name}...`, 'info')}
-                className="p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all"
+                className="p-1.5 sm:p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
                 title="Initiate Call"
               >
                 <Phone className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleQuickAction('Send Quotation')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold transition-all"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold transition-all"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Send Quotation</span>
               </button>
-              <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
-                <MoreVertical className="w-4 h-4" />
+
+              {/* Customer 360 info toggle for screens < xl */}
+              <button
+                onClick={() => setIsCustomerDetailsOpen(true)}
+                className="xl:hidden p-1.5 sm:p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                title="Customer 360 Details"
+              >
+                <UserCheck className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -342,12 +511,41 @@ export const ConversationsView: React.FC = () => {
                       }`}
                     >
                       <span>{msg.timestamp}</span>
-                      {!isCustomer && <CheckCheck className="w-3 h-3 text-emerald-200" />}
+                      {!isCustomer && (
+                        (msg.status === 'read' || !msg.status) ? (
+                          <span title="Read" className="inline-flex items-center text-[#53bdeb] ml-0.5">
+                            <CheckCheck className="w-3.5 h-3.5 stroke-[2.4]" />
+                          </span>
+                        ) : msg.status === 'delivered' ? (
+                          <span title="Delivered" className="inline-flex items-center text-slate-300 ml-0.5">
+                            <CheckCheck className="w-3.5 h-3.5 stroke-[2.2]" />
+                          </span>
+                        ) : (
+                          <span title="Sent" className="inline-flex items-center text-slate-300 ml-0.5">
+                            <Check className="w-3.5 h-3.5 stroke-[2.2]" />
+                          </span>
+                        )
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+
+            {/* Real-time WhatsApp Client Typing Bubble */}
+            {typingUsers[currentConv.id] && (
+              <div className="flex items-start gap-2 pt-1 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div className="bg-white rounded-2xl rounded-tl-xs px-3.5 py-2.5 shadow-sm border border-slate-200 flex items-center gap-2">
+                  <span className="flex gap-1 items-center">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium italic">{currentConv.contact_name} is typing...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Quick Action Chips Bar */}
@@ -393,163 +591,81 @@ export const ConversationsView: React.FC = () => {
           </div>
 
           {/* Chat Input Box */}
-          <form onSubmit={handleSend} className="bg-white p-3 border-t border-slate-200 flex items-center gap-2">
+          <form onSubmit={handleSend} className="bg-white p-2.5 sm:p-3 border-t border-slate-200 flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setIsTemplateModalOpen(true)}
               title="Pick WhatsApp Template"
-              className="p-2 text-emerald-600 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-all font-bold"
+              className="p-1.5 sm:p-2 text-emerald-600 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-all font-bold shrink-0"
             >
               <Sparkles className="w-5 h-5" />
             </button>
             <button
               type="button"
-              className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all"
+              className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0"
             >
               <Smile className="w-5 h-5" />
             </button>
             <button
               type="button"
-              className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all"
+              className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0"
             >
               <Paperclip className="w-5 h-5" />
             </button>
-
 
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Type a message or use WhatsApp template..."
-              className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="flex-1 min-w-0 px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
 
             <button
               type="button"
-              className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all"
+              className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0"
             >
               <Mic className="w-5 h-5" />
             </button>
 
             <button
               type="submit"
-              className="w-10 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-700/20 transition-all active:scale-95 shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-700/20 transition-all active:scale-95 shrink-0"
             >
               <Send className="w-4 h-4" />
             </button>
           </form>
         </div>
 
-        {/* Pane 3: Customer 360 & Lead Details Drawer (Right 320px) */}
-        <div className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto p-5 space-y-5 text-xs">
-          {/* Customer Avatar Card */}
-          <div className="text-center pb-4 border-b border-slate-100">
-            <img
-              src={currentConv.avatar}
-              alt={currentConv.contact_name}
-              className="w-16 h-16 rounded-full object-cover mx-auto ring-4 ring-emerald-500/10 mb-2"
-            />
-            <h4 className="font-bold text-sm text-slate-900">{currentConv.contact_name}</h4>
-            <p className="text-xs text-slate-500 font-mono">{currentConv.phone_number}</p>
-            <div className="mt-2 flex items-center justify-center gap-1.5">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {currentConv.category}
-              </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                {currentConv.lead_stage}
-              </span>
-            </div>
-          </div>
-
-          {/* Lead Information */}
-          <div className="space-y-2.5">
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px] text-slate-400">
-              Lead Details
-            </h5>
-            <div className="space-y-1.5 text-slate-600">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Lead Owner:</span>
-                <span className="font-semibold text-slate-800">{currentConv.lead_owner}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Service Needed:</span>
-                <span className="font-semibold text-slate-800">{currentConv.service_needed || 'AC Repair'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Estimated Value:</span>
-                <span className="font-bold text-emerald-600">₹{currentConv.estimated_value || 2800}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Source:</span>
-                <span className="font-medium text-slate-800">{currentConv.source}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Location:</span>
-                <span className="font-medium text-slate-800">{currentConv.location}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Language:</span>
-                <span className="font-medium text-slate-800">{currentConv.language}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Workflow Card */}
-          <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-bold text-purple-700 uppercase">Active Workflow</span>
-              <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-            </div>
-            <div className="font-bold text-xs text-purple-900">{currentConv.active_workflow || 'Service Booking Flow'}</div>
-            <div className="text-[10px] text-purple-600 mt-1">Step 4/6: Appointment Booked</div>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px] text-slate-400 mb-1.5">
-              Tags
-            </h5>
-            <div className="flex flex-wrap gap-1.5">
-              {currentConv.tags.map((t, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[10px] flex items-center gap-1"
-                >
-                  <Tag className="w-2.5 h-2.5 text-slate-400" />
-                  <span>{t}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[10px] text-slate-400 mb-1.5">
-              Notes
-            </h5>
-            <p className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 text-[11px] leading-relaxed">
-              {currentConv.notes || 'Customer inquiry regarding AC repair services.'}
-            </p>
-          </div>
-
-          {/* Drawer Actions */}
-          <div className="pt-2 border-t border-slate-100 space-y-2">
-            <button
-              onClick={() => convertLeadToDeal(currentConv.id)}
-              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Convert to Deal</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('ops-jobs')}
-              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-center text-xs transition-all"
-            >
-              Dispatch Job
-            </button>
-          </div>
+        {/* Pane 3: Customer 360 & Lead Details Drawer (Desktop xl:flex) */}
+        <div className="hidden xl:flex w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto p-5 space-y-5 text-xs">
+          {renderCustomerProfile()}
         </div>
       </div>
+
+      {/* Mobile/Tablet Customer 360 Slide-over Drawer */}
+      {isCustomerDetailsOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 xl:hidden transition-opacity"
+            onClick={() => setIsCustomerDetailsOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-88 max-w-[90vw] bg-white shadow-2xl flex flex-col xl:hidden animate-in slide-in-from-right duration-200">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm">Customer 360 Profile</h3>
+              <button
+                onClick={() => setIsCustomerDetailsOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+              {renderCustomerProfile()}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* WhatsApp Template Picker & Sender Modal */}
       <SendTemplateModal

@@ -1060,12 +1060,15 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* ========================================================================= */}
       {/* TOP HEADER: CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)             */}
       {/* ========================================================================= */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-xs z-20">
+      {/* ========================================================================= */}
+      {/* TOP HEADER: CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)             */}
+      {/* ========================================================================= */}
+      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col md:flex-row gap-2.5 md:gap-0 items-stretch md:items-center justify-between shrink-0 shadow-xs z-20">
         {/* Two-Tab Segmented Capsule */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveMode('canvas')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeMode === 'canvas'
                 ? 'bg-[#0B3B2C] text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1076,7 +1079,7 @@ export const WorkflowBuilderView: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveMode('keyword_rules')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeMode === 'keyword_rules'
                 ? 'bg-[#0B3B2C] text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1088,10 +1091,10 @@ export const WorkflowBuilderView: React.FC = () => {
         </div>
 
         {/* Action Buttons: Templates & Go To Workflows */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 justify-end">
           <button
             onClick={() => setActiveTab('automation-workflows')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
             title="View all saved workflows"
           >
             <Layers className="w-4 h-4 text-emerald-600" />
@@ -1100,24 +1103,24 @@ export const WorkflowBuilderView: React.FC = () => {
 
           <button
             onClick={() => setIsTemplatesModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
           >
             <BookOpen className="w-4 h-4 text-emerald-600" />
-            <span>Templates & Demo Tutorials</span>
+            <span>Templates</span>
           </button>
 
           {activeMode === 'keyword_rules' ? (
             <button
               onClick={() => setIsNewRuleModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>Create New Rule</span>
+              <span>Create Rule</span>
             </button>
           ) : (
             <button
               onClick={handleAddGroup}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>+ Add Group</span>
@@ -1132,11 +1135,11 @@ export const WorkflowBuilderView: React.FC = () => {
       {activeMode === 'canvas' && (
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Subheader: Bot Title, Toggles, Test Bot, Autosave, Real Save Button */}
-          <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-2.5 flex items-center justify-between text-xs shrink-0 z-10">
+          <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-2.5 flex flex-col lg:flex-row gap-2 lg:gap-0 items-stretch lg:items-center justify-between text-xs shrink-0 z-10">
             {/* Left: Chatbot Title & Variable Toggles */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-6 overflow-x-auto scrollbar-none py-0.5">
               <div className="flex items-center gap-2">
-                <ChevronRight className="w-4 h-4 text-slate-400 rotate-180 cursor-pointer" />
+                <ChevronRight className="w-4 h-4 text-slate-400 rotate-180 cursor-pointer shrink-0" />
                 {isEditingTitle ? (
                   <input
                     type="text"
@@ -1149,18 +1152,18 @@ export const WorkflowBuilderView: React.FC = () => {
                 ) : (
                   <span
                     onClick={() => setIsEditingTitle(true)}
-                    className="font-bold text-sm text-slate-900 cursor-pointer hover:text-emerald-700 transition flex items-center gap-1.5"
+                    className="font-bold text-sm text-slate-900 cursor-pointer hover:text-emerald-700 transition flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-none"
                     title="Click to rename workflow"
                   >
-                    <span>{botTitle}</span>
-                    <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate">{botTitle}</span>
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   </span>
                 )}
               </div>
 
-              {/* Static Variables Toggle */}
-              <div className="flex items-center gap-2">
-                <span className="text-slate-600 font-medium">Static Variables</span>
+              {/* Static Variables Toggle (hidden on very small screens) */}
+              <div className="hidden sm:flex items-center gap-2 shrink-0">
+                <span className="text-slate-600 font-medium">Static</span>
                 <button
                   onClick={() => setStaticVariables(!staticVariables)}
                   className={`w-8 h-4.5 rounded-full transition-colors relative cursor-pointer ${
@@ -1175,9 +1178,9 @@ export const WorkflowBuilderView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Global Variables Toggle */}
-              <div className="flex items-center gap-2">
-                <span className="text-slate-600 font-medium">Global Variables</span>
+              {/* Global Variables Toggle (hidden on very small screens) */}
+              <div className="hidden sm:flex items-center gap-2 shrink-0">
+                <span className="text-slate-600 font-medium">Global</span>
                 <button
                   onClick={() => setGlobalVariables(!globalVariables)}
                   className={`w-8 h-4.5 rounded-full transition-colors relative cursor-pointer ${
@@ -1193,20 +1196,17 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
             </div>
 
-            {/* Center: Test Bot Button */}
-            <div className="flex items-center gap-2">
+            {/* Right Group: Test Bot Button, Autosave, Undo/Redo, Real Save */}
+            <div className="flex items-center justify-between lg:justify-end gap-2 sm:gap-4 overflow-x-auto scrollbar-none py-0.5">
               <button
                 onClick={() => setIsTestBotOpen(true)}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold transition shadow-xs cursor-pointer active:scale-95"
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold transition shadow-xs cursor-pointer active:scale-95 text-xs whitespace-nowrap shrink-0"
               >
                 <Play className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
-                <span>Test Bot (Live Simulator)</span>
+                <span>Test Bot</span>
               </button>
-            </div>
 
-            {/* Right: Autosave, Undo/Redo, Real Save */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2 shrink-0">
                 <span className="text-slate-600 font-medium">Autosave</span>
                 <button
                   onClick={() => setAutosave(!autosave)}
@@ -1222,7 +1222,7 @@ export const WorkflowBuilderView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 border-l border-slate-200 pl-3">
+              <div className="flex items-center gap-1 border-l border-slate-200 pl-2 shrink-0">
                 <button
                   onClick={() => addToast('Action undone', 'info')}
                   className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
@@ -1242,7 +1242,7 @@ export const WorkflowBuilderView: React.FC = () => {
               {/* Real Save Workflow Button (persists to store and Workflows page) */}
               <button
                 onClick={handleSaveWorkflowToStore}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-bold shadow-sm transition cursor-pointer active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-bold shadow-sm transition cursor-pointer active:scale-95 shrink-0"
                 title="Save workflow to database and activate on Workflows page"
               >
                 <Check className="w-4 h-4" />
@@ -1894,17 +1894,17 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* CONFIGURE ELEMENT MODAL (Matches screenshots media_1789380608034 & 1789380618719) */}
       {/* ========================================================================= */}
       {configModal && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
             onClick={() => setConfigModal(null)}
           />
 
-          <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 flex flex-col max-h-[90vh]">
+          <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 flex flex-col max-h-[92dvh]">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                   <Sliders className="w-4 h-4" />
                 </div>
                 <div>
@@ -1916,14 +1916,14 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
               <button
                 onClick={() => setConfigModal(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
               {/* Element Type Selector */}
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Element Type</label>
@@ -2397,29 +2397,29 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* TEMPLATES & DEMO TUTORIAL MODAL                                           */}
       {/* ========================================================================= */}
       {isTemplatesModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsTemplatesModalOpen(false)}
           />
 
-          <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 flex flex-col">
-            <div className="p-6 bg-[#0B3B2C] text-white flex items-center justify-between">
+          <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 flex flex-col max-h-[92dvh]">
+            <div className="p-4 sm:p-6 bg-[#0B3B2C] text-white flex items-center justify-between shrink-0">
               <div>
-                <h3 className="font-bold text-lg">Workflow Templates & Interactive Tutorials</h3>
-                <p className="text-xs text-emerald-300">
+                <h3 className="font-bold text-base sm:text-lg">Workflow Templates & Interactive Tutorials</h3>
+                <p className="text-[11px] sm:text-xs text-emerald-300">
                   Select a pre-engineered workflow to instantly understand and deploy automation
                 </p>
               </div>
               <button
                 onClick={() => setIsTemplatesModalOpen(false)}
-                className="p-1 rounded-lg text-emerald-200 hover:text-white"
+                className="p-1 rounded-lg text-emerald-200 hover:text-white cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-xs overflow-y-auto">
               {/* Template 1: University & Stripe Checkout */}
               <div
                 onClick={() => handleLoadTemplate('university')}
@@ -2528,17 +2528,17 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* TEST BOT INTERACTIVE MODAL (Live Simulator)                               */}
       {/* ========================================================================= */}
       {isTestBotOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsTestBotOpen(false)}
           />
 
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 flex flex-col h-[600px]">
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 flex flex-col max-h-[92dvh] h-[90vh] sm:h-[600px]">
             {/* Modal Header (WhatsApp style) */}
-            <div className="p-4 bg-[#0B3B2C] text-white flex items-center justify-between shrink-0">
+            <div className="p-3.5 sm:p-4 bg-[#0B3B2C] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white shadow">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white shadow shrink-0">
                   <Bot className="w-5 h-5" />
                 </div>
                 <div>
@@ -2548,7 +2548,7 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsTestBotOpen(false)}
-                className="p-1 rounded-lg text-emerald-200 hover:text-white"
+                className="p-1 rounded-lg text-emerald-200 hover:text-white cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2556,7 +2556,7 @@ export const WorkflowBuilderView: React.FC = () => {
 
             {/* Chat Body */}
             <div
-              className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#EFEAE2]"
+              className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-[#EFEAE2]"
               style={{
                 backgroundImage: 'radial-gradient(#CBD5E1 0.7px, transparent 0.7px)',
                 backgroundSize: '16px 16px',
@@ -2577,7 +2577,7 @@ export const WorkflowBuilderView: React.FC = () => {
                     <div>{msg.text}</div>
                     {msg.isPayment && (
                       <div className="mt-2 p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2">
-                        <CreditCard className="w-4 h-4 text-emerald-600" />
+                        <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="font-bold text-emerald-900 text-[11px]">
                           Secure Checkout Gateway: Stripe $49 USD
                         </span>
@@ -2606,18 +2606,18 @@ export const WorkflowBuilderView: React.FC = () => {
             {/* Chat Input Bar */}
             <form
               onSubmit={handleSendTestMessage}
-              className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0"
+              className="p-2.5 sm:p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0"
             >
               <input
                 type="text"
                 placeholder="Type a message to test flow..."
                 value={userChatInput}
                 onChange={(e) => setUserChatInput(e.target.value)}
-                className="flex-1 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="flex-1 px-3 py-2 bg-slate-100 rounded-xl text-sm sm:text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               <button
                 type="submit"
-                className="p-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-bold shadow-xs transition"
+                className="p-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-bold shadow-xs transition cursor-pointer shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -2630,27 +2630,27 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* CREATE NEW KEYWORD RULE MODAL                                             */}
       {/* ========================================================================= */}
       {isNewRuleModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsNewRuleModalOpen(false)}
           />
 
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200">
-            <div className="p-5 bg-[#0B3B2C] text-white flex items-center justify-between">
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 max-h-[92dvh] flex flex-col">
+            <div className="p-4 sm:p-5 bg-[#0B3B2C] text-white flex items-center justify-between shrink-0">
               <div>
                 <h3 className="font-bold text-base">Create Keyword Trigger Rule</h3>
                 <p className="text-xs text-emerald-300">Auto-respond when incoming message matches keywords</p>
               </div>
               <button
                 onClick={() => setIsNewRuleModalOpen(false)}
-                className="p-1 rounded-lg text-emerald-200 hover:text-white"
+                className="p-1 rounded-lg text-emerald-200 hover:text-white cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateRuleSubmit} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleCreateRuleSubmit} className="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Rule Title *</label>
                 <input

@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, Users, Calendar, CheckCircle2,
   AlertTriangle, DollarSign, Zap, Bot, ArrowRight,
   Clock, ShieldAlert, Sparkles, Send, Eye, RefreshCw, X,
-  Check, Phone, MapPin, ExternalLink, ShieldCheck
+  Check, Phone, MapPin, ExternalLink, ShieldCheck, CheckCheck
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -25,6 +25,11 @@ export const DashboardView: React.FC = () => {
     },
   ]);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const aiChatScrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    aiChatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [aiMessages.length, isAiThinking]);
 
   const revenueData = [
     { day: 'Mon', revenue: 26000 },
@@ -143,13 +148,13 @@ export const DashboardView: React.FC = () => {
         onPrimaryAction={() => setActiveTab('conversations')}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
         {/* Top 6 KPI Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           {/* Total Revenue */}
           <div
             onClick={() => setActiveTab('finance-overview')}
-            className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer"
+            className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer"
           >
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-semibold">Total Revenue</span>
@@ -622,94 +627,144 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Right Sidebar: AI Assistant Copilot (4 cols) */}
-          <div className="lg:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
-                    <Bot className="w-4 h-4" />
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col h-full min-h-[560px] max-h-[720px] overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-slate-900">Qiyam AI Copilot</h3>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded-full">v2.5</span>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">AI Assistant</h3>
-                    <div className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>Online & Connected</span>
-                    </div>
+                  <div className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Real-time Business Sync</span>
                   </div>
                 </div>
+              </div>
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => addToast('AI Model synchronized with latest business data', 'info')}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                  onClick={() => {
+                    setAiMessages([
+                      {
+                        sender: 'ai',
+                        text: "Good morning, Rahul! 👋\nHere's a summary of your business:\n• 7 leads need follow-up\n• 3 jobs are overdue\n• 2 payments awaiting reminder\n• You have 15 appointments today",
+                        time: 'Just now',
+                      },
+                    ]);
+                    addToast('AI chat history refreshed', 'info');
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors"
+                  title="Clear & Refresh"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
               </div>
+            </div>
 
-              {/* Chat Messages Stream */}
-              <div className="my-4 space-y-3 max-h-80 overflow-y-auto pr-1 text-xs">
-                {aiMessages.map((msg, i) => (
+            {/* Chat Messages Stream */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs scrollbar-thin">
+              {aiMessages.map((msg, i) => {
+                const isAi = msg.sender === 'ai';
+                return (
                   <div
                     key={i}
-                    className={`p-3 rounded-2xl leading-relaxed ${
-                      msg.sender === 'ai'
-                        ? 'bg-purple-50/70 border border-purple-100 text-slate-800'
-                        : 'bg-emerald-600 text-white ml-6 font-medium'
-                    }`}
+                    className={`flex items-start gap-2 ${isAi ? 'justify-start' : 'justify-end'}`}
                   >
-                    <div className="whitespace-pre-line text-[11px]">{msg.text}</div>
-                    <div className={`text-[9px] mt-1 text-right ${msg.sender === 'ai' ? 'text-purple-400' : 'text-emerald-200'}`}>
-                      {msg.time}
+                    {isAi && (
+                      <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs font-bold text-[10px]">
+                        <Bot className="w-3.5 h-3.5 text-purple-600" />
+                      </div>
+                    )}
+                    <div
+                      className={`relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-2xs ${
+                        isAi
+                          ? 'bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-xs'
+                          : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-xs ml-auto font-medium shadow-sm shadow-emerald-700/20'
+                      }`}
+                    >
+                      <div className="whitespace-pre-line text-[11px] sm:text-xs">{msg.text}</div>
+                      <div
+                        className={`text-[9px] mt-1 flex items-center gap-1 ${
+                          isAi ? 'text-slate-400' : 'text-emerald-100 justify-end'
+                        }`}
+                      >
+                        <span>{msg.time}</span>
+                        {!isAi && <CheckCheck className="w-3 h-3 text-emerald-200" />}
+                      </div>
                     </div>
+                    {!isAi && (
+                      <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
+                        RM
+                      </div>
+                    )}
                   </div>
-                ))}
-                {isAiThinking && (
-                  <div className="p-3 rounded-2xl bg-purple-50 border border-purple-100 text-purple-700 text-xs flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
-                    <span>Analyzing business metrics...</span>
-                  </div>
-                )}
-              </div>
+                );
+              })}
 
-              {/* Quick Action Suggestion Chips */}
-              <div className="space-y-1.5 pt-2">
-                <div className="text-[11px] font-semibold text-slate-500 mb-1">What would you like me to do?</div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    onClick={() => handleAskAi("Show today's schedule")}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all flex items-center gap-1"
-                  >
-                    <Calendar className="w-3 h-3 text-purple-500" />
-                    <span>Show today's schedule</span>
-                  </button>
-                  <button
-                    onClick={() => handleAskAi('Send payment reminders')}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all flex items-center gap-1"
-                  >
-                    <DollarSign className="w-3 h-3 text-emerald-500" />
-                    <span>Send payment reminders</span>
-                  </button>
-                  <button
-                    onClick={() => handleAskAi('Show overdue jobs')}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all flex items-center gap-1"
-                  >
-                    <AlertTriangle className="w-3 h-3 text-amber-500" />
-                    <span>Show overdue jobs</span>
-                  </button>
-                  <button
-                    onClick={() => handleAskAi('High value leads')}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all flex items-center gap-1"
-                  >
-                    <Users className="w-3 h-3 text-blue-500" />
-                    <span>High value leads</span>
-                  </button>
-                  <button
-                    onClick={() => handleAskAi('Generate sales report')}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all flex items-center gap-1"
-                  >
-                    <Sparkles className="w-3 h-3 text-purple-500" />
-                    <span>Generate sales report</span>
-                  </button>
+              {isAiThinking && (
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+                  </div>
+                  <div className="bg-purple-50/80 border border-purple-100 text-purple-800 rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs flex items-center gap-2">
+                    <span className="flex gap-1 items-center">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                    <span className="text-[11px] font-medium text-purple-700 italic">Analyzing operations & pipeline...</span>
+                  </div>
                 </div>
+              )}
+              <div ref={aiChatScrollRef} />
+            </div>
+
+            {/* Quick Action Suggestion Chips */}
+            <div className="px-3 pt-2 pb-1 border-t border-slate-100 bg-slate-50/40">
+              <div className="flex items-center justify-between mb-1.5 px-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Actions</span>
+                <span className="text-[9px] text-purple-600 font-semibold">1-Click Prompts</span>
+              </div>
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
+                <button
+                  onClick={() => handleAskAi("Show today's schedule")}
+                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <Calendar className="w-3 h-3 text-purple-500" />
+                  <span>Today's Schedule</span>
+                </button>
+                <button
+                  onClick={() => handleAskAi('Send payment reminders')}
+                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <DollarSign className="w-3 h-3 text-emerald-500" />
+                  <span>Payment Reminders</span>
+                </button>
+                <button
+                  onClick={() => handleAskAi('Show overdue jobs')}
+                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                  <span>Overdue Jobs</span>
+                </button>
+                <button
+                  onClick={() => handleAskAi('High value leads')}
+                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <Users className="w-3 h-3 text-blue-500" />
+                  <span>High-Value Leads</span>
+                </button>
+                <button
+                  onClick={() => handleAskAi('Generate sales report')}
+                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <Sparkles className="w-3 h-3 text-purple-500" />
+                  <span>Sales Report</span>
+                </button>
               </div>
             </div>
 
@@ -719,24 +774,28 @@ export const DashboardView: React.FC = () => {
                 e.preventDefault();
                 handleAskAi();
               }}
-              className="pt-3 border-t border-slate-100"
+              className="p-3 border-t border-slate-200/80 bg-white"
             >
-              <div className="relative">
+              <div className="relative flex items-center">
                 <input
                   type="text"
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
-                  placeholder="Ask something..."
-                  className="w-full pl-3 pr-10 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  placeholder="Ask anything about jobs, revenue, leads..."
+                  className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
                 <button
                   type="submit"
-                  className="w-7 h-7 rounded-lg bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 shadow-sm transition-all"
+                  disabled={!aiInput.trim() || isAiThinking}
+                  className="w-7 h-7 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 shadow-sm transition-all cursor-pointer active:scale-95"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 text-center mt-1.5">AI responses are synced with your live business data</p>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 mt-1.5">
+                <span>Enterprise Copilot</span>
+                <span>Press Enter ↵</span>
+              </div>
             </form>
           </div>
         </div>
@@ -814,31 +873,31 @@ export const DashboardView: React.FC = () => {
 
       {/* Interactive AI Alerts Full Modal */}
       {isAlertsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 p-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-purple-200" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92dvh]">
+            <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 p-4 sm:p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-200" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base">Active AI Business Alerts & Anomalies</h3>
-                  <p className="text-xs text-purple-200">Real-time proactive monitoring across CRM, Jobs, and Finance</p>
+                  <h3 className="font-bold text-sm sm:text-base">Active AI Business Alerts & Anomalies</h3>
+                  <p className="text-[11px] sm:text-xs text-purple-200">Real-time proactive monitoring across CRM, Jobs, and Finance</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsAlertsModalOpen(false)}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-3.5 text-xs">
+            <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3 sm:space-y-3.5 text-xs">
               {allAlerts.map((alert) => (
                 <div
                   key={alert.id}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                  className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     alert.color === 'red'
                       ? 'bg-red-50/70 border-red-200'
                       : alert.color === 'amber'
@@ -906,14 +965,14 @@ export const DashboardView: React.FC = () => {
               ))}
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-medium">6 active business insights generated by AI Copilot</span>
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-2 sm:gap-0 items-stretch sm:items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium text-[11px] sm:text-xs">6 active business insights generated by AI Copilot</span>
               <button
                 onClick={() => {
                   setIsAlertsModalOpen(false);
                   addToast('All notifications acknowledged', 'success');
                 }}
-                className="px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl font-semibold text-slate-700 cursor-pointer"
+                className="px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl font-semibold text-slate-700 cursor-pointer text-center"
               >
                 Dismiss All
               </button>
@@ -924,9 +983,9 @@ export const DashboardView: React.FC = () => {
 
       {/* Interactive Recent Activity Modal */}
       {isRecentActivityModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-slate-900 p-4 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[92dvh]">
+            <div className="bg-slate-900 p-3.5 sm:p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-emerald-400" />
                 <h3 className="font-bold text-sm">Full Activity Audit Log</h3>
@@ -939,7 +998,7 @@ export const DashboardView: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-3 text-xs">
+            <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3 text-xs">
               <div
                 onClick={() => {
                   setIsRecentActivityModalOpen(false);

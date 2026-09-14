@@ -39,42 +39,42 @@ export const AnalyticsView: React.FC = () => {
         onPrimaryAction={handleExport}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPI Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-slate-500 font-semibold">Total Conversations</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">12,845</div>
-            <div className="text-[11px] text-emerald-600 font-bold mt-1">↑ 18.2% vs last month</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold truncate">Total Conversations</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">12,845</div>
+            <div className="text-[11px] text-emerald-600 font-bold mt-1">↑ 18.2%</div>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-slate-500 font-semibold">Avg. AI Response Time</div>
-            <div className="text-2xl font-black text-emerald-600 mt-1">2.6 sec</div>
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold truncate">Avg. Response Time</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">2.6 sec</div>
             <div className="text-[11px] text-slate-500 mt-1">Instant bot replies</div>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-slate-500 font-semibold">First Contact Resolution</div>
-            <div className="text-2xl font-black text-purple-600 mt-1">92.6%</div>
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold truncate">1st Contact Resolution</div>
+            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">92.6%</div>
             <div className="text-[11px] text-purple-600 font-bold mt-1">Resolved in 1 session</div>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-slate-500 font-semibold">Customer CSAT</div>
-            <div className="text-2xl font-black text-amber-500 mt-1">4.9 / 5.0</div>
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold truncate">Customer CSAT</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">4.9 / 5.0</div>
             <div className="text-[11px] text-slate-500 mt-1">98.4% satisfaction</div>
           </div>
         </div>
 
-        {/* 2 Chart Cards (Matching photo_23) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 2 Chart Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Channel Breakdown */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div>
               <h3 className="font-bold text-sm text-slate-900">Conversations by Channel</h3>
               <p className="text-xs text-slate-500">Distribution across WhatsApp, Web Chat, and Mobile</p>
             </div>
 
-            <div className="flex items-center justify-around py-2">
-              <div className="w-40 h-40">
+            <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
+              <div className="w-40 h-40 shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartPie>
                     <Pie data={channelData} dataKey="value" innerRadius={40} outerRadius={65} paddingAngle={4}>
@@ -87,11 +87,11 @@ export const AnalyticsView: React.FC = () => {
                 </ResponsiveContainer>
               </div>
 
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2 text-xs w-full sm:w-auto">
                 {channelData.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between gap-4">
+                  <div key={idx} className="flex items-center justify-between gap-3 sm:gap-4">
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                       <span className="text-slate-600">{item.name}</span>
                     </div>
                     <span className="font-bold text-slate-900">{item.value.toLocaleString()} ({item.percent})</span>

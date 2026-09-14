@@ -731,6 +731,12 @@ class WhatsAppWebhookView(APIView):
                         if status_id and new_status:
                             matching_msgs = Message.objects.filter(meta_message_id=status_id)
                             matching_msgs.update(status=new_status)
+                            for m in matching_msgs:
+                                emit_event('message.status_updated', {
+                                    'conversation_id': m.conversation_id,
+                                    'message_id': m.id,
+                                    'status': new_status
+                                })
 
                 # 2. Template Status Updates from Meta (e.g. APPROVED, REJECTED, PAUSED)
                 elif field == 'message_template_status_update':

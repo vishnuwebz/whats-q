@@ -113,10 +113,10 @@ export const LeadsView: React.FC = () => {
       />
 
       {/* Control Bar: View Mode Switch & Filters */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col sm:flex-row gap-2 sm:gap-0 items-stretch sm:items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-start">
           {/* View Toggle */}
-          <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1">
+          <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 shrink-0">
             <button
               onClick={() => setViewMode('kanban')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
@@ -138,19 +138,19 @@ export const LeadsView: React.FC = () => {
           </div>
 
           {/* Search Box */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search leads..."
-              className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-60"
+              className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full sm:w-60"
             />
           </div>
         </div>
 
-        <div className="text-xs text-slate-500 font-medium">
+        <div className="text-xs text-slate-500 font-medium hidden sm:block">
           Total Leads: <strong className="text-slate-800">{leads.length}</strong> (₹{leads.reduce((a, b) => a + b.value, 0).toLocaleString()} pipeline value)
         </div>
       </div>
@@ -158,7 +158,7 @@ export const LeadsView: React.FC = () => {
       {/* Main Kanban Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
         {viewMode === 'kanban' ? (
-          <div className="flex-1 overflow-x-auto p-6 flex gap-4 items-start scrollbar-thin">
+          <div className="flex-1 overflow-x-auto p-3 sm:p-6 flex gap-3 sm:gap-4 items-start scrollbar-thin">
             {stages.map((col) => {
               const colLeads = filteredLeads.filter((l) => l.stage === col.id);
 
@@ -167,7 +167,7 @@ export const LeadsView: React.FC = () => {
                   key={col.id}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, col.id)}
-                  className="w-72 bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col max-h-full shrink-0 shadow-sm"
+                  className="w-[85vw] sm:w-72 bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col max-h-full shrink-0 shadow-sm"
                 >
                   {/* Column Header */}
                   <div className="p-3.5 border-b border-slate-200/60 flex items-center justify-between">
@@ -233,9 +233,9 @@ export const LeadsView: React.FC = () => {
           </div>
         ) : (
           /* List View Table */
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <table className="w-full text-left text-xs">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto scrollbar-thin">
+              <table className="w-full text-left text-xs min-w-[650px]">
                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
                   <tr>
                     <th className="py-3 px-4">Lead Name</th>
@@ -290,20 +290,25 @@ export const LeadsView: React.FC = () => {
 
         {/* Right Lead Details Drawer (Matching photo_7 drawer) */}
         {isLeadDrawerOpen && selectedLead && (
-          <div className="w-96 bg-white border-l border-slate-200 shadow-2xl flex flex-col shrink-0 z-20 overflow-y-auto animate-in slide-in-from-right duration-200 p-6 space-y-6 text-xs">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="font-bold text-base text-slate-900">{selectedLead.name}</h3>
-                <p className="text-xs text-slate-500 font-mono">{selectedLead.phone}</p>
+          <>
+            <div
+              className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-30 lg:hidden"
+              onClick={() => setIsLeadDrawerOpen(false)}
+            />
+            <div className="fixed inset-y-0 right-0 z-40 lg:relative lg:z-10 w-full sm:w-96 max-w-[100vw] sm:max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col shrink-0 overflow-y-auto animate-in slide-in-from-right duration-200 p-4 sm:p-6 space-y-5 sm:space-y-6 text-xs">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">{selectedLead.name}</h3>
+                  <p className="text-xs text-slate-500 font-mono">{selectedLead.phone}</p>
+                </div>
+                <button
+                  onClick={() => setIsLeadDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setIsLeadDrawerOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
             {/* Quick Action Strip */}
             <div className="grid grid-cols-2 gap-2">
@@ -395,13 +400,14 @@ export const LeadsView: React.FC = () => {
               />
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
+    </div>
 
       {/* Add Lead Modal */}
       {isAddLeadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-4 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
@@ -421,7 +427,7 @@ export const LeadsView: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateLead} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Customer Full Name *</label>
                   <input
@@ -446,7 +452,7 @@ export const LeadsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Service Needed</label>
                   <select
@@ -472,7 +478,7 @@ export const LeadsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Location</label>
                   <input

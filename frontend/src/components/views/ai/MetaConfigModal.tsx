@@ -104,17 +104,17 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
   const webhookCallbackUrl = `${window.location.protocol}//${window.location.host}/api/conversations/webhook/`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92dvh] flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200">
         {/* Top Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 shrink-0">
               <Globe className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-bold text-base text-slate-900">Meta WhatsApp Cloud API Configuration</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-bold text-sm sm:text-base text-slate-900">Meta WhatsApp Cloud API</h2>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                   config?.connection_status === 'connected'
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
@@ -123,21 +123,21 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                   {config?.connection_status === 'connected' ? 'CONNECTED' : 'CONFIG REQUIRED'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
-                Configure your Meta Developer credentials, Permanent Access Token, and real-time Webhooks.
+              <p className="text-[11px] sm:text-xs text-slate-500">
+                Configure Meta Developer credentials, Permanent Access Token, and real-time Webhooks.
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-6 border-b border-slate-200 flex gap-4 bg-slate-50/50 text-xs font-bold">
+        <div className="px-4 sm:px-6 border-b border-slate-200 flex gap-2 sm:gap-4 overflow-x-auto scrollbar-none bg-slate-50/50 text-xs font-bold shrink-0">
           <button
             onClick={() => setActiveTab('credentials')}
-            className={`py-3 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all ${
               activeTab === 'credentials'
                 ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -148,7 +148,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('guide')}
-            className={`py-3 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all ${
               activeTab === 'guide'
                 ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -159,7 +159,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('webhook')}
-            className={`py-3 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all ${
               activeTab === 'webhook'
                 ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -171,7 +171,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 text-xs text-slate-700">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 text-xs text-slate-700">
           {/* TAB 1: API CREDENTIALS & LIVE CONNECTION TEST */}
           {activeTab === 'credentials' && (
             <div className="space-y-6">

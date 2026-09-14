@@ -320,29 +320,29 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[92dvh] flex flex-col overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-200">
         {/* Top Header matching Meta Business Suite */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-bold text-base text-slate-900">Meta WhatsApp Template Builder</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-bold text-sm sm:text-base text-slate-900">Meta WhatsApp Template Builder</h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
-                  Official Graph API v21.0
+                  Graph API v21.0
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500">
                 Design, preview, and submit pre-approved WhatsApp message templates directly to Meta Cloud API.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -350,16 +350,16 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
 
         {/* Validation Warning Alert */}
         {validationError && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2.5 text-xs text-red-700 font-medium">
+          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2.5 text-xs text-red-700 font-medium">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
             <span>{validationError}</span>
           </div>
         )}
 
         {/* Main Content: Left Form (60%) + Right Device Preview (40%) */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
           {/* LEFT FORM PANE */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-700 border-r border-slate-200">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 text-xs text-slate-700 border-b lg:border-b-0 lg:border-r border-slate-200">
             {/* 1. Template Name */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -849,7 +849,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
           </div>
 
           {/* RIGHT DEVICE PREVIEW PANE (Authentic WhatsApp Smartphone Frame) */}
-          <div className="w-[420px] bg-slate-100 p-6 flex flex-col items-center justify-center border-l border-slate-200 shrink-0 overflow-hidden select-none">
+          <div className="hidden lg:flex w-[380px] xl:w-[420px] bg-slate-100 p-4 xl:p-6 flex-col items-center justify-center border-l border-slate-200 shrink-0 overflow-hidden select-none">
             <div className="w-full flex items-center justify-between mb-3 text-xs">
               <span className="font-bold text-slate-700 flex items-center gap-1.5">
                 <Smartphone className="w-4 h-4 text-slate-500" />
@@ -859,7 +859,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
                 <button
                   type="button"
                   onClick={() => setPreviewMode('sample')}
-                  className={`px-2 py-0.5 rounded font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
                     previewMode === 'sample' ? 'bg-emerald-600 text-white' : 'text-slate-500'
                   }`}
                 >
@@ -868,7 +868,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
                 <button
                   type="button"
                   onClick={() => setPreviewMode('raw')}
-                  className={`px-2 py-0.5 rounded font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
                     previewMode === 'raw' ? 'bg-emerald-600 text-white' : 'text-slate-500'
                   }`}
                 >
@@ -878,7 +878,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
             </div>
 
             {/* Smartphone Outer Bezel */}
-            <div className="w-[330px] h-[600px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20">
+            <div className="w-[310px] xl:w-[330px] h-[580px] xl:h-[600px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20">
               {/* Speaker & Camera Notch */}
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-black rounded-full z-30 flex items-center justify-center">
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-900 ml-auto mr-2" />
@@ -919,64 +919,54 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
                           : headerText}
                       </div>
                     )}
-
-                    {['IMAGE', 'VIDEO'].includes(headerType) && (
-                      <div className="relative h-32 bg-slate-200 overflow-hidden">
-                        <img
-                          src={headerUrl}
-                          alt="Template Header Media"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800';
-                          }}
-                        />
-                        {headerType === 'VIDEO' && (
-                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                            <div className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-slate-900 shadow">
-                              ▶
-                            </div>
-                          </div>
-                        )}
+                    {headerType === 'IMAGE' && headerUrl && (
+                      <div className="w-full h-36 bg-slate-200 overflow-hidden relative">
+                        <img src={headerUrl} alt="Header Preview" className="w-full h-full object-cover" />
                       </div>
                     )}
-
+                    {headerType === 'VIDEO' && (
+                      <div className="w-full h-36 bg-slate-900 text-white flex flex-col items-center justify-center text-xs p-2">
+                        <Video className="w-8 h-8 text-emerald-400 mb-1" />
+                        <span>Video Header Sample</span>
+                      </div>
+                    )}
                     {headerType === 'DOCUMENT' && (
-                      <div className="p-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-red-500 shrink-0" />
-                        <span className="text-[11px] font-bold text-slate-700 truncate">Proposal_Document.pdf</span>
+                      <div className="p-3 bg-slate-100 flex items-center gap-2 border-b border-slate-200 text-xs">
+                        <FileText className="w-5 h-5 text-red-500" />
+                        <span className="font-semibold text-slate-700">document_attachment.pdf</span>
                       </div>
                     )}
 
                     {/* Body Text */}
-                    <div className="p-3 text-[11px] text-slate-800 space-y-1">
+                    <div className="p-3 text-[11px] text-slate-800 font-sans space-y-1">
                       {renderPreviewBody()}
                     </div>
 
-                    {/* Footer Text */}
+                    {/* Footer */}
                     {footerText && (
-                      <div className="px-3 pb-1 text-[9px] text-slate-400 font-medium">
+                      <div className="px-3 pb-2 text-[9px] text-slate-400 font-medium">
                         {footerText}
                       </div>
                     )}
 
-                    {/* Timestamp & Read Ticks */}
+                    {/* Timestamp & Double Blue Ticks */}
                     <div className="px-3 pb-2 flex items-center justify-end gap-1 text-[9px] text-slate-400">
                       <span>10:30 AM</span>
-                      <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                      <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] stroke-[2.4]" />
                     </div>
 
-                    {/* Interactive Action Buttons */}
+                    {/* Buttons in Bubble */}
                     {buttons.length > 0 && (
-                      <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/50">
-                        {buttons.map((b, i) => (
+                      <div className="border-t border-slate-100 divide-y divide-slate-100">
+                        {buttons.map((b, bIdx) => (
                           <button
-                            key={i}
+                            key={bIdx}
                             type="button"
-                            className="w-full py-2 px-3 text-[11px] font-bold text-[#00a884] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5"
+                            className="w-full py-2 px-3 text-center text-xs font-semibold text-[#00A884] hover:bg-slate-50 flex items-center justify-center gap-1.5 transition-colors"
                           >
-                            {b.type === 'URL' && <ExternalLink className="w-3 h-3 text-[#00a884]" />}
-                            {b.type === 'PHONE_NUMBER' && <Phone className="w-3 h-3 text-[#00a884]" />}
-                            {b.type === 'COPY_CODE' && <Copy className="w-3 h-3 text-[#00a884]" />}
+                            {b.type === 'URL' && <ExternalLink className="w-3 h-3 text-[#00A884]" />}
+                            {b.type === 'PHONE_NUMBER' && <Phone className="w-3 h-3 text-[#00A884]" />}
+                            {b.type === 'COPY_CODE' && <Copy className="w-3 h-3 text-[#00A884]" />}
                             <span>{b.text || 'Button'}</span>
                           </button>
                         ))}
@@ -990,7 +980,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
         </div>
 
         {/* Modal Bottom Actions */}
-        <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 font-medium">Status:</span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
@@ -998,11 +988,11 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <button
               type="button"
               onClick={handleSaveDraft}
-              className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold rounded-xl text-xs transition-all"
+              className="flex-1 sm:flex-none px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
             >
               Save as Draft
             </button>
@@ -1011,10 +1001,10 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
               <button
                 type="button"
                 onClick={() => setShowTestSendModal(true)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                className="flex-1 sm:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5 text-slate-600" />
-                <span>Test Send to Phone</span>
+                <span>Test Send</span>
               </button>
             )}
 
@@ -1022,7 +1012,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm shadow-emerald-700/20 transition-all active:scale-95"
+              className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm shadow-emerald-700/20 transition-all cursor-pointer active:scale-95"
             >
               {isSubmitting ? (
                 <>

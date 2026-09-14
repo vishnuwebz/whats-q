@@ -50,14 +50,14 @@ export const AccountsView: React.FC = () => {
         onPrimaryAction={() => setIsModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 text-xs">
           {accounts.map((acc) => {
             const isTarget = targetHighlightId === acc.id || targetHighlightId === acc.name;
             return (
               <div
                 key={acc.id}
-                className={`bg-white p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
+                className={`bg-white p-4 sm:p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
                   isTarget ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-50/30' : 'border-slate-200'
                 }`}
               >
@@ -90,7 +90,7 @@ export const AccountsView: React.FC = () => {
                   </div>
                   <button
                     onClick={() => addToast(`Reconciliation synced for ${acc.name}`, 'success')}
-                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px]"
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px] cursor-pointer"
                   >
                     Reconcile
                   </button>
@@ -103,8 +103,8 @@ export const AccountsView: React.FC = () => {
 
       {/* Link Bank Account Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
                 <h3 className="font-bold text-base text-slate-900">Link Bank Account</h3>
@@ -112,7 +112,7 @@ export const AccountsView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -127,7 +127,7 @@ export const AccountsView: React.FC = () => {
                   placeholder="e.g. Axis Bank Corporate"
                   value={accForm.name}
                   onChange={(e) => setAccForm({ ...accForm, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
                 />
               </div>
 
@@ -138,17 +138,17 @@ export const AccountsView: React.FC = () => {
                   placeholder="e.g. •••• 9812"
                   value={accForm.account_number}
                   onChange={(e) => setAccForm({ ...accForm, account_number: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-mono text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-mono text-sm sm:text-xs text-slate-800"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">Provider</label>
                   <select
                     value={accForm.provider}
                     onChange={(e) => setAccForm({ ...accForm, provider: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
                   >
                     <option value="HDFC Bank">HDFC Bank</option>
                     <option value="ICICI Bank">ICICI Bank</option>
@@ -164,7 +164,7 @@ export const AccountsView: React.FC = () => {
                   <select
                     value={accForm.account_type}
                     onChange={(e) => setAccForm({ ...accForm, account_type: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
                   >
                     <option value="Current Account">Current Account</option>
                     <option value="Savings Account">Savings Account</option>
@@ -181,7 +181,7 @@ export const AccountsView: React.FC = () => {
                   min="0"
                   value={accForm.current_balance}
                   onChange={(e) => setAccForm({ ...accForm, current_balance: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-sm sm:text-xs text-slate-800"
                 />
               </div>
 
@@ -189,13 +189,13 @@ export const AccountsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   Link Account
                 </button>

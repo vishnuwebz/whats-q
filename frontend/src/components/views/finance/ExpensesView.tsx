@@ -56,76 +56,78 @@ export const ExpensesView: React.FC = () => {
         onPrimaryAction={() => setIsModalOpen(true)}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPI Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold">Total Expenses (May)</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">₹13,55,130</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Budget limit: ₹15,00,000</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">₹13,55,130</div>
+            <div className="text-[11px] text-slate-500 mt-0.5 truncate">Budget: ₹15,00,000</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold">Salaries & Wages</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">₹8,45,000</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">₹8,45,000</div>
             <div className="text-[11px] text-slate-500 mt-0.5">18 employees paid</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold">Rent & Utilities</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">₹1,85,000</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Head office + 4 branches</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">₹1,85,000</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">HO + 4 branches</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold">Budget Utilization</div>
-            <div className="text-2xl font-black text-emerald-600 mt-1">90.3%</div>
-            <div className="text-[11px] text-emerald-600 mt-0.5">Within projected forecast</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">90.3%</div>
+            <div className="text-[11px] text-emerald-600 mt-0.5">Within forecast</div>
           </div>
         </div>
 
         {/* Expenses Table */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-xs">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-              <tr>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Vendor / Payee</th>
-                <th className="py-3 px-4">Payment Mode</th>
-                <th className="py-3 px-4 text-right">Amount</th>
-                <th className="py-3 px-4 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filtered.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 text-slate-500">{exp.date_str}</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900">{exp.description}</td>
-                  <td className="py-3.5 px-4">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                      {exp.category}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-600">{exp.vendor}</td>
-                  <td className="py-3.5 px-4 text-slate-500 font-medium">{exp.payment_mode}</td>
-                  <td className="py-3.5 px-4 text-right font-black text-sm text-red-600">
-                    - ₹{exp.amount.toLocaleString()}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
-                      {exp.status}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left min-w-[760px]">
+              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Description</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Vendor / Payee</th>
+                  <th className="py-3 px-4">Payment Mode</th>
+                  <th className="py-3 px-4 text-right">Amount</th>
+                  <th className="py-3 px-4 text-right">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {filtered.map((exp) => (
+                  <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{exp.date_str}</td>
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{exp.description}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 whitespace-nowrap">
+                        {exp.category}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-600">{exp.vendor}</td>
+                    <td className="py-3.5 px-4 text-slate-500 font-medium">{exp.payment_mode}</td>
+                    <td className="py-3.5 px-4 text-right font-black text-sm text-red-600 whitespace-nowrap">
+                      - ₹{exp.amount.toLocaleString()}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
+                        {exp.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* Record Expense Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-4 sm:p-6 space-y-4 text-xs max-h-[92dvh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-red-50 text-red-600">
@@ -138,7 +140,7 @@ export const ExpensesView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -153,11 +155,11 @@ export const ExpensesView: React.FC = () => {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="e.g. Copper Pipe Roll Restock (50m)"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Vendor / Payee</label>
                   <input
@@ -165,7 +167,7 @@ export const ExpensesView: React.FC = () => {
                     value={form.vendor}
                     onChange={(e) => setForm({ ...form, vendor: e.target.value })}
                     placeholder="e.g. Calicut Spares Mart"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -173,7 +175,7 @@ export const ExpensesView: React.FC = () => {
                   <select
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                   >
                     <option value="Operations">Operations</option>
                     <option value="Spare Parts & Inventory">Spare Parts & Inventory</option>
@@ -184,7 +186,7 @@ export const ExpensesView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Amount (₹) *</label>
                   <input
@@ -192,7 +194,7 @@ export const ExpensesView: React.FC = () => {
                     required
                     value={form.amount}
                     onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -200,7 +202,7 @@ export const ExpensesView: React.FC = () => {
                   <select
                     value={form.payment_mode}
                     onChange={(e) => setForm({ ...form, payment_mode: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                   >
                     <option value="UPI">UPI (GPay / PhonePe)</option>
                     <option value="Bank Transfer">Bank Transfer</option>

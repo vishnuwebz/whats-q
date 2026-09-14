@@ -90,6 +90,24 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('message.status_updated', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing message.status_updated event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('conversation.typing', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing conversation.typing event:', err);
+        }
+      });
+
       this.eventSource.addEventListener('system.update_available', (e: any) => {
         try {
           const payload = JSON.parse(e.data);
@@ -209,6 +227,22 @@ class RealtimeSyncManager {
 
       case 'system.connected': {
         store.setSyncStatus('connected');
+        break;
+      }
+
+      case 'message.status_updated': {
+        const { conversation_id, message_id, status } = event.data || {};
+        if (conversation_id && message_id && status) {
+          store.applyMessageStatus(conversation_id, message_id, status);
+        }
+        break;
+      }
+
+      case 'conversation.typing': {
+        const { conversation_id, is_typing } = event.data || {};
+        if (conversation_id !== undefined) {
+          store.setClientTyping(conversation_id, !!is_typing);
+        }
         break;
       }
 

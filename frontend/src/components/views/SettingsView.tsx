@@ -27,22 +27,22 @@ export const SettingsView: React.FC = () => {
         onPrimaryAction={handleSave}
       />
 
-      <div className="p-6 max-w-4xl space-y-6 text-xs">
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* General Workspace Info (Matching photo_2) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div className="p-3 sm:p-6 max-w-4xl space-y-4 sm:space-y-6 text-xs">
+        <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
+          {/* General Workspace Info */}
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3">
               General Workspace Preferences
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Workspace Name</label>
                 <input
                   type="text"
                   value={workspaceName}
                   onChange={(e) => setWorkspaceName(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none text-sm sm:text-xs"
                 />
               </div>
 
@@ -52,7 +52,7 @@ export const SettingsView: React.FC = () => {
                   type="text"
                   value="qiyam-business-os.qiyamapp.com"
                   disabled
-                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono"
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono text-sm sm:text-xs"
                 />
               </div>
 
@@ -61,7 +61,7 @@ export const SettingsView: React.FC = () => {
                 <select
                   value={timeZone}
                   onChange={(e) => setTimeZone(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none text-sm sm:text-xs"
                 >
                   <option>(GMT+05:30) Asia/Kolkata (IST)</option>
                   <option>(GMT+04:00) Asia/Dubai (GST)</option>
@@ -71,7 +71,7 @@ export const SettingsView: React.FC = () => {
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Date Format</label>
-                <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none">
+                <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none text-sm sm:text-xs">
                   <option>May 31, 2024 (MMM DD, YYYY)</option>
                   <option>31/05/2024 (DD/MM/YYYY)</option>
                   <option>2024-05-31 (YYYY-MM-DD)</option>
@@ -114,7 +114,7 @@ export const SettingsView: React.FC = () => {
           </div>
 
           {/* Plan & Subscription Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">Subscription & Cloud Storage</h3>
@@ -125,7 +125,7 @@ export const SettingsView: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-400 block text-[10px]">Team Seats</span>
                 <span className="text-lg font-black text-slate-900">18 / 50</span>
@@ -144,7 +144,7 @@ export const SettingsView: React.FC = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all"
+              className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
             >
               Save Configuration
             </button>

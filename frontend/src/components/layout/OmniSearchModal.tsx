@@ -263,23 +263,23 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center pt-20 p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center pt-8 sm:pt-20 p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[80vh]">
         {/* Search Header */}
-        <div className="px-4 py-3.5 border-b border-slate-200 flex items-center gap-3 bg-slate-50/50">
+        <div className="px-3.5 sm:px-4 py-3 sm:py-3.5 border-b border-slate-200 flex items-center gap-2.5 sm:gap-3 bg-slate-50/50">
           <Search className="w-5 h-5 text-emerald-600 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search across all records, leads, jobs, invoices, chats, staff..."
-            className="w-full bg-transparent text-sm font-medium text-slate-900 placeholder-slate-400 outline-none"
+            placeholder="Search records, leads, jobs, invoices, chats..."
+            className="w-full bg-transparent text-base sm:text-sm font-medium text-slate-900 placeholder-slate-400 outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200 transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -290,7 +290,7 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Category Filters */}
-        <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-1.5 overflow-x-auto text-xs font-semibold text-slate-600 bg-white">
+        <div className="px-3 sm:px-4 py-2 border-b border-slate-100 flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs font-semibold text-slate-600 bg-white whitespace-nowrap">
           <button
             onClick={() => setActiveFilter('all')}
             className={`px-2.5 py-1 rounded-lg transition-colors ${
