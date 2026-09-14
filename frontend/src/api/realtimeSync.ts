@@ -90,6 +90,15 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('system.update_available', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing system.update_available event:', err);
+        }
+      });
+
       this.eventSource.onerror = () => {
         console.warn('[RealtimeSync] Event stream connection dropped. Reconnecting with exponential backoff...');
         if (this.eventSource) {
@@ -200,6 +209,13 @@ class RealtimeSyncManager {
 
       case 'system.connected': {
         store.setSyncStatus('connected');
+        break;
+      }
+
+      case 'system.update_available': {
+        if (event.data) {
+          store.applyGlobalUpdateAvailable(event.data);
+        }
         break;
       }
 

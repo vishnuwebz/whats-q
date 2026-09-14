@@ -141,9 +141,12 @@ import queue
 class SystemVersionView(APIView):
     """
     Returns current version, latest available version, and update status.
+    Supports ?simulate=1 to test global update detection.
     """
     def get(self, request):
-        info = SystemUpdateService.get_version_info()
+        simulate = request.GET.get('simulate') in ['1', 'true', 'True']
+        force = request.GET.get('force') in ['1', 'true', 'True']
+        info = SystemUpdateService.get_version_info(simulate=simulate, force=force)
         return Response(info)
 
 class SystemUpdateView(APIView):
@@ -154,6 +157,16 @@ class SystemUpdateView(APIView):
         result = SystemUpdateService.apply_update()
         status_code = 200 if result.get('success') else 400
         return Response(result, status=status_code)
+
+class SystemUpdateBroadcastView(APIView):
+    """
+    Broadcasts a real-time update notification event globally to all connected clients.
+    """
+    def post(self, request):
+        simulate = request.data.get('simulate', True)
+        info = SystemUpdateService.get_version_info(simulate=simulate, force=True)
+        event_bus.publish('system.update_available', info)
+        return Response({'success': True, 'broadcast': info})
 
 class EventStreamView(APIView):
     """

@@ -195,13 +195,13 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setIsUpdateModalOpen(true)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 versionInfo.update_available
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/30 hover:brightness-105 animate-pulse'
+                  ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
               }`}
-              title="WhatsQ System Update"
+              title={versionInfo.update_available ? `Update available (${versionInfo.latest_commit}) - Click to review and update` : `WhatsQ v${versionInfo.current_commit}`}
             >
-              <Sparkles className={`w-3.5 h-3.5 ${versionInfo.update_available ? 'text-amber-300' : 'text-slate-500'}`} />
-              <span>{versionInfo.update_available ? 'Update Available' : `v${versionInfo.current_commit}`}</span>
+              <Sparkles className={`w-3.5 h-3.5 ${versionInfo.update_available ? 'text-amber-200 animate-spin' : 'text-slate-500'}`} />
+              <span>{versionInfo.update_available ? `Update Ready (${versionInfo.latest_commit})` : `v${versionInfo.current_commit}`}</span>
             </button>
           )}
 

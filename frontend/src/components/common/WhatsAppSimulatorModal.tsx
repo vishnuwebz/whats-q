@@ -3,7 +3,13 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { X, Send, Sparkles, Phone, User, MessageSquare } from 'lucide-react';
 
 export const WhatsAppSimulatorModal: React.FC = () => {
-  const { isSimulatorOpen, setIsSimulatorOpen, simulateInboundWhatsApp, setActiveTab } = useQiyamStore();
+  const {
+    isSimulatorOpen,
+    setIsSimulatorOpen,
+    simulateInboundWhatsApp,
+    simulateGlobalUpdate,
+    setActiveTab
+  } = useQiyamStore();
   const [name, setName] = useState('Amit Verma');
   const [phone, setPhone] = useState('+91 98765 43210');
   const [message, setMessage] = useState('I need AC service tomorrow in Koyilandy.');
@@ -114,21 +120,36 @@ export const WhatsAppSimulatorModal: React.FC = () => {
           </div>
 
           {/* Modal Footer Actions */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
             <button
               type="button"
-              onClick={() => setIsSimulatorOpen(false)}
-              className="px-3.5 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-all"
+              onClick={() => {
+                setIsSimulatorOpen(false);
+                simulateGlobalUpdate();
+              }}
+              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg font-semibold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Test global update detection and dead-center modal"
             >
-              Cancel
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Simulate Global Update</span>
             </button>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm shadow-emerald-700/20 transition-all"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Send & Trigger AI Flow</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSimulatorOpen(false)}
+                className="px-3.5 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm shadow-emerald-700/20 transition-all cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send & Trigger AI Flow</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

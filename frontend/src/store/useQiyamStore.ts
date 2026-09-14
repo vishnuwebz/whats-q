@@ -63,6 +63,9 @@ interface QiyamState {
   setIsUpdateModalOpen: (open: boolean) => void;
   fetchVersionInfo: () => Promise<void>;
   triggerSystemUpdate: () => Promise<{ success: boolean; error?: string }>;
+  snoozeUpdate: () => void;
+  applyGlobalUpdateAvailable: (info: VersionInfo) => void;
+  simulateGlobalUpdate: () => Promise<void>;
 
   selectedConversationId: string | number;
   setSelectedConversationId: (id: string | number) => void;
@@ -1426,10 +1429,77 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     try {
       const res = await apiClient.get('/core/system-version/');
       if (res && res.current_commit) {
-        set({ versionInfo: res as VersionInfo });
+        const info = res as VersionInfo;
+        set({ versionInfo: info });
+        if (info.update_available) {
+          get().applyGlobalUpdateAvailable(info);
+        }
       }
     } catch (e) {
       console.warn('Could not fetch version info:', e);
+    }
+  },
+
+  applyGlobalUpdateAvailable: (info: VersionInfo) => {
+    set({ versionInfo: info });
+    if (!info.update_available) return;
+
+    try {
+      const raw = localStorage.getItem('whatsq_update_snooze');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // If snoozed for this exact commit and snooze period (30 min) hasn't expired, skip modal
+        if (parsed.commit === info.latest_commit && Date.now() < parsed.snoozeUntil) {
+          return;
+        }
+      }
+    } catch {}
+
+    // Forcefully show the dead-center update modal
+    set({ isUpdateModalOpen: true });
+  },
+
+  snoozeUpdate: () => {
+    const latestCommit = get().versionInfo?.latest_commit || 'latest';
+    const snoozeUntil = Date.now() + 30 * 60 * 1000; // 30 minutes
+    try {
+      localStorage.setItem('whatsq_update_snooze', JSON.stringify({
+        commit: latestCommit,
+        snoozeUntil,
+      }));
+    } catch {}
+    set({ isUpdateModalOpen: false });
+    get().addToast('Update postponed for 30 minutes. You can apply it anytime from the header button.', 'info');
+  },
+
+  simulateGlobalUpdate: async () => {
+    try {
+      const res = await apiClient.post('/core/system-update/broadcast/', { simulate: true });
+      if (res && res.broadcast) {
+        try {
+          localStorage.removeItem('whatsq_update_snooze');
+        } catch {}
+        get().applyGlobalUpdateAvailable(res.broadcast as VersionInfo);
+        get().addToast('Global Update Broadcast simulated!', 'info');
+      }
+    } catch (e) {
+      const simulated: VersionInfo = {
+        current_commit: get().versionInfo?.current_commit || '731c43b',
+        current_author: 'Vishnu G',
+        current_date: 'Sep 14, 2026',
+        current_message: 'System running production release',
+        latest_commit: '89ef12c',
+        latest_author: 'WhatsQ Core Team',
+        latest_date: 'Just now',
+        latest_message: 'Critical Security Shields & High-Concurrency Engine v2.4.2',
+        update_available: true,
+        is_git: true,
+      };
+      try {
+        localStorage.removeItem('whatsq_update_snooze');
+      } catch {}
+      set({ versionInfo: simulated, isUpdateModalOpen: true });
+      get().addToast('Simulated global update available!', 'info');
     }
   },
 
