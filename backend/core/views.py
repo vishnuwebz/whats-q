@@ -5,7 +5,7 @@ from django.db.models import Q
 from .models import Workspace, Branch, Integration
 from crm.models import Lead, Deal, Customer
 from conversations.models import Conversation, WhatsAppTemplate
-from operations.models import Job
+from operations.models import Job, Employee
 from finance.models import Invoice
 
 class WorkspaceSerializer(serializers.ModelSerializer):
@@ -116,6 +116,17 @@ class GlobalSearchView(APIView):
                 'title': cust.name,
                 'subtitle': cust.phone,
                 'tab': 'crm-customers',
+            })
+
+        for emp in Employee.objects.filter(
+            Q(name__icontains=q) | Q(employee_id_str__icontains=q) | Q(role__icontains=q)
+        )[:5]:
+            results.append({
+                'type': 'employee',
+                'id': emp.id,
+                'title': emp.name,
+                'subtitle': f'{emp.role} • {emp.department}',
+                'tab': 'ops-employees',
             })
 
         return Response(results[:25])

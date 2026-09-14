@@ -13,8 +13,8 @@ export const IntegrationsView: React.FC = () => {
       <Header
         title="Integrations & API Hub"
         subtitle="Connect official Meta WhatsApp Cloud API, payment gateways, accounting, and CRMs."
-        primaryActionLabel="Browse 50+ Apps"
-        onPrimaryAction={() => addToast('App marketplace loaded', 'info')}
+        primaryActionLabel="Configure Meta WhatsApp API"
+        onPrimaryAction={() => setIsMetaModalOpen(true)}
       />
 
       <div className="p-6 space-y-6">

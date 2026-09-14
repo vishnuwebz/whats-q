@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Wallet, Search, Filter, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { Wallet, Search, Filter, ArrowUpRight, CheckCircle2, QrCode, Copy, Download, Share2, X } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export const PaymentsView: React.FC = () => {
-  const { transactions, addToast } = useQiyamStore();
+  const { transactions, addToast, setActiveTab } = useQiyamStore();
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrForm, setQrForm] = useState({
+    amount: 3500,
+    customer_name: 'Priya Sharma',
+    phone: '+91 98765 43210',
+    note: 'Invoice #INV-2024-001 Advance'
+  });
+
+  const upiUri = `upi://pay?pa=qiyamsolutions@icici&pn=Qiyam+Ventures&am=${qrForm.amount}&cu=INR&tn=${encodeURIComponent(qrForm.note)}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(upiUri);
+    addToast('UPI payment link copied to clipboard!', 'success');
+  };
 
   const paymentMethodData = [
     { name: 'UPI (GPay / PhonePe)', value: 1485000, color: '#10B981' },
@@ -20,7 +34,7 @@ export const PaymentsView: React.FC = () => {
         title="Payments & UPI Collections"
         subtitle="Real-time UPI collection reconciliations, instant QR codes, and payment gateway webhooks."
         primaryActionLabel="Generate UPI QR"
-        onPrimaryAction={() => addToast('UPI QR code generated for +91 98765 43210', 'success')}
+        onPrimaryAction={() => setIsQrModalOpen(true)}
       />
 
       <div className="p-6 space-y-6">
@@ -102,6 +116,102 @@ export const PaymentsView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Dynamic UPI QR Code Modal */}
+      {isQrModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Dynamic UPI Collection QR</h3>
+                <p className="text-xs text-slate-500">Generate instant QR code for client payment settlement.</p>
+              </div>
+              <button
+                onClick={() => setIsQrModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 pt-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="font-semibold text-slate-700 block mb-1">Customer Name / Payer</label>
+                  <input
+                    type="text"
+                    value={qrForm.customer_name}
+                    onChange={(e) => setQrForm({ ...qrForm, customer_name: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Amount to Collect (₹)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={qrForm.amount}
+                    onChange={(e) => setQrForm({ ...qrForm, amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-slate-900 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Reference / Invoice Note</label>
+                  <input
+                    type="text"
+                    value={qrForm.note}
+                    onChange={(e) => setQrForm({ ...qrForm, note: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Visual Simulated QR Container */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center space-y-3">
+                <div className="p-3 bg-white rounded-xl shadow-md border border-slate-100 inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiUri)}`}
+                    alt="UPI QR Code"
+                    className="w-36 h-36 mx-auto rounded"
+                  />
+                </div>
+
+                <div>
+                  <div className="font-black text-emerald-600 text-lg">₹{qrForm.amount.toLocaleString()}</div>
+                  <div className="text-[11px] text-slate-500 font-mono">VPA: qiyamsolutions@icici</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Compatible with Google Pay, PhonePe, Paytm & BHIM</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Copy className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Copy UPI Link</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addToast(`Payment request of ₹${qrForm.amount} sent to WhatsApp chat!`, 'success');
+                    setIsQrModalOpen(false);
+                    setActiveTab('conversations');
+                  }}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Send via Chat</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

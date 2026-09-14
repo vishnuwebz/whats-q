@@ -30,13 +30,23 @@ export const ConversationsView: React.FC = () => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
 
-  const currentConv = conversations.find((c) => c.id === selectedConversationId) || conversations[0];
+  const { globalFilter } = useQiyamStore();
+
+  const currentConv = conversations.find(
+    (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
+  ) || conversations[0];
 
   const filteredConversations = conversations.filter((c) => {
     if (activeFilterTab !== 'all' && c.status !== activeFilterTab) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return c.contact_name.toLowerCase().includes(q) || c.phone_number.includes(q) || c.service_needed?.toLowerCase().includes(q);
+    if (globalFilter.status && globalFilter.status !== 'all' && c.status !== globalFilter.status) return false;
+    
+    const activeQuery = (searchQuery || globalFilter.query || '').toLowerCase();
+    if (activeQuery) {
+      return (
+        c.contact_name.toLowerCase().includes(activeQuery) ||
+        c.phone_number.includes(activeQuery) ||
+        c.service_needed?.toLowerCase().includes(activeQuery)
+      );
     }
     return true;
   });

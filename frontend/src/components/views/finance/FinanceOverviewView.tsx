@@ -6,9 +6,16 @@ import {
   Wallet, CreditCard, Receipt, FileText, BarChart3, Download
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { exportTableToCsv } from '@/utils/exportCsv';
 
 export const FinanceOverviewView: React.FC = () => {
-  const { transactions, invoices, addToast, setActiveTab } = useQiyamStore();
+  const store = useQiyamStore();
+  const { transactions, invoices, addToast, setActiveTab } = store;
+
+  const handleExport = () => {
+    const res = exportTableToCsv('finance-overview', store);
+    addToast(`Financial statement exported (${res.filename})`, 'success');
+  };
 
   const financialData = [
     { month: 'Jan', income: 142000, expense: 85000 },
@@ -24,7 +31,7 @@ export const FinanceOverviewView: React.FC = () => {
         title="Financial Overview"
         subtitle="Summary of company revenue, expenses, net profit, and banking cash flows."
         primaryActionLabel="Export Financial Statement"
-        onPrimaryAction={() => addToast('Financial Statement exported (PDF/Excel)', 'success')}
+        onPrimaryAction={handleExport}
       />
 
       <div className="p-6 space-y-6">

@@ -19,10 +19,37 @@ export const LeadsView: React.FC = () => {
     convertLeadToDeal,
     addToast,
     setActiveTab,
+    addLead,
+    globalFilter,
+    targetHighlightId,
   } = useQiyamStore();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
+  const [newLeadForm, setNewLeadForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    service: 'AC Installation & Repair',
+    value: 3500,
+    location: 'Kozhikode, Kerala',
+    stage: 'new' as Lead['stage'],
+    owner: 'Rahul Mehta',
+    source: 'WhatsApp Click-to-Ad',
+    notes: '',
+  });
+
+  // React to targetHighlightId (from notifications or omnisearch)
+  React.useEffect(() => {
+    if (targetHighlightId) {
+      const match = leads.find((l) => l.id === targetHighlightId || String(l.id) === String(targetHighlightId) || l.phone.includes(String(targetHighlightId)));
+      if (match) {
+        setSelectedLead(match);
+        setIsLeadDrawerOpen(true);
+      }
+    }
+  }, [targetHighlightId, leads, setSelectedLead, setIsLeadDrawerOpen]);
 
   const stages: Array<{ id: Lead['stage']; label: string; count: number; color: string }> = [
     { id: 'new', label: 'New Lead', count: leads.filter((l) => l.stage === 'new').length, color: 'border-blue-500 text-blue-700 bg-blue-50' },
@@ -32,11 +59,37 @@ export const LeadsView: React.FC = () => {
     { id: 'negotiation', label: 'Negotiation', count: leads.filter((l) => l.stage === 'negotiation').length, color: 'border-orange-500 text-orange-700 bg-orange-50' },
   ];
 
+  const effectiveSearch = searchQuery || globalFilter.query || '';
+
   const filteredLeads = leads.filter((l) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      if (globalFilter.status === 'open' && l.stage !== 'new' && l.stage !== 'contacted') return false;
+      if (globalFilter.status === 'in_progress' && l.stage !== 'qualified' && l.stage !== 'proposal_sent' && l.stage !== 'negotiation') return false;
+      if (globalFilter.status === 'completed' && l.stage !== 'won') return false;
+    }
+    if (!effectiveSearch) return true;
+    const q = effectiveSearch.toLowerCase();
     return l.name.toLowerCase().includes(q) || l.phone.includes(q) || l.service.toLowerCase().includes(q);
   });
+
+  const handleCreateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLeadForm.name.trim()) return;
+    await addLead(newLeadForm);
+    setIsAddLeadModalOpen(false);
+    setNewLeadForm({
+      name: '',
+      phone: '',
+      email: '',
+      service: 'AC Installation & Repair',
+      value: 3500,
+      location: 'Kozhikode, Kerala',
+      stage: 'new',
+      owner: 'Rahul Mehta',
+      source: 'WhatsApp Click-to-Ad',
+      notes: '',
+    });
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -56,7 +109,7 @@ export const LeadsView: React.FC = () => {
         title="Leads"
         subtitle="Manage and track potential customers across the conversion pipeline."
         primaryActionLabel="Add Lead"
-        onPrimaryAction={() => addToast('New lead form opened', 'info')}
+        onPrimaryAction={() => setIsAddLeadModalOpen(true)}
       />
 
       {/* Control Bar: View Mode Switch & Filters */}
@@ -344,6 +397,138 @@ export const LeadsView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Add Lead Modal */}
+      {isAddLeadModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Add New CRM Lead</h3>
+                  <p className="text-[11px] text-slate-500">Capture customer details, required service, and pipeline stage.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAddLeadModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateLead} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Customer Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newLeadForm.name}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, name: e.target.value })}
+                    placeholder="e.g. Farhan Ali"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Phone / WhatsApp *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newLeadForm.phone}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
+                    placeholder="e.g. +91 98470 12345"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Service Needed</label>
+                  <select
+                    value={newLeadForm.service}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, service: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="AC Installation & Repair">AC Installation & Repair</option>
+                    <option value="Split AC Deep Service">Split AC Deep Service</option>
+                    <option value="Commercial HVAC Maintenance">Commercial HVAC Maintenance</option>
+                    <option value="Gas Refill & Leakage Check">Gas Refill & Leakage Check</option>
+                    <option value="Electrical & Plumbing">Electrical & Plumbing</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Estimated Value (₹)</label>
+                  <input
+                    type="number"
+                    value={newLeadForm.value}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, value: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Location</label>
+                  <input
+                    type="text"
+                    value={newLeadForm.location}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, location: e.target.value })}
+                    placeholder="e.g. Mavoor Road, Calicut"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Lead Source</label>
+                  <select
+                    value={newLeadForm.source}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, source: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="WhatsApp Click-to-Ad">WhatsApp Click-to-Ad</option>
+                    <option value="Website Contact Form">Website Contact Form</option>
+                    <option value="Google Search Ads">Google Search Ads</option>
+                    <option value="Customer Referral">Customer Referral</option>
+                    <option value="Direct Walk-in">Direct Walk-in</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Initial Notes</label>
+                <textarea
+                  rows={2}
+                  value={newLeadForm.notes}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, notes: e.target.value })}
+                  placeholder="Additional context or requirements..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none resize-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddLeadModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm shadow-emerald-700/20 cursor-pointer"
+                >
+                  Create Lead
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

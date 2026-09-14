@@ -4,17 +4,70 @@ import { Header } from '@/components/layout/Header';
 import { FollowUp } from '@/types';
 import {
   PhoneCall, MessageSquare, Mail, Calendar, Clock, CheckCircle2,
-  AlertCircle, MoreVertical, Plus, User, Search, Filter
+  AlertCircle, MoreVertical, Plus, User, Search, Filter, X
 } from 'lucide-react';
 
 export const FollowupsView: React.FC = () => {
-  const { followups, addToast, setActiveTab } = useQiyamStore();
+  const { followups, addFollowUp, addToast, setActiveTab, globalFilter, targetHighlightId } = useQiyamStore();
   const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'due_today' | 'scheduled' | 'overdue' | 'completed'>('all');
+  const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // New follow-up form state
+  const [formData, setFormData] = useState({
+    title: '',
+    customer_name: '',
+    phone: '',
+    related_to: 'Service Inquiry',
+    follow_up_type: 'call' as 'call' | 'whatsapp' | 'email' | 'meeting',
+    assigned_to: 'Vikram Patel',
+    due_date: new Date().toISOString().split('T')[0],
+    due_time: '11:00 AM',
+    status: 'scheduled' as 'due_today' | 'scheduled' | 'overdue' | 'completed',
+    priority: 'medium' as 'high' | 'medium' | 'low',
+    notes: ''
+  });
 
   const filtered = followups.filter((f) => {
-    if (activeTabFilter === 'all') return true;
-    return f.status === activeTabFilter;
+    if (activeTabFilter !== 'all' && f.status !== activeTabFilter) return false;
+    if (globalFilter.status && globalFilter.status !== 'all' && f.status !== globalFilter.status) return false;
+    if (globalFilter.priority && globalFilter.priority !== 'all' && f.priority !== globalFilter.priority) return false;
+    
+    const activeSearch = (search || globalFilter.query || '').toLowerCase();
+    if (activeSearch) {
+      return (
+        f.customer_name.toLowerCase().includes(activeSearch) ||
+        f.title.toLowerCase().includes(activeSearch) ||
+        f.phone.includes(activeSearch)
+      );
+    }
+    return true;
   });
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.customer_name) {
+      addToast('Please enter both title and customer name', 'error');
+      return;
+    }
+
+    addFollowUp(formData);
+    addToast(`Follow-up scheduled with ${formData.customer_name}!`, 'success');
+    setIsModalOpen(false);
+    setFormData({
+      title: '',
+      customer_name: '',
+      phone: '',
+      related_to: 'Service Inquiry',
+      follow_up_type: 'call',
+      assigned_to: 'Vikram Patel',
+      due_date: new Date().toISOString().split('T')[0],
+      due_time: '11:00 AM',
+      status: 'scheduled',
+      priority: 'medium',
+      notes: ''
+    });
+  };
 
   const handleAction = (item: FollowUp, action: 'call' | 'whatsapp' | 'complete') => {
     if (action === 'call') {
@@ -33,7 +86,7 @@ export const FollowupsView: React.FC = () => {
         title="Follow-ups"
         subtitle="Manage pending and upcoming customer interactions, calls, and payment reminders."
         primaryActionLabel="Schedule Follow-up"
-        onPrimaryAction={() => addToast('Schedule follow-up modal opened', 'info')}
+        onPrimaryAction={() => setIsModalOpen(true)}
       />
 
       <div className="p-6 space-y-6">
@@ -91,12 +144,19 @@ export const FollowupsView: React.FC = () => {
           {filtered.map((item) => {
             const isDueToday = item.status === 'due_today';
             const isOverdue = item.status === 'overdue';
+            const isTarget = targetHighlightId === item.id || targetHighlightId === item.customer_name;
 
             return (
               <div
                 key={item.id}
                 className={`bg-white p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
-                  isOverdue ? 'border-red-200' : isDueToday ? 'border-emerald-200' : 'border-slate-200'
+                  isTarget
+                    ? 'ring-2 ring-amber-400 bg-amber-50/40 border-amber-300'
+                    : isOverdue
+                    ? 'border-red-200'
+                    : isDueToday
+                    ? 'border-emerald-200'
+                    : 'border-slate-200'
                 }`}
               >
                 <div>
@@ -177,6 +237,162 @@ export const FollowupsView: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Schedule Follow-up Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Schedule New Follow-up</h3>
+                <p className="text-xs text-slate-500">Plan customer outreach, calls, or reminders with staff.</p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="space-y-4 pt-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="font-semibold text-slate-700 block mb-1">Follow-up Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Call back for quotation confirmation"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sunil Kumar"
+                    value={formData.customer_name}
+                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    placeholder="+91 98765 43210"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-mono text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Interaction Type</label>
+                  <select
+                    value={formData.follow_up_type}
+                    onChange={(e) => setFormData({ ...formData, follow_up_type: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  >
+                    <option value="call">Phone Call</option>
+                    <option value="whatsapp">WhatsApp Message</option>
+                    <option value="email">Email</option>
+                    <option value="meeting">In-Person Meeting</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Assigned Agent</label>
+                  <input
+                    type="text"
+                    value={formData.assigned_to}
+                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Due Time</label>
+                  <input
+                    type="text"
+                    placeholder="11:30 AM"
+                    value={formData.due_time}
+                    onChange={(e) => setFormData({ ...formData, due_time: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Initial Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="due_today">Due Today</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="font-semibold text-slate-700 block mb-1">Context Notes</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Client wanted a discount on the 3-unit package..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all"
+                >
+                  Save Follow-up
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

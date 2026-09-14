@@ -3,9 +3,16 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { BarChart3, TrendingUp, Clock, CheckCircle2, MessageSquare, PieChart } from 'lucide-react';
 import { ResponsiveContainer, PieChart as RechartPie, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { exportTableToCsv } from '@/utils/exportCsv';
 
 export const AnalyticsView: React.FC = () => {
-  const { addToast } = useQiyamStore();
+  const store = useQiyamStore();
+  const { addToast } = store;
+
+  const handleExport = () => {
+    const res = exportTableToCsv('analytics', store);
+    addToast(`Analytics report exported (${res.filename})`, 'success');
+  };
 
   const channelData = [
     { name: 'Web Chat', value: 5801, color: '#3B82F6', percent: '45.2%' },
@@ -29,7 +36,7 @@ export const AnalyticsView: React.FC = () => {
         title="Analytics & Intent Intelligence"
         subtitle="Multi-channel conversation breakdown, resolution rates, and AI customer intent analytics."
         primaryActionLabel="Export Analytics"
-        onPrimaryAction={() => addToast('Analytics report exported as PDF', 'success')}
+        onPrimaryAction={handleExport}
       />
 
       <div className="p-6 space-y-6">

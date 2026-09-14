@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 export const RouteOptimizationView: React.FC = () => {
-  const { routes, addToast } = useQiyamStore();
+  const { routes, addToast, targetHighlightId } = useQiyamStore();
   const currentRoute = routes[0];
   const [activeStopId, setActiveStopId] = useState<number>(2);
 
@@ -49,6 +49,11 @@ export const RouteOptimizationView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {targetHighlightId && (
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500 text-white uppercase animate-pulse flex items-center gap-1 shadow-sm">
+              <span>● Target Route #{targetHighlightId}</span>
+            </span>
+          )}
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 uppercase">
             In Progress (ETA 12:15 PM)
           </span>

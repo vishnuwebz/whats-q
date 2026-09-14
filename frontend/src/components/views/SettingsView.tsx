@@ -11,8 +11,10 @@ export const SettingsView: React.FC = () => {
   const [enableNotif, setEnableNotif] = useState(true);
   const [allowUploads, setAllowUploads] = useState(true);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    localStorage.setItem('whatsq_workspace_name', workspaceName);
+    localStorage.setItem('whatsq_timezone', timeZone);
     addToast('Workspace settings saved successfully!', 'success');
   };
 
@@ -22,7 +24,7 @@ export const SettingsView: React.FC = () => {
         title="Workspace Settings"
         subtitle="Configure organization details, regional preferences, role permissions, and storage."
         primaryActionLabel="Save Changes"
-        onPrimaryAction={() => addToast('Settings updated', 'success')}
+        onPrimaryAction={handleSave}
       />
 
       <div className="p-6 max-w-4xl space-y-6 text-xs">

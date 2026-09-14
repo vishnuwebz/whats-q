@@ -2,9 +2,16 @@ import React from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Clock, CheckCircle2, AlertCircle, MapPin, Smartphone, User } from 'lucide-react';
+import { exportTableToCsv } from '@/utils/exportCsv';
 
 export const AttendanceView: React.FC = () => {
-  const { attendance, clockInEmployee, addToast } = useQiyamStore();
+  const store = useQiyamStore();
+  const { attendance, clockInEmployee, addToast } = store;
+
+  const handleExport = () => {
+    const res = exportTableToCsv('ops-attendance', store);
+    addToast(`Timesheet exported (${res.count} records downloaded as ${res.filename})`, 'success');
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -12,7 +19,7 @@ export const AttendanceView: React.FC = () => {
         title="Attendance & Timesheet"
         subtitle="Real-time employee check-ins, geo-location verified punch, and work hours."
         primaryActionLabel="Export Timesheet"
-        onPrimaryAction={() => addToast('Timesheet exported as CSV', 'success')}
+        onPrimaryAction={handleExport}
       />
 
       <div className="p-6 space-y-6">

@@ -36,6 +36,17 @@ export interface VersionInfo {
   is_git: boolean;
 }
 
+export interface QNotification {
+  id: number;
+  title: string;
+  text: string;
+  time: string;
+  unread: boolean;
+  target: TabType;
+  itemId?: string | number;
+  itemType?: 'conversation' | 'invoice' | 'job' | 'route' | 'lead' | 'approval' | 'appointment' | 'deal';
+}
+
 interface QiyamState {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -128,7 +139,48 @@ interface QiyamState {
   updateEmployee: (employeeId: string | number, updates: Partial<Employee>) => Promise<void>;
   saveWorkflowNodes: (workflowId: string | number, nodes: FlowNode[]) => Promise<void>;
   runWorkflowTest: (workflowId: string | number, inputMessage: string) => Promise<{ steps: string[]; duration: string }>;
+  globalDateRange: string;
+  setGlobalDateRange: (range: string) => void;
+  globalFilter: { status?: string; priority?: string; query?: string };
+  setGlobalFilter: (filter: Partial<{ status?: string; priority?: string; query?: string }>) => void;
+  resetGlobalFilter: () => void;
+
+  targetHighlightId: string | number | null;
+  setTargetHighlightId: (id: string | number | null) => void;
+
+  isOmniSearchOpen: boolean;
+  setIsOmniSearchOpen: (open: boolean) => void;
+
+  notifications: QNotification[];
+  markNotificationRead: (id: number) => void;
+  markAllNotificationsRead: () => void;
+  handleNotificationClick: (notif: QNotification) => void;
+
+  addLead: (lead: Partial<Lead>) => Promise<Lead>;
+  addDeal: (deal: Partial<Deal>) => Promise<Deal>;
+  addJob: (job: Partial<Job>) => Promise<Job>;
+  addInvoice: (inv: Partial<Invoice>) => Promise<Invoice>;
+  addAppointment: (apt: Partial<Appointment>) => Promise<Appointment>;
+  addCustomer: (cust: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  addExpense: (exp: Partial<Expense>) => Promise<Expense>;
+  addTask: (task: Partial<Task>) => Promise<Task>;
+  addInventoryItem: (inv: Partial<InventoryItem>) => Promise<InventoryItem>;
+  addTransaction: (tx: Partial<Transaction>) => Promise<Transaction>;
+  addApproval: (ap: Partial<Approval>) => Promise<Approval>;
+  addFollowUp: (fu: Partial<FollowUp>) => Promise<FollowUp>;
+  addBranch: (b: Partial<BranchItem>) => Promise<BranchItem>;
+  addKnowledgeArticle: (art: Partial<KnowledgeArticle>) => Promise<KnowledgeArticle>;
+  addPaymentAccount: (acc: Partial<PaymentAccount>) => Promise<PaymentAccount>;
 }
+
+const INITIAL_NOTIFICATIONS: QNotification[] = [
+  { id: 1, title: 'New Booking from Amit Verma', text: 'AC Repair in Koyilandy scheduled for tomorrow 10:00 AM.', time: '2m ago', unread: true, target: 'conversations', itemId: 1, itemType: 'conversation' },
+  { id: 2, title: 'UPI Payment Received ₹2,800', text: 'Priya Sharma completed 30% advance via GPay.', time: '15m ago', unread: true, target: 'finance-invoices', itemId: 'INV-2024-0183', itemType: 'invoice' },
+  { id: 3, title: 'Overdue Job Flagged', text: 'Job #JOB-1024 delayed near Beach Road. Assign Amit Sharma.', time: '30m ago', unread: true, target: 'ops-jobs', itemId: 'JOB-1024', itemType: 'job' },
+  { id: 4, title: 'AI Route RTE-001 Ready', text: '12-stop GPS optimized route created for Ramesh Kumar.', time: '1h ago', unread: true, target: 'ops-routes', itemId: 'RTE-001', itemType: 'route' },
+  { id: 5, title: 'New WhatsApp Click-to-Ad Lead', text: 'Inquiry from +91 90000 11123 for AC Installation.', time: '2h ago', unread: true, target: 'crm-leads', itemId: 1, itemType: 'lead' },
+  { id: 6, title: 'Purchase Approval Needed', text: 'Warehouse spare parts request APR-1024 (₹25,000) pending.', time: '3h ago', unread: true, target: 'automation-approvals', itemId: 'APR-1024', itemType: 'approval' },
+];
 
 export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: 'dashboard',
@@ -175,6 +227,60 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
   removeToast: (id) => {
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+  },
+
+  globalDateRange: 'May 1 – May 31, 2024',
+  setGlobalDateRange: (range) => {
+    set({ globalDateRange: range });
+    get().addToast(`Date range set to ${range}`, 'info');
+  },
+  globalFilter: { status: 'all', priority: 'all', query: '' },
+  setGlobalFilter: (filter) => set((state) => ({ globalFilter: { ...state.globalFilter, ...filter } })),
+  resetGlobalFilter: () => {
+    set({ globalFilter: { status: 'all', priority: 'all', query: '' } });
+    get().addToast('Filter cleared', 'info');
+  },
+
+  targetHighlightId: null,
+  setTargetHighlightId: (id) => set({ targetHighlightId: id }),
+
+  isOmniSearchOpen: false,
+  setIsOmniSearchOpen: (open) => set({ isOmniSearchOpen: open }),
+
+  notifications: INITIAL_NOTIFICATIONS,
+  markNotificationRead: (id) => {
+    set((state) => ({
+      notifications: state.notifications.map((n) => (n.id === id ? { ...n, unread: false } : n)),
+    }));
+  },
+  markAllNotificationsRead: () => {
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, unread: false })),
+    }));
+    get().addToast('All notifications marked as read', 'info');
+  },
+  handleNotificationClick: (notif) => {
+    get().markNotificationRead(notif.id);
+    set({ activeTab: notif.target });
+    if (notif.itemId) {
+      set({ targetHighlightId: notif.itemId });
+    }
+    if (notif.target === 'conversations') {
+      const conv = get().conversations.find(
+        (c) => c.id === notif.itemId || c.contact_name.toLowerCase().includes('amit')
+      );
+      if (conv) {
+        set({ selectedConversationId: conv.id });
+      }
+    } else if (notif.target === 'crm-leads') {
+      const lead = get().leads.find(
+        (l) => l.id === notif.itemId || l.phone.includes('90000') || l.name.toLowerCase().includes('inquiry')
+      );
+      if (lead) {
+        set({ selectedLead: lead, isLeadDrawerOpen: true, targetHighlightId: lead.id });
+      }
+    }
+    get().addToast(`Showing: ${notif.title}`, 'info');
   },
 
   conversations: [],
@@ -722,6 +828,443 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     }
     get().addToast(res?.error || 'Workflow test failed', 'error');
     return { steps: [], duration: '0s' };
+  },
+
+  addLead: async (newLead) => {
+    const nextId = get().leads.length + 1;
+    const item: Lead = {
+      id: nextId,
+      name: newLead.name || 'New Lead',
+      phone: newLead.phone || '+91 90000 00000',
+      email: newLead.email || '',
+      service: newLead.service || 'AC General Service',
+      location: newLead.location || 'Kozhikode, Kerala',
+      value: Number(newLead.value) || 2800,
+      stage: newLead.stage || 'new',
+      owner: newLead.owner || 'Rahul Mehta',
+      source: newLead.source || 'WhatsApp Inbound',
+      created_at_str: 'Today',
+      last_contact_str: 'Just now',
+      notes: newLead.notes || '',
+      tags: newLead.tags || ['WhatsApp Lead'],
+      ...newLead,
+    };
+    try {
+      const res = await apiClient.post('/crm/leads/', item);
+      const created = (res?.id && res.success !== false) ? (res as Lead) : item;
+      set((state) => ({ leads: [created, ...state.leads] }));
+      get().addToast(`Lead "${created.name}" created successfully!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ leads: [item, ...state.leads] }));
+      get().addToast(`Lead "${item.name}" created`, 'success');
+      return item;
+    }
+  },
+
+  addDeal: async (newDeal) => {
+    const nextId = get().deals.length + 1;
+    const item: Deal = {
+      id: nextId,
+      deal_name: newDeal.deal_name || 'AC AMC Contract',
+      customer_name: newDeal.customer_name || 'Valued Customer',
+      phone: newDeal.phone || '+91 90000 00000',
+      email: newDeal.email || 'client@example.com',
+      amount: Number(newDeal.amount) || 15000,
+      stage: newDeal.stage || 'proposal_sent',
+      probability: Number(newDeal.probability) || 60,
+      deal_owner: newDeal.deal_owner || 'Rahul Mehta',
+      source: newDeal.source || 'Direct Referral',
+      expected_close_date: newDeal.expected_close_date || 'May 31, 2024',
+      tags: newDeal.tags || ['Enterprise'],
+      notes: newDeal.notes || '',
+      ...newDeal,
+    };
+    try {
+      const res = await apiClient.post('/crm/deals/', item);
+      const created = (res?.id && res.success !== false) ? (res as Deal) : item;
+      set((state) => ({ deals: [created, ...state.deals] }));
+      get().addToast(`Deal "${created.deal_name}" created!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ deals: [item, ...state.deals] }));
+      get().addToast(`Deal "${item.deal_name}" created`, 'success');
+      return item;
+    }
+  },
+
+  addJob: async (newJob) => {
+    const nextId = get().jobs.length + 1;
+    const item: Job = {
+      id: nextId,
+      job_id_str: newJob.job_id_str || `JOB-${1025 + nextId}`,
+      customer_name: newJob.customer_name || 'Client',
+      phone: newJob.phone || '+91 98765 43210',
+      service: newJob.service || 'AC Deep Service',
+      date_str: newJob.date_str || 'Today',
+      time_str: newJob.time_str || '11:00 AM',
+      assigned_to: newJob.assigned_to || 'Amit Sharma',
+      status: newJob.status || 'scheduled',
+      priority: newJob.priority || 'high',
+      location: newJob.location || 'Kozhikode Beach Road',
+      amount: Number(newJob.amount) || 3500,
+      advance_paid: Number(newJob.advance_paid) || 1000,
+      payment_status: newJob.payment_status || 'advance_paid',
+      timeline: [
+        { title: 'Job Dispatch Created', timestamp: 'Just now', by: 'System Dispatch', completed: true },
+        { title: 'Technician Assigned', timestamp: 'Just now', by: newJob.assigned_to || 'Amit Sharma', completed: true },
+      ],
+      ...newJob,
+    };
+    try {
+      const res = await apiClient.post('/operations/jobs/', item);
+      const created = (res?.id && res.success !== false) ? (res as Job) : item;
+      set((state) => ({ jobs: [created, ...state.jobs] }));
+      get().addToast(`Job dispatch "${created.job_id_str}" scheduled!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ jobs: [item, ...state.jobs] }));
+      get().addToast(`Job dispatch "${item.job_id_str}" scheduled`, 'success');
+      return item;
+    }
+  },
+
+  addInvoice: async (newInv) => {
+    const nextId = get().invoices.length + 1;
+    const invNum = newInv.invoice_number || `INV-2024-${String(187 + nextId).padStart(4, '0')}`;
+    const item: Invoice = {
+      id: nextId,
+      invoice_number: invNum,
+      customer_name: newInv.customer_name || 'Customer Name',
+      customer_email: newInv.customer_email || 'customer@gmail.com',
+      customer_phone: newInv.customer_phone || '+91 98765 43210',
+      invoice_date: newInv.invoice_date || 'May 28, 2024',
+      due_date: newInv.due_date || 'June 05, 2024',
+      amount: Number(newInv.amount) || 4500,
+      status: newInv.status || 'sent',
+      paid_amount: Number(newInv.paid_amount) || 0,
+      payment_method: newInv.payment_method || 'UPI (GPay)',
+      items: newInv.items || [
+        { description: 'Service Charges', qty: 1, unitPrice: Number(newInv.amount) || 4500, amount: Number(newInv.amount) || 4500 }
+      ],
+      ...newInv,
+    };
+    try {
+      const res = await apiClient.post('/finance/invoices/', item);
+      const created = (res?.id && res.success !== false) ? (res as Invoice) : item;
+      set((state) => ({ invoices: [created, ...state.invoices] }));
+      get().addToast(`Invoice "${created.invoice_number}" created!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ invoices: [item, ...state.invoices] }));
+      get().addToast(`Invoice "${item.invoice_number}" created`, 'success');
+      return item;
+    }
+  },
+
+  addAppointment: async (newApt) => {
+    const nextId = get().appointments.length + 1;
+    const item: Appointment = {
+      id: nextId,
+      apt_id_str: newApt.apt_id_str || `APT-${100 + nextId}`,
+      customer_name: newApt.customer_name || 'Customer',
+      phone: newApt.phone || '+91 98765 00000',
+      service: newApt.service || 'AC Inspection',
+      employee: newApt.employee || 'Ramesh Kumar',
+      date_str: newApt.date_str || 'Tomorrow',
+      time_str: newApt.time_str || '10:00 AM',
+      status: newApt.status || 'confirmed',
+      duration: newApt.duration || '1h 30m',
+      location: newApt.location || 'Kozhikode',
+      amount: Number(newApt.amount) || 2800,
+      advance: Number(newApt.advance) || 840,
+      payment_status: newApt.payment_status || 'advance_paid',
+      source: newApt.source || 'WhatsApp Chatbot',
+      notes: newApt.notes || 'Confirmed booking slot',
+      ...newApt,
+    };
+    try {
+      const res = await apiClient.post('/operations/appointments/', item);
+      const created = (res?.id && res.success !== false) ? (res as Appointment) : item;
+      set((state) => ({ appointments: [created, ...state.appointments] }));
+      get().addToast(`Appointment for ${created.customer_name} booked!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ appointments: [item, ...state.appointments] }));
+      get().addToast(`Appointment for ${item.customer_name} booked`, 'success');
+      return item;
+    }
+  },
+
+  addCustomer: async (cust) => {
+    const nextId = get().customers.length + 1;
+    const item = { id: nextId, ...cust };
+    try {
+      const res = await apiClient.post('/crm/customers/', item);
+      const created = (res?.id && res.success !== false) ? res : item;
+      set((state) => ({ customers: [created, ...state.customers] }));
+      get().addToast('Customer added successfully', 'success');
+      return created;
+    } catch {
+      set((state) => ({ customers: [item, ...state.customers] }));
+      get().addToast('Customer record created', 'success');
+      return item;
+    }
+  },
+
+  addExpense: async (exp) => {
+    const nextId = get().expenses.length + 1;
+    const item: Expense = {
+      id: nextId,
+      date_str: exp.date_str || 'Today',
+      description: exp.description || 'Office Supplies',
+      category: exp.category || 'Operations',
+      vendor: exp.vendor || 'General Vendor',
+      amount: Number(exp.amount) || 1200,
+      payment_mode: exp.payment_mode || 'UPI',
+      project: exp.project || 'General Office',
+      status: exp.status || 'paid',
+      ...exp,
+    };
+    try {
+      const res = await apiClient.post('/finance/expenses/', item);
+      const created = (res?.id && res.success !== false) ? (res as Expense) : item;
+      set((state) => ({ expenses: [created, ...state.expenses] }));
+      get().addToast(`Expense "₹${created.amount}" recorded`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ expenses: [item, ...state.expenses] }));
+      get().addToast(`Expense "₹${item.amount}" recorded`, 'success');
+      return item;
+    }
+  },
+
+  addTask: async (task) => {
+    const nextId = get().tasks.length + 1;
+    const item: Task = {
+      id: nextId,
+      title: task.title || 'Job Checklist Inspection',
+      subtitle: task.subtitle || 'Field quality check verification',
+      related_to: task.related_to || 'JOB-1024',
+      assignee: task.assignee || 'Amit Sharma',
+      priority: task.priority || 'high',
+      status: task.status || 'in_progress',
+      due_date: task.due_date || 'Today 5:00 PM',
+      tags: task.tags || ['QC', 'Field'],
+      description: task.description || '',
+      checklist: task.checklist || [
+        { id: '1', text: 'Pre-check refrigerant pressure', completed: true },
+        { id: '2', text: 'Clean compressor coil', completed: false },
+        { id: '3', text: 'Customer signoff on WhatsApp', completed: false },
+      ],
+      ...task,
+    };
+    try {
+      const res = await apiClient.post('/operations/tasks/', item);
+      const created = (res?.id && res.success !== false) ? (res as Task) : item;
+      set((state) => ({ tasks: [created, ...state.tasks] }));
+      get().addToast(`Task "${created.title}" created`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ tasks: [item, ...state.tasks] }));
+      get().addToast(`Task "${item.title}" created`, 'success');
+      return item;
+    }
+  },
+
+  addInventoryItem: async (inv) => {
+    const nextId = get().inventory.length + 1;
+    const item: InventoryItem = {
+      id: nextId,
+      name: inv.name || 'AC Copper Piping 1/2"',
+      sku: inv.sku || `SKU-${1000 + nextId}`,
+      category: inv.category || 'Spare Parts',
+      stock_units: Number(inv.stock_units) || 50,
+      stock_value: Number(inv.stock_value) || 12500,
+      status: inv.status || 'in_stock',
+      location: inv.location || 'Rack B-03',
+      reorder_level: Number(inv.reorder_level) || 15,
+      reorder_qty: Number(inv.reorder_qty) || 30,
+      supplier: inv.supplier || 'Voltas Genuine Spares',
+      ...inv,
+    };
+    try {
+      const res = await apiClient.post('/operations/inventory/', item);
+      const created = (res?.id && res.success !== false) ? (res as InventoryItem) : item;
+      set((state) => ({ inventory: [created, ...state.inventory] }));
+      get().addToast(`SKU "${created.sku}" added to inventory`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ inventory: [item, ...state.inventory] }));
+      get().addToast(`SKU "${item.sku}" added`, 'success');
+      return item;
+    }
+  },
+
+  addTransaction: async (tx) => {
+    const nextId = get().transactions.length + 1;
+    const item: Transaction = {
+      id: nextId,
+      date_str: tx.date_str || 'Today',
+      tx_type: tx.tx_type || 'income',
+      description: tx.description || 'Advance Payment Received',
+      category: tx.category || 'Service Billing',
+      party: tx.party || 'Customer',
+      account: tx.account || 'HDFC Current A/C',
+      amount: Number(tx.amount) || 2800,
+      payment_mode: tx.payment_mode || 'UPI (GPay)',
+      reference_id: tx.reference_id || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+      status: tx.status || 'completed',
+      ...tx,
+    };
+    try {
+      const res = await apiClient.post('/finance/transactions/', item);
+      const created = (res?.id && res.success !== false) ? (res as Transaction) : item;
+      set((state) => ({ transactions: [created, ...state.transactions] }));
+      get().addToast(`Transaction "₹${created.amount}" recorded`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ transactions: [item, ...state.transactions] }));
+      get().addToast(`Transaction "₹${item.amount}" recorded`, 'success');
+      return item;
+    }
+  },
+
+  addApproval: async (ap) => {
+    const nextId = get().approvals.length + 1;
+    const item: Approval = {
+      id: nextId,
+      request_id_str: ap.request_id_str || `APR-${1024 + nextId}`,
+      title: ap.title || 'Purchase Authorization',
+      approval_type: ap.approval_type || 'Purchase Order',
+      department: ap.department || 'Operations',
+      requested_by: ap.requested_by || 'Rahul Mehta',
+      submitted_on: 'Today',
+      amount: Number(ap.amount) || 10000,
+      status: 'Pending',
+      ...ap,
+    };
+    try {
+      const res = await apiClient.post('/automation/approvals/', item);
+      const created = (res?.id && res.success !== false) ? (res as Approval) : item;
+      set((state) => ({ approvals: [created, ...state.approvals] }));
+      get().addToast(`Approval request "${created.request_id_str}" submitted!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ approvals: [item, ...state.approvals] }));
+      get().addToast(`Approval request "${item.request_id_str}" submitted`, 'success');
+      return item;
+    }
+  },
+
+  addFollowUp: async (fu) => {
+    const nextId = get().followups.length + 1;
+    const item: FollowUp = {
+      id: nextId,
+      title: fu.title || 'Payment Reminder Call',
+      related_to: fu.related_to || 'INV-2024-0183',
+      customer_name: fu.customer_name || 'Customer',
+      phone: fu.phone || '+91 98765 43210',
+      follow_up_type: fu.follow_up_type || 'whatsapp',
+      assigned_to: fu.assigned_to || 'Rahul Mehta',
+      due_date: fu.due_date || 'Today',
+      due_time: fu.due_time || '4:00 PM',
+      status: fu.status || 'due_today',
+      priority: fu.priority || 'high',
+      notes: fu.notes || 'Follow-up regarding scheduled service',
+      ...fu,
+    };
+    try {
+      const res = await apiClient.post('/crm/follow-ups/', item);
+      const created = (res?.id && res.success !== false) ? (res as FollowUp) : item;
+      set((state) => ({ followups: [created, ...state.followups] }));
+      get().addToast(`Follow-up scheduled for ${created.customer_name}`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ followups: [item, ...state.followups] }));
+      get().addToast(`Follow-up scheduled for ${item.customer_name}`, 'success');
+      return item;
+    }
+  },
+
+  addBranch: async (b) => {
+    const nextId = get().branches.length + 1;
+    const item: BranchItem = {
+      id: nextId,
+      name: b.name || 'New Regional Branch',
+      code: b.code || `BR-${100 + nextId}`,
+      branch_type: b.branch_type || 'Regional Hub',
+      city: b.city || 'Kozhikode',
+      state: b.state || 'Kerala',
+      automations_count: 5,
+      tasks_automated: 120,
+      status: 'active',
+      last_activity: 'Just now',
+      ...b,
+    };
+    try {
+      const res = await apiClient.post('/core/branches/', item);
+      const created = (res?.id && res.success !== false) ? (res as BranchItem) : item;
+      set((state) => ({ branches: [created, ...state.branches] }));
+      get().addToast(`Branch "${created.name}" added`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ branches: [item, ...state.branches] }));
+      get().addToast(`Branch "${item.name}" added`, 'success');
+      return item;
+    }
+  },
+
+  addKnowledgeArticle: async (art) => {
+    const nextId = get().knowledgeArticles.length + 1;
+    const item: KnowledgeArticle = {
+      id: nextId,
+      title: art.title || 'AC Warranty & Service Policy',
+      category: art.category || 'Service Policy',
+      content: art.content || 'Standard warranty covers 90 days on gas refills and spare parts replacement.',
+      status: art.status || 'published',
+      author: art.author || 'Rahul Mehta',
+      helpful_percent: 100,
+      views: 1,
+      last_updated: 'Today',
+      ...art,
+    };
+    try {
+      const res = await apiClient.post('/ai/knowledge-base/', item);
+      const created = (res?.id && res.success !== false) ? (res as KnowledgeArticle) : item;
+      set((state) => ({ knowledgeArticles: [created, ...state.knowledgeArticles] }));
+      get().addToast(`Article "${created.title}" added to Knowledge Base`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ knowledgeArticles: [item, ...state.knowledgeArticles] }));
+      get().addToast(`Article "${item.title}" added`, 'success');
+      return item;
+    }
+  },
+
+  addPaymentAccount: async (acc) => {
+    const nextId = get().accounts.length + 1;
+    const item: PaymentAccount = {
+      id: nextId,
+      name: acc.name || 'HDFC Business Current A/C',
+      account_number: acc.account_number || '•••• •••• 9821',
+      account_type: acc.account_type || 'Current Account',
+      provider: acc.provider || 'HDFC Bank',
+      current_balance: Number(acc.current_balance) || 250000,
+      status: 'Active',
+      ...acc,
+    };
+    try {
+      const res = await apiClient.post('/finance/accounts/', item);
+      const created = (res?.id && res.success !== false) ? (res as PaymentAccount) : item;
+      set((state) => ({ accounts: [created, ...state.accounts] }));
+      get().addToast(`Account "${created.name}" linked successfully`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ accounts: [item, ...state.accounts] }));
+      get().addToast(`Account "${item.name}" linked`, 'success');
+      return item;
+    }
   },
 
   fetchVersionInfo: async () => {

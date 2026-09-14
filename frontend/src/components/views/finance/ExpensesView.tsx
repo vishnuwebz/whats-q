@@ -1,10 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { CreditCard, Plus, Search, Filter, TrendingDown, DollarSign } from 'lucide-react';
+import { CreditCard, Plus, Search, Filter, TrendingDown, DollarSign, X } from 'lucide-react';
+import { Expense } from '@/types';
 
 export const ExpensesView: React.FC = () => {
-  const { expenses, addToast } = useQiyamStore();
+  const { expenses, addExpense, addToast, globalFilter } = useQiyamStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({
+    date_str: 'Today',
+    description: '',
+    category: 'Operations',
+    vendor: '',
+    amount: 2500,
+    payment_mode: 'UPI',
+    project: 'Field Operations',
+    status: 'paid' as Expense['status'],
+  });
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.description.trim()) return;
+    await addExpense(form);
+    setIsModalOpen(false);
+    setForm({
+      date_str: 'Today',
+      description: '',
+      category: 'Operations',
+      vendor: '',
+      amount: 2500,
+      payment_mode: 'UPI',
+      project: 'Field Operations',
+      status: 'paid',
+    });
+  };
+
+  const filtered = expenses.filter((exp) => {
+    if (globalFilter.query) {
+      const q = globalFilter.query.toLowerCase();
+      return (
+        exp.description.toLowerCase().includes(q) ||
+        exp.vendor.toLowerCase().includes(q) ||
+        exp.category.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -12,7 +53,7 @@ export const ExpensesView: React.FC = () => {
         title="Expenses & Budget Utilization"
         subtitle="Manage vendor bills, operating expenditures, salaries, and category budget caps."
         primaryActionLabel="Record Expense"
-        onPrimaryAction={() => addToast('Record expense modal opened', 'info')}
+        onPrimaryAction={() => setIsModalOpen(true)}
       />
 
       <div className="p-6 space-y-6">
@@ -40,7 +81,7 @@ export const ExpensesView: React.FC = () => {
           </div>
         </div>
 
-        {/* Expenses Table (Matching photo_11) */}
+        {/* Expenses Table */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-xs">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
@@ -55,7 +96,7 @@ export const ExpensesView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {expenses.map((exp) => (
+              {filtered.map((exp) => (
                 <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-4 text-slate-500">{exp.date_str}</td>
                   <td className="py-3.5 px-4 font-bold text-slate-900">{exp.description}</td>
@@ -80,8 +121,114 @@ export const ExpensesView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Record Expense Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-red-50 text-red-600">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Record Operational Expense</h3>
+                  <p className="text-[11px] text-slate-500">Log vendor bills, inventory spares purchases, or utilities.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Expense Description *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="e.g. Copper Pipe Roll Restock (50m)"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Vendor / Payee</label>
+                  <input
+                    type="text"
+                    value={form.vendor}
+                    onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+                    placeholder="e.g. Calicut Spares Mart"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                  >
+                    <option value="Operations">Operations</option>
+                    <option value="Spare Parts & Inventory">Spare Parts & Inventory</option>
+                    <option value="Fuel & Travel">Fuel & Travel</option>
+                    <option value="Salaries & Wages">Salaries & Wages</option>
+                    <option value="Marketing & WhatsApp Ads">Marketing & WhatsApp Ads</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Payment Mode</label>
+                  <select
+                    value={form.payment_mode}
+                    onChange={(e) => setForm({ ...form, payment_mode: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-red-500"
+                  >
+                    <option value="UPI">UPI (GPay / PhonePe)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Corporate Debit Card">Corporate Debit Card</option>
+                    <option value="Petty Cash">Petty Cash</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-sm shadow-red-700/20 cursor-pointer"
+                >
+                  Record Expense
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-

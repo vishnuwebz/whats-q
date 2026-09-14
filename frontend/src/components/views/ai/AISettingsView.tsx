@@ -5,9 +5,16 @@ import { Bot, Sliders, ShieldCheck, Database, Sparkles, Check } from 'lucide-rea
 
 export const AISettingsView: React.FC = () => {
   const { addToast } = useQiyamStore();
-  const [model, setModel] = useState('qiyam-intent-engine-v2');
-  const [tone, setTone] = useState('Professional & Helpful');
-  const [useKbFirst, setUseKbFirst] = useState(true);
+  const [model, setModel] = useState(() => localStorage.getItem('whatsq_ai_model') || 'qiyam-intent-engine-v2');
+  const [tone, setTone] = useState(() => localStorage.getItem('whatsq_ai_tone') || 'Professional & Helpful');
+  const [useKbFirst, setUseKbFirst] = useState(() => localStorage.getItem('whatsq_ai_kb') !== 'false');
+
+  const handleSave = () => {
+    localStorage.setItem('whatsq_ai_model', model);
+    localStorage.setItem('whatsq_ai_tone', tone);
+    localStorage.setItem('whatsq_ai_kb', String(useKbFirst));
+    addToast(`AI Settings saved: Using ${model} (${tone})`, 'success');
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -15,7 +22,7 @@ export const AISettingsView: React.FC = () => {
         title="AI Assistant Settings"
         subtitle="Configure model weights, tone of voice, response length, and knowledge base priority."
         primaryActionLabel="Save AI Settings"
-        onPrimaryAction={() => addToast('AI Model parameters updated successfully!', 'success')}
+        onPrimaryAction={handleSave}
       />
 
       <div className="p-6 max-w-4xl space-y-6 text-xs">

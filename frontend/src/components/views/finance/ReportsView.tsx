@@ -2,9 +2,16 @@ import React from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { BarChart3, Download, FileSpreadsheet, TrendingUp } from 'lucide-react';
+import { exportTableToCsv } from '@/utils/exportCsv';
 
 export const ReportsView: React.FC = () => {
-  const { addToast } = useQiyamStore();
+  const store = useQiyamStore();
+  const { addToast } = store;
+
+  const handleExport = () => {
+    const res = exportTableToCsv('finance-reports', store);
+    addToast(`Financial P&L report exported (${res.filename})`, 'success');
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -12,7 +19,7 @@ export const ReportsView: React.FC = () => {
         title="Financial Statements & Reports"
         subtitle="Profit & Loss Statements, Balance Sheets, Cash Flow forecasts, and Aging analyses."
         primaryActionLabel="Export Statement"
-        onPrimaryAction={() => addToast('P&L report exported as Excel (.xlsx)', 'success')}
+        onPrimaryAction={handleExport}
       />
 
       <div className="p-6 max-w-4xl space-y-6 text-xs">

@@ -2,17 +2,24 @@ import React from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Clock, CheckCircle2, AlertTriangle, Play, Filter, Search } from 'lucide-react';
+import { exportTableToCsv } from '@/utils/exportCsv';
 
 export const AutomationLogsView: React.FC = () => {
-  const { workflowLogs, addToast } = useQiyamStore();
+  const store = useQiyamStore();
+  const { workflowLogs, addToast } = store;
+
+  const handleExport = () => {
+    const res = exportTableToCsv('automation-logs', store);
+    addToast(`Execution logs exported (${res.count} records downloaded as ${res.filename})`, 'success');
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
       <Header
         title="Automation Execution Logs"
         subtitle="Real-time execution traces, step durations, and error monitoring."
-        primaryActionLabel="Clear Logs"
-        onPrimaryAction={() => addToast('Logs cleared', 'info')}
+        primaryActionLabel="Export Execution Logs"
+        onPrimaryAction={handleExport}
       />
 
       <div className="p-6 space-y-6">

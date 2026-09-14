@@ -1,10 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { ShieldCheck, CheckCircle2, XCircle, Clock, User } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, Clock, User, Plus, X } from 'lucide-react';
+import { Approval } from '@/types';
 
 export const ApprovalsView: React.FC = () => {
-  const { approvals, updateApprovalStatus, addToast } = useQiyamStore();
+  const { approvals, updateApprovalStatus, addApproval, addToast, targetHighlightId, globalFilter } = useQiyamStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({
+    request_id_str: `APR-${1025 + approvals.length}`,
+    title: '',
+    approval_type: 'Purchase Order',
+    department: 'Operations & Maintenance',
+    requested_by: 'Rahul Mehta',
+    amount: 15000,
+  });
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    await addApproval(form);
+    setIsModalOpen(false);
+    setForm({
+      request_id_str: `APR-${1026 + approvals.length}`,
+      title: '',
+      approval_type: 'Purchase Order',
+      department: 'Operations & Maintenance',
+      requested_by: 'Rahul Mehta',
+      amount: 15000,
+    });
+  };
+
+  const filtered = approvals.filter((ap) => {
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      if (globalFilter.status === 'open' && ap.status !== 'Pending') return false;
+      if (globalFilter.status === 'completed' && ap.status !== 'Approved') return false;
+    }
+    if (globalFilter.query) {
+      const q = globalFilter.query.toLowerCase();
+      return (
+        ap.title.toLowerCase().includes(q) ||
+        ap.request_id_str.toLowerCase().includes(q) ||
+        ap.department.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -12,7 +53,7 @@ export const ApprovalsView: React.FC = () => {
         title="Approvals Center"
         subtitle="Manage pending purchase orders, expense releases, employee leaves, and authorizations."
         primaryActionLabel="New Request"
-        onPrimaryAction={() => addToast('New approval request modal opened', 'info')}
+        onPrimaryAction={() => setIsModalOpen(true)}
       />
 
       <div className="p-6 space-y-6">
@@ -32,13 +73,30 @@ export const ApprovalsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {approvals.map((ap) => {
+              {filtered.map((ap) => {
                 const isPending = ap.status === 'Pending';
                 const isApproved = ap.status === 'Approved';
+                const isHighlighted =
+                  targetHighlightId &&
+                  (targetHighlightId === ap.request_id_str || String(targetHighlightId) === String(ap.id));
 
                 return (
-                  <tr key={ap.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{ap.request_id_str}</td>
+                  <tr
+                    key={ap.id}
+                    className={`transition-colors ${
+                      isHighlighted
+                        ? 'bg-amber-50/80 border-l-4 border-amber-500 ring-2 ring-amber-400/30'
+                        : 'hover:bg-slate-50/80'
+                    }`}
+                  >
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900 flex items-center gap-2">
+                      <span>{ap.request_id_str}</span>
+                      {isHighlighted && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-white animate-pulse">
+                          Highlighted
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3.5 px-4 font-bold text-slate-900">{ap.title}</td>
                     <td className="py-3.5 px-4 font-semibold">{ap.approval_type}</td>
                     <td className="py-3.5 px-4 text-slate-600">{ap.department}</td>
@@ -63,13 +121,13 @@ export const ApprovalsView: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => updateApprovalStatus(ap.id, 'Approved')}
-                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px]"
+                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-[11px] cursor-pointer"
                           >
                             Approve
                           </button>
                           <button
                             onClick={() => updateApprovalStatus(ap.id, 'Rejected')}
-                            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-semibold text-[11px]"
+                            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-semibold text-[11px] cursor-pointer"
                           >
                             Reject
                           </button>
@@ -85,8 +143,107 @@ export const ApprovalsView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* New Approval Request Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">New Approval Request</h3>
+                  <p className="text-[11px] text-slate-500">Submit authorization for purchase order or leave.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Request Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="e.g. Warehouse Spares Restock APR-1025"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Request Type</label>
+                  <select
+                    value={form.approval_type}
+                    onChange={(e) => setForm({ ...form, approval_type: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="Purchase Order">Purchase Order</option>
+                    <option value="Expense Release">Expense Release</option>
+                    <option value="Employee Leave">Employee Leave</option>
+                    <option value="Discount Authorization">Discount Authorization</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Department</label>
+                  <input
+                    type="text"
+                    value={form.department}
+                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Requested By</label>
+                  <input
+                    type="text"
+                    value={form.requested_by}
+                    onChange={(e) => setForm({ ...form, requested_by: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm shadow-amber-700/20 cursor-pointer"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-

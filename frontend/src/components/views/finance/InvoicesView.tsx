@@ -8,16 +8,81 @@ import {
 } from 'lucide-react';
 
 export const InvoicesView: React.FC = () => {
-  const { invoices, addToast, setActiveTab } = useQiyamStore();
+  const {
+    invoices,
+    addInvoice,
+    addToast,
+    setActiveTab,
+    targetHighlightId,
+    globalFilter,
+  } = useQiyamStore();
+
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const [createForm, setCreateForm] = useState({
+    invoice_number: `INV-2024-${String(187 + invoices.length).padStart(4, '0')}`,
+    customer_name: '',
+    customer_phone: '',
+    customer_email: '',
+    amount: 4500,
+    due_date: 'June 05, 2024',
+    status: 'sent' as Invoice['status'],
+    payment_method: 'UPI (GPay)',
+  });
+
+  React.useEffect(() => {
+    if (targetHighlightId) {
+      const match = invoices.find(
+        (inv) =>
+          inv.invoice_number === targetHighlightId ||
+          String(inv.id) === String(targetHighlightId) ||
+          inv.customer_name.toLowerCase().includes(String(targetHighlightId).toLowerCase())
+      );
+      if (match) {
+        setSelectedInvoice(match);
+        setFilterStatus('all');
+      }
+    }
+  }, [targetHighlightId, invoices]);
+
+  const handleCreateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.customer_name.trim()) return;
+    const created = await addInvoice(createForm);
+    setSelectedInvoice(created);
+    setIsCreateModalOpen(false);
+    setCreateForm({
+      invoice_number: `INV-2024-${String(188 + invoices.length).padStart(4, '0')}`,
+      customer_name: '',
+      customer_phone: '',
+      customer_email: '',
+      amount: 4500,
+      due_date: 'June 05, 2024',
+      status: 'sent',
+      payment_method: 'UPI (GPay)',
+    });
+  };
+
+  const effectiveSearch = search || globalFilter.query || '';
 
   const filtered = invoices.filter((inv) => {
-    if (filterStatus !== 'all' && inv.status !== filterStatus) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return inv.invoice_number.toLowerCase().includes(q) || inv.customer_name.toLowerCase().includes(q);
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      if (globalFilter.status === 'open' && inv.status !== 'sent') return false;
+      if (globalFilter.status === 'in_progress' && inv.status !== 'partial_paid') return false;
+      if (globalFilter.status === 'completed' && inv.status !== 'paid') return false;
+      if (globalFilter.status === 'overdue' && inv.status !== 'overdue') return false;
+    } else if (filterStatus !== 'all' && inv.status !== filterStatus) {
+      return false;
+    }
+    if (effectiveSearch) {
+      const q = effectiveSearch.toLowerCase();
+      return (
+        inv.invoice_number.toLowerCase().includes(q) ||
+        inv.customer_name.toLowerCase().includes(q)
+      );
     }
     return true;
   });
@@ -28,7 +93,7 @@ export const InvoicesView: React.FC = () => {
         title="Invoices & Billing"
         subtitle="Generate itemized tax invoices, collect advance payments, and send automated WhatsApp reminders."
         primaryActionLabel="Create Invoice"
-        onPrimaryAction={() => addToast('Create Invoice modal opened', 'info')}
+        onPrimaryAction={() => setIsCreateModalOpen(true)}
       />
 
       <div className="p-6 space-y-6">
@@ -291,6 +356,145 @@ export const InvoicesView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Create Invoice Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Generate New Tax Invoice</h3>
+                  <p className="text-[11px] text-slate-500">Create itemized invoice, due date, and WhatsApp payment link.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateInvoice} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Invoice Number</label>
+                  <input
+                    type="text"
+                    value={createForm.invoice_number}
+                    onChange={(e) => setCreateForm({ ...createForm, invoice_number: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Customer Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.customer_name}
+                    onChange={(e) => setCreateForm({ ...createForm, customer_name: e.target.value })}
+                    placeholder="e.g. Priya Sharma"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Customer Phone / WhatsApp *</label>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.customer_phone}
+                    onChange={(e) => setCreateForm({ ...createForm, customer_phone: e.target.value })}
+                    placeholder="e.g. +91 89213 56789"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Customer Email</label>
+                  <input
+                    type="email"
+                    value={createForm.customer_email}
+                    onChange={(e) => setCreateForm({ ...createForm, customer_email: e.target.value })}
+                    placeholder="e.g. client@gmail.com"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Total Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={createForm.amount}
+                    onChange={(e) => setCreateForm({ ...createForm, amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Due Date</label>
+                  <input
+                    type="text"
+                    value={createForm.due_date}
+                    onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Status</label>
+                  <select
+                    value={createForm.status}
+                    onChange={(e) => setCreateForm({ ...createForm, status: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                  >
+                    <option value="sent">Sent (Unpaid)</option>
+                    <option value="partial_paid">Partially Paid</option>
+                    <option value="paid">Paid</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Default Payment Mode</label>
+                <select
+                  value={createForm.payment_method}
+                  onChange={(e) => setCreateForm({ ...createForm, payment_method: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value="UPI (GPay)">UPI (GPay / PhonePe)</option>
+                  <option value="Bank Transfer (NEFT/IMPS)">Bank Transfer (NEFT / IMPS)</option>
+                  <option value="Razorpay Payment Link">Razorpay Payment Link</option>
+                  <option value="Cash in Hand">Cash in Hand</option>
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-sm shadow-purple-700/20 cursor-pointer"
+                >
+                  Create & Issue Invoice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
