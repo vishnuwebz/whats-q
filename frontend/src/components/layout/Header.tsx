@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Search, Calendar, Filter, Download, Plus, Bell, HelpCircle,
   X, Check, ExternalLink, Sparkles, MessageSquare, AlertCircle, ArrowRight,
-  PanelLeftClose, PanelLeftOpen, Menu
+  PanelLeftClose, PanelLeftOpen, Menu, RefreshCw
 } from 'lucide-react';
 import { OmniSearchModal } from './OmniSearchModal';
 import { UniversalFilterPopover } from './UniversalFilterPopover';
@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
     addToast,
     versionInfo,
     setIsUpdateModalOpen,
+    isUpdatingSystem,
     isSidebarCollapsed,
     toggleSidebarCollapse,
     toggleMobileSidebar,
@@ -210,20 +211,40 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* System Version & Live Update Button (Hidden on mobile) */}
-          {versionInfo && (
-            <button
-              onClick={() => setIsUpdateModalOpen(true)}
-              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                versionInfo.update_available
-                  ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-              }`}
-              title={versionInfo.update_available ? `Update available (${versionInfo.latest_commit}) - Click to review and update` : `WhatsQ v${versionInfo.current_commit} • Last updated: ${versionInfo.last_updated || versionInfo.current_date}`}
-            >
-              <Sparkles className={`w-3.5 h-3.5 ${versionInfo.update_available ? 'text-amber-200 animate-spin' : 'text-slate-500'}`} />
-              <span>{versionInfo.update_available ? `Update Ready (${versionInfo.latest_commit})` : `v${versionInfo.current_commit}`}</span>
-            </button>
-          )}
+          {versionInfo && (() => {
+            // Check if this update was dismissed (user clicked Update Now)
+            const dismissKey = `whatsq_update_dismissed_${versionInfo.current_commit}_${versionInfo.latest_commit}`;
+            const wasDismissed = (() => { try { return localStorage.getItem(dismissKey) === 'true'; } catch { return false; } })();
+            const showUpdateReady = versionInfo.update_available && !isUpdatingSystem && !wasDismissed;
+            const showUpdating = isUpdatingSystem;
+            const showUpdated = !showUpdateReady && !showUpdating;
+
+            return (
+              <button
+                onClick={() => { if (!isUpdatingSystem) setIsUpdateModalOpen(true); }}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  showUpdating
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md animate-pulse ring-2 ring-amber-400/50'
+                    : showUpdateReady
+                    ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                }`}
+                title={
+                  showUpdating ? 'Applying update...' :
+                  showUpdateReady ? `Update available (${versionInfo.latest_commit}) — Click to review` :
+                  `WhatsQ v${versionInfo.current_commit} • Up to date`
+                }
+              >
+                {showUpdating ? (
+                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Updating...</span></>
+                ) : showUpdateReady ? (
+                  <><Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" /><span>Update Ready ({versionInfo.latest_commit})</span></>
+                ) : (
+                  <><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Version Updated ✓</span></>
+                )}
+              </button>
+            );
+          })()}
 
           {/* Simulator Shortcut Button (Hidden on < sm) */}
           <button
