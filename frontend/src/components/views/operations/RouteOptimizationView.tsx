@@ -8,7 +8,24 @@ import {
 
 export const RouteOptimizationView: React.FC = () => {
   const { routes, addToast, targetHighlightId } = useQiyamStore();
-  const currentRoute = routes[0];
+  const fallbackRoute = {
+    id: 1,
+    route_code: 'RTE-001',
+    driver_name: 'Ramesh Kumar',
+    vehicle: 'Honda Activa (KL-11-BV-4021)',
+    date_str: 'Today, May 12',
+    stops_count: 8,
+    completed_stops: 5,
+    distance_km: 34.2,
+    fuel_cost: 210,
+    status: 'in_progress' as const,
+    stops: [
+      { id: 1, sequence: 1, customer: 'Amit Verma', address: 'Beach Road, Kozhikode', time: '09:30 AM', status: 'completed' as const },
+      { id: 2, sequence: 2, customer: 'Priya Sharma', address: 'Mavoor Road, Kozhikode', time: '11:15 AM', status: 'in_progress' as const },
+      { id: 3, sequence: 3, customer: 'Rahul Mehta', address: 'Koyilandy, Kerala', time: '02:00 PM', status: 'pending' as const },
+    ]
+  };
+  const currentRoute = routes[0] || fallbackRoute;
   const [activeStopId, setActiveStopId] = useState<number>(2);
 
   const handleOptimize = () => {
@@ -16,7 +33,7 @@ export const RouteOptimizationView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-hidden font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans">
       <Header
         title="Route Optimization"
         subtitle="AI-driven multi-stop delivery & technician dispatch route planner with fuel estimation."

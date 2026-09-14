@@ -6,7 +6,7 @@ interface SendTemplateModalProps {
   isOpen: boolean;
   onClose: () => void;
   templates: WhatsAppTemplateItem[];
-  currentConversation: Conversation;
+  currentConversation?: Conversation | null;
   onSendTemplate: (templateId: string | number, variables: Record<string, string>) => void;
 }
 
@@ -30,11 +30,14 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     if (selectedTemplate) {
       const vars: Record<string, string> = {};
       const templateVars = selectedTemplate.body_variables || {};
+      const contactName = currentConversation?.contact_name || 'Customer';
+      const serviceNeeded = currentConversation?.service_needed || 'AC Repair';
+      const estValue = `₹${currentConversation?.estimated_value || 2800}`;
       
       Object.keys(templateVars).forEach((k, idx) => {
-        if (idx === 0) vars[k] = currentConversation.contact_name;
-        else if (idx === 1) vars[k] = currentConversation.service_needed || 'AC Repair';
-        else if (idx === 2) vars[k] = `₹${currentConversation.estimated_value || 2800}`;
+        if (idx === 0) vars[k] = contactName;
+        else if (idx === 1) vars[k] = serviceNeeded;
+        else if (idx === 2) vars[k] = estValue;
         else vars[k] = templateVars[k] || `Value ${k}`;
       });
 
@@ -43,8 +46,8 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
       matches.forEach((m, idx) => {
         const num = m.replace(/[{}]/g, '');
         if (!vars[num]) {
-          if (idx === 0) vars[num] = currentConversation.contact_name;
-          else if (idx === 1) vars[num] = currentConversation.service_needed || 'AC Repair';
+          if (idx === 0) vars[num] = contactName;
+          else if (idx === 1) vars[num] = serviceNeeded;
           else vars[num] = `Sample ${num}`;
         }
       });

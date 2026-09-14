@@ -563,124 +563,139 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   searchResults: [],
 
   loadInitialData: async () => {
-    try {
-      const [
-        conversations,
-        templates,
-        metaConfig,
-        leads,
-        deals,
-        followups,
-        customers,
-        jobs,
-        appointments,
-        employees,
-        attendance,
-        tasks,
-        routes,
-        inventory,
-        transactions,
-        invoices,
-        expenses,
-        accounts,
-        workflows,
-        workflowLogs,
-        approvals,
-        knowledgeArticles,
-        integrations,
-        branches,
-        workspace,
-        channelMetrics,
-        intentMetrics,
-        dailyMetrics,
-      ] = await Promise.all([
-        qiyamApi.fetchConversations(),
-        qiyamApi.fetchTemplates(),
-        qiyamApi.fetchMetaConfig(),
-        qiyamApi.fetchLeads(),
-        qiyamApi.fetchDeals(),
-        qiyamApi.fetchFollowUps(),
-        qiyamApi.fetchCustomers(),
-        qiyamApi.fetchJobs(),
-        qiyamApi.fetchAppointments(),
-        qiyamApi.fetchEmployees(),
-        qiyamApi.fetchAttendance(),
-        qiyamApi.fetchTasks(),
-        qiyamApi.fetchRoutes(),
-        qiyamApi.fetchInventory(),
-        qiyamApi.fetchTransactions(),
-        qiyamApi.fetchInvoices(),
-        qiyamApi.fetchExpenses(),
-        qiyamApi.fetchAccounts(),
-        qiyamApi.fetchWorkflows(),
-        qiyamApi.fetchWorkflowLogs(),
-        qiyamApi.fetchApprovals(),
-        qiyamApi.fetchKnowledge(),
-        qiyamApi.fetchIntegrations(),
-        qiyamApi.fetchBranches(),
-        qiyamApi.fetchWorkspace(),
-        qiyamApi.fetchChannelMetrics(),
-        qiyamApi.fetchIntentMetrics(),
-        qiyamApi.fetchDailyMetrics(),
-      ]);
+    // Use Promise.allSettled so a single endpoint failure doesn't crash the whole app
+    const results = await Promise.allSettled([
+      qiyamApi.fetchConversations(),      // 0
+      qiyamApi.fetchTemplates(),          // 1
+      qiyamApi.fetchMetaConfig(),         // 2
+      qiyamApi.fetchLeads(),              // 3
+      qiyamApi.fetchDeals(),              // 4
+      qiyamApi.fetchFollowUps(),          // 5
+      qiyamApi.fetchCustomers(),          // 6
+      qiyamApi.fetchJobs(),               // 7
+      qiyamApi.fetchAppointments(),       // 8
+      qiyamApi.fetchEmployees(),          // 9
+      qiyamApi.fetchAttendance(),         // 10
+      qiyamApi.fetchTasks(),              // 11
+      qiyamApi.fetchRoutes(),             // 12
+      qiyamApi.fetchInventory(),          // 13
+      qiyamApi.fetchTransactions(),       // 14
+      qiyamApi.fetchInvoices(),           // 15
+      qiyamApi.fetchExpenses(),           // 16
+      qiyamApi.fetchAccounts(),           // 17
+      qiyamApi.fetchWorkflows(),          // 18
+      qiyamApi.fetchWorkflowLogs(),       // 19
+      qiyamApi.fetchApprovals(),          // 20
+      qiyamApi.fetchKnowledge(),          // 21
+      qiyamApi.fetchIntegrations(),       // 22
+      qiyamApi.fetchBranches(),           // 23
+      qiyamApi.fetchWorkspace(),          // 24
+      qiyamApi.fetchChannelMetrics(),     // 25
+      qiyamApi.fetchIntentMetrics(),      // 26
+      qiyamApi.fetchDailyMetrics(),       // 27
+    ]);
 
-      const selectedConversationId =
-        conversations.length > 0
-          ? conversations[0].id
-          : get().selectedConversationId;
+    // Helper: extract fulfilled value or fallback
+    const val = <T>(idx: number, fallback: T): T =>
+      results[idx].status === 'fulfilled' ? (results[idx] as PromiseFulfilledResult<T>).value ?? fallback : fallback;
 
-      const sanitizedConversations = conversations.map((c) =>
-        String(c.id) === String(selectedConversationId) ? { ...c, unread_count: 0 } : c
-      );
+    const anyRejected = results.some((r) => r.status === 'rejected');
+    if (anyRejected) {
+      const rejected = results
+        .map((r, i) => (r.status === 'rejected' ? i : -1))
+        .filter((i) => i >= 0);
+      console.warn('[Store] Some API calls failed (indices):', rejected, results.filter((_, i) => rejected.includes(i)));
+    }
 
-      set({
-        backendOnline: true,
-        conversations: sanitizedConversations,
-        templates,
-        metaConfig: metaConfig || null,
-        leads,
-        deals,
-        followups,
-        customers,
-        jobs,
-        appointments,
-        employees,
-        attendance,
-        tasks,
-        routes,
-        inventory,
-        transactions,
-        invoices,
-        expenses,
-        accounts,
-        workflows,
-        workflowLogs,
-        approvals,
-        knowledgeArticles,
-        integrations,
-        branches,
-        workspace,
-        channelMetrics,
-        intentMetrics,
-        dailyMetrics,
-        selectedConversationId,
-        selectedTemplateId: templates[0]?.id ?? null,
-      });
+    const conversations = val<import('../types').Conversation[]>(0, []);
+    const templates     = val<import('../types').WhatsAppTemplateItem[]>(1, []);
+    const metaConfig    = val<import('../types').MetaConfig | null>(2, null);
+    const leads         = val<import('../types').Lead[]>(3, []);
+    const deals         = val<import('../types').Deal[]>(4, []);
+    const followups     = val<import('../types').FollowUp[]>(5, []);
+    const customers     = val<Record<string, unknown>[]>(6, []);
+    const jobs          = val<import('../types').Job[]>(7, []);
+    const appointments  = val<import('../types').Appointment[]>(8, []);
+    const employees     = val<import('../types').Employee[]>(9, []);
+    const attendance    = val<import('../types').AttendanceRecord[]>(10, []);
+    const tasks         = val<import('../types').Task[]>(11, []);
+    const routes        = val<import('../types').Route[]>(12, []);
+    const inventory     = val<import('../types').InventoryItem[]>(13, []);
+    const transactions  = val<import('../types').Transaction[]>(14, []);
+    const invoices      = val<import('../types').Invoice[]>(15, []);
+    const expenses      = val<import('../types').Expense[]>(16, []);
+    const accounts      = val<import('../types').PaymentAccount[]>(17, []);
+    const workflows     = val<import('../types').Workflow[]>(18, []);
+    const workflowLogs  = val<import('../types').AutomationLog[]>(19, []);
+    const approvals     = val<import('../types').Approval[]>(20, []);
+    const knowledgeArticles = val<import('../types').KnowledgeArticle[]>(21, []);
+    const integrations  = val<import('../types').IntegrationItem[]>(22, []);
+    const branches      = val<import('../types').BranchItem[]>(23, []);
+    const workspace     = val<import('../api/qiyamApi').WorkspaceSettings | null>(24, null);
+    const channelMetrics = val<import('../api/qiyamApi').ChannelMetricRow[]>(25, []);
+    const intentMetrics  = val<import('../api/qiyamApi').IntentMetricRow[]>(26, []);
+    const dailyMetrics   = val<import('../api/qiyamApi').DailyMetricRow[]>(27, []);
 
-      if (selectedConversationId) {
-        get().markConversationAsRead(selectedConversationId);
-      }
-
-      if (leads.length === 0 && conversations.length === 0) {
-        get().addToast(
-          'Database looks empty. Run: python manage.py seed_qiyam_data',
-          'warning'
-        );
-      }
-    } catch (e) {
-      console.warn('Failed to load data from API:', e);
+    // If all calls rejected, mark backend offline
+    const allRejected = results.every((r) => r.status === 'rejected');
+    if (allRejected) {
       set({ backendOnline: false });
       get().addToast('Backend unavailable. Start Django on port 8000.', 'error');
+      return;
+    }
+
+    const selectedConversationId =
+      conversations.length > 0
+        ? conversations[0].id
+        : get().selectedConversationId;
+
+    const sanitizedConversations = conversations.map((c) =>
+      String(c.id) === String(selectedConversationId) ? { ...c, unread_count: 0 } : c
+    );
+
+    set({
+      backendOnline: true,
+      conversations: sanitizedConversations,
+      templates,
+      metaConfig: metaConfig || null,
+      leads,
+      deals,
+      followups,
+      customers,
+      jobs,
+      appointments,
+      employees,
+      attendance,
+      tasks,
+      routes,
+      inventory,
+      transactions,
+      invoices,
+      expenses,
+      accounts,
+      workflows,
+      workflowLogs,
+      approvals,
+      knowledgeArticles,
+      integrations,
+      branches,
+      workspace,
+      channelMetrics,
+      intentMetrics,
+      dailyMetrics,
+      selectedConversationId,
+      selectedTemplateId: templates[0]?.id ?? null,
+    });
+
+    if (selectedConversationId) {
+      get().markConversationAsRead(selectedConversationId);
+    }
+
+    if (leads.length === 0 && conversations.length === 0) {
+      get().addToast(
+        'Database looks empty. Run: python manage.py seed_qiyam_data',
+        'warning'
+      );
     }
   },
 
