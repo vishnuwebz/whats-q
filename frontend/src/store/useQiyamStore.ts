@@ -137,6 +137,7 @@ interface QiyamState {
   deleteMetaTemplate: (templateId: string | number) => Promise<boolean>;
   saveMetaConfig: (config: Partial<MetaConfig>) => Promise<boolean>;
   testMetaConnection: (credentials: { phone_number_id: string; waba_id: string; access_token: string }) => Promise<any>;
+  testForwardProxy: (forward_webhook_url: string) => Promise<any>;
   saveWorkspaceSettings: (data: Partial<WorkspaceSettings>) => Promise<boolean>;
   askAiCopilot: (prompt: string) => Promise<{ response: string; suggestions: string[] } | null>;
 
@@ -936,6 +937,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       }));
     }
     return res;
+  },
+
+  testForwardProxy: async (forward_webhook_url: string) => {
+    return apiClient.post('/conversations/meta-config/test_forward_proxy/', { forward_webhook_url });
   },
 
   saveWorkspaceSettings: async (data) => {

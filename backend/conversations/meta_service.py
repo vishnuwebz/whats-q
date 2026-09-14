@@ -344,3 +344,93 @@ class MetaWhatsAppService:
                 return {"success": False, "error": err, "details": data}
         except Exception as e:
             return {"success": False, "error": f"Network error: {str(e)}"}
+
+    @classmethod
+    def send_whatsapp_interactive(cls, phone_number_id: str, access_token: str, to_phone: str, body_text: str, buttons: list, header_text: str = None, footer_text: str = None, api_version: str = DEFAULT_API_VERSION):
+        """
+        Sends an interactive button message (up to 3 quick reply buttons) to WhatsApp.
+        POST /{PHONE_NUMBER_ID}/messages
+        """
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
+        headers = cls.get_headers(access_token)
+
+        clean_phone = re.sub(r'[^0-9]', '', str(to_phone))
+
+        # Format buttons for Meta interactive API
+        formatted_buttons = []
+        for idx, btn in enumerate(buttons[:3]): # Meta limits quick reply to max 3
+            btn_id = btn.get('id', f'btn_{idx}')
+            btn_title = btn.get('title', btn.get('text', f'Option {idx+1}'))[:20] # Max 20 chars
+            formatted_buttons.append({
+                "type": "reply",
+                "reply": {
+                    "id": btn_id,
+                    "title": btn_title
+                }
+            })
+
+        interactive_payload = {
+            "type": "button",
+            "body": {"text": body_text},
+            "action": {
+                "buttons": formatted_buttons
+            }
+        }
+
+        if header_text:
+            interactive_payload["header"] = {
+                "type": "text",
+                "text": header_text[:60]
+            }
+
+        if footer_text:
+            interactive_payload["footer"] = {
+                "text": footer_text[:60]
+            }
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_phone,
+            "type": "interactive",
+            "interactive": interactive_payload
+        }
+
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            data = resp.json()
+            if resp.status_code in [200, 201]:
+                msg_id = data.get("messages", [{}])[0].get("id")
+                return {"success": True, "message_id": msg_id, "raw": data}
+            else:
+                err = data.get("error", {}).get("message", "Failed to send WhatsApp interactive message")
+                return {"success": False, "error": err, "details": data}
+        except Exception as e:
+            return {"success": False, "error": f"Network error: {str(e)}"}
+
+    @classmethod
+    def forward_webhook_payload(cls, target_url: str, raw_payload: dict, custom_headers: dict = None) -> dict:
+        """
+        Asynchronously or synchronously forwards raw Meta webhook payload to external workspace (e.g. Staff Portal).
+        Protects against timeouts and errors.
+        """
+        if not target_url or not target_url.startswith("http"):
+            return {"success": False, "error": "Invalid target URL"}
+
+        headers = {"Content-Type": "application/json"}
+        if custom_headers:
+            headers.update(custom_headers)
+
+        try:
+            resp = requests.post(target_url, json=raw_payload, headers=headers, timeout=5)
+            logger.info(f"[Dual-Workspace Proxy] Webhook forwarded to {target_url} (HTTP {resp.status_code})")
+            return {
+                "success": resp.status_code in [200, 201, 202, 204],
+                "status_code": resp.status_code,
+                "response_body": resp.text[:200]
+            }
+        except Exception as e:
+            logger.warning(f"[Dual-Workspace Proxy] Forwarding to {target_url} failed: {str(e)}")
+            return {"success": False, "error": str(e)}
+

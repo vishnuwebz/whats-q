@@ -18,6 +18,14 @@ class MetaWhatsAppConfig(models.Model):
     business_phone_display = models.CharField(max_length=50, default='+91 98765 43210')
     business_name = models.CharField(max_length=150, default='CoolFix Services')
     quality_rating = models.CharField(max_length=50, default='GREEN')
+    
+    # Dual-Workspace Co-existence & Automated Replies
+    auto_reply_enabled = models.BooleanField(default=True)
+    dual_mode_enabled = models.BooleanField(default=True)
+    forward_webhook_url = models.CharField(max_length=500, blank=True, default='')
+    staff_numbers = models.TextField(blank=True, default='') # Comma-separated staff phone numbers
+    staff_keywords = models.TextField(blank=True, default='staff,portal,workspace,attendance,clock,shift,leave,payroll,duty')
+
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

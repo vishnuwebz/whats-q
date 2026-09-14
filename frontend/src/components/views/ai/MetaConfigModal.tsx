@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   X, Check, Copy, ExternalLink, ShieldCheck, AlertCircle,
   Key, Smartphone, Globe, RefreshCw, CheckCircle2, ChevronRight,
-  Sparkles, BookOpen, Terminal
+  Sparkles, BookOpen, Terminal, Bot, Share2, Users, ArrowRight
 } from 'lucide-react';
 import { MetaConfig } from '@/types';
+import { apiClient } from '@/api/client';
 
 interface MetaConfigModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
   onSaveConfig,
   onTestConnection
 }) => {
-  const [activeTab, setActiveTab] = useState<'guide' | 'credentials' | 'webhook'>('credentials');
+  const [activeTab, setActiveTab] = useState<'guide' | 'credentials' | 'webhook' | 'dual_workspace'>('credentials');
   
   // Credentials Form State
   const [phoneNumberId, setPhoneNumberId] = useState('');
@@ -32,6 +33,15 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
   const [apiVersion, setApiVersion] = useState('v21.0');
   const [businessName, setBusinessName] = useState('CoolFix Services');
   const [businessPhoneDisplay, setBusinessPhoneDisplay] = useState('+91 98765 43210');
+
+  // Dual-Workspace & Auto-Reply State
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
+  const [dualModeEnabled, setDualModeEnabled] = useState(true);
+  const [forwardWebhookUrl, setForwardWebhookUrl] = useState('');
+  const [staffNumbers, setStaffNumbers] = useState('');
+  const [staffKeywords, setStaffKeywords] = useState('staff,portal,workspace,attendance,clock,shift,leave,payroll,duty');
+  const [isTestingForward, setIsTestingForward] = useState(false);
+  const [forwardTestResult, setForwardTestResult] = useState<any>(null);
 
   // Test Connection State
   const [isTesting, setIsTesting] = useState(false);
@@ -54,6 +64,11 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
       setApiVersion(config.api_version || 'v21.0');
       setBusinessName(config.business_name || 'CoolFix Services');
       setBusinessPhoneDisplay(config.business_phone_display || '+91 98765 43210');
+      setAutoReplyEnabled(config.auto_reply_enabled !== undefined ? Boolean(config.auto_reply_enabled) : true);
+      setDualModeEnabled(config.dual_mode_enabled !== undefined ? Boolean(config.dual_mode_enabled) : true);
+      setForwardWebhookUrl(config.forward_webhook_url || '');
+      setStaffNumbers(config.staff_numbers || '');
+      setStaffKeywords(config.staff_keywords || 'staff,portal,workspace,attendance,clock,shift,leave,payroll,duty');
     }
   }, [config, isOpen]);
 
@@ -82,8 +97,24 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleTestForward = async () => {
+    if (!forwardWebhookUrl.trim()) return;
+    setIsTestingForward(true);
+    setForwardTestResult(null);
+    try {
+      const res = await apiClient.post('/conversations/meta-config/test_forward_proxy/', {
+        forward_webhook_url: forwardWebhookUrl.trim()
+      });
+      setForwardTestResult(res);
+    } catch (err: any) {
+      setForwardTestResult({ success: false, error: err.message || 'Forward proxy test failed' });
+    } finally {
+      setIsTestingForward(false);
+    }
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsSaving(true);
     try {
       await onSaveConfig({
@@ -95,6 +126,11 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
         api_version: apiVersion.trim(),
         business_name: businessName.trim(),
         business_phone_display: businessPhoneDisplay.trim(),
+        auto_reply_enabled: autoReplyEnabled,
+        dual_mode_enabled: dualModeEnabled,
+        forward_webhook_url: forwardWebhookUrl.trim(),
+        staff_numbers: staffNumbers.trim(),
+        staff_keywords: staffKeywords.trim(),
       });
     } finally {
       setIsSaving(false);
@@ -167,6 +203,18 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
           >
             <Terminal className="w-4 h-4" />
             <span>Webhook URLs & cURL</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('dual_workspace')}
+            className={`py-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all ${
+              activeTab === 'dual_workspace'
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Bot className="w-4 h-4 text-emerald-600" />
+            <span>Dual-Workspace & Auto-Replies</span>
+            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 ml-1">New</span>
           </button>
         </div>
 
@@ -509,6 +557,268 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                   &nbsp;&nbsp;-H &quot;Content-Type: application/json&quot; \<br />
                   &nbsp;&nbsp;-d &#39;&#123;&quot;phone_number&quot;: &quot;+919876543210&quot;&#125;&#39;
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: DUAL-WORKSPACE CO-EXISTENCE & 100% AUTOMATED REPLIES */}
+          {activeTab === 'dual_workspace' && (
+            <div className="space-y-6">
+              {/* Architecture Context Banner */}
+              <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <span>One Official WhatsApp Number, Two Workspaces</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                        Enterprise Dual-Routing
+                      </span>
+                    </h4>
+                    <p className="text-slate-600 text-[11px] leading-relaxed mt-1">
+                      Meta Cloud API permits only <strong>one webhook callback URL per phone number</strong>. 
+                      WhatsQ solves this by acting as your <strong>Intelligent Routing Gateway</strong>:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-2 border-t border-emerald-200/60">
+                  <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200/60 flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</div>
+                    <div>
+                      <strong className="text-slate-900 block">Staff / Office Portal Intent</strong>
+                      <span className="text-slate-500">Inbound staff phone numbers or keywords (&quot;portal&quot;, &quot;staff&quot;, &quot;shift&quot;) are automatically forwarded to your existing office webhook.</span>
+                    </div>
+                  </div>
+                  <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200/60 flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</div>
+                    <div>
+                      <strong className="text-slate-900 block">Customer / WhatsQ CRM Intent</strong>
+                      <span className="text-slate-500">Customer inquiries and button clicks (&quot;Reschedule&quot;, &quot;Track Technician&quot;, &quot;Pricing&quot;) receive automated, individualized CRM responses.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 1: AUTOMATED CONTEXTUAL REPLIES */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-slate-900 text-xs sm:text-sm">
+                        Automated WhatsApp Responses (WhatsQ Bot)
+                      </h5>
+                      <p className="text-[11px] text-slate-500">
+                        Automatically dispatch personalized responses when customers interact or tap template buttons.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={autoReplyEnabled}
+                      onChange={(e) => setAutoReplyEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                {/* Live Preview Cards of What Customers Receive */}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Supported Dynamic Contextual Flows (Populated from Individual Records):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-[11px] space-y-1">
+                      <div className="font-bold text-emerald-800 flex items-center gap-1">
+                        <span>📅 Reschedule Slot</span>
+                      </div>
+                      <p className="text-slate-500 text-[10px]">
+                        Injects current booking time and prompts customer with available alternate slots.
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-[11px] space-y-1">
+                      <div className="font-bold text-blue-800 flex items-center gap-1">
+                        <span>📍 Track Technician</span>
+                      </div>
+                      <p className="text-slate-500 text-[10px]">
+                        Injects assigned specialist name, phone, ETA (15-20 mins), and live map tracking link.
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-[11px] space-y-1">
+                      <div className="font-bold text-purple-800 flex items-center gap-1">
+                        <span>💰 Pricing & Quotation</span>
+                      </div>
+                      <p className="text-slate-500 text-[10px]">
+                        Dynamically calculates diagnostics, labour, and estimated total from customer profile.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: DUAL-WORKSPACE ROUTING PROXY */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                      <Share2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-slate-900 text-xs sm:text-sm">
+                        Dual-Workspace Routing Proxy
+                      </h5>
+                      <p className="text-[11px] text-slate-500">
+                        Enable co-existence between your existing Staff Portal bot and WhatsQ on this number.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={dualModeEnabled}
+                      onChange={(e) => setDualModeEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                {dualModeEnabled && (
+                  <div className="space-y-4 pt-3 border-t border-slate-100 animate-in fade-in duration-200">
+                    {/* Forward Webhook URL Input */}
+                    <div>
+                      <label className="block font-bold text-slate-900 mb-1">
+                        Office Workspace / Staff Portal Webhook URL
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          placeholder="https://workspace.qiyambusinesssolutions.com/webhook/ or https://your-staff-bot.com/webhook/"
+                          value={forwardWebhookUrl}
+                          onChange={(e) => setForwardWebhookUrl(e.target.value)}
+                          className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:bg-white focus:outline-emerald-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleTestForward}
+                          disabled={isTestingForward || !forwardWebhookUrl.trim()}
+                          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                        >
+                          {isTestingForward ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Pinging...</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Test Forward</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        When a staff member sends a message or invokes the Staff Portal, WhatsQ transparently forwards the raw Meta payload to this URL.
+                      </p>
+
+                      {/* Test Forward Result */}
+                      {forwardTestResult && (
+                        <div className={`mt-2.5 p-3 rounded-xl border text-[11px] flex items-start gap-2 ${
+                          forwardTestResult.success
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                            : 'bg-amber-50 border-amber-200 text-amber-900'
+                        }`}>
+                          {forwardTestResult.success ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <span className="font-bold block">
+                              {forwardTestResult.success ? 'Proxy Forward Test Passed!' : 'Proxy Test Failed'}
+                            </span>
+                            <span className="text-[10px]">
+                              {forwardTestResult.success
+                                ? `Forwarded sample payload successfully (HTTP ${forwardTestResult.status_code || 200}).`
+                                : (forwardTestResult.error || 'Check that your office server is reachable and accepts HTTP POST.')}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Staff Phone Numbers */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Staff Phone Numbers</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="+91 98765 43210, +91 94470 00000"
+                          value={staffNumbers}
+                          onChange={(e) => setStaffNumbers(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:bg-white focus:outline-emerald-600"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Comma-separated. Messages from these phone numbers will always route to your Staff Portal bot.
+                        </p>
+                      </div>
+
+                      {/* Staff Routing Keywords */}
+                      <div>
+                        <label className="block font-bold text-slate-900 mb-1">
+                          Staff Routing Keywords
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="staff, portal, workspace, attendance, clock, shift, leave, payroll"
+                          value={staffKeywords}
+                          onChange={(e) => setStaffKeywords(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:bg-white focus:outline-emerald-600"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Comma-separated. Inbound messages containing any of these keywords route to the Staff Portal.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SAVE BUTTON */}
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-[11px] text-slate-500">
+                  Settings are immediately active across all incoming WhatsApp webhooks.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleSave()}
+                  disabled={isSaving}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm shadow-emerald-700/20 cursor-pointer"
+                >
+                  {isSaving ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Dual-Workspace Settings</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}

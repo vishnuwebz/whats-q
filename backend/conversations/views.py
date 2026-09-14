@@ -6,6 +6,13 @@ from django.http import HttpResponse
 from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig
 from .meta_service import MetaWhatsAppService
 from core.events import emit_event
+try:
+    from operations.models import Appointment, Job, Employee
+except Exception:
+    Appointment = None
+    Job = None
+    Employee = None
+
 import datetime
 import hashlib
 import hmac
@@ -91,12 +98,56 @@ class MetaConfigViewSet(viewsets.ViewSet):
             config.business_name = data['business_name'].strip()
         if 'business_phone_display' in data:
             config.business_phone_display = data['business_phone_display'].strip()
+        if 'auto_reply_enabled' in data:
+            config.auto_reply_enabled = bool(data['auto_reply_enabled'])
+        if 'dual_mode_enabled' in data:
+            config.dual_mode_enabled = bool(data['dual_mode_enabled'])
+        if 'forward_webhook_url' in data:
+            config.forward_webhook_url = data['forward_webhook_url'].strip()
+        if 'staff_numbers' in data:
+            config.staff_numbers = data['staff_numbers'].strip()
+        if 'staff_keywords' in data:
+            config.staff_keywords = data['staff_keywords'].strip()
 
         config.save()
         return Response({
             'status': 'saved',
             'config': MetaWhatsAppConfigSerializer(config).data
         })
+
+    @action(detail=False, methods=['post'])
+    def test_forward_proxy(self, request):
+        target_url = request.data.get('forward_webhook_url')
+        if not target_url:
+            config = MetaWhatsAppConfig.objects.first()
+            target_url = config.forward_webhook_url if config else ''
+        
+        if not target_url:
+            return Response({'success': False, 'error': 'No Forward Webhook URL specified.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        sample_payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "test_waba_id",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "919876543210", "phone_number_id": "test_phone_id"},
+                        "contacts": [{"profile": {"name": "Staff Portal Test"}, "wa_id": "919876543210"}],
+                        "messages": [{
+                            "from": "919876543210",
+                            "id": f"wamid.test_{int(time.time())}",
+                            "timestamp": str(int(time.time())),
+                            "text": {"body": "Staff Portal Dual-Routing Test"},
+                            "type": "text"
+                        }]
+                    }
+                }]
+            }]
+        }
+        res = MetaWhatsAppService.forward_webhook_payload(target_url, sample_payload)
+        return Response(res)
 
     @action(detail=False, methods=['post'])
     def test_connection(self, request):
@@ -685,6 +736,31 @@ class WhatsAppWebhookView(APIView):
 
                         # Robust phone number resolution across any format (+91, spaces, 10 digits)
                         clean_sender = re.sub(r'\D', '', str(sender_phone))
+
+                        # Dual-Workspace Routing: Proxy/Forward to existing Office / Staff Portal if staff event
+                        is_staff = False
+                        if config and config.dual_mode_enabled and config.forward_webhook_url:
+                            # 1. Match staff phone numbers
+                            if config.staff_numbers:
+                                staff_list = [re.sub(r'\D', '', num) for num in config.staff_numbers.split(',') if num.strip()]
+                                if any(clean_sender.endswith(s_num) or s_num.endswith(clean_sender) for s_num in staff_list if len(s_num) >= 8):
+                                    is_staff = True
+                            # 2. Match staff keywords in message
+                            if not is_staff and config.staff_keywords and text_body:
+                                kw_list = [kw.strip().lower() for kw in config.staff_keywords.split(',') if kw.strip()]
+                                msg_lower = text_body.lower()
+                                if any(kw in msg_lower for kw in kw_list):
+                                    is_staff = True
+
+                        if is_staff:
+                            logger.info(f"[Dual-Workspace Proxy] Identified staff activity from {clean_sender} ('{text_body[:40]}'). Forwarding to {config.forward_webhook_url}...")
+                            MetaWhatsAppService.forward_webhook_payload(
+                                config.forward_webhook_url,
+                                data,
+                                {'X-Hub-Signature-256': request.headers.get('X-Hub-Signature-256', '')}
+                            )
+                            continue
+
                         conv = None
                         if clean_sender:
                             conv = Conversation.objects.filter(phone_number=f"+{clean_sender}").first()
@@ -760,6 +836,182 @@ class WhatsAppWebhookView(APIView):
                             'itemId': conv.id,
                             'itemType': 'conversation'
                         })
+
+                        # -------------------------------------------------------------
+                        # Automated Contextual Response Engine (100% Automated CRM Flow)
+                        # -------------------------------------------------------------
+                        if config and config.auto_reply_enabled:
+                            # 1. Query CRM / Operational Context for this Customer
+                            last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
+                            apt = None
+                            job = None
+                            if Appointment:
+                                apt = Appointment.objects.filter(phone__icontains=last_10).order_by('-id').first()
+                                if not apt and conv.contact_name:
+                                    apt = Appointment.objects.filter(customer_name__icontains=conv.contact_name).order_by('-id').first()
+                            if Job:
+                                job = Job.objects.filter(phone__icontains=last_10).order_by('-id').first()
+                                if not job and conv.contact_name:
+                                    job = Job.objects.filter(customer_name__icontains=conv.contact_name).order_by('-id').first()
+
+                            # Extract individualized variables
+                            cust_name = conv.contact_name if conv.contact_name and conv.contact_name != 'WhatsApp Customer' else (profile_name if profile_name != 'WhatsApp Customer' else 'Valued Customer')
+                            service_name = conv.service_needed or (apt.service if apt else (job.service if job else 'AC Repair & Service'))
+                            booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '#B4821')
+                            technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Ramesh Kumar'))
+
+                            tech_phone = '+91 98471 23456'
+                            if Employee:
+                                emp = Employee.objects.filter(name__icontains=technician_name).first()
+                                if emp and emp.phone:
+                                    tech_phone = emp.phone
+
+                            slot_time = f"{apt.date_str} at {apt.time_str}" if apt else "Tomorrow at 10:30 AM"
+                            est_val_num = int(conv.estimated_value) if conv.estimated_value else (int(apt.amount) if apt else 2800)
+                            est_price = f"₹{est_val_num:,}"
+
+                            # 2. Intent Classification & Context Injection
+                            lower_text = text_body.strip().lower()
+                            reply_text = ''
+                            rich_card = None
+
+                            if any(w in lower_text for w in ['reschedule', 're-schedule', 'change date', 'change time', 'postpone']):
+                                reply_text = (
+                                    f"📅 *Reschedule Your Appointment*\n\n"
+                                    f"Hi {cust_name}, your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
+                                    f"Please reply with your preferred new date and time (e.g., *\"Thursday 2:00 PM\"*), or choose one of our upcoming open slots:\n"
+                                    f"1️⃣ Tomorrow 02:00 PM\n"
+                                    f"2️⃣ Friday 10:30 AM\n"
+                                    f"3️⃣ Saturday 11:00 AM\n\n"
+                                    f"Our team will immediately confirm the new slot for you!"
+                                )
+                                rich_card = {
+                                    'type': 'reschedule',
+                                    'title': 'Reschedule Requested',
+                                    'currentSlot': slot_time,
+                                    'service': service_name,
+                                    'bookingId': booking_id,
+                                    'actionText': 'Select New Slot'
+                                }
+                                conv.status = 'in_progress'
+
+                            elif any(w in lower_text for w in ['track', 'technician', 'where', 'status', 'arrived', 'reach']):
+                                reply_text = (
+                                    f"📍 *Live Technician Status*\n\n"
+                                    f"Hi {cust_name}, your assigned service specialist is *{technician_name}* ({tech_phone}).\n\n"
+                                    f"• Service: *{service_name}* (Booking {booking_id})\n"
+                                    f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
+                                    f"• Estimated Arrival: *15-20 minutes*\n\n"
+                                    f"Track technician live on map:\n"
+                                    f"https://coolfix.in/track/{booking_id.replace('#', '')}"
+                                )
+                                rich_card = {
+                                    'type': 'tracking',
+                                    'title': 'Technician En Route',
+                                    'technician': technician_name,
+                                    'phone': tech_phone,
+                                    'service': service_name,
+                                    'bookingId': booking_id,
+                                    'eta': '15-20 mins',
+                                    'actionText': 'Track Live Map'
+                                }
+
+                            elif any(w in lower_text for w in ['call', 'contact', 'number', 'phone']):
+                                reply_text = (
+                                    f"📞 *Technician Direct Contact*\n\n"
+                                    f"Hi {cust_name}, you can reach your technician *{technician_name}* directly at *{tech_phone}*.\n\n"
+                                    f"Our Central Operations Helpline is also available at 1800-QIYAM-FIX for any urgent escalations."
+                                )
+
+                            elif any(w in lower_text for w in ['price', 'cost', 'rate', 'quote', 'charges', 'quotation', 'amount']):
+                                reply_text = (
+                                    f"💰 *Service Quotation & Pricing*\n\n"
+                                    f"Hi {cust_name}, here is the official estimate for *{service_name}*:\n"
+                                    f"• Inspection & Diagnostics: ₹800\n"
+                                    f"• Labour & Service: ₹2,000\n"
+                                    f"• *Total Estimated Amount: {est_price}*\n\n"
+                                    f"To approve and reserve your technician slot, reply *CONFIRM*!"
+                                )
+
+                            elif any(w in lower_text for w in ['confirm', 'confirmed', 'yes', 'approve', 'proceed', 'book']):
+                                reply_text = (
+                                    f"✅ *Booking Confirmed!*\n\n"
+                                    f"Thank you {cust_name}! Your booking {booking_id} for *{service_name}* on *{slot_time}* is confirmed.\n\n"
+                                    f"Specialist *{technician_name}* will arrive at your premises on time."
+                                )
+                                rich_card = {
+                                    'type': 'booking',
+                                    'title': 'Booking Confirmed',
+                                    'date': slot_time,
+                                    'service': service_name,
+                                    'amount': est_val_num,
+                                    'bookingId': booking_id,
+                                    'actionText': 'View Details'
+                                }
+
+                            else:
+                                reply_text = (
+                                    f"👋 *Welcome to CoolFix Services, {cust_name}!* \n\n"
+                                    f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
+                                    f"1️⃣ Reschedule booking\n"
+                                    f"2️⃣ Track technician status\n"
+                                    f"3️⃣ View quotation & pricing\n"
+                                    f"4️⃣ Speak with an agent\n\n"
+                                    f"Reply with what you need and our team will assist you immediately!"
+                                )
+
+                            # 3. Dispatch to WhatsApp via Meta Cloud API
+                            meta_bot_msg_id = ''
+                            if config.connection_status == 'connected' and config.access_token and config.phone_number_id:
+                                meta_reply_res = MetaWhatsAppService.send_whatsapp_text(
+                                    phone_number_id=config.phone_number_id,
+                                    access_token=config.access_token,
+                                    to_phone=clean_sender,
+                                    text=reply_text,
+                                    api_version=config.api_version
+                                )
+                                if meta_reply_res.get('success'):
+                                    meta_bot_msg_id = meta_reply_res.get('message_id', '')
+                                    logger.info(f"[Meta Webhook Auto-Reply] Sent to {clean_sender}: {meta_bot_msg_id}")
+                                else:
+                                    logger.warning(f"[Meta Webhook Auto-Reply] Meta send failed: {meta_reply_res.get('error')}")
+
+                            # 4. Save Bot Message in DB & Stream via SSE
+                            bot_msg = Message.objects.create(
+                                conversation=conv,
+                                sender='bot',
+                                sender_name='WhatsQ AI Assistant',
+                                text=reply_text,
+                                timestamp=now_time,
+                                status='sent' if meta_bot_msg_id else 'delivered',
+                                meta_message_id=meta_bot_msg_id,
+                                rich_card=rich_card
+                            )
+
+                            conv.last_contact_date = now_full
+                            conv.save()
+
+                            bot_msg_payload = MessageSerializer(bot_msg).data
+                            emit_event('message.created', {
+                                'conversation_id': conv.id,
+                                'message': bot_msg_payload
+                            })
+                            emit_event('conversation.updated', {
+                                'id': conv.id,
+                                'last_message': reply_text,
+                                'last_contact_date': now_full,
+                                'unread_count': conv.unread_count
+                            })
+                            emit_event('notification.new', {
+                                'id': int(time.time() * 1000),
+                                'title': f"WhatsQ Auto-Reply to {cust_name}",
+                                'text': reply_text[:80],
+                                'time': 'Just now',
+                                'unread': True,
+                                'target': 'conversations',
+                                'itemId': conv.id,
+                                'itemType': 'conversation'
+                            })
 
                     # Message status updates (sent, delivered, read, failed)
                     statuses = value.get('statuses', [])

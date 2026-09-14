@@ -436,6 +436,11 @@ export interface MetaConfig {
   business_phone_display: string;
   quality_rating: string;
   last_tested_at?: string;
+  auto_reply_enabled?: boolean;
+  dual_mode_enabled?: boolean;
+  forward_webhook_url?: string;
+  staff_numbers?: string;
+  staff_keywords?: string;
 }
 
 
