@@ -175,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Search — Pinned, not scrollable */}
           <button
             onClick={() => setIsOmniSearchOpen(true)}
-            className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-36 sm:w-44 text-left cursor-pointer group shrink-0 ml-1 sm:ml-2"
+            className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-36 sm:w-44 text-left cursor-pointer group shrink-0 ml-1 sm:ml-1.5"
             title="Search (Ctrl + /)"
           >
             <div className="flex items-center gap-2 truncate">
@@ -184,6 +184,17 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <kbd className="text-[10px] font-mono font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 shadow-2xs">/</kbd>
           </button>
+
+          {/* Primary Action (e.g. + New Booking, + Clock In) — Pinned, constant with search bar */}
+          {primaryActionLabel && (
+            <button
+              onClick={onPrimaryAction}
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>{primaryActionLabel}</span>
+            </button>
+          )}
         </div>
 
         {/* ── RIGHT: Horizontally swipeable & mouse-wheel-scrollable action strip ── */}
@@ -257,17 +268,6 @@ export const Header: React.FC<HeaderProps> = ({
             <Download className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>Export</span>
           </button>
-
-          {/* Primary Action */}
-          {primaryActionLabel && (
-            <button
-              onClick={onPrimaryAction}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5 shrink-0" />
-              <span>{primaryActionLabel}</span>
-            </button>
-          )}
 
           {/* Version / Update badge */}
           {versionInfo && (() => {
