@@ -230,6 +230,30 @@ class Command(BaseCommand):
         for e in employees_data:
             Employee.objects.create(**e)
 
+        AttendanceRecord.objects.all().delete()
+        attendance_data = [
+            {'employee_id_str': 'EMP-001', 'employee_name': 'Amit Sharma', 'department': 'AC Services', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:58 AM', 'check_out': None, 'work_hours': '8h 58m', 'status': 'present', 'location': 'Kozhikode, Kerala', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-002', 'employee_name': 'Priya Sharma', 'department': 'Customer Support', 'shift': '9:00 AM - 6:00 PM', 'check_in': '9:02 AM', 'check_out': None, 'work_hours': '8h 54m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'WhatsApp Web (Chrome)'},
+            {'employee_id_str': 'EMP-003', 'employee_name': 'Rahul Singh', 'department': 'Plumbing Services', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:50 AM', 'check_out': None, 'work_hours': '9h 05m', 'status': 'present', 'location': 'Vadakara, Kerala', 'device': 'WhatsApp Geo-Punch (iOS)'},
+            {'employee_id_str': 'EMP-004', 'employee_name': 'Neha Patel', 'department': 'Housekeeping Lead', 'shift': '9:00 AM - 6:00 PM', 'check_in': '-', 'check_out': None, 'work_hours': '0h 00m', 'status': 'absent', 'location': 'Kozhikode, Kerala', 'device': 'Leave Portal (Approved)'},
+            {'employee_id_str': 'EMP-005', 'employee_name': 'Arjun Nair', 'department': 'Electrical Services', 'shift': '9:00 AM - 6:00 PM', 'check_in': '9:00 AM', 'check_out': None, 'work_hours': '8h 56m', 'status': 'present', 'location': 'Ramanattukara, Kerala', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-006', 'employee_name': 'Sneha Joshi', 'department': 'Operations Lead', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:45 AM', 'check_out': None, 'work_hours': '9h 10m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'Desktop Punch (MacOS)'},
+            {'employee_id_str': 'EMP-007', 'employee_name': 'Vikram Mehta', 'department': 'HVAC Field Tech', 'shift': '9:00 AM - 6:00 PM', 'check_in': '9:18 AM', 'check_out': None, 'work_hours': '8h 38m', 'status': 'late', 'location': 'Kozhikode, Kerala', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-008', 'employee_name': 'Mohammed Farooq', 'department': 'Fleet Logistics', 'shift': '8:30 AM - 5:30 PM', 'check_in': '8:28 AM', 'check_out': None, 'work_hours': '9h 02m', 'status': 'present', 'location': 'Feroke Hub', 'device': 'GPS Biometric Terminal'},
+            {'employee_id_str': 'EMP-009', 'employee_name': 'Ananya Sen', 'department': 'Client Success', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:59 AM', 'check_out': None, 'work_hours': '8h 57m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'WhatsApp Web (Windows)'},
+            {'employee_id_str': 'EMP-010', 'employee_name': 'Rohan Kulkarni', 'department': 'AC Field Tech', 'shift': '9:00 AM - 6:00 PM', 'check_in': '9:22 AM', 'check_out': None, 'work_hours': '8h 34m', 'status': 'late', 'location': 'Pantheeramkavu, Kerala', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-011', 'department': 'Dispatch Coordination', 'employee_name': 'Divya Krishnan', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:55 AM', 'check_out': None, 'work_hours': '9h 01m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'Desktop App (Chrome)'},
+            {'employee_id_str': 'EMP-012', 'employee_name': 'Faizan Ali', 'department': 'Inventory & Parts', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:50 AM', 'check_out': None, 'work_hours': '9h 06m', 'status': 'present', 'location': 'Central Warehouse', 'device': 'Barcode Scanner Terminal'},
+            {'employee_id_str': 'EMP-013', 'employee_name': 'Shilpa Menon', 'department': 'Finance & Billing', 'shift': '9:30 AM - 6:30 PM', 'check_in': '9:28 AM', 'check_out': None, 'work_hours': '8h 52m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'WhatsApp Web (Windows)'},
+            {'employee_id_str': 'EMP-014', 'employee_name': 'Harish Varma', 'department': 'Plumbing Services', 'shift': '9:00 AM - 6:00 PM', 'check_in': '9:01 AM', 'check_out': None, 'work_hours': '8h 55m', 'status': 'present', 'location': 'Mavoor Road', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-015', 'employee_name': 'Kavita Nair', 'department': 'QA & Compliance', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:54 AM', 'check_out': None, 'work_hours': '9h 02m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'WhatsApp Geo-Punch (iOS)'},
+            {'employee_id_str': 'EMP-016', 'employee_name': 'Karthik Ram', 'department': 'Electrical Field Tech', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:57 AM', 'check_out': None, 'work_hours': '8h 59m', 'status': 'present', 'location': 'Palazhi, Kerala', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-017', 'employee_name': 'Manju Swamy', 'department': 'Appliance Repair', 'shift': '9:00 AM - 6:00 PM', 'check_in': '9:03 AM', 'check_out': None, 'work_hours': '8h 53m', 'status': 'present', 'location': 'Beypore, Kerala', 'device': 'WhatsApp Geo-Punch (Android)'},
+            {'employee_id_str': 'EMP-018', 'employee_name': 'Zoya Khan', 'department': 'Customer Support', 'shift': '9:00 AM - 6:00 PM', 'check_in': '8:56 AM', 'check_out': None, 'work_hours': '9h 00m', 'status': 'present', 'location': 'Kozhikode Office', 'device': 'WhatsApp Web (Chrome)'},
+        ]
+        for att in attendance_data:
+            AttendanceRecord.objects.create(**att)
+
         # 8. Finance: Transactions, Invoices, Expenses, Accounts
         Transaction.objects.all().delete()
         transactions_data = [
