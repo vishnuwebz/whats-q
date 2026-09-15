@@ -44,8 +44,8 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   const [connectionState, setConnectionState] = useState<'unlinked' | 'connecting' | 'connected'>('unlinked');
   const [qrCountdown, setQrCountdown] = useState(60);
   const [qrSessionToken, setQrSessionToken] = useState(() => 'qiyam_md_' + Math.random().toString(36).substring(2, 9));
-  // Pairing mode: 'multidevice' (WhatsApp Linked Devices) | 'direct' (Phone Camera / Lens) | 'code' (8-Digit Code)
-  const [pairingMode, setPairingMode] = useState<'multidevice' | 'direct' | 'code'>('multidevice');
+  // Pairing mode: 'direct' (WhatsApp Settings > QR Code > SCAN CODE) | 'multidevice' (WhatsApp > Linked Devices) | 'code' (8-Digit Code)
+  const [pairingMode, setPairingMode] = useState<'direct' | 'multidevice' | 'code'>('direct');
   const [phoneForCode, setPhoneForCode] = useState('+91 98450 12345');
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -312,33 +312,50 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
           {/* STAGE 1: UNLINKED / SCAN QR CODE                                         */}
           {/* ========================================================================= */}
           {connectionState === 'unlinked' && (
-            <div className="max-w-3xl mx-auto space-y-5 animate-in fade-in duration-200">
+            <div className="max-w-3xl mx-auto space-y-4 animate-in fade-in duration-200">
+              {/* Phone Scanner Match Helper Banner */}
+              <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3.5 text-xs text-emerald-900 flex items-start gap-3 shadow-2xs">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-slate-900 flex items-center gap-2">
+                    <span>Configured for WhatsApp "SCAN CODE" (Settings &gt; QR Code)</span>
+                    <span className="bg-emerald-200 text-emerald-800 text-[10px] px-2 py-0.2 rounded-full font-bold">
+                      Matches Your Screen
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                    The QR code below is formatted for WhatsApp's <strong>"MY CODE / SCAN CODE"</strong> profile scanner. Scan the QR code, then tap <strong>"I Scanned It — Verify &amp; Connect"</strong> to view and export all your groups!
+                  </div>
+                </div>
+              </div>
+
               {/* Pairing Mode Selector Tabs */}
               <div className="flex items-center justify-center gap-1.5 p-1 bg-slate-200/80 rounded-2xl w-fit mx-auto border border-slate-300/70 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setPairingMode('multidevice')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    pairingMode === 'multidevice'
-                      ? 'bg-white text-emerald-800 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>WhatsApp Linked Devices</span>
-                </button>
-
                 <button
                   type="button"
                   onClick={() => setPairingMode('direct')}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     pairingMode === 'direct'
-                      ? 'bg-white text-emerald-800 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 bg-white/60'
                   }`}
                 >
-                  <QrCode className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Direct Mobile Camera (wa.me)</span>
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>WhatsApp Contact Scanner (SCAN CODE)</span>
+                  <span className="bg-white/20 text-[9px] px-1.5 py-0.2 rounded-full font-bold">Your Screen</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPairingMode('multidevice')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    pairingMode === 'multidevice'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 bg-white/60'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>WhatsApp Linked Devices</span>
                 </button>
 
                 <button
@@ -346,11 +363,11 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                   onClick={() => setPairingMode('code')}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     pairingMode === 'code'
-                      ? 'bg-white text-emerald-800 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 bg-white/60'
                   }`}
                 >
-                  <Key className="w-3.5 h-3.5 text-purple-600" />
+                  <Key className="w-3.5 h-3.5" />
                   <span>8-Digit Phone Code</span>
                 </button>
               </div>
