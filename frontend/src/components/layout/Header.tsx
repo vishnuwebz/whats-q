@@ -70,6 +70,53 @@ export const Header: React.FC<HeaderProps> = ({
     (globalFilter.priority && globalFilter.priority !== 'all') ||
     Boolean(globalFilter.query);
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Enable PC mouse wheel vertical-to-horizontal scrolling
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // Translate vertical mouse wheel scrolling (deltaY) into horizontal scroll
+      if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Mouse drag-to-scroll support for desktop
+  const isDownRef = React.useRef(false);
+  const startXRef = React.useRef(0);
+  const scrollLeftRef = React.useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, input, a, select')) return;
+    isDownRef.current = true;
+    startXRef.current = e.pageX - (scrollContainerRef.current?.offsetLeft || 0);
+    scrollLeftRef.current = scrollContainerRef.current?.scrollLeft || 0;
+  };
+
+  const handleMouseLeave = () => {
+    isDownRef.current = false;
+  };
+
+  const handleMouseUp = () => {
+    isDownRef.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDownRef.current || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk;
+  };
+
   // Global Keyboard listener for OmniSearch (Ctrl + / or Cmd + K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -139,9 +186,15 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* ── RIGHT: Horizontally swipeable action strip ── */}
-        {/* overflow-x-auto + scrollbar-hide makes it touch-swipeable with no visible scrollbar */}
-        <div className="flex-1 overflow-x-auto scrollbar-hide">
+        {/* ── RIGHT: Horizontally swipeable & mouse-wheel-scrollable action strip ── */}
+        <div
+          ref={scrollContainerRef}
+          onMouseDown={handleMouseDown}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          className="flex-1 overflow-x-auto scrollbar-hide"
+        >
           <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1">
 
           {/* Date Range */}
