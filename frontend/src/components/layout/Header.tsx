@@ -282,7 +282,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`w-2 h-2 rounded-full shrink-0 ${
                 store.syncStatus === 'connected'
                   ? 'bg-emerald-500 animate-pulse'
                   : store.syncStatus === 'reconnecting'
@@ -290,7 +290,8 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'bg-rose-500'
               }`}
             />
-            <span className="hidden md:inline">
+            {/* Text only visible when sidebar is collapsed */}
+            <span className={isSidebarCollapsed ? 'inline' : 'hidden'}>
               {store.syncStatus === 'connected'
                 ? 'Live Sync'
                 : store.syncStatus === 'reconnecting'
