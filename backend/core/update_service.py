@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SystemUpdateService:
     _cached_info = None
     _cache_time = 0
-    _CACHE_DURATION = 20  # seconds
+    _CACHE_DURATION = 60  # seconds — prevents hammering GitHub API
 
     @classmethod
     def get_version_info(cls, simulate=False, force=False):
@@ -123,7 +123,7 @@ class SystemUpdateService:
             logger.warning(f'Error reading local git: {e}')
 
         # 2. Check Remote Repository via git ls-remote (fast, non-rate-limited)
-        remote_sha = None
+        remote_detected = False
         try:
             ls_res = subprocess.run(
                 ['git', '-c', 'safe.directory=*', 'ls-remote', 'origin', 'refs/heads/main'],
@@ -132,7 +132,7 @@ class SystemUpdateService:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                timeout=4,
+                timeout=6,
                 env=env
             )
             if ls_res.returncode == 0 and ls_res.stdout.strip():
@@ -144,13 +144,16 @@ class SystemUpdateService:
                     if remote_short != info['current_commit']:
                         info['update_available'] = True
                         info['latest_message'] = 'New production build available on origin/main'
+                        remote_detected = True
                     else:
                         info['update_available'] = False
                         info['latest_date'] = info['current_date']
+                        remote_detected = True
         except Exception as e:
             logger.warning(f'git ls-remote failed: {e}')
 
-        # 3. Check Remote Details via GitHub API (with token authentication if present in env)
+        # 3. GitHub REST API — primary detection (more reliable than git ls-remote on servers)
+        # Always run this; it will OVERRIDE ls-remote result if it succeeds.
         try:
             token = os.environ.get('GITHUB_TOKEN')
             headers = {'Accept': 'application/vnd.github.v3+json'}
@@ -161,7 +164,7 @@ class SystemUpdateService:
             for target in repo_targets:
                 try:
                     api_url = f'https://api.github.com/repos/{target}/commits/main'
-                    resp = requests.get(api_url, headers=headers, timeout=4)
+                    resp = requests.get(api_url, headers=headers, timeout=8)
                     if resp.status_code == 200:
                         data = resp.json()
                         sha = data.get('sha', '')
@@ -184,21 +187,26 @@ class SystemUpdateService:
 
                         if short_sha and short_sha != info['current_commit']:
                             info['update_available'] = True
+                            logger.info(f'Update detected via GitHub API: {info["current_commit"]} → {short_sha}')
                         else:
                             info['update_available'] = False
                             info['latest_date'] = info['current_date']
+                        remote_detected = True
                         break
-                except Exception:
+                except Exception as api_err:
+                    logger.warning(f'GitHub API failed for {target}: {api_err}')
                     continue
         except Exception as e:
             logger.warning(f'Error querying GitHub API: {e}')
 
-        # Normalize guarantees
-        if not info.get('update_available'):
-            info['latest_commit'] = info['current_commit']
-            info['latest_author'] = info['current_author']
-            info['latest_date'] = info['current_date']
-            info['latest_message'] = info['current_message']
+        # Normalize: only run if both methods completely failed (no remote detected)
+        if not remote_detected:
+            logger.warning('Could not reach remote — update detection unavailable, keeping current state')
+            if not info.get('update_available'):
+                info['latest_commit'] = info['current_commit']
+                info['latest_author'] = info['current_author']
+                info['latest_date'] = info['current_date']
+                info['latest_message'] = info['current_message']
 
         if not info.get('last_updated'):
             info['last_updated'] = info.get('current_date')
