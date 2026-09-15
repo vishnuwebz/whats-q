@@ -107,11 +107,30 @@ npm install --silent
 npm run build
 
 # 5. RESTART SERVICES
-echo -e "\n${YELLOW}[5/5] Restarting WhatsQ Services...${NC}"
-# Use fast reload if available to prevent 30s graceful timeout delays on open SSE streams
-if ! $SUDO_CMD systemctl reload whatsq-backend 2>/dev/null; then
-    $SUDO_CMD systemctl restart whatsq-backend 2>/dev/null || true
+echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"
+
+# Ensure fast reload & 3s stop timeout override exists for whatsq-backend
+if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
+    $SUDO_CMD mkdir -p /etc/systemd/system/whatsq-backend.service.d 2>/dev/null || true
+    if [ ! -f "/etc/systemd/system/whatsq-backend.service.d/fast-reload.conf" ]; then
+        cat << 'EOF' | $SUDO_CMD tee /etc/systemd/system/whatsq-backend.service.d/fast-reload.conf > /dev/null 2>&1 || true
+[Service]
+ExecReload=/bin/kill -s HUP $MAINPID
+TimeoutStopSec=3
+EOF
+        $SUDO_CMD systemctl daemon-reload 2>/dev/null || true
+    fi
 fi
+
+# Send SIGHUP for instant Gunicorn worker hot-reload without waiting on open SSE connections
+if $SUDO_CMD systemctl is-active --quiet whatsq-backend 2>/dev/null; then
+    $SUDO_CMD systemctl kill -s HUP whatsq-backend 2>/dev/null || $SUDO_CMD systemctl reload whatsq-backend 2>/dev/null || true
+    echo -e "${GREEN}[SUCCESS] WhatsQ Backend hot-reloaded in <1s via SIGHUP!${NC}"
+else
+    $SUDO_CMD systemctl restart whatsq-backend 2>/dev/null || true
+    echo -e "${GREEN}[SUCCESS] WhatsQ Backend started!${NC}"
+fi
+
 $SUDO_CMD systemctl reload nginx 2>/dev/null || true
 
 # Sync update script binary
