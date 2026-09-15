@@ -238,6 +238,13 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation.last_contact_date = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
         conversation.save()
 
+        # If customer is online on WhatsApp, prior outbound messages are marked read
+        if conversation.is_online:
+            Message.objects.filter(
+                conversation=conversation,
+                sender__in=['agent', 'bot']
+            ).exclude(id=msg.id).exclude(status='read').update(status='read')
+
         msg_data = MessageSerializer(msg).data
         emit_event('message.created', {
             'conversation_id': conversation.id,
@@ -424,9 +431,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation = self.get_object()
         conversation.unread_count = 0
         conversation.save(update_fields=['unread_count'])
+        Message.objects.filter(
+            conversation=conversation,
+            sender__in=['agent', 'bot']
+        ).exclude(status='read').update(status='read')
         emit_event('conversation.updated', {
             'id': conversation.id,
             'unread_count': 0
+        })
+        emit_event('message.status_updated', {
+            'conversation_id': conversation.id,
+            'status': 'read',
+            'all_prior': True
         })
         return Response({'success': True, 'id': conversation.id, 'unread_count': 0})
 
@@ -939,6 +955,12 @@ class WhatsAppWebhookView(APIView):
                         conv.last_seen = 'Just now'
                         conv.save()
 
+                        # Customer replied -> all prior outbound messages in this thread are read
+                        Message.objects.filter(
+                            conversation=conv,
+                            sender__in=['agent', 'bot']
+                        ).exclude(status='read').update(status='read')
+
                         emit_event('conversation.presence', {
                             'conversation_id': conv.id,
                             'is_online': True,
@@ -1158,6 +1180,12 @@ class WhatsAppWebhookView(APIView):
                             matching_msgs = Message.objects.filter(meta_message_id=status_id)
                             matching_msgs.update(status=new_status)
                             for m in matching_msgs:
+                                if new_status == 'read':
+                                    Message.objects.filter(
+                                        conversation_id=m.conversation_id,
+                                        id__lte=m.id,
+                                        sender__in=['agent', 'bot']
+                                    ).exclude(status='read').update(status='read')
                                 emit_event('message.status_updated', {
                                     'conversation_id': m.conversation_id,
                                     'message_id': m.id,
@@ -1230,6 +1258,12 @@ class SimulateWhatsAppMessageView(APIView):
             timestamp=now_time,
             status='read'
         )
+
+        # Customer sent a message -> all prior outbound messages were read
+        Message.objects.filter(
+            conversation=conv,
+            sender__in=['agent', 'bot']
+        ).exclude(status='read').update(status='read')
 
         # AI Bot automatic intent & contextual reply
         bot_reply = None

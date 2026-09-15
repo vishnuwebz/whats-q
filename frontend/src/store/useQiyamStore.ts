@@ -279,13 +279,20 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     set((state) => ({
       conversations: state.conversations.map((c) => {
         if (String(c.id) === String(conversationId)) {
+          const targetIndex = c.messages.findIndex((m) => String(m.id) === String(messageId));
           return {
             ...c,
-            messages: c.messages.map((m) =>
-              String(m.id) === String(messageId) || (!m.id && m.sender !== 'customer')
-                ? { ...m, status }
-                : m
-            ),
+            messages: c.messages.map((m, idx) => {
+              // WhatsApp Monotonic Read Rule:
+              // When status is 'read', all preceding outbound messages in this chat are also read
+              if (status === 'read' && targetIndex !== -1 && idx <= targetIndex && m.sender !== 'customer') {
+                return { ...m, status: 'read' };
+              }
+              if (String(m.id) === String(messageId) || (!m.id && m.sender !== 'customer')) {
+                return { ...m, status };
+              }
+              return m;
+            }),
           };
         }
         return c;
@@ -333,7 +340,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       }
 
       let replaced = false;
+      const isCustomerReply = message.sender === 'customer';
       const updatedMessages = conv.messages.map((m) => {
+        // Customer replied -> all previous outbound messages in this conversation have been read
+        if (isCustomerReply && m.sender !== 'customer') {
+          return { ...m, status: 'read' as const };
+        }
         if (String(m.id).startsWith('msg-') && m.text === message.text && m.sender === message.sender) {
           replaced = true;
           return message;

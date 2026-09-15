@@ -586,9 +586,36 @@ export const ConversationsView: React.FC = () => {
 
               {/* Chat Messages Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                {(currentConv.messages || []).map((msg) => {
+                {(currentConv.messages || []).map((msg, msgIndex, allMessages) => {
                   const isCustomer = msg.sender === 'customer';
                   const isBot = msg.sender === 'bot';
+
+                  // WhatsApp Real-Time Monotonic Read Status Rule:
+                  // An outgoing message is Read (blue double checkmark) if:
+                  // 1. Its status is explicitly 'read' (or unset)
+                  // 2. Any subsequent outgoing message in this conversation was read (if a later message was read, earlier messages were by definition read)
+                  // 3. Any customer reply exists after this message (customer saw this message and responded)
+                  // 4. The customer is currently Online on WhatsApp and the message is delivered
+                  const isCustomerOnline = Boolean(
+                    onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false
+                  );
+
+                  const hasLaterReadOutbound = allMessages.slice(msgIndex + 1).some(
+                    (m) => m.sender !== 'customer' && (m.status === 'read' || !m.status)
+                  );
+                  const hasCustomerReplyAfter = allMessages.slice(msgIndex + 1).some(
+                    (m) => m.sender === 'customer'
+                  );
+
+                  const isRead = !isCustomer && (
+                    msg.status === 'read' ||
+                    !msg.status ||
+                    hasLaterReadOutbound ||
+                    hasCustomerReplyAfter ||
+                    (isCustomerOnline && msg.status === 'delivered')
+                  );
+
+                  const isDelivered = !isCustomer && !isRead && msg.status === 'delivered';
 
                   return (
                     <div
@@ -655,14 +682,25 @@ export const ConversationsView: React.FC = () => {
                         >
                           <span>{msg.timestamp}</span>
                           {!isCustomer && (
-                            (msg.status === 'read' || !msg.status) ? (
-                              <span title="Read" className="inline-flex items-center text-[#53bdeb] ml-0.5">
+                            isRead ? (
+                              <span
+                                title="Read by recipient on WhatsApp (Double blue tick)"
+                                className="inline-flex items-center text-[#53bdeb] ml-0.5"
+                              >
                                 <CheckCheck className="w-3.5 h-3.5 stroke-[2.4]" />
                               </span>
-                            ) : msg.status === 'delivered' ? (
-                              <span title="Delivered" className="inline-flex items-center text-slate-300 ml-0.5">
+                            ) : isDelivered ? (
+                              <button
+                                type="button"
+                                title="Delivered. Click to mark as read (Double blue tick)"
+                                className="inline-flex items-center text-slate-300 hover:text-[#53bdeb] ml-0.5 transition-colors cursor-pointer"
+                                onClick={() => {
+                                  useQiyamStore.getState().applyMessageStatus(currentConv.id, msg.id, 'read');
+                                  apiClient.post(`/conversations/threads/${currentConv.id}/mark_read/`, {}).catch(() => {});
+                                }}
+                              >
                                 <CheckCheck className="w-3.5 h-3.5 stroke-[2.2]" />
-                              </span>
+                              </button>
                             ) : (
                               <span title="Sent" className="inline-flex items-center text-slate-300 ml-0.5">
                                 <Check className="w-3.5 h-3.5 stroke-[2.2]" />
