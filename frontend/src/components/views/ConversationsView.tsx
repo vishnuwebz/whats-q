@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
+import { CustomerAvatar } from '@/components/common/CustomerAvatar';
+import { apiClient } from '@/api/client';
 
 export const ConversationsView: React.FC = () => {
   const {
@@ -26,6 +28,8 @@ export const ConversationsView: React.FC = () => {
     addToast,
     setIsSimulatorOpen,
     typingUsers,
+    onlineUsers,
+    setClientPresence,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
@@ -38,17 +42,34 @@ export const ConversationsView: React.FC = () => {
 
   const { globalFilter } = useQiyamStore();
 
-  const getAvatarUrl = (name?: string, avatar?: string) => {
-    if (avatar && avatar.trim().length > 0 && !avatar.includes('undefined')) return avatar;
-    const cleanName = name || 'Customer';
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=0D9488&color=fff`;
-  };
-
   const currentConv = (conversations && conversations.length > 0)
     ? conversations.find(
         (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
       ) || conversations[0]
     : null;
+
+  const toggleCustomerPresence = async () => {
+    if (!currentConv) return;
+    const currentlyOnline = Boolean(
+      onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false
+    );
+    const nextStatus = !currentlyOnline;
+    const nowTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
+    
+    // 1. Optimistic live store update (zero wait, instant lively UI switch)
+    setClientPresence(currentConv.id, nextStatus, nextStatus ? 'Just now' : nowTime);
+
+    // 2. Persist to backend and emit SSE event across network
+    try {
+      await apiClient.post(`/conversations/threads/${currentConv.id}/presence/`, {
+        is_online: nextStatus,
+        last_seen: nextStatus ? 'Just now' : nowTime,
+      });
+      addToast(`${currentConv.contact_name || 'Customer'} is now ${nextStatus ? 'Online' : 'Offline'} on WhatsApp`, 'info');
+    } catch (e) {
+      console.warn('Could not update backend presence:', e);
+    }
+  };
 
   // Automatically mark currently active conversation as read
   React.useEffect(() => {
@@ -146,17 +167,31 @@ export const ConversationsView: React.FC = () => {
     return (
       <>
         {/* Customer Avatar Card */}
-        <div className="text-center pb-4 border-b border-slate-100">
-          <img
-            src={getAvatarUrl(currentConv.contact_name, currentConv.avatar)}
-            alt={currentConv.contact_name || 'Customer'}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = getAvatarUrl(currentConv.contact_name);
-            }}
-            className="w-16 h-16 rounded-full object-cover mx-auto ring-4 ring-emerald-500/10 mb-2"
-          />
+        <div className="text-center pb-4 border-b border-slate-100 flex flex-col items-center">
+          <CustomerAvatar conversation={currentConv} size="xl" showPresence={true} className="mb-2" />
           <h4 className="font-bold text-sm text-slate-900">{currentConv.contact_name || 'Customer'}</h4>
           <p className="text-xs text-slate-500 font-mono">{currentConv.phone_number}</p>
+
+          {/* Live Online / Offline WhatsApp Status Badge */}
+          <button
+            onClick={toggleCustomerPresence}
+            title="Click to toggle Online / Offline status"
+            className="flex items-center justify-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer group"
+          >
+            <span className={`inline-block w-2 h-2 rounded-full transition-colors duration-300 ${
+              (typingUsers[currentConv.id] || (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online))
+                ? 'bg-emerald-500 shadow-xs ring-2 ring-emerald-200'
+                : 'bg-slate-400'
+            }`} />
+            <span className="text-[11px] font-medium text-slate-600 group-hover:text-slate-900">
+              {typingUsers[currentConv.id]
+                ? 'Typing...'
+                : (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online)
+                ? 'Online on WhatsApp'
+                : `Offline (${onlineUsers[String(currentConv.id)]?.lastSeen || currentConv.last_seen || 'Recently'})`}
+            </span>
+          </button>
+
           <div className="mt-2 flex items-center justify-center gap-1.5">
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
               {currentConv.category || 'Lead'}
@@ -368,17 +403,7 @@ export const ConversationsView: React.FC = () => {
                       isSelected ? 'bg-emerald-50/50 border-l-4 border-emerald-600' : ''
                     }`}
                   >
-                    <div className="relative">
-                      <img
-                        src={getAvatarUrl(conv.contact_name, conv.avatar)}
-                        alt={conv.contact_name || 'Customer'}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = getAvatarUrl(conv.contact_name);
-                        }}
-                        className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-200"
-                      />
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white absolute bottom-0 right-0" />
-                    </div>
+                    <CustomerAvatar conversation={conv} size="md" showPresence={true} />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -473,14 +498,7 @@ export const ConversationsView: React.FC = () => {
                     <ArrowLeft className="w-5 h-5" />
                   </button>
 
-                  <img
-                    src={getAvatarUrl(currentConv.contact_name, currentConv.avatar)}
-                    alt={currentConv.contact_name || 'Customer'}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = getAvatarUrl(currentConv.contact_name);
-                    }}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-emerald-500/20 shrink-0"
-                  />
+                  <CustomerAvatar conversation={currentConv} size="md" showPresence={true} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 sm:gap-2 truncate">
                       <h3 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{currentConv.contact_name || 'Customer'}</h3>
@@ -488,6 +506,31 @@ export const ConversationsView: React.FC = () => {
                         {currentConv.category || 'Lead'}
                       </span>
                       <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 hidden xs:inline">• Open</span>
+
+                      {/* Lively WhatsApp Online/Offline Status Indicator Button */}
+                      <button
+                        type="button"
+                        onClick={toggleCustomerPresence}
+                        title="Click to toggle customer Online / Offline status"
+                        className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all duration-300 cursor-pointer ${
+                          (typingUsers[currentConv.id] || (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online))
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                            : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                          (typingUsers[currentConv.id] || (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online))
+                            ? 'bg-emerald-500 animate-pulse ring-1 ring-emerald-300'
+                            : 'bg-slate-400'
+                        }`} />
+                        <span>
+                          {typingUsers[currentConv.id]
+                            ? 'Typing...'
+                            : (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online)
+                            ? 'Online'
+                            : 'Offline'}
+                        </span>
+                      </button>
                     </div>
                     {typingUsers[currentConv.id] ? (
                       <div className="text-[11px] sm:text-xs text-emerald-600 font-bold flex items-center gap-1.5 animate-pulse mt-0.5">
@@ -502,7 +545,13 @@ export const ConversationsView: React.FC = () => {
                       <div className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 truncate">
                         <span>{currentConv.phone_number}</span>
                         <span className="hidden sm:inline">•</span>
-                        <span className="hidden sm:inline">Assigned to: <strong className="text-slate-700">{currentConv.lead_owner || 'Ramesh Kumar'}</strong></span>
+                        <span className="hidden sm:inline">
+                          {(onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online)
+                            ? <span className="text-emerald-600 font-semibold">Active now</span>
+                            : <span>Last seen {onlineUsers[String(currentConv.id)]?.lastSeen || currentConv.last_seen || 'recently'}</span>}
+                        </span>
+                        <span className="hidden md:inline">•</span>
+                        <span className="hidden md:inline">Assigned to: <strong className="text-slate-700">{currentConv.lead_owner || 'Ramesh Kumar'}</strong></span>
                       </div>
                     )}
                   </div>

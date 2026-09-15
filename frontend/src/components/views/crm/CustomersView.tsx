@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Users, Search, Filter, Plus, Phone, Mail, MapPin, MessageSquare, X, UserPlus } from 'lucide-react';
+import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 
 export const CustomersView: React.FC = () => {
   const { conversations, addCustomer, setActiveTab, setSelectedConversationId, addToast, globalFilter } = useQiyamStore();
@@ -92,7 +93,7 @@ export const CustomersView: React.FC = () => {
                   <tr key={cust.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <img src={cust.avatar} alt={cust.name} className="w-8 h-8 rounded-full object-cover" />
+                        <CustomerAvatar name={cust.name} avatar={cust.avatar} phone={cust.phone} id={cust.id} size="sm" showPresence={true} />
                         <span className="font-bold text-slate-900">{cust.name}</span>
                       </div>
                     </td>

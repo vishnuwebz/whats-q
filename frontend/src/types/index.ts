@@ -80,6 +80,8 @@ export interface Conversation {
   estimated_value?: number;
   active_workflow?: string;
   messages: WhatsAppMessage[];
+  is_online?: boolean;
+  last_seen?: string;
 }
 
 export interface Lead {

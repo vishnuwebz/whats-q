@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
-import { X, Send, Sparkles, Phone, User, MessageSquare } from 'lucide-react';
+import { X, Send, Sparkles, Phone, User, MessageSquare, Image, Radio } from 'lucide-react';
+import { CustomerAvatar } from './CustomerAvatar';
 
 export const WhatsAppSimulatorModal: React.FC = () => {
   const {
@@ -8,19 +9,46 @@ export const WhatsAppSimulatorModal: React.FC = () => {
     setIsSimulatorOpen,
     simulateInboundWhatsApp,
     simulateGlobalUpdate,
-    setActiveTab
+    setActiveTab,
+    selectedConversationId,
+    setClientTyping,
+    setClientPresence,
+    addToast
   } = useQiyamStore();
-  const [name, setName] = useState('Amit Verma');
+  const [name, setName] = useState('Habeeb Rahman');
   const [phone, setPhone] = useState('+91 98765 43210');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [isOnline, setIsOnline] = useState(true);
   const [message, setMessage] = useState('I need AC service tomorrow in Koyilandy.');
 
   if (!isSimulatorOpen) return null;
+
+  const handleSimulateTyping = () => {
+    if (selectedConversationId) {
+      setClientTyping(selectedConversationId, true);
+      addToast(`Real-time WhatsApp typing bubble triggered for 7s`, 'info');
+      setIsSimulatorOpen(false);
+      setActiveTab('conversations');
+    }
+  };
+
+  const handleToggleCurrentPresence = () => {
+    if (selectedConversationId) {
+      const nextStatus = !isOnline;
+      setIsOnline(nextStatus);
+      setClientPresence(selectedConversationId, nextStatus, nextStatus ? 'Just now' : '10:45 AM');
+      addToast(`Live status changed to ${nextStatus ? 'Online (emerald dot)' : 'Offline (ash dot)'}`, 'info');
+    }
+  };
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
 
     simulateInboundWhatsApp(name, phone, message);
+    if (selectedConversationId) {
+      setClientPresence(selectedConversationId, isOnline, isOnline ? 'Just now' : '10:45 AM');
+    }
     setIsSimulatorOpen(false);
     setActiveTab('conversations');
   };
@@ -65,6 +93,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Habeeb or Amit Verma"
                   className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 text-sm sm:text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
                   required
                 />
@@ -83,6 +112,75 @@ export const WhatsAppSimulatorModal: React.FC = () => {
                   required
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Live WhatsApp DP & Real Presence Preview */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <CustomerAvatar
+                name={name}
+                avatar={avatarUrl}
+                phone={phone}
+                isOnline={isOnline}
+                size="lg"
+                showPresence={true}
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-800 text-xs truncate">{name || 'Customer'}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+                    isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-200 text-slate-600 border-slate-300'
+                  }`}>
+                    {isOnline ? '● Online (Emerald)' : '● Offline (Ash Dot)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {avatarUrl ? 'Custom WhatsApp DP active' : 'No DP: First & Last Letter badge'}
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Online / Offline */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsOnline(!isOnline)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                  isOnline
+                    ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                {isOnline ? 'Online' : 'Offline'}
+              </button>
+              {selectedConversationId && (
+                <button
+                  type="button"
+                  onClick={handleSimulateTyping}
+                  title="Simulate WhatsApp Typing indicator for 7s"
+                  className="px-2 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-slate-300 hover:border-emerald-300 rounded-lg text-[11px] font-medium transition cursor-pointer"
+                >
+                  Typing...
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+              <span>Real WhatsApp DP URL (Optional)</span>
+              <span className="text-[10px] text-slate-400 font-normal">Leave empty for 1st & last letter initials DP</span>
+            </label>
+            <div className="relative">
+              <Image className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="url"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://example.com/customer-whatsapp-dp.jpg"
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-slate-800 text-sm sm:text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+              />
             </div>
           </div>
 

@@ -66,6 +66,8 @@ class Conversation(models.Model):
     service_needed = models.CharField(max_length=150, blank=True, default='AC Repair')
     estimated_value = models.FloatField(default=2800.0)
     active_workflow = models.CharField(max_length=150, default='Service Booking Flow')
+    is_online = models.BooleanField(default=False)
+    last_seen = models.CharField(max_length=100, blank=True, default='Recently')
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

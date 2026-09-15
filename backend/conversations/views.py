@@ -270,6 +270,52 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return Response({'status': 'ok', 'is_typing': bool(is_typing)})
 
     @action(detail=True, methods=['post'])
+    def presence(self, request, pk=None):
+        """
+        Real-time customer online/offline presence updates.
+        Payload: {"is_online": true/false, "last_seen": "12:05 PM"}
+        """
+        conversation = self.get_object()
+        is_online = request.data.get('is_online', True)
+        if isinstance(is_online, str):
+            is_online = is_online.lower() in ['true', '1', 'yes', 'online', 'available']
+        last_seen = request.data.get('last_seen', datetime.datetime.now().strftime('%I:%M %p'))
+
+        conversation.is_online = bool(is_online)
+        if not is_online:
+            conversation.last_seen = last_seen
+        conversation.save()
+
+        emit_event('conversation.presence', {
+            'conversation_id': conversation.id,
+            'is_online': conversation.is_online,
+            'last_seen': conversation.last_seen
+        })
+        return Response({
+            'status': 'ok',
+            'is_online': conversation.is_online,
+            'last_seen': conversation.last_seen
+        })
+
+    @action(detail=True, methods=['post'])
+    def sync_profile_picture(self, request, pk=None):
+        """
+        Updates or sets the customer's real WhatsApp profile picture URL.
+        Payload: {"avatar": "https://..."}
+        """
+        conversation = self.get_object()
+        avatar_url = request.data.get('avatar', '').strip()
+        if avatar_url:
+            conversation.avatar = avatar_url
+            conversation.save()
+            emit_event('conversation.updated', {
+                'id': conversation.id,
+                'avatar': conversation.avatar
+            })
+            return Response({'status': 'ok', 'avatar': conversation.avatar})
+        return Response({'error': 'Avatar URL is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
     def send_template(self, request, pk=None):
         conversation = self.get_object()
         template_id = request.data.get('template_id')
@@ -858,7 +904,7 @@ class WhatsAppWebhookView(APIView):
                             conv = Conversation.objects.create(
                                 phone_number=f"+{clean_sender}",
                                 contact_name=profile_name,
-                                avatar='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                                avatar='',
                                 category='Lead',
                                 status='open',
                                 lead_owner='Ramesh Kumar',
@@ -867,7 +913,9 @@ class WhatsAppWebhookView(APIView):
                                 location='Kozhikode, Kerala',
                                 tags=['WhatsApp Inbound'],
                                 notes='Initiated contact via Meta WhatsApp Cloud API.',
-                                unread_count=1
+                                unread_count=1,
+                                is_online=True,
+                                last_seen='Just now'
                             )
                         elif profile_name != 'WhatsApp Customer' and conv.contact_name in ['WhatsApp Customer', '']:
                             conv.contact_name = profile_name
@@ -887,7 +935,15 @@ class WhatsAppWebhookView(APIView):
                         conv.unread_count += 1
                         conv.last_contact_date = now_full
                         conv.status = 'open'
+                        conv.is_online = True
+                        conv.last_seen = 'Just now'
                         conv.save()
+
+                        emit_event('conversation.presence', {
+                            'conversation_id': conv.id,
+                            'is_online': True,
+                            'last_seen': 'Just now'
+                        })
 
                         msg_payload = MessageSerializer(created_msg).data
                         emit_event('message.created', {
@@ -1140,7 +1196,7 @@ class SimulateWhatsAppMessageView(APIView):
             phone_number=phone,
             defaults={
                 'contact_name': contact_name,
-                'avatar': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                'avatar': '',
                 'category': 'Lead',
                 'status': 'open',
                 'lead_owner': 'Ramesh Kumar',
@@ -1151,9 +1207,21 @@ class SimulateWhatsAppMessageView(APIView):
                 'notes': 'Customer requested service via WhatsApp. Needs AC repair.',
                 'service_needed': 'AC Repair',
                 'estimated_value': 2800.0,
-                'active_workflow': 'Service Booking Flow'
+                'active_workflow': 'Service Booking Flow',
+                'is_online': True,
+                'last_seen': 'Just now'
             }
         )
+
+        conv.is_online = True
+        conv.last_seen = 'Just now'
+        conv.save()
+
+        emit_event('conversation.presence', {
+            'conversation_id': conv.id,
+            'is_online': True,
+            'last_seen': 'Just now'
+        })
 
         user_msg = Message.objects.create(
             conversation=conv,

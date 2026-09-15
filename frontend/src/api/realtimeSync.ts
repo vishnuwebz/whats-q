@@ -138,6 +138,24 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('conversation.presence', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing conversation.presence event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('presence.update', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing presence.update event:', err);
+        }
+      });
+
       this.eventSource.onerror = () => {
         console.warn('[RealtimeSync] Event stream connection dropped. Reconnecting with exponential backoff...');
         if (this.eventSource) {
@@ -273,6 +291,15 @@ class RealtimeSyncManager {
         const { conversation_id, is_typing } = event.data || {};
         if (conversation_id !== undefined) {
           store.setClientTyping(conversation_id, !!is_typing);
+        }
+        break;
+      }
+
+      case 'conversation.presence':
+      case 'presence.update': {
+        const { conversation_id, is_online, last_seen } = event.data || {};
+        if (conversation_id !== undefined) {
+          store.setClientPresence(conversation_id, !!is_online, last_seen);
         }
         break;
       }

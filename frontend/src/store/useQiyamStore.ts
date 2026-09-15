@@ -197,6 +197,8 @@ interface QiyamState {
   setSyncStatus: (status: 'connected' | 'reconnecting' | 'offline') => void;
   typingUsers: Record<string, boolean>;
   setClientTyping: (conversationId: string | number, isTyping: boolean) => void;
+  onlineUsers: Record<string, { isOnline: boolean; lastSeen?: string }>;
+  setClientPresence: (conversationId: string | number, isOnline: boolean, lastSeen?: string) => void;
   applyMessageStatus: (conversationId: string | number, messageId: string | number, status: 'sent' | 'delivered' | 'read') => void;
   applyMessageReaction: (conversationId: string | number, messageId: string | number, emoji: string, from: 'customer' | 'agent' | 'bot' | 'system') => void;
   applyRealtimeMessage: (conversationId: string | number, message: WhatsAppMessage) => void;
@@ -232,6 +234,11 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       },
     }));
 
+    // If client is actively typing, they are definitely online!
+    if (isTyping) {
+      get().setClientPresence(conversationId, true, 'Just now');
+    }
+
     // Safety timeout: auto-clear typing bubble after 7 seconds to prevent stuck state
     if (isTyping && typeof window !== 'undefined') {
       const timerKey = `_typingTimer_${key}`;
@@ -247,6 +254,26 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         }));
       }, 7000);
     }
+  },
+
+  onlineUsers: {},
+  setClientPresence: (conversationId, isOnline, lastSeen) => {
+    const key = String(conversationId);
+    set((state) => ({
+      onlineUsers: {
+        ...state.onlineUsers,
+        [key]: { isOnline, lastSeen: lastSeen || (isOnline ? 'Just now' : 'Recently') },
+      },
+      conversations: state.conversations.map((c) =>
+        String(c.id) === key
+          ? {
+              ...c,
+              is_online: isOnline,
+              last_seen: lastSeen || (isOnline ? 'Just now' : c.last_seen || 'Recently'),
+            }
+          : c
+      ),
+    }));
   },
   applyMessageStatus: (conversationId, messageId, status) => {
     set((state) => ({
@@ -287,8 +314,11 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   applyRealtimeMessage: (conversationId, message) => {
-    // When real incoming message arrives from customer, they stopped typing
+    // When real incoming message arrives from customer, they stopped typing and are actively online
     get().setClientTyping(conversationId, false);
+    if (message.sender === 'customer') {
+      get().setClientPresence(conversationId, true, 'Just now');
+    }
 
     set((state) => {
       const convIndex = state.conversations.findIndex((c) => String(c.id) === String(conversationId));

@@ -35,7 +35,13 @@ export function mapConversation(raw: Record<string, unknown>): Conversation {
   const messages = Array.isArray(raw.messages)
     ? raw.messages.map((m) => mapMessage(m as Record<string, unknown>))
     : [];
-  return { ...(raw as unknown as Conversation), messages };
+  return {
+    ...(raw as unknown as Conversation),
+    messages,
+    is_online: Boolean(raw.is_online),
+    last_seen: String(raw.last_seen || ''),
+    avatar: String(raw.avatar || ''),
+  };
 }
 
 export function mapAutomationLog(raw: Record<string, unknown>): AutomationLog {
