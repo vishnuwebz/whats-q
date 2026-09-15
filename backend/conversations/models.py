@@ -50,7 +50,7 @@ class Conversation(models.Model):
 
     contact_name = models.CharField(max_length=150)
     phone_number = models.CharField(max_length=50)
-    avatar = models.CharField(max_length=255, blank=True, default='')
+    avatar = models.TextField(blank=True, default='')
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='Lead')
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='open')
     unread_count = models.IntegerField(default=0)

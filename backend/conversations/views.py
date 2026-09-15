@@ -317,10 +317,59 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def sync_profile_picture(self, request, pk=None):
         """
-        Updates or sets the customer's real WhatsApp profile picture URL.
-        Payload: {"avatar": "https://..."}
+        Updates, uploads, or clears the customer's real WhatsApp profile picture URL.
+        Supports:
+        - Multipart file upload: 'avatar' or 'file'
+        - JSON payload: {"avatar": "https://..."} or {"avatar": "data:image/..."}
+        - JSON action 'clear': {"action": "clear"} -> resets to empty for initials badge
+        - JSON action 'sync'/'fetch': checks status
         """
+        import os
+        from django.conf import settings
+
         conversation = self.get_object()
+
+        # 1. Check for file upload (multipart/form-data)
+        uploaded_file = request.FILES.get('avatar') or request.FILES.get('file')
+        if uploaded_file:
+            ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
+            avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+            os.makedirs(avatar_dir, exist_ok=True)
+            filename = f"avatar_{conversation.id}_{int(time.time())}{ext}"
+            filepath = os.path.join(avatar_dir, filename)
+            with open(filepath, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+
+            media_url = f"{settings.MEDIA_URL}avatars/{filename}"
+            conversation.avatar = media_url
+            conversation.save()
+            emit_event('conversation.updated', {
+                'id': conversation.id,
+                'avatar': conversation.avatar
+            })
+            return Response({
+                'status': 'ok',
+                'avatar': conversation.avatar,
+                'action': 'uploaded'
+            })
+
+        # 2. Check for clear action
+        action_type = request.data.get('action')
+        if action_type == 'clear':
+            conversation.avatar = ''
+            conversation.save()
+            emit_event('conversation.updated', {
+                'id': conversation.id,
+                'avatar': ''
+            })
+            return Response({
+                'status': 'ok',
+                'avatar': '',
+                'action': 'cleared'
+            })
+
+        # 3. Check for custom URL or data URI
         avatar_url = request.data.get('avatar', '').strip()
         if avatar_url:
             conversation.avatar = avatar_url
@@ -329,8 +378,21 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'id': conversation.id,
                 'avatar': conversation.avatar
             })
-            return Response({'status': 'ok', 'avatar': conversation.avatar})
-        return Response({'error': 'Avatar URL is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'ok',
+                'avatar': conversation.avatar,
+                'action': 'saved_url'
+            })
+
+        # 4. Check for automated sync request
+        if action_type in ['sync', 'fetch']:
+            return Response({
+                'status': 'info',
+                'message': 'Meta Cloud API omits personal profile photos from webhooks to protect user privacy. Please upload or link a photo directly.',
+                'avatar': conversation.avatar
+            })
+
+        return Response({'error': 'Please provide an image file or avatar URL.'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
     def send_template(self, request, pk=None):

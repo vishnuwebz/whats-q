@@ -32,6 +32,25 @@ export const apiClient = {
     }
   },
 
+  async postFormData(endpoint: string, formData: FormData) {
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const dataJson = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errorMsg = dataJson?.error || dataJson?.detail || `HTTP error! status: ${res.status}`;
+        console.warn(`API POST FormData ${endpoint} failed:`, errorMsg);
+        return { success: false, error: errorMsg, ...dataJson };
+      }
+      return dataJson;
+    } catch (e: any) {
+      console.warn(`API POST FormData ${endpoint} failed:`, e);
+      return { success: false, error: e.message || 'Network error' };
+    }
+  },
+
   async put(endpoint: string, data: any) {
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {

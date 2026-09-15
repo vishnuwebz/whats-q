@@ -6,10 +6,11 @@ import {
   Smile, Mic, CheckCheck, Clock, UserCheck, Calendar,
   Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
-  MessageSquare
+  MessageSquare, Camera
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
+import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { apiClient } from '@/api/client';
 import { sortConversationsByRecency, formatWhatsAppChatTime } from '@/utils/chatRecency';
@@ -37,6 +38,7 @@ export const ConversationsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -171,8 +173,28 @@ export const ConversationsView: React.FC = () => {
       <>
         {/* Customer Avatar Card */}
         <div className="text-center pb-4 border-b border-slate-100 flex flex-col items-center">
-          <CustomerAvatar conversation={currentConv} size="xl" showPresence={true} className="mb-2" />
-          <h4 className="font-bold text-sm text-slate-900">{currentConv.contact_name || 'Customer'}</h4>
+          <div className="relative group cursor-pointer mb-2">
+            <CustomerAvatar conversation={currentConv} size="xl" showPresence={true} />
+            <button
+              onClick={() => setIsAvatarModalOpen(true)}
+              title="Change or Upload WhatsApp Profile Picture"
+              className="absolute inset-0 rounded-full bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-semibold cursor-pointer shadow-lg"
+            >
+              <Camera size={20} className="mb-0.5 drop-shadow-sm" />
+              <span className="text-[10px] font-bold">Edit DP</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-center gap-1.5">
+            <h4 className="font-bold text-sm text-slate-900">{currentConv.contact_name || 'Customer'}</h4>
+            <button
+              onClick={() => setIsAvatarModalOpen(true)}
+              title="Upload or Update WhatsApp DP"
+              className="text-slate-400 hover:text-emerald-600 p-0.5 rounded transition-colors cursor-pointer"
+            >
+              <Camera size={13} />
+            </button>
+          </div>
           <p className="text-xs text-slate-500 font-mono">{currentConv.phone_number}</p>
 
           {/* Live Online / Offline WhatsApp Status Badge */}
@@ -501,7 +523,13 @@ export const ConversationsView: React.FC = () => {
                     <ArrowLeft className="w-5 h-5" />
                   </button>
 
-                  <CustomerAvatar conversation={currentConv} size="md" showPresence={true} />
+                  <div
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    title="Click to view or update WhatsApp DP"
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                  >
+                    <CustomerAvatar conversation={currentConv} size="md" showPresence={true} />
+                  </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 sm:gap-2 truncate">
                       <h3 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{currentConv.contact_name || 'Customer'}</h3>
@@ -886,6 +914,15 @@ export const ConversationsView: React.FC = () => {
           onSendTemplate={(tmplId, vars) => {
             sendTemplateMessage(currentConv.id, tmplId, vars);
           }}
+        />
+      )}
+
+      {/* WhatsApp Profile Picture (DP) Modal */}
+      {currentConv && (
+        <CustomerAvatarModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => setIsAvatarModalOpen(false)}
+          conversation={currentConv}
         />
       )}
     </div>
