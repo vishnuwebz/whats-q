@@ -124,17 +124,11 @@ export const Header: React.FC<HeaderProps> = ({
               <p className="text-[11px] text-slate-500 mt-0.5 whitespace-nowrap">{subtitle}</p>
             )}
           </div>
-        </div>
 
-        {/* ── RIGHT: Horizontally swipeable action strip ── */}
-        {/* overflow-x-auto + scrollbar-hide makes it touch-swipeable with no visible scrollbar */}
-        <div className="flex-1 overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1">
-
-          {/* Search */}
+          {/* Search — Pinned, not scrollable */}
           <button
             onClick={() => setIsOmniSearchOpen(true)}
-            className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-40 text-left cursor-pointer group shrink-0"
+            className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-36 sm:w-44 text-left cursor-pointer group shrink-0 ml-1 sm:ml-2"
             title="Search (Ctrl + /)"
           >
             <div className="flex items-center gap-2 truncate">
@@ -143,6 +137,12 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <kbd className="text-[10px] font-mono font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 shadow-2xs">/</kbd>
           </button>
+        </div>
+
+        {/* ── RIGHT: Horizontally swipeable action strip ── */}
+        {/* overflow-x-auto + scrollbar-hide makes it touch-swipeable with no visible scrollbar */}
+        <div className="flex-1 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1">
 
           {/* Date Range */}
           <div className="relative shrink-0">
