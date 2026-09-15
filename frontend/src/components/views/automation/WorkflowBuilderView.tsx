@@ -5,10 +5,10 @@ import {
   ZoomIn, ZoomOut, Maximize2, Trash2, Edit3, X, Check,
   MessageSquare, FileText, Image, Video, Music, MapPin,
   HelpCircle, CreditCard, Layers, Bot, Zap, Smartphone,
-  CheckCircle2, Clock, Calendar, Paperclip, ChevronRight,
+  CheckCircle2, Clock, Calendar, Paperclip, ChevronRight, ChevronDown, ChevronLeft,
   ExternalLink, Sparkles, AlertCircle, ArrowRight, CornerDownRight,
   Move, Sliders, DollarSign, RefreshCw, Eye, BookOpen, Info,
-  ShieldCheck, ShoppingCart, Send, Compass
+  ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe
 } from 'lucide-react';
 
 // Types for Flow Canvas
@@ -78,6 +78,18 @@ export const WorkflowBuilderView: React.FC = () => {
   const [staticVariables, setStaticVariables] = useState(true);
   const [globalVariables, setGlobalVariables] = useState(false);
   const [autosave, setAutosave] = useState(true);
+
+  // Info Modal State for Static / Global variables
+  const [activeInfoModal, setActiveInfoModal] = useState<'static' | 'global' | null>(null);
+
+  // Block Library Sidebar Collapse / Expand state
+  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
+
+  // Accordion category collapse inside Block Library
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const toggleCategory = (cat: string) => {
+    setCollapsedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  };
 
   // Zoom Level
   const [zoom, setZoom] = useState(1);
@@ -1162,13 +1174,24 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
 
               {/* Static Variables Toggle (hidden on very small screens) */}
-              <div className="hidden sm:flex items-center gap-2 shrink-0">
-                <span className="text-slate-600 font-medium">Static</span>
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-600 font-medium text-xs">Static</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveInfoModal('static')}
+                    className="p-1 rounded-full text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                    title="What are Static Variables? Click for detailed scenarios"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <button
                   onClick={() => setStaticVariables(!staticVariables)}
                   className={`w-8 h-4.5 rounded-full transition-colors relative cursor-pointer ${
                     staticVariables ? 'bg-emerald-600' : 'bg-slate-300'
                   }`}
+                  title={staticVariables ? 'Static Variables Enabled' : 'Static Variables Disabled'}
                 >
                   <span
                     className={`block w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform transform ${
@@ -1179,13 +1202,24 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
 
               {/* Global Variables Toggle (hidden on very small screens) */}
-              <div className="hidden sm:flex items-center gap-2 shrink-0">
-                <span className="text-slate-600 font-medium">Global</span>
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-600 font-medium text-xs">Global</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveInfoModal('global')}
+                    className="p-1 rounded-full text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                    title="What are Global Variables? Click for detailed scenarios"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <button
                   onClick={() => setGlobalVariables(!globalVariables)}
                   className={`w-8 h-4.5 rounded-full transition-colors relative cursor-pointer ${
                     globalVariables ? 'bg-emerald-600' : 'bg-slate-300'
                   }`}
+                  title={globalVariables ? 'Global Variables Enabled' : 'Global Variables Disabled'}
                 >
                   <span
                     className={`block w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform transform ${
@@ -1553,151 +1587,282 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Sidebar: BLOCK LIBRARY */}
-            <div className="w-64 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto font-sans text-xs z-10 no-pan">
-              {/* Library Header */}
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <span className="font-bold text-slate-800 tracking-wider text-[11px] uppercase">BLOCK LIBRARY</span>
+            {/* Right Sidebar: BLOCK LIBRARY (Expandable & Minimizable) */}
+            {!isLibraryOpen ? (
+              /* Minimized Vertical Tab */
+              <div
+                onClick={() => setIsLibraryOpen(true)}
+                className="w-10 bg-white border-l border-slate-200 hover:border-emerald-400 flex flex-col items-center py-4 gap-4 shrink-0 cursor-pointer shadow-xs transition-all hover:bg-emerald-50/40 z-10 select-none group"
+                title="Expand Block Library"
+              >
                 <button
-                  onClick={handleAddGroup}
-                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-lg border border-emerald-200 transition cursor-pointer"
+                  type="button"
+                  className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-emerald-100 text-slate-600 group-hover:text-emerald-700 transition"
+                  title="Expand Block Library"
                 >
-                  <Plus className="w-3 h-3" />
-                  <span>+ Group</span>
+                  <PanelRightOpen className="w-4 h-4" />
                 </button>
+                <span className="[writing-mode:vertical-rl] rotate-180 text-[11px] font-bold text-slate-600 group-hover:text-emerald-700 tracking-wider uppercase">
+                  BLOCK LIBRARY
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mt-auto" />
               </div>
-
-              {/* Categorized Blocks List */}
-              <div className="p-3.5 space-y-4 overflow-y-auto">
-                {/* MESSAGES */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">MESSAGES</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Text', icon: MessageSquare },
-                      { label: 'Image', icon: Image },
-                      { label: 'Video', icon: Video },
-                      { label: 'YouTube', icon: Video },
-                      { label: 'Media', icon: Layers },
-                      { label: 'File', icon: FileText },
-                      { label: 'Audio', icon: Music },
-                      { label: 'Location', icon: MapPin },
-                    ].map((b, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleAddBlockToGroup(b.label, 'MESSAGES')}
-                        className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                      >
-                        <b.icon className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{b.label}</span>
-                      </button>
-                    ))}
+            ) : (
+              /* Expanded Block Library */
+              <div className="w-68 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto font-sans text-xs z-10 no-pan transition-all">
+                {/* Library Header */}
+                <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsLibraryOpen(false)}
+                      className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                      title="Minimize Block Library (give canvas full width)"
+                    >
+                      <PanelRightClose className="w-4 h-4 text-slate-600" />
+                    </button>
+                    <span className="font-bold text-slate-800 tracking-wider text-[11px] uppercase">BLOCK LIBRARY</span>
                   </div>
-                </div>
-
-                {/* CHOICES */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">CHOICES</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Quick Reply', icon: MessageSquare },
-                      { label: 'List Menu', icon: List },
-                    ].map((b, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleAddBlockToGroup(b.label, 'CHOICES')}
-                        className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                      >
-                        <b.icon className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{b.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* INPUTS */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">INPUTS</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Text', icon: MessageSquare },
-                      { label: 'Number', icon: Layers },
-                      { label: 'Email', icon: MessageSquare },
-                      { label: 'Website', icon: ExternalLink },
-                      { label: 'Date', icon: Calendar },
-                      { label: 'Time', icon: Clock },
-                      { label: 'Phone', icon: Smartphone },
-                      { label: 'File', icon: FileText },
-                    ].map((b, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleAddBlockToGroup(b.label, 'INPUTS')}
-                        className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                      >
-                        <b.icon className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{b.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* PAYMENTS */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">PAYMENTS</div>
                   <button
-                    onClick={() => handleAddBlockToGroup('Stripe Checkout', 'PAYMENTS')}
-                    className="w-full p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-900 flex items-center gap-2 transition text-[11px] font-semibold text-emerald-800 shadow-2xs cursor-pointer"
+                    onClick={handleAddGroup}
+                    className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition cursor-pointer"
+                    title="Add a new group container to canvas"
                   >
-                    <CreditCard className="w-4 h-4 text-emerald-600" />
-                    <span>Payment Checkout Link</span>
+                    <Plus className="w-3 h-3" />
+                    <span>+ Group</span>
                   </button>
                 </div>
 
-                {/* LOGIC */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">LOGIC</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Condition', icon: GitBranch },
-                      { label: 'Chatbot', icon: Bot },
-                    ].map((b, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleAddBlockToGroup(b.label, 'LOGIC')}
-                        className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                      >
-                        <b.icon className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{b.label}</span>
-                      </button>
-                    ))}
+                {/* Categorized Blocks List with Accordions */}
+                <div className="p-3 space-y-3.5 overflow-y-auto">
+                  {/* MESSAGES */}
+                  <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory('MESSAGES')}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-slate-600 hover:text-slate-900 uppercase tracking-wider mb-1.5 cursor-pointer select-none"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>MESSAGES</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-white px-1.5 py-0.2 rounded-full border border-slate-200">8</span>
+                      </span>
+                      {collapsedCategories['MESSAGES'] ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+                    {!collapsedCategories['MESSAGES'] && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        {[
+                          { label: 'Text', icon: MessageSquare },
+                          { label: 'Image', icon: Image },
+                          { label: 'Video', icon: Video },
+                          { label: 'YouTube', icon: Video },
+                          { label: 'Media', icon: Layers },
+                          { label: 'File', icon: FileText },
+                          { label: 'Audio', icon: Music },
+                          { label: 'Location', icon: MapPin },
+                        ].map((b, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleAddBlockToGroup(b.label, 'MESSAGES')}
+                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
+                          >
+                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="truncate">{b.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {/* INTEGRATIONS */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">INTEGRATIONS</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Sheets', icon: FileText },
-                      { label: 'Webhook', icon: Zap },
-                      { label: 'Email', icon: MessageSquare },
-                      { label: 'Zapier', icon: Zap },
-                      { label: 'Make.com', icon: Sparkles },
-                      { label: 'Pabbly', icon: Layers },
-                    ].map((b, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleAddBlockToGroup(b.label, 'INTEGRATIONS')}
-                        className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                      >
-                        <b.icon className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{b.label}</span>
-                      </button>
-                    ))}
+                  {/* CHOICES */}
+                  <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory('CHOICES')}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-slate-600 hover:text-slate-900 uppercase tracking-wider mb-1.5 cursor-pointer select-none"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>CHOICES</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-white px-1.5 py-0.2 rounded-full border border-slate-200">2</span>
+                      </span>
+                      {collapsedCategories['CHOICES'] ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+                    {!collapsedCategories['CHOICES'] && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        {[
+                          { label: 'Quick Reply', icon: MessageSquare },
+                          { label: 'List Menu', icon: List },
+                        ].map((b, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleAddBlockToGroup(b.label, 'CHOICES')}
+                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
+                          >
+                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="truncate">{b.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* INPUTS */}
+                  <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory('INPUTS')}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-slate-600 hover:text-slate-900 uppercase tracking-wider mb-1.5 cursor-pointer select-none"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>INPUTS</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-white px-1.5 py-0.2 rounded-full border border-slate-200">8</span>
+                      </span>
+                      {collapsedCategories['INPUTS'] ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+                    {!collapsedCategories['INPUTS'] && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        {[
+                          { label: 'Text', icon: MessageSquare },
+                          { label: 'Number', icon: Layers },
+                          { label: 'Email', icon: MessageSquare },
+                          { label: 'Website', icon: ExternalLink },
+                          { label: 'Date', icon: Calendar },
+                          { label: 'Time', icon: Clock },
+                          { label: 'Phone', icon: Smartphone },
+                          { label: 'File', icon: FileText },
+                        ].map((b, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleAddBlockToGroup(b.label, 'INPUTS')}
+                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-purple-50 hover:border-purple-300 hover:text-purple-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
+                          >
+                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="truncate">{b.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* PAYMENTS */}
+                  <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory('PAYMENTS')}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-slate-600 hover:text-slate-900 uppercase tracking-wider mb-1.5 cursor-pointer select-none"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>PAYMENTS</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-white px-1.5 py-0.2 rounded-full border border-slate-200">1</span>
+                      </span>
+                      {collapsedCategories['PAYMENTS'] ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+                    {!collapsedCategories['PAYMENTS'] && (
+                      <div className="pt-1">
+                        <button
+                          onClick={() => handleAddBlockToGroup('Stripe Checkout', 'PAYMENTS')}
+                          className="w-full p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-900 flex items-center gap-2 transition text-[11px] font-semibold text-emerald-800 shadow-2xs cursor-pointer"
+                        >
+                          <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Payment Checkout Link</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* LOGIC */}
+                  <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory('LOGIC')}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-slate-600 hover:text-slate-900 uppercase tracking-wider mb-1.5 cursor-pointer select-none"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>LOGIC</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-white px-1.5 py-0.2 rounded-full border border-slate-200">2</span>
+                      </span>
+                      {collapsedCategories['LOGIC'] ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+                    {!collapsedCategories['LOGIC'] && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        {[
+                          { label: 'Condition', icon: GitBranch },
+                          { label: 'Chatbot', icon: Bot },
+                        ].map((b, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleAddBlockToGroup(b.label, 'LOGIC')}
+                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
+                          >
+                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="truncate">{b.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* INTEGRATIONS */}
+                  <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory('INTEGRATIONS')}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-slate-600 hover:text-slate-900 uppercase tracking-wider mb-1.5 cursor-pointer select-none"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>INTEGRATIONS</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-white px-1.5 py-0.2 rounded-full border border-slate-200">6</span>
+                      </span>
+                      {collapsedCategories['INTEGRATIONS'] ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+                    {!collapsedCategories['INTEGRATIONS'] && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        {[
+                          { label: 'Sheets', icon: FileText },
+                          { label: 'Webhook', icon: Zap },
+                          { label: 'Email', icon: MessageSquare },
+                          { label: 'Zapier', icon: Zap },
+                          { label: 'Make.com', icon: Sparkles },
+                          { label: 'Pabbly', icon: Layers },
+                        ].map((b, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleAddBlockToGroup(b.label, 'INTEGRATIONS')}
+                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
+                          >
+                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="truncate">{b.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -2716,6 +2881,182 @@ export const WorkflowBuilderView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STATIC & GLOBAL VARIABLES INFO MODAL                                      */}
+      {/* ========================================================================= */}
+      {activeInfoModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setActiveInfoModal(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-5 text-xs animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    activeInfoModal === 'static'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-purple-50 text-purple-700 border border-purple-200'
+                  }`}
+                >
+                  {activeInfoModal === 'static' ? (
+                    <Layers className="w-5 h-5" />
+                  ) : (
+                    <Globe className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        activeInfoModal === 'static'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-purple-100 text-purple-800'
+                      }`}
+                    >
+                      {activeInfoModal === 'static' ? 'Local Session Scope' : 'Workspace-Wide Scope'}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-base text-slate-900 mt-0.5">
+                    {activeInfoModal === 'static'
+                      ? 'Static Variables in Automation'
+                      : 'Global Variables in Automation'}
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveInfoModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            {activeInfoModal === 'static' ? (
+              <div className="space-y-4 text-slate-600 leading-relaxed">
+                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-emerald-950 space-y-1">
+                  <div className="font-bold text-xs flex items-center gap-1.5 text-emerald-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>What is Static Mode?</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    <strong>Static Variables</strong> are local memory slots bound strictly to this specific chatbot and a single customer's active chat session. They temporarily hold inputs collected from the user during the flow.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">
+                    📖 Real-World Business Scenario
+                  </h4>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 font-mono text-[11px]">
+                    <div className="font-semibold text-slate-800 font-sans">
+                      Scenario: AC Repair Service Booking Flow
+                    </div>
+                    <div className="space-y-1 text-slate-600 pl-2 border-l-2 border-emerald-500">
+                      <p><strong>1. Customer:</strong> "Hi, I need AC cleaning"</p>
+                      <p><strong>2. Bot asks:</strong> "Which service?" &rarr; User selects "Jet Pump Cleaning"</p>
+                      <p className="text-emerald-700 bg-emerald-50/80 p-1 rounded">
+                        &rarr; Saved locally to: <code>service_type = 'Jet Pump Cleaning'</code>
+                      </p>
+                      <p><strong>3. Bot asks:</strong> "What time suits you?" &rarr; User replies "Tomorrow 10 AM"</p>
+                      <p className="text-emerald-700 bg-emerald-50/80 p-1 rounded">
+                        &rarr; Saved locally to: <code>preferred_time = 'Tomorrow 10 AM'</code>
+                      </p>
+                      <p><strong>4. Bot confirms:</strong> "Booking confirmed for Jet Pump Cleaning at Tomorrow 10 AM!"</p>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-sans italic pt-1">
+                      💡 When the next customer chats 5 minutes later, their session starts fresh — customer data is completely isolated and never mixed!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-[11px]">
+                  <h4 className="font-bold text-slate-900 text-xs">When to keep Static ON:</h4>
+                  <ul className="list-disc pl-4 space-y-1 text-slate-600">
+                    <li>When capturing customer details (Name, Address, Phone number).</li>
+                    <li>When storing temporary booking dates, times, or selected menu choices.</li>
+                    <li>When running multi-step questionnaire or qualification flows.</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-slate-600 leading-relaxed">
+                <div className="p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl text-purple-950 space-y-1">
+                  <div className="font-bold text-xs flex items-center gap-1.5 text-purple-900">
+                    <Globe className="w-4 h-4 text-purple-600 shrink-0" />
+                    <span>What is Global Mode?</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    <strong>Global Variables</strong> are workspace-wide constants and shared parameters accessible across <em>all chatbots, workflows, trigger rules, and broadcast campaigns</em> simultaneously.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">
+                    📖 Real-World Business Scenario
+                  </h4>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 font-mono text-[11px]">
+                    <div className="font-semibold text-slate-800 font-sans">
+                      Scenario: Seasonal Festival Discount Across 4 Different Chatbots
+                    </div>
+                    <div className="space-y-1 text-slate-600 pl-2 border-l-2 border-purple-500">
+                      <p>You operate 4 active WhatsApp bots:</p>
+                      <p>• Bot 1: Inbound Lead Generator</p>
+                      <p>• Bot 2: Google / Instagram Ad Click-to-WhatsApp Flow</p>
+                      <p>• Bot 3: Repeat Order & Re-engagement Bot</p>
+                      <p>• Bot 4: Customer Support FAQ Bot</p>
+                      <p className="text-purple-700 bg-purple-50/80 p-1.5 rounded">
+                        Instead of editing coupon codes in all 4 bots manually, you define once:
+                        <br />
+                        <code>&#123;&#123;GLOBAL_DISCOUNT_CODE&#125;&#125; = 'FESTIVAL20'</code>
+                        <br />
+                        <code>&#123;&#123;GLOBAL_SUPPORT_HOTLINE&#125;&#125; = '+91 90746 40425'</code>
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-sans italic pt-1">
+                      💡 When the festival ends, you update the code once in workspace settings. All 4 bots instantly update in real time with zero redeployments!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-[11px]">
+                  <h4 className="font-bold text-slate-900 text-xs">When to keep Global ON:</h4>
+                  <ul className="list-disc pl-4 space-y-1 text-slate-600">
+                    <li>When referencing company brand info, office working hours, or hotline numbers.</li>
+                    <li>When running seasonal sales, promo codes, or dynamic pricing.</li>
+                    <li>When sharing centralized webhook endpoints or payment UPI links.</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">
+                Current status:{' '}
+                <span className="font-semibold text-slate-700">
+                  {activeInfoModal === 'static'
+                    ? staticVariables ? 'Enabled (Active)' : 'Disabled'
+                    : globalVariables ? 'Enabled (Active)' : 'Disabled'}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs transition cursor-pointer"
+              >
+                Got It
+              </button>
+            </div>
           </div>
         </div>
       )}
