@@ -8,7 +8,8 @@ import {
   CheckSquare, Navigation, Package, Receipt, FileText,
   CreditCard, Wallet, BookOpen, Layers, GitBranch,
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
-  PanelLeftClose, PanelLeftOpen, X
+  PanelLeftClose, PanelLeftOpen, X, Building2, Check,
+  User, Shield, LogOut, ArrowRight, ExternalLink
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -21,8 +22,66 @@ export const Sidebar: React.FC = () => {
     toggleSidebarCollapse,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen,
-    conversations
+    conversations,
+    addToast
   } = useQiyamStore();
+
+  // Tenant / Organization Switcher state
+  const [isTenantOpen, setIsTenantOpen] = useState(false);
+  const [tenants, setTenants] = useState([
+    {
+      id: 'TN2345',
+      name: 'CoolFix Services',
+      branch: 'HQ • Kozhikode',
+      status: 'Active',
+      phone: '+91 98765 43210',
+      initial: 'Q',
+      color: 'from-emerald-500 to-teal-600',
+      staffCount: 18,
+    },
+    {
+      id: 'TN2388',
+      name: 'CoolFix Express',
+      branch: 'Kochi Hub',
+      status: 'Online',
+      phone: '+91 98765 43211',
+      initial: 'E',
+      color: 'from-blue-500 to-cyan-600',
+      staffCount: 12,
+    },
+    {
+      id: 'TN2401',
+      name: 'CoolFix Enterprises',
+      branch: 'Calicut Central',
+      status: 'Online',
+      phone: '+91 98765 43212',
+      initial: 'C',
+      color: 'from-purple-500 to-indigo-600',
+      staffCount: 24,
+    },
+    {
+      id: 'TN2455',
+      name: 'CoolFix MEP Solutions',
+      branch: 'Industrial Area',
+      status: 'Ready',
+      phone: '+91 98765 43213',
+      initial: 'M',
+      color: 'from-amber-500 to-orange-600',
+      staffCount: 8,
+    },
+  ]);
+  const [activeTenantId, setActiveTenantId] = useState('TN2345');
+  const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0];
+
+  const handleSelectTenant = (tenant: (typeof tenants)[0]) => {
+    setActiveTenantId(tenant.id);
+    setIsTenantOpen(false);
+    addToast(`Switched active organization to ${tenant.name} (${tenant.id})`, 'success');
+  };
+
+  // Profile & Help Modals
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const isCollapsed = isSidebarCollapsed && !isMobileSidebarOpen;
 
@@ -726,56 +785,448 @@ export const Sidebar: React.FC = () => {
       <div className={`p-3 border-t border-[#1E293B] bg-[#09101F] ${isCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-2'}`}>
         {isCollapsed ? (
           <>
-            <div
-              title="CoolFix Services (ID: TN2345)"
-              className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/30 transition"
+            <button
+              type="button"
+              onClick={() => setIsTenantOpen(true)}
+              title={`${activeTenant.name} (ID: ${activeTenant.id}) - Click to Switch Branch`}
+              className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/30 transition shadow-2xs active:scale-95"
             >
-              Q
-            </div>
+              {activeTenant.initial}
+            </button>
             <div
-              title="Rahul Mehta (Owner)"
-              className="cursor-pointer"
+              onClick={() => setIsProfileOpen(true)}
+              title="Rahul Mehta (Owner) - Click for Account & Profile"
+              className="cursor-pointer relative group"
             >
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
                 alt="Rahul Mehta"
-                className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50"
+                className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50 group-hover:ring-2 group-hover:ring-emerald-400 transition"
               />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
             </div>
           </>
         ) : (
           <>
-            <div className="flex items-center justify-between bg-[#111C33]/80 p-2 rounded-lg border border-[#1E293B] cursor-pointer hover:bg-[#16233B] transition-all">
+            <div
+              onClick={() => setIsTenantOpen(true)}
+              className="flex items-center justify-between bg-[#111C33]/80 p-2 rounded-lg border border-[#1E293B] hover:border-emerald-500/40 cursor-pointer hover:bg-[#16233B] transition-all group shadow-2xs"
+              title="Click to Switch Organization / Branch"
+            >
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                  Q
+                <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                  {activeTenant.initial}
                 </div>
                 <div>
-                  <div className="text-[11px] font-semibold text-white leading-tight">CoolFix Services</div>
-                  <div className="text-[9px] text-slate-400">ID: TN2345</div>
+                  <div className="text-[11px] font-semibold text-white leading-tight group-hover:text-emerald-300 transition-colors">
+                    {activeTenant.name}
+                  </div>
+                  <div className="text-[9px] text-slate-400">ID: {activeTenant.id}</div>
                 </div>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 transition-colors" />
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center gap-2.5">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                  alt="Rahul Mehta"
-                  className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50"
-                />
+              <div
+                onClick={() => setIsProfileOpen(true)}
+                className="flex items-center gap-2.5 cursor-pointer group hover:bg-slate-800/40 p-1 -m-1 rounded-lg transition"
+                title="Click for Profile & Account Settings"
+              >
+                <div className="relative">
+                  <img
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                    alt="Rahul Mehta"
+                    className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50 group-hover:ring-2 group-hover:ring-emerald-400 transition"
+                  />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
+                </div>
                 <div>
-                  <div className="text-xs font-semibold text-white leading-tight">Rahul Mehta</div>
+                  <div className="text-xs font-semibold text-white leading-tight group-hover:text-emerald-300 transition-colors">
+                    Rahul Mehta
+                  </div>
                   <div className="text-[10px] text-slate-400">Owner</div>
                 </div>
               </div>
-              <HelpCircle className="w-4 h-4 text-slate-400 hover:text-slate-200 cursor-pointer" />
+              <button
+                type="button"
+                onClick={() => setIsHelpOpen(true)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+                title="Qiyam OS Help & Shortcuts"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
             </div>
           </>
         )}
       </div>
-    </aside></>
+    </aside>
+
+    {/* ── 1. Organization / Tenant Switcher Modal ── */}
+    {isTenantOpen && (
+      <div
+        className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={() => setIsTenantOpen(false)}
+      >
+        <div
+          className="bg-[#0F172A] border border-[#1E293B] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-xs animate-in zoom-in-95 duration-150"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="p-4 border-b border-[#1E293B] flex items-center justify-between bg-[#111C33]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Switch Organization & Branch</h3>
+                <p className="text-[11px] text-slate-400">Multi-tenant Cloud Workspace</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsTenantOpen(false)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Organizations List */}
+          <div className="p-3 space-y-2 max-h-[360px] overflow-y-auto">
+            {tenants.map((t) => {
+              const isCurrent = t.id === activeTenantId;
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => handleSelectTenant(t)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                    isCurrent
+                      ? 'bg-emerald-950/40 border-emerald-500/50 shadow-sm'
+                      : 'bg-[#111C33]/50 hover:bg-[#162544] border-[#1E293B] hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${t.color} text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0`}
+                    >
+                      {t.initial}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white group-hover:text-emerald-300 transition-colors">
+                          {t.name}
+                        </span>
+                        {isCurrent && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
+                        <span>ID: {t.id}</span>
+                        <span>•</span>
+                        <span className="font-sans text-slate-300">{t.branch}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-2">
+                        <span>{t.phone}</span>
+                        <span>•</span>
+                        <span>{t.staffCount} Staff Members</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 ml-2">
+                    {isCurrent ? (
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 group-hover:text-emerald-400 font-medium opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
+                        Switch <ArrowRight className="w-3 h-3" />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-3 border-t border-[#1E293B] bg-[#070D18] flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsTenantOpen(false);
+                handleTabClick('settings');
+              }}
+              className="px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+            >
+              <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
+              <span>Workspace Settings</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const newName = prompt('Enter new Organization / Branch name:', 'CoolFix Calicut North');
+                if (newName && newName.trim()) {
+                  const newId = `TN${Math.floor(1000 + Math.random() * 9000)}`;
+                  const newTenant = {
+                    id: newId,
+                    name: newName.trim(),
+                    branch: 'Regional Hub',
+                    status: 'Active',
+                    phone: '+91 98765 43299',
+                    initial: newName.trim().charAt(0).toUpperCase(),
+                    color: 'from-teal-500 to-emerald-600',
+                    staffCount: 1,
+                  };
+                  setTenants((prev) => [...prev, newTenant]);
+                  handleSelectTenant(newTenant);
+                }
+              }}
+              className="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Branch</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── 2. User Profile & Account Settings Modal ── */}
+    {isProfileOpen && (
+      <div
+        className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={() => setIsProfileOpen(false)}
+      >
+        <div
+          className="bg-[#0F172A] border border-[#1E293B] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-xs animate-in zoom-in-95 duration-150"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header Banner */}
+          <div className="relative p-5 bg-gradient-to-r from-emerald-950/80 to-[#111C33] border-b border-[#1E293B]">
+            <button
+              onClick={() => setIsProfileOpen(false)}
+              className="absolute top-3 right-3 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/80 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-3.5">
+              <div className="relative">
+                <img
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                  alt="Rahul Mehta"
+                  className="w-14 h-14 rounded-2xl object-cover ring-2 ring-emerald-500 shadow-md"
+                />
+                <span className="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0F172A] absolute -bottom-0.5 -right-0.5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Rahul Mehta</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Owner & Super Admin
+                  </span>
+                  <span className="text-[11px] text-slate-400">Kozhikode, India</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Details */}
+          <div className="p-4 space-y-3">
+            <div className="bg-[#111C33]/60 rounded-xl p-3 border border-[#1E293B] space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Email Address</span>
+                <span className="text-white font-medium font-mono">rahul.mehta@coolfix.in</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">WhatsApp Phone</span>
+                <span className="text-emerald-400 font-medium font-mono">+91 98765 43210</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Current Workspace</span>
+                <span className="text-white font-medium">{activeTenant.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Two-Factor Auth</span>
+                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Active (WhatsApp OTP)
+                </span>
+              </div>
+            </div>
+
+            {/* Navigation Options */}
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  handleTabClick('settings');
+                }}
+                className="w-full p-2.5 rounded-xl bg-[#111C33]/40 hover:bg-[#162544] border border-[#1E293B] hover:border-slate-600 transition flex items-center justify-between text-left text-slate-300 hover:text-white cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <SettingsIcon className="w-4 h-4 text-emerald-400" />
+                  <div>
+                    <div className="font-semibold text-xs">Account & Workspace Settings</div>
+                    <div className="text-[10px] text-slate-400">Configure business profile, billing and team</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  handleTabClick('automation-logs');
+                }}
+                className="w-full p-2.5 rounded-xl bg-[#111C33]/40 hover:bg-[#162544] border border-[#1E293B] hover:border-slate-600 transition flex items-center justify-between text-left text-slate-300 hover:text-white cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Shield className="w-4 h-4 text-indigo-400" />
+                  <div>
+                    <div className="font-semibold text-xs">Security & Audit Logs</div>
+                    <div className="text-[10px] text-slate-400">View live employee sessions and login audit trails</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition" />
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-3 border-t border-[#1E293B] bg-[#070D18] flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileOpen(false);
+                addToast('Profile state authenticated as Rahul Mehta (Owner).', 'info');
+              }}
+              className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition cursor-pointer"
+            >
+              Verify Session
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileOpen(false);
+                addToast('Signed out of session. Session safely saved.', 'info');
+              }}
+              className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl transition cursor-pointer flex items-center gap-1.5 font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── 3. Qiyam OS Help & Shortcuts Modal ── */}
+    {isHelpOpen && (
+      <div
+        className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={() => setIsHelpOpen(false)}
+      >
+        <div
+          className="bg-[#0F172A] border border-[#1E293B] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-xs animate-in zoom-in-95 duration-150"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="p-4 border-b border-[#1E293B] flex items-center justify-between bg-[#111C33]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                <HelpCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Qiyam Business OS Help</h3>
+                <p className="text-[11px] text-slate-400">Documentation & Shortcuts</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsHelpOpen(false)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* Keyboard shortcuts */}
+            <div className="bg-[#111C33]/60 rounded-xl p-3 border border-[#1E293B] space-y-2">
+              <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Keyboard Shortcuts</div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Omni Universal Search</span>
+                <kbd className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 font-mono text-[10px]">Ctrl + /</kbd>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Toggle Sidebar Collapse</span>
+                <kbd className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 font-mono text-[10px]">Ctrl + B</kbd>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Close Open Modal / Dialog</span>
+                <kbd className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 font-mono text-[10px]">Esc</kbd>
+              </div>
+            </div>
+
+            {/* Quick Knowledge Links */}
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHelpOpen(false);
+                  handleTabClick('ai-knowledgebase');
+                }}
+                className="w-full p-2.5 rounded-xl bg-[#111C33]/40 hover:bg-[#162544] border border-[#1E293B] hover:border-slate-600 transition flex items-center justify-between text-left text-slate-300 hover:text-white cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-emerald-400" />
+                  <div>
+                    <div className="font-semibold text-xs">Knowledge Base & Guides</div>
+                    <div className="text-[10px] text-slate-400">Access operating SOPs, FAQs and training docs</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHelpOpen(false);
+                  setIsSimulatorOpen(true);
+                }}
+                className="w-full p-2.5 rounded-xl bg-[#111C33]/40 hover:bg-[#162544] border border-[#1E293B] hover:border-slate-600 transition flex items-center justify-between text-left text-slate-300 hover:text-white cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 text-teal-400" />
+                  <div>
+                    <div className="font-semibold text-xs">WhatsApp Cloud Simulator</div>
+                    <div className="text-[10px] text-slate-400">Simulate incoming customer queries & AI bots</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-teal-400 transition" />
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-3 border-t border-[#1E293B] bg-[#070D18] flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setIsHelpOpen(false)}
+              className="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 };
 
