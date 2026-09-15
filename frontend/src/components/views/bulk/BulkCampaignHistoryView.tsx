@@ -23,6 +23,7 @@ import {
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkCampaign } from '../../../types';
 import { MetaWalletCard } from './MetaWalletCard';
+import { SidebarToggle } from '../../layout/SidebarToggle';
 
 export const BulkCampaignHistoryView: React.FC = () => {
   const { bulkCampaigns, duplicateCampaign, setActiveTab, addToast } = useQiyamStore();
@@ -90,18 +91,21 @@ export const BulkCampaignHistoryView: React.FC = () => {
       {/* Header Bar */}
       <div className="bg-white border-b border-slate-200/90 px-6 py-4 sticky top-0 z-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-7xl mx-auto w-full">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                Campaign History
-              </h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                AUDIT LOGS
-              </span>
+          <div className="flex items-center gap-3">
+            <SidebarToggle />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Campaign History
+                </h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  AUDIT LOGS
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Track broadcast performance, delivery rates, read rates, and cost analytics
+              </p>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Track broadcast performance, delivery rates, read rates, and cost analytics
-            </p>
           </div>
 
           <div className="flex items-center gap-3">

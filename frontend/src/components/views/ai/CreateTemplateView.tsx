@@ -6,6 +6,7 @@ import {
   Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw
 } from 'lucide-react';
 import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
+import { SidebarToggle } from '../../layout/SidebarToggle';
 
 const META_LANGUAGES = [
   { code: 'en_US', label: 'English (US)' },
@@ -299,6 +300,7 @@ export const CreateTemplateView: React.FC = () => {
       {/* Top Navbar */}
       <div className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-sm shrink-0">
         <div className="flex items-center gap-3">
+          <SidebarToggle />
           <button
             onClick={() => {
               setEditingTemplate(null);

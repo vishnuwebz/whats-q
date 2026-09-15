@@ -24,6 +24,7 @@ import {
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { MetaWalletCard } from './MetaWalletCard';
 import { WhatsAppGuidelinesModal } from './WhatsAppGuidelinesModal';
+import { SidebarToggle } from '../../layout/SidebarToggle';
 
 export const BulkSendMessageView: React.FC = () => {
   const {
@@ -173,18 +174,21 @@ export const BulkSendMessageView: React.FC = () => {
       {/* Header Bar */}
       <div className="bg-white border-b border-slate-200/90 px-6 py-4 sticky top-0 z-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-7xl mx-auto w-full">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                WhatsApp Bulk Messaging
-              </h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                META CLOUD API
-              </span>
+          <div className="flex items-center gap-3">
+            <SidebarToggle />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                  WhatsApp Bulk Messaging
+                </h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  META CLOUD API
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Broadcast marketing campaigns, transactional alerts, and customer notifications at scale
+              </p>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Broadcast marketing campaigns, transactional alerts, and customer notifications at scale
-            </p>
           </div>
 
           <div className="flex items-center gap-3">

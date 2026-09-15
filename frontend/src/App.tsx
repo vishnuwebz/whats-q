@@ -6,6 +6,7 @@ import { WhatsAppSimulatorModal } from './components/common/WhatsAppSimulatorMod
 import { SystemUpdateModal } from './components/common/SystemUpdateModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { realtimeSyncManager } from './api/realtimeSync';
+import { ChevronRight } from 'lucide-react';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
@@ -122,7 +123,14 @@ const resolveTabFromPath = (path: string): TabType => {
 };
 
 export const App: React.FC = () => {
-  const { activeTab, setActiveTab, loadInitialData, fetchVersionInfo } = useQiyamStore();
+  const {
+    activeTab,
+    setActiveTab,
+    loadInitialData,
+    fetchVersionInfo,
+    isSidebarCollapsed,
+    toggleSidebarCollapse,
+  } = useQiyamStore();
 
   // 1. Initial URL routing on mount + popstate listener for browser back/forward buttons
   React.useEffect(() => {
@@ -273,6 +281,18 @@ export const App: React.FC = () => {
     <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden bg-[#F8FAFC]">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden relative">
+        {/* Floating edge expander when sidebar is collapsed on desktop */}
+        {isSidebarCollapsed && (
+          <button
+            onClick={toggleSidebarCollapse}
+            className="hidden md:flex items-center justify-center fixed left-20 top-1/2 -translate-y-1/2 z-40 bg-[#0B1528] text-emerald-400 border border-[#1E293B] hover:bg-slate-800 px-1 py-3 rounded-r-lg shadow-lg transition-all hover:scale-105 cursor-pointer opacity-80 hover:opacity-100 group"
+            title="Expand Sidebar (Ctrl + B)"
+            aria-label="Expand Sidebar"
+          >
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        )}
+
         <ErrorBoundary>
           {renderActiveView()}
         </ErrorBoundary>
