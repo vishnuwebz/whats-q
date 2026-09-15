@@ -1,6 +1,11 @@
 export type TabType = 
   | 'dashboard'
   | 'conversations'
+  | 'bulk-send'
+  | 'bulk-templates'
+  | 'bulk-campaigns'
+  | 'bulk-recipients'
+  | 'bulk-scheduled'
   | 'crm-leads'
   | 'crm-customers'
   | 'crm-deals'
@@ -471,4 +476,135 @@ export interface BranchItem {
   automations_count: number;
   tasks_automated: number;
   last_activity: string;
+}
+
+export interface BulkCampaign {
+  id: string;
+  name: string;
+  description?: string;
+  type?: 'Marketing' | 'Utility' | 'Engagement' | 'Security' | string;
+  category?: 'marketing' | 'utility' | 'authentication' | string;
+  audienceListName: string;
+  totalRecipients: number;
+  recipients?: number;
+  deliveredCount: number;
+  delivered?: number;
+  deliveredPercent?: number;
+  readCount: number;
+  repliedCount: number;
+  failedCount: number;
+  failed?: number;
+  failedPercent?: number;
+  pending?: number;
+  cost: number;
+  createdOn?: string;
+  createdAt: string;
+  createdBy?: string;
+  scheduledOn?: string;
+  completedOn?: string;
+  status: 'Completed' | 'In Progress' | 'Failed' | 'Scheduled' | 'COMPLETED' | 'SENDING' | 'SCHEDULED' | 'FAILED' | 'DRAFT' | string;
+  templateName: string;
+  messageText?: string;
+}
+
+export interface BulkRecipientList {
+  id: string;
+  name: string;
+  description?: string;
+  type?: 'Customers' | 'Leads' | 'Campaign' | 'VIP' | 'General' | 'Follow-up' | string;
+  contacts?: number;
+  contactCount: number;
+  validWhatsAppCount: number;
+  tags: string[];
+  createdOn?: string;
+  createdAt: string;
+  createdBy?: string;
+  lastUpdated?: string;
+  status?: 'Active' | 'Inactive' | string;
+  sources?: {
+    manual: number;
+    website: number;
+    csv: number;
+    other: number;
+  };
+}
+
+export interface BulkScheduledMessage {
+  id: string;
+  name?: string;
+  campaignName: string;
+  description?: string;
+  type?: 'Campaign' | 'Transactional' | string;
+  recipientGroupId?: string;
+  recipientGroupName: string;
+  recipientCount: number;
+  recipients?: number;
+  scheduledDateTime?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  scheduledFor: string;
+  templateName: string;
+  templateUsed?: string;
+  category: 'marketing' | 'utility' | 'authentication' | string;
+  status: 'Pending' | 'Sent' | 'Failed' | 'Cancelled' | 'QUEUED' | 'SENT' | 'CANCELLED' | string;
+  estimatedCost: number;
+  createdBy?: string;
+  createdOn?: string;
+  createdAt?: string;
+  messageText?: string;
+}
+
+export interface BulkTemplateItem {
+  id: string;
+  name: string;
+  templateId?: string;
+  category: 'Appointments' | 'Payments' | 'Marketing' | 'General' | 'Operations' | 'Customer Support' | 'Security' | 'Billing' | 'Other' | 'marketing' | 'utility' | 'authentication' | string;
+  language: string;
+  status: 'Approved' | 'Pending' | 'Rejected' | 'APPROVED' | 'PENDING' | 'REJECTED' | string;
+  lastUpdated?: string;
+  updatedBy?: string;
+  approvedOn?: string;
+  header?: string;
+  body?: string;
+  bodyText: string;
+  footer?: string;
+  footerText?: string;
+  qualityRating?: 'High' | 'Medium' | 'Low' | string;
+  headerType?: 'NONE' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'TEXT' | string;
+  headerContent?: string;
+  buttons?: { type: string; text: string; url?: string }[];
+  variables?: string[];
+}
+
+export interface MetaWalletInfo {
+  balance: number;
+  currency: string;
+  autoDeduct?: boolean;
+  lowBalanceThreshold: number;
+  autoRecharge: boolean;
+  autoRechargeAmount: number;
+  conversationPricing: {
+    marketing: number;
+    utility: number;
+    authentication: number;
+    service: number;
+  };
+  lastUpdated: string;
+  wabaId: string;
+  paymentMethod?: string;
+  officialBillingUrl: string;
+}
+
+export interface MetaWalletTransaction {
+  id: string;
+  type: 'debit' | 'credit';
+  category?: 'Campaign Messages' | 'Utility Messages' | 'Wallet Top-up' | 'Service Fee' | 'Refund' | string;
+  amount: number;
+  currency?: string;
+  description: string;
+  timestamp: string;
+  balanceAfter: number;
+  campaignId?: string;
+  campaignName?: string;
+  receiptUrl?: string;
 }

@@ -4,7 +4,9 @@ import {
   Employee, AttendanceRecord, Task, Route, InventoryItem, Transaction,
   Invoice, Expense, PaymentAccount, Workflow, AutomationLog, Approval,
   KnowledgeArticle, WhatsAppTemplateItem, IntegrationItem, BranchItem, FlowNode, WhatsAppMessage,
-  MetaConfig
+  MetaConfig,
+  BulkCampaign, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
+  MetaWalletInfo, MetaWalletTransaction
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -17,6 +19,14 @@ import {
   WorkspaceSettings,
 } from '../api/qiyamApi';
 import { sortConversationsByRecency } from '../utils/chatRecency';
+import {
+  initialMetaWallet,
+  initialWalletTransactions,
+  initialBulkCampaigns,
+  initialBulkTemplates,
+  initialBulkRecipientLists,
+  initialBulkScheduledMessages
+} from './bulkData';
 
 interface Toast {
   id: string;
@@ -120,6 +130,22 @@ interface QiyamState {
   intentMetrics: IntentMetricRow[];
   dailyMetrics: DailyMetricRow[];
   searchResults: SearchResult[];
+  metaWallet: MetaWalletInfo;
+  walletTransactions: MetaWalletTransaction[];
+  bulkCampaigns: BulkCampaign[];
+  bulkRecipientLists: BulkRecipientList[];
+  bulkScheduledMessages: BulkScheduledMessage[];
+  bulkTemplates: BulkTemplateItem[];
+
+  sendBulkMessage: (params: any) => Promise<{ success: boolean; campaignId?: string | number; error?: string }> | any;
+  updateMetaWallet: (updates: Partial<MetaWalletInfo>) => void;
+  addWalletFunds: (amount: number, note?: string) => void;
+  createRecipientList: (params: any) => void;
+  createScheduledMessage: (params: any) => void;
+  cancelScheduledMessage: (id: string | number) => void;
+  sendScheduledMessageNow: (id: string | number) => void;
+  duplicateCampaign: (campaignId: string | number) => void;
+  createBulkTemplate: (params: any) => void;
 
   addToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
   toasts: Toast[];
@@ -651,6 +677,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   intentMetrics: [],
   dailyMetrics: [],
   searchResults: [],
+  metaWallet: initialMetaWallet,
+  walletTransactions: initialWalletTransactions,
+  bulkCampaigns: initialBulkCampaigns,
+  bulkRecipientLists: initialBulkRecipientLists,
+  bulkScheduledMessages: initialBulkScheduledMessages,
+  bulkTemplates: initialBulkTemplates,
 
   loadInitialData: async () => {
     // Use Promise.allSettled so a single endpoint failure doesn't crash the whole app
@@ -992,6 +1024,392 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     }));
     get().addToast('Template deleted', 'success');
     return true;
+  },
+
+  sendBulkMessage: async (campaign: any) => {
+    const totalRecipients = campaign.totalRecipients || campaign.recipientsCount || 1000;
+    const rate =
+      campaign.category === 'utility' || campaign.type === 'Utility'
+        ? 0.3
+        : campaign.category === 'authentication'
+        ? 0.12
+        : 0.78;
+    const totalCost =
+      campaign.cost != null
+        ? Number(campaign.cost)
+        : Number((totalRecipients * rate).toFixed(2));
+    const currentBalance = get().metaWallet.balance;
+
+    if (currentBalance < totalCost) {
+      get().addToast(
+        `Insufficient Meta Wallet balance (₹${currentBalance.toFixed(
+          2
+        )}). Need ₹${totalCost.toFixed(2)}. Please add funds.`,
+        'error'
+      );
+      return { success: false, error: 'Insufficient balance' };
+    }
+
+    const newBalance = Number((currentBalance - totalCost).toFixed(2));
+    const nowStr = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const nowFull =
+      new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }) +
+      ', ' +
+      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newTx: MetaWalletTransaction = {
+      id: `tx-${Date.now()}`,
+      type: 'debit',
+      category: 'Campaign Messages',
+      amount: totalCost,
+      currency: get().metaWallet.currency,
+      description: `${totalRecipients.toLocaleString()} messages for "${campaign.name}"`,
+      timestamp: nowFull,
+      balanceAfter: newBalance,
+      campaignId: `cmp-${Date.now()}`,
+      campaignName: campaign.name,
+    };
+
+    if (campaign.scheduleType === 'later' || campaign.scheduleType === 'schedule') {
+      const newScheduled: BulkScheduledMessage = {
+        id: `sch-${Date.now()}`,
+        name: campaign.name,
+        campaignName: campaign.name,
+        description:
+          campaign.description ||
+          `Broadcast to ${
+            campaign.audienceListName || campaign.recipientSegment || 'Audience'
+          }`,
+        type: 'Campaign',
+        scheduledDateTime:
+          campaign.scheduledFor ||
+          `${campaign.scheduledDate || nowStr} ${
+            campaign.scheduledTime || '10:00 AM'
+          }`,
+        scheduledDate: campaign.scheduledDate || nowStr,
+        scheduledTime: campaign.scheduledTime || '10:00 AM',
+        scheduledFor:
+          campaign.scheduledFor || `${campaign.scheduledDate || nowStr}T10:00`,
+        recipientGroupName:
+          campaign.audienceListName ||
+          campaign.recipientSegment ||
+          'All Active Customers',
+        recipientCount: totalRecipients,
+        recipients: totalRecipients,
+        status: 'QUEUED',
+        category: campaign.category || 'marketing',
+        estimatedCost: totalCost,
+        createdBy: 'Rahul Mehta',
+        createdOn: nowFull,
+        createdAt: nowFull,
+        templateName: campaign.templateName || 'Offer Announcement',
+        templateUsed: campaign.templateName || 'Offer Announcement',
+        messageText: campaign.messageText || '',
+      };
+
+      set((state) => ({
+        metaWallet: {
+          ...state.metaWallet,
+          balance: newBalance,
+          lastUpdated: 'Just now',
+        },
+        walletTransactions: [newTx, ...state.walletTransactions],
+        bulkScheduledMessages: [newScheduled, ...state.bulkScheduledMessages],
+      }));
+
+      get().addToast(
+        `Scheduled "${campaign.name}" for ${newScheduled.scheduledDateTime}. Reserved ₹${totalCost.toFixed(
+          2
+        )} from Meta Wallet.`,
+        'success'
+      );
+      return { success: true, campaignId: newScheduled.id };
+    }
+
+    const deliveredCount = Math.round(totalRecipients * 0.98);
+    const failedCount = totalRecipients - deliveredCount;
+    const newCmp: BulkCampaign = {
+      id: `cmp-${Date.now()}`,
+      name: campaign.name,
+      description:
+        campaign.description ||
+        `Broadcast to ${
+          campaign.audienceListName || campaign.recipientSegment || 'Audience'
+        }`,
+      type: campaign.type || 'Marketing',
+      category: campaign.category || 'marketing',
+      audienceListName:
+        campaign.audienceListName ||
+        campaign.recipientSegment ||
+        'All Active Customers',
+      totalRecipients,
+      recipients: totalRecipients,
+      deliveredCount,
+      delivered: deliveredCount,
+      deliveredPercent: 98.0,
+      readCount: Math.round(totalRecipients * 0.72),
+      repliedCount: Math.round(totalRecipients * 0.14),
+      failedCount,
+      failed: failedCount,
+      failedPercent: 2.0,
+      pending: 0,
+      cost: totalCost,
+      createdOn: nowStr,
+      createdAt: new Date().toISOString(),
+      createdBy: 'Rahul Mehta',
+      completedOn: nowFull,
+      status: 'COMPLETED',
+      templateName: campaign.templateName || 'Offer Announcement',
+      messageText: campaign.messageText || '',
+    };
+
+    set((state) => ({
+      metaWallet: {
+        ...state.metaWallet,
+        balance: newBalance,
+        lastUpdated: 'Just now',
+      },
+      walletTransactions: [newTx, ...state.walletTransactions],
+      bulkCampaigns: [newCmp, ...state.bulkCampaigns],
+    }));
+
+    get().addToast(
+      `Dispatched "${campaign.name}" to ${totalRecipients.toLocaleString()} recipients! Deducted ₹${totalCost.toFixed(
+        2
+      )} from Meta Wallet.`,
+      'success'
+    );
+    return { success: true, campaignId: newCmp.id };
+  },
+
+  updateMetaWallet: (updates) => {
+    set((state) => ({
+      metaWallet: { ...state.metaWallet, ...updates, lastUpdated: 'Just now' },
+    }));
+    get().addToast('Meta Wallet settings updated successfully', 'success');
+  },
+
+  addWalletFunds: (amount, note) => {
+    const nowFull =
+      new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }) +
+      ', ' +
+      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newBalance = Number((get().metaWallet.balance + amount).toFixed(2));
+    const newTx: MetaWalletTransaction = {
+      id: `tx-${Date.now()}`,
+      type: 'credit',
+      category: 'Wallet Top-up',
+      amount,
+      currency: get().metaWallet.currency,
+      description: note || `Manual Wallet Top-up via Meta Business Manager`,
+      timestamp: nowFull,
+      balanceAfter: newBalance,
+    };
+
+    set((state) => ({
+      metaWallet: {
+        ...state.metaWallet,
+        balance: newBalance,
+        lastUpdated: 'Just now',
+      },
+      walletTransactions: [newTx, ...state.walletTransactions],
+    }));
+    get().addToast(`Added ₹${amount.toLocaleString()} to Meta Wallet balance!`, 'success');
+  },
+
+  createRecipientList: (list: any) => {
+    const nowStr = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const count = list.contactCount || list.contacts || 250;
+    const validCount = list.validWhatsAppCount || Math.round(count * 0.98);
+    const newList: BulkRecipientList = {
+      id: `lst-${Date.now()}`,
+      name: list.name,
+      description: list.description || '',
+      type: list.type || 'Customers',
+      contacts: count,
+      contactCount: count,
+      validWhatsAppCount: validCount,
+      tags: list.tags || ['VIP', 'Marketing'],
+      createdOn: nowStr,
+      createdAt: new Date().toISOString(),
+      status: 'Active',
+      sources: list.sources || { manual: 60, website: 20, csv: 15, other: 5 },
+    };
+    set((state) => ({
+      bulkRecipientLists: [newList, ...state.bulkRecipientLists],
+    }));
+    get().addToast(`Recipient list "${list.name}" created with ${count} contacts`, 'success');
+  },
+
+  createScheduledMessage: (msg: any) => {
+    const nowFull =
+      new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }) +
+      ', ' +
+      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const count = msg.recipientCount || msg.recipients || 500;
+    const newScheduled: BulkScheduledMessage = {
+      id: `sch-${Date.now()}`,
+      name: msg.campaignName || msg.name,
+      campaignName: msg.campaignName || msg.name,
+      description: msg.description || `Broadcast to ${msg.recipientGroupName || 'Audience'}`,
+      type: 'Campaign',
+      scheduledDateTime: msg.scheduledFor || msg.scheduledDateTime || 'Tomorrow 10:00 AM',
+      scheduledDate: msg.scheduledDate || 'Tomorrow',
+      scheduledTime: msg.scheduledTime || '10:00 AM',
+      scheduledFor: msg.scheduledFor || new Date().toISOString(),
+      recipientGroupId: msg.recipientGroupId || 'list-1',
+      recipientGroupName: msg.recipientGroupName || 'All Active Customers',
+      recipientCount: count,
+      recipients: count,
+      templateName: msg.templateName || msg.templateUsed || 'Offer Announcement',
+      category: msg.category || 'marketing',
+      status: 'QUEUED',
+      estimatedCost: msg.estimatedCost || Number((count * 0.78).toFixed(2)),
+      createdOn: nowFull,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      bulkScheduledMessages: [newScheduled, ...state.bulkScheduledMessages],
+    }));
+    get().addToast(`Message "${newScheduled.campaignName}" scheduled successfully!`, 'success');
+  },
+
+  cancelScheduledMessage: (id) => {
+    set((state) => ({
+      bulkScheduledMessages: state.bulkScheduledMessages.map((m) =>
+        m.id === id ? { ...m, status: 'CANCELLED' } : m
+      ),
+    }));
+    get().addToast('Scheduled message cancelled', 'info');
+  },
+
+  sendScheduledMessageNow: (id) => {
+    const item = get().bulkScheduledMessages.find((m) => m.id === id);
+    if (!item) return;
+
+    const count = item.recipientCount || item.recipients || 500;
+    const nowStr = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const deliveredCount = Math.round(count * 0.98);
+    const newCmp: BulkCampaign = {
+      id: `cmp-${Date.now()}`,
+      name: item.campaignName || item.name || 'Broadcast',
+      description: item.description,
+      type: 'Marketing',
+      category: item.category || 'marketing',
+      audienceListName: item.recipientGroupName || 'All Active Customers',
+      totalRecipients: count,
+      recipients: count,
+      deliveredCount,
+      delivered: deliveredCount,
+      deliveredPercent: 98.0,
+      readCount: Math.round(count * 0.72),
+      repliedCount: Math.round(count * 0.14),
+      failedCount: count - deliveredCount,
+      failed: count - deliveredCount,
+      failedPercent: 2.0,
+      pending: 0,
+      cost: item.estimatedCost || Number((count * 0.78).toFixed(2)),
+      createdOn: nowStr,
+      createdAt: new Date().toISOString(),
+      createdBy: item.createdBy || 'Rahul Mehta',
+      completedOn: 'Just now',
+      status: 'COMPLETED',
+      templateName: item.templateName || item.templateUsed || 'Offer Announcement',
+      messageText: item.messageText || '',
+    };
+
+    set((state) => ({
+      bulkScheduledMessages: state.bulkScheduledMessages.map((m) =>
+        m.id === id ? { ...m, status: 'SENT' } : m
+      ),
+      bulkCampaigns: [newCmp, ...state.bulkCampaigns],
+    }));
+    get().addToast(`Dispatched scheduled campaign "${newCmp.name}" immediately!`, 'success');
+  },
+
+  duplicateCampaign: (campaignId) => {
+    const existing = get().bulkCampaigns.find((c) => c.id === campaignId);
+    if (!existing) return;
+
+    const cloned: BulkCampaign = {
+      ...existing,
+      id: `cmp-${Date.now()}`,
+      name: `${existing.name} (Copy)`,
+      createdOn: new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }),
+      createdAt: new Date().toISOString(),
+      status: 'DRAFT',
+      delivered: 0,
+      deliveredCount: 0,
+      deliveredPercent: 0,
+      readCount: 0,
+      repliedCount: 0,
+      failed: 0,
+      failedCount: 0,
+      failedPercent: 0,
+      pending: existing.totalRecipients || existing.recipients || 0,
+    };
+
+    set((state) => ({
+      bulkCampaigns: [cloned, ...state.bulkCampaigns],
+    }));
+    get().addToast(`Duplicated campaign "${existing.name}"`, 'success');
+  },
+
+  createBulkTemplate: (template: any) => {
+    const nowStr = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const newTpl: BulkTemplateItem = {
+      id: `tmpl-${Date.now()}`,
+      name: template.name,
+      category: template.category || 'marketing',
+      language: template.language || 'en_US',
+      status: 'PENDING',
+      bodyText: template.bodyText || template.body || '',
+      body: template.bodyText || template.body || '',
+      headerType: template.headerType || 'NONE',
+      headerContent: template.headerContent,
+      footerText: template.footerText || template.footer,
+      footer: template.footerText || template.footer,
+      buttons: template.buttons || [{ type: 'URL', text: 'View Details' }],
+      qualityRating: 'High',
+      lastUpdated: nowStr,
+      updatedBy: 'Rahul Mehta',
+    };
+    set((state) => ({
+      bulkTemplates: [newTpl, ...state.bulkTemplates],
+    }));
+    get().addToast(`Template "${template.name}" created and submitted for review`, 'success');
   },
 
   saveMetaConfig: async (configData) => {

@@ -56,11 +56,23 @@ import { AISettingsView } from './components/views/ai/AISettingsView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
+
+// Bulk Messaging Views
+import { BulkSendMessageView } from './components/views/bulk/BulkSendMessageView';
+import { BulkTemplatesView } from './components/views/bulk/BulkTemplatesView';
+import { BulkCampaignHistoryView } from './components/views/bulk/BulkCampaignHistoryView';
+import { BulkRecipientListsView } from './components/views/bulk/BulkRecipientListsView';
+import { BulkScheduledMessagesView } from './components/views/bulk/BulkScheduledMessagesView';
 import { TabType } from './types';
 
 const TAB_TO_PATH: Record<TabType, string> = {
   'dashboard': '/dashboard',
   'conversations': '/conversations',
+  'bulk-send': '/bulk/send',
+  'bulk-templates': '/bulk/templates',
+  'bulk-campaigns': '/bulk/campaigns',
+  'bulk-recipients': '/bulk/recipients',
+  'bulk-scheduled': '/bulk/scheduled',
   'crm-leads': '/crm/leads',
   'crm-deals': '/crm/deals',
   'crm-followups': '/crm/followups',
@@ -158,6 +170,18 @@ export const App: React.FC = () => {
         return <DashboardView />;
       case 'conversations':
         return <ConversationsView />;
+
+      // Bulk Messaging
+      case 'bulk-send':
+        return <BulkSendMessageView />;
+      case 'bulk-templates':
+        return <BulkTemplatesView />;
+      case 'bulk-campaigns':
+        return <BulkCampaignHistoryView />;
+      case 'bulk-recipients':
+        return <BulkRecipientListsView />;
+      case 'bulk-scheduled':
+        return <BulkScheduledMessagesView />;
 
       // CRM
       case 'crm-leads':
