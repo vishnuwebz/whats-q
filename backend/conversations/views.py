@@ -253,6 +253,23 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return Response(msg_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
+    def typing(self, request, pk=None):
+        """
+        Real-time typing presence endpoint for WhatsApp connectors & gateways.
+        Payload: {"is_typing": true/false}
+        """
+        conversation = self.get_object()
+        is_typing = request.data.get('is_typing', True)
+        if isinstance(is_typing, str):
+            is_typing = is_typing.lower() in ['true', '1', 'yes']
+
+        emit_event('conversation.typing', {
+            'conversation_id': conversation.id,
+            'is_typing': bool(is_typing)
+        })
+        return Response({'status': 'ok', 'is_typing': bool(is_typing)})
+
+    @action(detail=True, methods=['post'])
     def send_template(self, request, pk=None):
         conversation = self.get_object()
         template_id = request.data.get('template_id')
@@ -681,6 +698,26 @@ class WhatsAppWebhookView(APIView):
 
         data = request.data
         logger.info(f"Meta Webhook event payload received: {json.dumps(data)[:250]}")
+
+        # Real-time typing presence from WhatsApp connectors & multi-device gateways
+        if data.get('event') in ['presence.update', 'chat.composing', 'typing'] or 'is_typing' in data:
+            sender_phone = data.get('phone') or data.get('from') or (data.get('data') or {}).get('phone')
+            state_val = data.get('state') or (data.get('data') or {}).get('state')
+            is_typing = data.get('is_typing') if 'is_typing' in data else (state_val in ['composing', 'typing'])
+            clean_sender = re.sub(r'\D', '', str(sender_phone)) if sender_phone else ''
+            if clean_sender:
+                conv = None
+                for c in Conversation.objects.all():
+                    c_clean = re.sub(r'\D', '', str(c.phone_number))
+                    if len(clean_sender) >= 10 and c_clean.endswith(clean_sender[-10:]):
+                        conv = c
+                        break
+                if conv:
+                    emit_event('conversation.typing', {
+                        'conversation_id': conv.id,
+                        'is_typing': bool(is_typing)
+                    })
+                    return Response({'status': 'typing_processed'}, status=status.HTTP_200_OK)
 
         entry_list = data.get('entry', [])
         for entry in entry_list:

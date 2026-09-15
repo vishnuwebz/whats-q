@@ -224,12 +224,29 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   setSyncStatus: (status) => set({ syncStatus: status }),
   typingUsers: {},
   setClientTyping: (conversationId, isTyping) => {
+    const key = String(conversationId);
     set((state) => ({
       typingUsers: {
         ...state.typingUsers,
-        [String(conversationId)]: isTyping,
+        [key]: isTyping,
       },
     }));
+
+    // Safety timeout: auto-clear typing bubble after 7 seconds to prevent stuck state
+    if (isTyping && typeof window !== 'undefined') {
+      const timerKey = `_typingTimer_${key}`;
+      if ((window as any)[timerKey]) {
+        clearTimeout((window as any)[timerKey]);
+      }
+      (window as any)[timerKey] = setTimeout(() => {
+        set((state) => ({
+          typingUsers: {
+            ...state.typingUsers,
+            [key]: false,
+          },
+        }));
+      }, 7000);
+    }
   },
   applyMessageStatus: (conversationId, messageId, status) => {
     set((state) => ({
@@ -270,6 +287,9 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   applyRealtimeMessage: (conversationId, message) => {
+    // When real incoming message arrives from customer, they stopped typing
+    get().setClientTyping(conversationId, false);
+
     set((state) => {
       const convIndex = state.conversations.findIndex((c) => String(c.id) === String(conversationId));
       if (convIndex === -1) {
@@ -788,50 +808,6 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       ),
     }));
 
-    // 2. Progression: Sent -> Delivered (double grey tick) after 600ms
-    setTimeout(() => {
-      get().applyMessageStatus(conversationId, tempId, 'delivered');
-    }, 600);
-
-    // 3. Progression: Delivered -> Read (double blue tick #53bdeb) after 1500ms
-    setTimeout(() => {
-      get().applyMessageStatus(conversationId, tempId, 'read');
-    }, 1500);
-
-    // 4. Progression: Recipient starts typing after reading
-    setTimeout(() => {
-      get().setClientTyping(conversationId, true);
-    }, 2200);
-
-    // 5. Progression: Recipient sends reply and stops typing after 4400ms
-    setTimeout(() => {
-      get().setClientTyping(conversationId, false);
-      const conv = get().conversations.find((c) => String(c.id) === String(conversationId));
-      if (conv) {
-        let replyText = "Received your message! Looking forward to the service.";
-        const lower = text.toLowerCase();
-        if (lower.includes('quotation') || lower.includes('estimate') || lower.includes('price')) {
-          replyText = "The estimate is approved. Please assign technician Amit Sharma for tomorrow.";
-        } else if (lower.includes('appointment') || lower.includes('scheduled') || lower.includes('confirm')) {
-          replyText = "Confirmed! I will be home at the scheduled time. Thank you.";
-        } else if (lower.includes('invoice') || lower.includes('payment')) {
-          replyText = "Payment done via UPI. Shared transaction confirmation.";
-        } else if (lower.includes('hello') || lower.includes('hi')) {
-          replyText = "Hello! Thanks for reaching out. I need quick assistance.";
-        }
-
-        const replyMsg: WhatsAppMessage = {
-          id: `inbound-${Date.now()}`,
-          sender: 'customer',
-          senderName: conv.contact_name,
-          text: replyText,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'read',
-        };
-        get().applyRealtimeMessage(conversationId, replyMsg);
-      }
-    }, 4400);
-
     try {
       const res = await apiClient.post(`/conversations/threads/${conversationId}/send_message/`, {
         text,
@@ -839,7 +815,18 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         sender_name: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
       });
       if (res && res.id && res.success !== false) {
-        // Backend synced
+        // Update optimistic message with real backend message ID and status
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (String(c.id) !== String(conversationId)) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === tempId ? { ...m, id: res.id, status: res.status || 'sent' } : m
+              ),
+            };
+          }),
+        }));
       }
     } catch (e) {
       console.warn('Backend send message notice:', e);
