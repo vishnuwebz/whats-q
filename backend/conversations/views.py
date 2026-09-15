@@ -194,8 +194,18 @@ class MetaConfigViewSet(viewsets.ViewSet):
         return Response(result)
 
 class ConversationViewSet(viewsets.ModelViewSet):
-    queryset = Conversation.objects.all().order_by('-updated_at')
+    queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
+
+    def get_queryset(self):
+        from django.db.models import Max, F
+        return Conversation.objects.annotate(
+            latest_msg_time=Max('messages__created_at')
+        ).order_by(
+            F('latest_msg_time').desc(nulls_last=True),
+            '-updated_at',
+            '-id'
+        )
 
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):

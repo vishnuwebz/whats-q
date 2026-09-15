@@ -25,6 +25,7 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     senderName: (raw.senderName as string) || (raw.sender_name as string) || undefined,
     text: String(raw.text || ''),
     timestamp: String(raw.timestamp || ''),
+    created_at: raw.created_at ? String(raw.created_at) : undefined,
     status: ['sent', 'delivered', 'read', 'pending'].includes(status) ? status : 'sent',
     richCard,
     reactions,
@@ -41,6 +42,7 @@ export function mapConversation(raw: Record<string, unknown>): Conversation {
     is_online: Boolean(raw.is_online),
     last_seen: String(raw.last_seen || ''),
     avatar: String(raw.avatar || ''),
+    updated_at: raw.updated_at ? String(raw.updated_at) : undefined,
   };
 }
 

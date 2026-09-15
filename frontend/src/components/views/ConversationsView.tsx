@@ -12,6 +12,7 @@ import {
 import { SendTemplateModal } from './conversations/SendTemplateModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { apiClient } from '@/api/client';
+import { sortConversationsByRecency, formatWhatsAppChatTime } from '@/utils/chatRecency';
 
 export const ConversationsView: React.FC = () => {
   const {
@@ -110,20 +111,22 @@ export const ConversationsView: React.FC = () => {
     resolved: conversations.filter((c) => c.status === 'resolved').length,
   };
 
-  const filteredConversations = conversations.filter((c) => {
-    if (activeFilterTab !== 'all' && c.status !== activeFilterTab) return false;
-    if (globalFilter.status && globalFilter.status !== 'all' && c.status !== globalFilter.status) return false;
-    
-    const activeQuery = (searchQuery || globalFilter.query || '').toLowerCase();
-    if (activeQuery) {
-      return (
-        (c.contact_name || '').toLowerCase().includes(activeQuery) ||
-        (c.phone_number || '').includes(activeQuery) ||
-        (c.service_needed || '').toLowerCase().includes(activeQuery)
-      );
-    }
-    return true;
-  });
+  const filteredConversations = sortConversationsByRecency(
+    conversations.filter((c) => {
+      if (activeFilterTab !== 'all' && c.status !== activeFilterTab) return false;
+      if (globalFilter.status && globalFilter.status !== 'all' && c.status !== globalFilter.status) return false;
+      
+      const activeQuery = (searchQuery || globalFilter.query || '').toLowerCase();
+      if (activeQuery) {
+        return (
+          (c.contact_name || '').toLowerCase().includes(activeQuery) ||
+          (c.phone_number || '').includes(activeQuery) ||
+          (c.service_needed || '').toLowerCase().includes(activeQuery)
+        );
+      }
+      return true;
+    })
+  );
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -408,7 +411,7 @@ export const ConversationsView: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="font-bold text-xs text-slate-900 truncate">{conv.contact_name || 'Customer'}</div>
-                        <span className="text-[10px] text-slate-400 font-medium">{(conv.first_contact_date || '10:30 AM').split(' ')[0]}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">{formatWhatsAppChatTime(conv)}</span>
                       </div>
 
                       <div className="text-[11px] text-slate-500 font-mono">{conv.phone_number}</div>

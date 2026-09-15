@@ -44,6 +44,7 @@ export interface WhatsAppMessage {
   senderName?: string;
   text: string;
   timestamp: string;
+  created_at?: string;
   status: 'sent' | 'delivered' | 'read' | 'pending';
   reactions?: { emoji: string; from: 'customer' | 'agent' | 'bot' | 'system' }[];
   richCard?: {
@@ -82,6 +83,7 @@ export interface Conversation {
   messages: WhatsAppMessage[];
   is_online?: boolean;
   last_seen?: string;
+  updated_at?: string;
 }
 
 export interface Lead {

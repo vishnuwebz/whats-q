@@ -16,6 +16,7 @@ import {
   SearchResult,
   WorkspaceSettings,
 } from '../api/qiyamApi';
+import { sortConversationsByRecency } from '../utils/chatRecency';
 
 interface Toast {
   id: string;
@@ -392,7 +393,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         unread_count: isCurrent ? 0 : (convUpdate.unread_count !== undefined ? convUpdate.unread_count : existing.unread_count),
       };
       const nextConversations = [...state.conversations];
-      nextConversations[idx] = merged;
+      if (convUpdate.last_contact_date || (convUpdate as Record<string, unknown>).last_message || convUpdate.messages) {
+        nextConversations.splice(idx, 1);
+        nextConversations.unshift(merged);
+      } else {
+        nextConversations[idx] = merged;
+      }
       return { conversations: nextConversations };
     });
   },
@@ -728,12 +734,14 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       return;
     }
 
+    const sortedConversations = sortConversationsByRecency(conversations);
+
     const selectedConversationId =
-      conversations.length > 0
-        ? conversations[0].id
+      sortedConversations.length > 0
+        ? sortedConversations[0].id
         : get().selectedConversationId;
 
-    const sanitizedConversations = conversations.map((c) =>
+    const sanitizedConversations = sortedConversations.map((c) =>
       String(c.id) === String(selectedConversationId) ? { ...c, unread_count: 0 } : c
     );
 
@@ -803,13 +811,15 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
             };
           });
 
+          const sortedMerged = sortConversationsByRecency(merged);
+
           const current = state.selectedConversationId;
-          const nextSelected = (!current || !merged.some((c) => String(c.id) === String(current)))
-            ? merged[0].id
+          const nextSelected = (!current || !sortedMerged.some((c) => String(c.id) === String(current)))
+            ? sortedMerged[0].id
             : current;
 
           return {
-            conversations: merged,
+            conversations: sortedMerged,
             selectedConversationId: nextSelected,
           };
         });
@@ -835,20 +845,29 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       senderName: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
       text,
       timestamp: nowTime,
+      created_at: new Date().toISOString(),
       status: 'sent',
     };
 
-    set((state) => ({
-      conversations: state.conversations.map((c) =>
-        String(c.id) === String(conversationId)
-          ? {
-              ...c,
-              last_contact_date: 'Just now',
-              messages: [...c.messages, optimisticMsg],
-            }
-          : c
-      ),
-    }));
+    set((state) => {
+      const convIndex = state.conversations.findIndex((c) => String(c.id) === String(conversationId));
+      if (convIndex === -1) return {};
+
+      const conv = state.conversations[convIndex];
+      const updatedConv: Conversation = {
+        ...conv,
+        last_contact_date: 'Just now',
+        messages: [...conv.messages, optimisticMsg],
+      };
+
+      const nextConversations = [...state.conversations];
+      nextConversations.splice(convIndex, 1);
+      nextConversations.unshift(updatedConv);
+
+      return {
+        conversations: nextConversations,
+      };
+    });
 
     try {
       const res = await apiClient.post(`/conversations/threads/${conversationId}/send_message/`, {

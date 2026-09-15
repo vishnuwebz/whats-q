@@ -108,7 +108,10 @@ npm run build
 
 # 5. RESTART SERVICES
 echo -e "\n${YELLOW}[5/5] Restarting WhatsQ Services...${NC}"
-$SUDO_CMD systemctl restart whatsq-backend 2>/dev/null || true
+# Use fast reload if available to prevent 30s graceful timeout delays on open SSE streams
+if ! $SUDO_CMD systemctl reload whatsq-backend 2>/dev/null; then
+    $SUDO_CMD systemctl restart whatsq-backend 2>/dev/null || true
+fi
 $SUDO_CMD systemctl reload nginx 2>/dev/null || true
 
 # Sync update script binary
