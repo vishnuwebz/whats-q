@@ -53,7 +53,7 @@ class SystemUpdateService:
         for meta_path in meta_candidates:
             if meta_path.exists():
                 try:
-                    with open(meta_path, 'r', encoding='utf-8') as f:
+                    with open(meta_path, 'r', encoding='utf-8-sig') as f:
                         meta_data = json.load(f)
                         if meta_data.get('current_commit'):
                             info['current_commit'] = meta_data['current_commit']

@@ -21,6 +21,7 @@ export const ConversationsView: React.FC = () => {
     sendTemplateMessage,
     templates,
     convertLeadToDeal,
+    convertConversationToDeal,
     setActiveTab,
     addToast,
     setIsSimulatorOpen,
@@ -123,7 +124,7 @@ export const ConversationsView: React.FC = () => {
       addToast(`Appointment scheduled for ${currentConv.contact_name}`, 'success');
       setActiveTab('ops-appointments');
     } else if (action === 'Convert to Deal') {
-      convertLeadToDeal(currentConv.id);
+      convertConversationToDeal(currentConv.id);
     } else if (action === 'Mark as Resolved') {
       addToast(`Conversation with ${currentConv.contact_name} marked as resolved`, 'info');
     }
@@ -240,7 +241,7 @@ export const ConversationsView: React.FC = () => {
         {/* Drawer Actions */}
         <div className="pt-2 border-t border-slate-100 space-y-2">
           <button
-            onClick={() => convertLeadToDeal(currentConv.id)}
+            onClick={() => convertConversationToDeal(currentConv.id)}
             className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />

@@ -143,6 +143,7 @@ interface QiyamState {
 
   updateLeadStage: (leadId: string | number, newStage: Lead['stage']) => Promise<void>;
   convertLeadToDeal: (leadId: string | number) => Promise<void>;
+  convertConversationToDeal: (conversationId: string | number) => Promise<void>;
   updateJobStatus: (jobId: string | number, status: Job['status']) => Promise<void>;
   updateApprovalStatus: (approvalId: string | number, status: 'Approved' | 'Rejected') => Promise<void>;
   toggleTaskChecklist: (taskId: string | number, checklistId: string) => Promise<void>;
@@ -1031,6 +1032,21 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       get().addToast('Lead converted to deal', 'success');
     } else {
       get().addToast(res?.error || 'Conversion failed', 'error');
+    }
+  },
+
+  convertConversationToDeal: async (conversationId) => {
+    const res = await apiClient.post(`/crm/deals/from_conversation/`, { conversation_id: conversationId });
+    if (res?.deal) {
+      const newDeal = res.deal as Deal;
+      set((state) => ({
+        deals: [newDeal, ...state.deals],
+      }));
+      get().setTargetHighlightId(newDeal.id);
+      get().addToast(`✅ Deal "${newDeal.deal_name}" created — Opening CRM Deals now`, 'success');
+      get().setActiveTab('crm-deals');
+    } else {
+      get().addToast(res?.error || 'Could not create deal. Try again.', 'error');
     }
   },
 
