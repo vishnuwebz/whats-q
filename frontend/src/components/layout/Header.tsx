@@ -46,8 +46,23 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
+  const [dateCoords, setDateCoords] = useState<{ top: number; left: number } | null>(null);
+  const dateBtnRef = React.useRef<HTMLButtonElement>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  const toggleDateOpen = () => {
+    if (!isDateOpen && dateBtnRef.current) {
+      const rect = dateBtnRef.current.getBoundingClientRect();
+      setDateCoords({
+        top: rect.bottom + 6,
+        left: Math.max(10, Math.min(rect.left, window.innerWidth - 225)),
+      });
+      setIsDateOpen(true);
+    } else {
+      setIsDateOpen(false);
+    }
+  };
 
   const unreadNotifsCount = notifications.filter((n) => n.unread).length;
   const isFilterActive =
@@ -74,10 +89,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="bg-white border-b border-slate-200/80 px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        {/* Title & Subtitle with Sidebar Toggle */}
-        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
-          {/* Mobile hamburger menu button */}
+      <header className="bg-white border-b border-slate-200/80 px-3 sm:px-5 py-2.5 flex items-center gap-3 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        {/* ── LEFT: Always visible — toggle + title + subtitle ── */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Mobile hamburger */}
           <button
             onClick={toggleMobileSidebar}
             className="md:hidden p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
@@ -87,10 +102,10 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5 text-slate-700" />
           </button>
 
-          {/* Desktop sidebar collapse button */}
+          {/* Desktop sidebar collapse */}
           <button
             onClick={toggleSidebarCollapse}
-            className="hidden md:flex p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all border border-slate-200/80 shadow-xs cursor-pointer"
+            className="hidden md:flex p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all border border-slate-200/80 shadow-xs cursor-pointer shrink-0"
             title={isSidebarCollapsed ? 'Expand sidebar (Ctrl + B)' : 'Collapse sidebar (Ctrl + B)'}
           >
             {isSidebarCollapsed ? (
@@ -100,207 +115,177 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2 truncate">
-              <span className="truncate">{title}</span>
+          {/* Title + Subtitle — always fully visible, no truncation */}
+          <div>
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight whitespace-nowrap">
+              {title}
             </h1>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate hidden sm:block">{subtitle}</p>}
+            {subtitle && (
+              <p className="text-[11px] text-slate-500 mt-0.5 whitespace-nowrap">{subtitle}</p>
+            )}
           </div>
         </div>
 
-        {/* Global Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Global Search: Icon on mobile (< sm), Search Pill on sm+ */}
+        {/* ── RIGHT: Horizontally swipeable action strip ── */}
+        {/* overflow-x-auto + scrollbar-hide makes it touch-swipeable with no visible scrollbar */}
+        <div className="flex-1 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1">
+
+          {/* Search */}
           <button
             onClick={() => setIsOmniSearchOpen(true)}
-            className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+            className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-40 text-left cursor-pointer group shrink-0"
             title="Search (Ctrl + /)"
           >
-            <Search className="w-4 h-4" />
+            <div className="flex items-center gap-2 truncate">
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
+              <span className="text-slate-500 group-hover:text-slate-700 truncate">Search (Ctrl + /)</span>
+            </div>
+            <kbd className="text-[10px] font-mono font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 shadow-2xs">/</kbd>
           </button>
 
-          <div className="relative hidden sm:block">
+          {/* Date Range */}
+          <div className="relative shrink-0">
             <button
-              onClick={() => setIsOmniSearchOpen(true)}
-              className="flex items-center justify-between pl-3 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-400 hover:text-slate-600 transition-all w-36 md:w-52 text-left cursor-pointer group"
+              ref={dateBtnRef}
+              onClick={toggleDateOpen}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer whitespace-nowrap"
             >
-              <div className="flex items-center gap-2 truncate">
-                <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
-                <span className="text-slate-500 group-hover:text-slate-700 truncate">Search (Ctrl + /)</span>
-              </div>
-              <kbd className="text-[10px] font-mono font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 shadow-2xs">
-                /
-              </kbd>
-            </button>
-          </div>
-
-          {/* Date Range Selector Popover (Hidden on < xl) */}
-          <div className="relative hidden xl:block">
-            <button
-              onClick={() => setIsDateOpen(!isDateOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer"
-            >
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>{globalDateRange}</span>
             </button>
-
-            {isDateOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 text-xs space-y-1 animate-in fade-in duration-100">
-                {['Today', 'Yesterday', 'This Week', 'May 1 – May 31, 2024', 'Last Month', 'Year to Date (2024)'].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => {
-                      setGlobalDateRange(p);
-                      setIsDateOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 rounded-lg transition-colors flex items-center justify-between ${
-                      globalDateRange === p ? 'bg-emerald-50 text-emerald-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span>{p}</span>
-                    {globalDateRange === p && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                  </button>
-                ))}
-              </div>
+            {isDateOpen && dateCoords && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsDateOpen(false)} />
+                <div
+                  style={{ top: `${dateCoords.top}px`, left: `${dateCoords.left}px` }}
+                  className="fixed w-52 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 z-50 text-xs space-y-1 animate-in fade-in duration-100"
+                >
+                  {['Today', 'Yesterday', 'This Week', 'May 1 – May 31, 2024', 'Last Month', 'Year to Date (2024)'].map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => { setGlobalDateRange(p); setIsDateOpen(false); }}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg transition-colors flex items-center justify-between ${
+                        globalDateRange === p ? 'bg-emerald-50 text-emerald-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <span>{p}</span>
+                      {globalDateRange === p && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
-          {/* Filter Button with UniversalFilterPopover */}
-          <div className="relative">
+          {/* Filter */}
+          <div className="relative shrink-0">
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer relative ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer relative whitespace-nowrap ${
                 isFilterActive
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
                   : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
               }`}
             >
-              <Filter className={`w-3.5 h-3.5 ${isFilterActive ? 'text-emerald-600' : 'text-slate-500'}`} />
-              <span className="hidden sm:inline">Filter</span>
-              {isFilterActive && (
-                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-              )}
+              <Filter className={`w-3.5 h-3.5 shrink-0 ${isFilterActive ? 'text-emerald-600' : 'text-slate-500'}`} />
+              <span>Filter</span>
+              {isFilterActive && <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />}
             </button>
-
-            <UniversalFilterPopover
-              isOpen={isFilterOpen}
-              onClose={() => setIsFilterOpen(false)}
-              pageTitle={title}
-            />
+            <UniversalFilterPopover isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} pageTitle={title} />
           </div>
 
-          {/* Export Button (Hidden on < lg) */}
+          {/* Export */}
           <button
             onClick={handleExport}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer shrink-0 whitespace-nowrap"
             title="Download CSV report of current tab"
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <Download className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>Export</span>
           </button>
 
-          {/* Primary Action Button (Optional) */}
+          {/* Primary Action */}
           {primaryActionLabel && (
             <button
               onClick={onPrimaryAction}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{primaryActionLabel}</span>
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>{primaryActionLabel}</span>
             </button>
           )}
 
-          {/* System Version & Live Update Button (Hidden on mobile) */}
+          {/* Version / Update badge */}
           {versionInfo && (() => {
-            // Check if this update was dismissed (user clicked Update Now)
             const dismissKey = `whatsq_update_dismissed_${versionInfo.current_commit}_${versionInfo.latest_commit}`;
             const wasDismissed = (() => { try { return localStorage.getItem(dismissKey) === 'true'; } catch { return false; } })();
             const showUpdateReady = versionInfo.update_available && !isUpdatingSystem && !wasDismissed;
             const showUpdating = isUpdatingSystem;
-            const showUpdated = !showUpdateReady && !showUpdating;
-
             return (
               <button
                 onClick={() => { if (!isUpdatingSystem) setIsUpdateModalOpen(true); }}
-                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                   showUpdating
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md animate-pulse ring-2 ring-amber-400/50'
                     : showUpdateReady
                     ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
                     : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
                 }`}
-                title={
-                  showUpdating ? 'Applying update...' :
-                  showUpdateReady ? `Update available (${versionInfo.latest_commit}) — Click to review` :
-                  `WhatsQ v${versionInfo.current_commit} • Up to date`
-                }
+                title={showUpdating ? 'Applying update...' : showUpdateReady ? `Update available (${versionInfo.latest_commit})` : `WhatsQ v${versionInfo.current_commit} • Up to date`}
               >
-                {showUpdating ? (
-                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Updating...</span></>
-                ) : showUpdateReady ? (
-                  <><Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" /><span>Update Ready ({versionInfo.latest_commit})</span></>
-                ) : (
-                  <><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Version Updated ✓</span></>
-                )}
+                {showUpdating ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Updating...</span></>) :
+                 showUpdateReady ? (<><Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" /><span>Update Ready ({versionInfo.latest_commit})</span></>) :
+                 (<><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Version Updated ✓</span></>)}
               </button>
             );
           })()}
 
-          {/* Simulator Shortcut Button (Hidden on < sm) */}
+          {/* WhatsApp Simulator */}
           <button
             onClick={() => setIsSimulatorOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 whitespace-nowrap"
             title="Simulate Customer Inbound WhatsApp"
           >
             <span>💬 WhatsApp Sim</span>
           </button>
 
-          {/* Help Icon (Hidden on < sm) */}
+          {/* Help */}
           <button
             onClick={() => setIsHelpOpen(true)}
-            className="hidden sm:block p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all cursor-pointer shrink-0"
             title="Help & Knowledge Base"
           >
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {/* Live Real-time Sync Status Capsule */}
+          {/* Live Sync */}
           <div
-            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border shrink-0 whitespace-nowrap ${
               store.syncStatus === 'connected'
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                 : store.syncStatus === 'reconnecting'
                 ? 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse'
                 : 'bg-rose-50 text-rose-800 border-rose-200'
             }`}
-            title={`Real-time sync engine: ${
-              store.syncStatus === 'connected'
-                ? 'Connected and streaming live updates with zero page refresh'
-                : store.syncStatus === 'reconnecting'
-                ? 'Reconnecting to event stream...'
-                : 'Offline'
-            }`}
+            title={`Real-time sync: ${store.syncStatus === 'connected' ? 'Connected' : store.syncStatus === 'reconnecting' ? 'Reconnecting...' : 'Offline'}`}
           >
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${
-                store.syncStatus === 'connected'
-                  ? 'bg-emerald-500 animate-pulse'
-                  : store.syncStatus === 'reconnecting'
-                  ? 'bg-amber-500'
-                  : 'bg-rose-500'
-              }`}
-            />
-            {/* Text only visible when sidebar is collapsed */}
-            <span className={isSidebarCollapsed ? 'inline' : 'hidden'}>
-              {store.syncStatus === 'connected'
-                ? 'Live Sync'
-                : store.syncStatus === 'reconnecting'
-                ? 'Reconnecting'
-                : 'Offline'}
+            <span className={`w-2 h-2 rounded-full shrink-0 ${
+              store.syncStatus === 'connected' ? 'bg-emerald-500 animate-pulse'
+              : store.syncStatus === 'reconnecting' ? 'bg-amber-500'
+              : 'bg-rose-500'
+            }`} />
+            <span>
+              {store.syncStatus === 'connected' ? 'Live Sync' : store.syncStatus === 'reconnecting' ? 'Reconnecting' : 'Offline'}
             </span>
           </div>
 
-          {/* Notifications Icon with Interactive Dropdown & Item Routing */}
+        </div>{/* end w-max inner */}
+        </div>{/* end overflow-x-auto */}
+
+        {/* ── PINNED RIGHT: Notifications + Profile Avatar ── */}
+        <div className="flex items-center gap-1 sm:gap-2 pl-2 border-l border-slate-200 shrink-0">
+          {/* Notifications */}
           <div className="relative">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
@@ -314,62 +299,51 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
-
             {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-84 max-w-[340px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs space-y-3 animate-in fade-in duration-100">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-slate-900 text-sm">Notifications</h4>
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+                <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-84 max-w-[340px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs space-y-3 animate-in fade-in duration-100">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-slate-900 text-sm">Notifications</h4>
+                      {unreadNotifsCount > 0 && (
+                        <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">{unreadNotifsCount} new</span>
+                      )}
+                    </div>
                     {unreadNotifsCount > 0 && (
-                      <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
-                        {unreadNotifsCount} new
-                      </span>
+                      <button onClick={() => markAllNotificationsRead()} className="text-[11px] text-emerald-600 hover:underline font-semibold cursor-pointer">Mark all read</button>
                     )}
                   </div>
-                  {unreadNotifsCount > 0 && (
-                    <button
-                      onClick={() => markAllNotificationsRead()}
-                      className="text-[11px] text-emerald-600 hover:underline font-semibold cursor-pointer"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 max-h-80 overflow-y-auto divide-y divide-slate-100">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => {
-                        setIsNotifOpen(false);
-                        handleNotificationClick(n);
-                      }}
-                      className={`pt-2.5 pb-2 px-2.5 rounded-xl cursor-pointer transition-colors space-y-1 ${
-                        n.unread ? 'bg-emerald-50/40 hover:bg-emerald-50/80 border border-emerald-100' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between font-bold text-slate-800">
-                        <span className="flex items-center gap-1.5">
-                          {n.unread && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
-                          <span className={n.unread ? 'text-slate-950 font-bold' : 'text-slate-700'}>{n.title}</span>
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-normal shrink-0">{n.time}</span>
+                  <div className="space-y-1.5 max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => { setIsNotifOpen(false); handleNotificationClick(n); }}
+                        className={`pt-2.5 pb-2 px-2.5 rounded-xl cursor-pointer transition-colors space-y-1 ${n.unread ? 'bg-emerald-50/40 hover:bg-emerald-50/80 border border-emerald-100' : 'hover:bg-slate-50'}`}
+                      >
+                        <div className="flex items-center justify-between font-bold text-slate-800">
+                          <span className="flex items-center gap-1.5">
+                            {n.unread && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                            <span className={n.unread ? 'text-slate-950 font-bold' : 'text-slate-700'}>{n.title}</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-normal shrink-0">{n.time}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-snug pl-3.5">{n.text}</div>
+                        <div className="flex items-center justify-end text-[10px] font-semibold text-emerald-600 pt-0.5">
+                          <span className="flex items-center gap-1">Open record <ArrowRight className="w-3 h-3" /></span>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-500 leading-snug pl-3.5">{n.text}</div>
-                      <div className="flex items-center justify-end text-[10px] font-semibold text-emerald-600 pt-0.5">
-                        <span className="flex items-center gap-1">Open record <ArrowRight className="w-3 h-3" /></span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
           {/* Profile Avatar */}
           <div
             onClick={() => setActiveTab('settings')}
-            className="flex items-center gap-2 pl-2 border-l border-slate-200 cursor-pointer"
+            className="flex items-center cursor-pointer shrink-0"
             title="Account Settings"
           >
             <img

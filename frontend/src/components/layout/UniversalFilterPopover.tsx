@@ -36,16 +36,17 @@ export const UniversalFilterPopover: React.FC<UniversalFilterPopoverProps> = ({
   };
 
   return (
-    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs space-y-4 animate-in fade-in duration-100">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-        <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
-          <Filter className="w-4 h-4 text-emerald-600" />
-          <span>Filter {pageTitle}</span>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 bg-slate-900/30 backdrop-blur-xs p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4 animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+            <Filter className="w-4 h-4 text-emerald-600" />
+            <span>Filter {pageTitle}</span>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
 
       {/* Keyword Filter */}
       <div className="space-y-1.5">
@@ -125,6 +126,7 @@ export const UniversalFilterPopover: React.FC<UniversalFilterPopoverProps> = ({
         >
           Apply Filters
         </button>
+        </div>
       </div>
     </div>
   );
