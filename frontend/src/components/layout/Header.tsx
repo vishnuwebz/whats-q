@@ -8,6 +8,7 @@ import {
 import { OmniSearchModal } from './OmniSearchModal';
 import { UniversalFilterPopover } from './UniversalFilterPopover';
 import { exportTableToCsv } from '@/utils/exportCsv';
+import { ModernDateRangePicker, DateRangeValue } from '@/components/common/ModernDateRangePicker';
 
 interface HeaderProps {
   title: string;
@@ -46,23 +47,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
-  const [dateCoords, setDateCoords] = useState<{ top: number; left: number } | null>(null);
-  const dateBtnRef = React.useRef<HTMLButtonElement>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-
-  const toggleDateOpen = () => {
-    if (!isDateOpen && dateBtnRef.current) {
-      const rect = dateBtnRef.current.getBoundingClientRect();
-      setDateCoords({
-        top: rect.bottom + 6,
-        left: Math.max(10, Math.min(rect.left, window.innerWidth - 225)),
-      });
-      setIsDateOpen(true);
-    } else {
-      setIsDateOpen(false);
-    }
-  };
 
   const unreadNotifsCount = notifications.filter((n) => n.unread).length;
   const isFilterActive =
@@ -211,35 +197,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Date Range */}
           <div className="relative shrink-0">
             <button
-              ref={dateBtnRef}
-              onClick={toggleDateOpen}
+              onClick={() => setIsDateOpen(true)}
               className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer whitespace-nowrap"
+              title="Filter by custom date range"
             >
-              <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>{globalDateRange}</span>
             </button>
-            {isDateOpen && dateCoords && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsDateOpen(false)} />
-                <div
-                  style={{ top: `${dateCoords.top}px`, left: `${dateCoords.left}px` }}
-                  className="fixed w-52 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 z-50 text-xs space-y-1 animate-in fade-in duration-100"
-                >
-                  {['Today', 'Yesterday', 'This Week', 'May 1 – May 31, 2024', 'Last Month', 'Year to Date (2024)'].map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => { setGlobalDateRange(p); setIsDateOpen(false); }}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg transition-colors flex items-center justify-between ${
-                        globalDateRange === p ? 'bg-emerald-50 text-emerald-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>{p}</span>
-                      {globalDateRange === p && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
 
           {/* Filter */}
@@ -458,6 +422,21 @@ export const Header: React.FC<HeaderProps> = ({
       <OmniSearchModal
         isOpen={isOmniSearchOpen}
         onClose={() => setIsOmniSearchOpen(false)}
+      />
+
+      {/* Global Modern Interactive Date Range Picker Modal */}
+      <ModernDateRangePicker
+        isOpen={isDateOpen}
+        onClose={() => setIsDateOpen(false)}
+        value={{
+          startDate: '2024-05-01',
+          endDate: '2024-05-31',
+          label: globalDateRange,
+        }}
+        onApply={(range) => {
+          setGlobalDateRange(range.label || `${range.startDate} – ${range.endDate}`);
+        }}
+        title="Filter Workspace by Date Range"
       />
     </>
   );
