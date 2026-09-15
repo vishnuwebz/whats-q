@@ -608,3 +608,30 @@ export interface MetaWalletTransaction {
   campaignName?: string;
   receiptUrl?: string;
 }
+
+export interface WhatsAppGroupContact {
+  id: string;
+  name: string;
+  phone: string;
+  whatsappId: string;
+  role: 'admin' | 'member';
+  country: string;
+  avatar?: string;
+  isValidWhatsApp: boolean;
+  statusMessage?: string;
+  joinedAt?: string;
+}
+
+export interface WhatsAppGroup {
+  id: string;
+  jid: string;
+  name: string;
+  description: string;
+  avatar: string;
+  category: 'Customer Community' | 'VIP Club' | 'Industry & Vendors' | 'Regional Network' | 'Internal Ops' | string;
+  memberCount: number;
+  isAdmin: boolean;
+  createdAt: string;
+  members: WhatsAppGroupContact[];
+}
+
