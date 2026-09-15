@@ -25,10 +25,29 @@ export const DashboardView: React.FC = () => {
     },
   ]);
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const aiChatScrollRef = React.useRef<HTMLDivElement>(null);
+  const aiChatContainerRef = React.useRef<HTMLDivElement>(null);
+  const dashboardRootRef = React.useRef<HTMLDivElement>(null);
+  const isInitialMount = React.useRef(true);
 
+  // Ensure dashboard always opens at the very top
   React.useEffect(() => {
-    aiChatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (dashboardRootRef.current) {
+      dashboardRootRef.current.scrollTop = 0;
+    }
+  }, []);
+
+  // Only scroll the inner chat message box when new messages arrive, never the whole page
+  React.useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (aiChatContainerRef.current) {
+      aiChatContainerRef.current.scrollTo({
+        top: aiChatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, [aiMessages.length, isAiThinking]);
 
   const revenueData = [
@@ -140,7 +159,7 @@ export const DashboardView: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto overflow-x-hidden font-sans">
+    <div ref={dashboardRootRef} className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto overflow-x-hidden font-sans">
       <Header
         title="Dashboard"
         subtitle="Good morning, Rahul! Here's what's happening in your business today."
@@ -666,7 +685,7 @@ export const DashboardView: React.FC = () => {
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs scrollbar-thin">
+            <div ref={aiChatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 text-xs scrollbar-thin">
               {aiMessages.map((msg, i) => {
                 const isAi = msg.sender === 'ai';
                 return (
@@ -720,7 +739,6 @@ export const DashboardView: React.FC = () => {
                   </div>
                 </div>
               )}
-              <div ref={aiChatScrollRef} />
             </div>
 
             {/* Quick Action Suggestion Chips */}
