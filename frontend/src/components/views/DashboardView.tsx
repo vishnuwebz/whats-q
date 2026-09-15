@@ -5,7 +5,8 @@ import {
   TrendingUp, TrendingDown, Users, Calendar, CheckCircle2,
   AlertTriangle, DollarSign, Zap, Bot, ArrowRight,
   Clock, ShieldAlert, Sparkles, Send, Eye, RefreshCw, X,
-  Check, Phone, MapPin, ExternalLink, ShieldCheck, CheckCheck
+  Check, Phone, MapPin, ExternalLink, ShieldCheck, CheckCheck,
+  Compass, Briefcase, Receipt, GitBranch, MessageSquare
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -645,249 +646,277 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Sidebar: AI Assistant Copilot (4 cols) */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col h-full min-h-[480px] sm:min-h-[560px] max-h-[720px] overflow-hidden min-w-0">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20">
-                  <Bot className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-xs font-bold text-slate-900">Qiyam AI Copilot</h3>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded-full">v2.5</span>
+          {/* Right Sidebar: Quick Module Navigation (Above) + Compact AI Copilot (Below) (4 cols) */}
+          <div className="lg:col-span-4 flex flex-col gap-4 sm:gap-6 min-w-0">
+            {/* 1. Quick Module Navigation Shortcuts Card (Moved above AI Copilot for instant access) */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                    <Compass className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Real-time Business Sync</span>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Quick Module Navigation
+                    </h3>
+                    <p className="text-[10px] text-slate-400">Click any card to jump to its module</p>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    setAiMessages([
-                      {
-                        sender: 'ai',
-                        text: "Good morning, Rahul! 👋\nHere's a summary of your business:\n• 7 leads need follow-up\n• 3 jobs are overdue\n• 2 payments awaiting reminder\n• You have 15 appointments today",
-                        time: 'Just now',
-                      },
-                    ]);
-                    addToast('AI chat history refreshed', 'info');
-                  }}
-                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors"
-                  title="Clear & Refresh"
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2">
+                {/* Conversations */}
+                <div
+                  onClick={() => setActiveTab('conversations')}
+                  className="bg-slate-50/70 hover:bg-emerald-50/60 p-2.5 rounded-xl border border-slate-200/80 hover:border-emerald-300 transition-all cursor-pointer group shadow-2xs"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 group-hover:text-emerald-800">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">Conversations</span>
+                    </div>
+                    <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform text-xs">→</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">WhatsApp shared inbox &amp; chat</div>
+                </div>
+
+                {/* Lead Pipeline */}
+                <div
+                  onClick={() => setActiveTab('crm-leads')}
+                  className="bg-slate-50/70 hover:bg-emerald-50/60 p-2.5 rounded-xl border border-slate-200/80 hover:border-emerald-300 transition-all cursor-pointer group shadow-2xs"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 group-hover:text-emerald-800">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Users className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                      <span className="truncate">Lead Pipeline</span>
+                    </div>
+                    <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform text-xs">→</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">Kanban stages &amp; follow-ups</div>
+                </div>
+
+                {/* Job Dispatch */}
+                <div
+                  onClick={() => setActiveTab('ops-jobs')}
+                  className="bg-slate-50/70 hover:bg-emerald-50/60 p-2.5 rounded-xl border border-slate-200/80 hover:border-emerald-300 transition-all cursor-pointer group shadow-2xs"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 group-hover:text-emerald-800">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span className="truncate">Job Dispatch</span>
+                    </div>
+                    <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform text-xs">→</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">54 completed • 31 scheduled</div>
+                </div>
+
+                {/* Invoices & Payments */}
+                <div
+                  onClick={() => setActiveTab('finance-invoices')}
+                  className="bg-slate-50/70 hover:bg-emerald-50/60 p-2.5 rounded-xl border border-slate-200/80 hover:border-emerald-300 transition-all cursor-pointer group shadow-2xs"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 group-hover:text-emerald-800">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">Invoices &amp; Pay</span>
+                    </div>
+                    <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform text-xs">→</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">₹24,85,320 total billed</div>
+                </div>
+
+                {/* Workflow Builder */}
+                <div
+                  onClick={() => setActiveTab('automation-builder')}
+                  className="bg-slate-50/70 hover:bg-emerald-50/60 p-2.5 rounded-xl border border-slate-200/80 hover:border-emerald-300 transition-all cursor-pointer group shadow-2xs sm:col-span-2 lg:col-span-1 xl:col-span-2"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 group-hover:text-emerald-800">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <GitBranch className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                      <span className="truncate">Workflow Builder</span>
+                    </div>
+                    <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform text-xs">→</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">Visual drag-and-drop flow canvas</div>
+                </div>
               </div>
             </div>
 
-            {/* Chat Messages Stream */}
-            <div ref={aiChatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 text-xs scrollbar-thin">
-              {aiMessages.map((msg, i) => {
-                const isAi = msg.sender === 'ai';
-                return (
-                  <div
-                    key={i}
-                    className={`flex items-start gap-2 ${isAi ? 'justify-start' : 'justify-end'}`}
+            {/* 2. Compact Qiyam AI Copilot Card (Small, snug chat portion below shortcuts) */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col overflow-hidden min-w-0">
+              {/* Header */}
+              <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <Bot className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-xs font-bold text-slate-900">Qiyam AI Copilot</h3>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded-full">v2.5</span>
+                    </div>
+                    <div className="text-[9px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Real-time Business Sync</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setAiMessages([
+                        {
+                          sender: 'ai',
+                          text: "Good morning, Rahul! 👋\nHere's a summary of your business:\n• 7 leads need follow-up\n• 3 jobs are overdue\n• 2 payments awaiting reminder\n• You have 15 appointments today",
+                          time: 'Just now',
+                        },
+                      ]);
+                      addToast('AI chat history refreshed', 'info');
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                    title="Clear & Refresh"
                   >
-                    {isAi && (
-                      <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs font-bold text-[10px]">
-                        <Bot className="w-3.5 h-3.5 text-purple-600" />
-                      </div>
-                    )}
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Messages Stream - Compact snug height */}
+              <div ref={aiChatContainerRef} className="max-h-[145px] overflow-y-auto p-3 space-y-2.5 text-xs scrollbar-thin">
+                {aiMessages.map((msg, i) => {
+                  const isAi = msg.sender === 'ai';
+                  return (
                     <div
-                      className={`relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-2xs ${
-                        isAi
-                          ? 'bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-xs'
-                          : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-xs ml-auto font-medium shadow-sm shadow-emerald-700/20'
-                      }`}
+                      key={i}
+                      className={`flex items-start gap-2 ${isAi ? 'justify-start' : 'justify-end'}`}
                     >
-                      <div className="whitespace-pre-line text-[11px] sm:text-xs">{msg.text}</div>
+                      {isAi && (
+                        <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs font-bold text-[10px]">
+                          <Bot className="w-3.5 h-3.5 text-purple-600" />
+                        </div>
+                      )}
                       <div
-                        className={`text-[9px] mt-1 flex items-center gap-1 ${
-                          isAi ? 'text-slate-400' : 'text-emerald-100 justify-end'
+                        className={`relative max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed shadow-2xs ${
+                          isAi
+                            ? 'bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-xs'
+                            : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-xs ml-auto font-medium shadow-sm shadow-emerald-700/20'
                         }`}
                       >
-                        <span>{msg.time}</span>
-                        {!isAi && <CheckCheck className="w-3 h-3 text-emerald-200" />}
+                        <div className="whitespace-pre-line text-[11px] sm:text-xs">{msg.text}</div>
+                        <div
+                          className={`text-[9px] mt-1 flex items-center gap-1 ${
+                            isAi ? 'text-slate-400' : 'text-emerald-100 justify-end'
+                          }`}
+                        >
+                          <span>{msg.time}</span>
+                          {!isAi && <CheckCheck className="w-3 h-3 text-emerald-200" />}
+                        </div>
                       </div>
+                      {!isAi && (
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
+                          RM
+                        </div>
+                      )}
                     </div>
-                    {!isAi && (
-                      <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
-                        RM
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {isAiThinking && (
-                <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+                {isAiThinking && (
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+                    </div>
+                    <div className="bg-purple-50/80 border border-purple-100 text-purple-800 rounded-2xl rounded-tl-xs px-3 py-2 text-xs flex items-center gap-2">
+                      <span className="flex gap-1 items-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                      <span className="text-[11px] font-medium text-purple-700 italic">Analyzing operations & pipeline...</span>
+                    </div>
                   </div>
-                  <div className="bg-purple-50/80 border border-purple-100 text-purple-800 rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs flex items-center gap-2">
-                    <span className="flex gap-1 items-center">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </span>
-                    <span className="text-[11px] font-medium text-purple-700 italic">Analyzing operations & pipeline...</span>
-                  </div>
+                )}
+              </div>
+
+              {/* Quick Action Suggestion Chips */}
+              <div className="px-3 pt-2 pb-1 border-t border-slate-100 bg-slate-50/40">
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Actions</span>
+                  <span className="text-[9px] text-purple-600 font-semibold">1-Click Prompts</span>
                 </div>
-              )}
-            </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
+                  <button
+                    onClick={() => handleAskAi("Show today's schedule")}
+                    className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <Calendar className="w-3 h-3 text-purple-500" />
+                    <span>Today's Schedule</span>
+                  </button>
+                  <button
+                    onClick={() => handleAskAi('Send payment reminders')}
+                    className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <DollarSign className="w-3 h-3 text-emerald-500" />
+                    <span>Payment Reminders</span>
+                  </button>
+                  <button
+                    onClick={() => handleAskAi('Show overdue jobs')}
+                    className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                    <span>Overdue Jobs</span>
+                  </button>
+                  <button
+                    onClick={() => handleAskAi('High value leads')}
+                    className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <Users className="w-3 h-3 text-blue-500" />
+                    <span>High-Value Leads</span>
+                  </button>
+                  <button
+                    onClick={() => handleAskAi('Generate sales report')}
+                    className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <Sparkles className="w-3 h-3 text-purple-500" />
+                    <span>Sales Report</span>
+                  </button>
+                </div>
+              </div>
 
-            {/* Quick Action Suggestion Chips */}
-            <div className="px-3 pt-2 pb-1 border-t border-slate-100 bg-slate-50/40">
-              <div className="flex items-center justify-between mb-1.5 px-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Actions</span>
-                <span className="text-[9px] text-purple-600 font-semibold">1-Click Prompts</span>
-              </div>
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
-                <button
-                  onClick={() => handleAskAi("Show today's schedule")}
-                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                >
-                  <Calendar className="w-3 h-3 text-purple-500" />
-                  <span>Today's Schedule</span>
-                </button>
-                <button
-                  onClick={() => handleAskAi('Send payment reminders')}
-                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                >
-                  <DollarSign className="w-3 h-3 text-emerald-500" />
-                  <span>Payment Reminders</span>
-                </button>
-                <button
-                  onClick={() => handleAskAi('Show overdue jobs')}
-                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                >
-                  <AlertTriangle className="w-3 h-3 text-amber-500" />
-                  <span>Overdue Jobs</span>
-                </button>
-                <button
-                  onClick={() => handleAskAi('High value leads')}
-                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                >
-                  <Users className="w-3 h-3 text-blue-500" />
-                  <span>High-Value Leads</span>
-                </button>
-                <button
-                  onClick={() => handleAskAi('Generate sales report')}
-                  className="text-[11px] px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                >
-                  <Sparkles className="w-3 h-3 text-purple-500" />
-                  <span>Sales Report</span>
-                </button>
-              </div>
-            </div>
-
-            {/* AI Query Input Form */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAskAi();
-              }}
-              className="p-3 border-t border-slate-200/80 bg-white"
-            >
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={aiInput}
-                  onChange={(e) => setAiInput(e.target.value)}
-                  placeholder="Ask anything about jobs, revenue, leads..."
-                  className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={!aiInput.trim() || isAiThinking}
-                  className="w-7 h-7 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 shadow-sm transition-all cursor-pointer active:scale-95"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 mt-1.5">
-                <span>Enterprise Copilot</span>
-                <span>Press Enter ↵</span>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Bottom Quick Feature Strip (Matching photo_3 bottom row) */}
-        <div className="pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Module Navigation</h3>
-            <span className="text-xs text-slate-400">Click any card to jump to its module</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {/* Conversations Mini */}
-            <div
-              onClick={() => setActiveTab('conversations')}
-              className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
-                <span>Conversations</span>
-                <span className="text-emerald-600 group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">WhatsApp team shared inbox & chat</div>
-            </div>
-
-            {/* Leads Mini */}
-            <div
-              onClick={() => setActiveTab('crm-leads')}
-              className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
-                <span>Lead Pipeline</span>
-                <span className="text-emerald-600 group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">Kanban stages & follow-ups</div>
-            </div>
-
-            {/* Jobs Mini */}
-            <div
-              onClick={() => setActiveTab('ops-jobs')}
-              className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
-                <span>Job Dispatch</span>
-                <span className="text-emerald-600 group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">54 completed • 31 scheduled</div>
-            </div>
-
-            {/* Invoices Mini */}
-            <div
-              onClick={() => setActiveTab('finance-invoices')}
-              className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
-                <span>Invoices & Payments</span>
-                <span className="text-emerald-600 group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">₹24,85,320 total billed</div>
-            </div>
-
-            {/* Workflow Builder Mini */}
-            <div
-              onClick={() => setActiveTab('automation-builder')}
-              className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
-                <span>Workflow Builder</span>
-                <span className="text-emerald-600 group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">Visual drag-and-drop flow canvas</div>
+              {/* AI Query Input Form */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAskAi();
+                }}
+                className="p-3 border-t border-slate-200/80 bg-white"
+              >
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={aiInput}
+                    onChange={(e) => setAiInput(e.target.value)}
+                    placeholder="Ask anything about jobs, revenue, leads..."
+                    className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiInput.trim() || isAiThinking}
+                    className="w-7 h-7 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 shadow-sm transition-all cursor-pointer active:scale-95"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 mt-1.5">
+                  <span>Enterprise Copilot</span>
+                  <span>Press Enter ↵</span>
+                </div>
+              </form>
             </div>
           </div>
         </div>
       </div>
+
 
       {/* Interactive AI Alerts Full Modal */}
       {isAlertsModalOpen && (
