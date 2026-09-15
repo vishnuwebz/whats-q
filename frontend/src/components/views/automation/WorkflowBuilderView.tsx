@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
+import { Header } from '@/components/layout/Header';
 import {
   GitBranch, List, Plus, Play, Save, RotateCcw, RotateCw,
   ZoomIn, ZoomOut, Maximize2, Trash2, Edit3, X, Check,
@@ -1069,11 +1070,15 @@ export const WorkflowBuilderView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans select-none">
+      <Header
+        title="Workflow Builder"
+        subtitle="Design interactive WhatsApp chatbot flows, visual group canvas, and keyword trigger rules."
+        primaryActionLabel={activeMode === 'canvas' ? '+ Add Group' : '+ Create Rule'}
+        onPrimaryAction={activeMode === 'canvas' ? handleAddGroup : () => setIsNewRuleModalOpen(true)}
+      />
+
       {/* ========================================================================= */}
-      {/* TOP HEADER: CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)             */}
-      {/* ========================================================================= */}
-      {/* ========================================================================= */}
-      {/* TOP HEADER: CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)             */}
+      {/* CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)                          */}
       {/* ========================================================================= */}
       <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col md:flex-row gap-2.5 md:gap-0 items-stretch md:items-center justify-between shrink-0 shadow-xs z-20">
         {/* Two-Tab Segmented Capsule */}
