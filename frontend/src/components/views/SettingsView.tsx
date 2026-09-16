@@ -1,158 +1,227 @@
 import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Settings as SettingsIcon, Save, ShieldCheck, Database, HardDrive, Users, Check } from 'lucide-react';
+import {
+  Settings as SettingsIcon,
+  Database,
+  Building2,
+  MessageSquare,
+  CreditCard,
+  Lock,
+  Bell,
+  Download,
+  Check,
+  Search,
+  Sparkles,
+  ShieldCheck,
+  ChevronRight,
+} from 'lucide-react';
+import { GeneralSettings } from './settings/GeneralSettings';
+import { BackupRestoreSettings } from './settings/BackupRestoreSettings';
+import { WhatsAppChannelSettings } from './settings/WhatsAppChannelSettings';
+import { SubscriptionSettings } from './settings/SubscriptionSettings';
+import { SecuritySettings } from './settings/SecuritySettings';
+import { NotificationSettings } from './settings/NotificationSettings';
+import { exportBackupToFile } from '@/utils/backupManager';
+
+type SettingsTab = 'general' | 'backup' | 'whatsapp' | 'subscription' | 'security' | 'notifications';
 
 export const SettingsView: React.FC = () => {
   const { addToast } = useQiyamStore();
-  const [workspaceName, setWorkspaceName] = useState('Qiyam Business OS');
-  const [timeZone, setTimeZone] = useState('(GMT+05:30) Asia/Kolkata');
-  const [enableAi, setEnableAi] = useState(true);
-  const [enableNotif, setEnableNotif] = useState(true);
-  const [allowUploads, setAllowUploads] = useState(true);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('general');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleSave = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    localStorage.setItem('whatsq_workspace_name', workspaceName);
-    localStorage.setItem('whatsq_timezone', timeZone);
-    addToast('Workspace settings saved successfully!', 'success');
+  const handleExportQuickBackup = () => {
+    try {
+      const filename = exportBackupToFile();
+      addToast(`Downloaded system backup: ${filename}`, 'success');
+    } catch {
+      addToast('Failed to export backup', 'error');
+    }
   };
+
+  const navTabs = [
+    {
+      id: 'general' as SettingsTab,
+      label: 'General Workspace',
+      shortLabel: 'General',
+      icon: Building2,
+      description: 'Brand identity, timezone, currency & regional formats',
+      badge: null,
+    },
+    {
+      id: 'backup' as SettingsTab,
+      label: 'Data Backup & Restore',
+      shortLabel: 'Data Backup',
+      icon: Database,
+      description: 'Auto-backups, last backup status, JSON import/export & snapshot archive',
+      badge: 'Zero-Loss Engine',
+      highlight: true,
+    },
+    {
+      id: 'whatsapp' as SettingsTab,
+      label: 'WhatsApp API & Channels',
+      shortLabel: 'WhatsApp API',
+      icon: MessageSquare,
+      description: 'Meta Cloud API credentials, webhook endpoints & SLA health',
+      badge: 'Live',
+    },
+    {
+      id: 'subscription' as SettingsTab,
+      label: 'Subscription & Quotas',
+      shortLabel: 'Subscription',
+      icon: CreditCard,
+      description: 'Enterprise tier, seats allocation & cloud storage meters',
+      badge: null,
+    },
+    {
+      id: 'security' as SettingsTab,
+      label: 'Security & Privacy',
+      shortLabel: 'Security',
+      icon: Lock,
+      description: '2FA authentication, session timeouts & encryption standards',
+      badge: null,
+    },
+    {
+      id: 'notifications' as SettingsTab,
+      label: 'Notifications & Sounds',
+      shortLabel: 'Notifications',
+      icon: Bell,
+      description: 'WhatsApp audio chimes, push alerts & quiet hours',
+      badge: null,
+    },
+  ];
+
+  // Filter tabs based on search
+  const filteredTabs = navTabs.filter(
+    (t) =>
+      t.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Workspace Settings"
-        subtitle="Configure organization details, regional preferences, role permissions, and storage."
-        primaryActionLabel="Save Changes"
-        onPrimaryAction={handleSave}
+        subtitle="Configure organization details, regional preferences, automated backups, and WhatsApp Cloud APIs."
+        primaryActionLabel="Export Full Backup"
+        onPrimaryAction={handleExportQuickBackup}
       />
 
-      <div className="p-3 sm:p-6 max-w-4xl space-y-4 sm:space-y-6 text-xs">
-        <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
-          {/* General Workspace Info */}
-          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3">
-              General Workspace Preferences
-            </h3>
+      <div className="p-3 sm:p-6 max-w-6xl mx-auto w-full space-y-6 text-xs">
+        {/* ── Sub-navigation Header & Search Bar ── */}
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Tabs Scroll Container */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            {navTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeSettingsTab === tab.id;
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Workspace Name</label>
-                <input
-                  type="text"
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none text-sm sm:text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Workspace ID & URL</label>
-                <input
-                  type="text"
-                  value="qiyam-business-os.qiyamapp.com"
-                  disabled
-                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono text-sm sm:text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Default Time Zone</label>
-                <select
-                  value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none text-sm sm:text-xs"
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSettingsTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    isActive
+                      ? 'bg-[#0B1528] text-white shadow-sm ring-1 ring-[#1E293B]'
+                      : tab.highlight
+                      ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100/80 border border-emerald-200/80'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
                 >
-                  <option>(GMT+05:30) Asia/Kolkata (IST)</option>
-                  <option>(GMT+04:00) Asia/Dubai (GST)</option>
-                  <option>(GMT+00:00) UTC</option>
-                </select>
-              </div>
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      isActive
+                        ? 'text-emerald-400'
+                        : tab.highlight
+                        ? 'text-emerald-600'
+                        : 'text-slate-500'
+                    }`}
+                  />
+                  <span>{tab.shortLabel}</span>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Date Format</label>
-                <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none text-sm sm:text-xs">
-                  <option>May 31, 2024 (MMM DD, YYYY)</option>
-                  <option>31/05/2024 (DD/MM/YYYY)</option>
-                  <option>2024-05-31 (YYYY-MM-DD)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Checkboxes */}
-            <div className="pt-3 border-t border-slate-100 space-y-2.5">
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableAi}
-                  onChange={(e) => setEnableAi(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-                />
-                <span className="font-semibold text-slate-800">Enable AI Assistant Copilot across all modules</span>
-              </label>
-
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableNotif}
-                  onChange={(e) => setEnableNotif(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-                />
-                <span className="font-semibold text-slate-800">Enable Desktop & Inbound WhatsApp audio alerts</span>
-              </label>
-
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={allowUploads}
-                  onChange={(e) => setAllowUploads(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-                />
-                <span className="font-semibold text-slate-800">Allow media file attachments & voice notes in chat</span>
-              </label>
-            </div>
+                  {tab.badge && (
+                    <span
+                      className={`text-[9px] px-1.5 py-0.2 rounded-md uppercase tracking-wider font-extrabold ${
+                        isActive
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : tab.highlight
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Plan & Subscription Card */}
-          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900">Subscription & Cloud Storage</h3>
-                <p className="text-slate-500 text-[11px]">Professional Enterprise Tier • Active</p>
-              </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-                Active Plan
-              </span>
-            </div>
+          {/* Search Input for Quick Navigation */}
+          <div className="relative w-full md:w-56 shrink-0">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search settings..."
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-emerald-500 focus:bg-white transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-[10px] text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px]">Team Seats</span>
-                <span className="text-lg font-black text-slate-900">18 / 50</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px]">Cloud Storage</span>
-                <span className="text-lg font-black text-slate-900">24.6 GB / 100 GB</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px]">WhatsApp Numbers</span>
-                <span className="text-lg font-black text-emerald-600">3 Verified</span>
-              </div>
+        {/* Search Results Drawer if user is searching */}
+        {searchQuery.trim() && (
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              Matching Settings Categories ({filteredTabs.length})
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {filteredTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <div
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveSettingsTab(tab.id);
+                      setSearchQuery('');
+                    }}
+                    className="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/30 transition cursor-pointer flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs text-slate-800">{tab.label}</div>
+                        <div className="text-[10px] text-slate-500 line-clamp-1">{tab.description}</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                );
+              })}
             </div>
           </div>
+        )}
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
-            >
-              Save Configuration
-            </button>
-          </div>
-        </form>
+        {/* ── Active Tab View Content ── */}
+        <div className="transition-all duration-150">
+          {activeSettingsTab === 'general' && <GeneralSettings />}
+          {activeSettingsTab === 'backup' && <BackupRestoreSettings />}
+          {activeSettingsTab === 'whatsapp' && <WhatsAppChannelSettings />}
+          {activeSettingsTab === 'subscription' && <SubscriptionSettings />}
+          {activeSettingsTab === 'security' && <SecuritySettings />}
+          {activeSettingsTab === 'notifications' && <NotificationSettings />}
+        </div>
       </div>
     </div>
   );
 };
-
-

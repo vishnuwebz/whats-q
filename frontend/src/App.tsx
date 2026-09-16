@@ -6,6 +6,7 @@ import { WhatsAppSimulatorModal } from './components/common/WhatsAppSimulatorMod
 import { SystemUpdateModal } from './components/common/SystemUpdateModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { realtimeSyncManager } from './api/realtimeSync';
+import { checkAndRunAutoBackup } from './utils/backupManager';
 import { ChevronRight } from 'lucide-react';
 
 // Views
@@ -157,9 +158,20 @@ export const App: React.FC = () => {
       fetchVersionInfo();
     }, 60000);
 
+    // Initial check and periodic background check for scheduled auto-backups
+    try {
+      checkAndRunAutoBackup();
+    } catch {}
+    const autoBackupTimer = setInterval(() => {
+      try {
+        checkAndRunAutoBackup();
+      } catch {}
+    }, 5 * 60 * 1000);
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
       clearInterval(timer);
+      clearInterval(autoBackupTimer);
       realtimeSyncManager.stop();
     };
   }, [loadInitialData, fetchVersionInfo, setActiveTab]);
