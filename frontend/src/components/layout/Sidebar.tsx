@@ -67,6 +67,65 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'settings-backup', title: 'Data Backup & Restore', category: 'Settings', icon: Database, keywords: 'backup restore data auto-backup last backup import export snapshot database disaster recovery postgresql sqlite' },
 ];
 
+export type AccordionSection = 'messenger' | 'crm' | 'ops' | 'finance' | 'automation' | 'ai' | null;
+
+export const getTabAccordionSection = (tab: string): AccordionSection => {
+  if ([
+    'conversations',
+    'bulk-overview',
+    'bulk-send',
+    'bulk-templates',
+    'bulk-campaigns',
+    'bulk-recipients',
+    'bulk-scheduled',
+  ].includes(tab)) {
+    return 'messenger';
+  }
+  if (['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(tab)) {
+    return 'crm';
+  }
+  if ([
+    'ops-jobs',
+    'ops-appointments',
+    'ops-employees',
+    'ops-schedule',
+    'ops-attendance',
+    'ops-tasks',
+    'ops-routes',
+    'ops-inventory',
+    'automation-approvals',
+  ].includes(tab)) {
+    return 'ops';
+  }
+  if ([
+    'finance-overview',
+    'finance-transactions',
+    'finance-invoices',
+    'finance-expenses',
+    'finance-payments',
+    'finance-accounts',
+    'finance-reports',
+    'finance-budget',
+  ].includes(tab)) {
+    return 'finance';
+  }
+  if (['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(tab)) {
+    return 'automation';
+  }
+  if ([
+    'ai-overview',
+    'ai-branches',
+    'ai-knowledgebase',
+    'ai-templates',
+    'template-hub',
+    'template-create',
+    'ai-settings',
+  ].includes(tab)) {
+    return 'ai';
+  }
+  return null;
+};
+
 export const Sidebar: React.FC = () => {
   const {
     activeTab,
@@ -279,9 +338,30 @@ export const Sidebar: React.FC = () => {
     );
   }, [menuSearchQuery]);
 
+  // Mutually exclusive single-accordion state: opening one automatically collapses all others to save space & scrolling
+  const [expandedSection, setExpandedSection] = useState<AccordionSection>(null);
+
+  const toggleSection = (section: AccordionSection) => {
+    setExpandedSection((prev) => (prev === section ? null : section));
+  };
+
+  const openSection = (section: AccordionSection) => {
+    setExpandedSection(section);
+  };
+
+  const messengerOpen = expandedSection === 'messenger';
+  const crmOpen = expandedSection === 'crm';
+  const opsOpen = expandedSection === 'ops';
+  const financeOpen = expandedSection === 'finance';
+  const automationOpen = expandedSection === 'automation';
+  const aiOpen = expandedSection === 'ai';
+
   const handleTabClick = (tab: TabType) => {
     clickedFromSidebarRef.current = true;
     setActiveTab(tab);
+    // Mutually exclusive single-accordion: collapse accordion if clicking a standalone tab,
+    // or keep only this tab's parent accordion open if clicking a sub-tab
+    setExpandedSection(getTabAccordionSection(tab));
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
       // Reset scroll position ONLY for main content view containers, keeping sidebar scroll intact
@@ -350,25 +430,6 @@ export const Sidebar: React.FC = () => {
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
-  // Mutually exclusive single-accordion state: opening one automatically collapses all others to save space & scrolling
-  type AccordionSection = 'messenger' | 'crm' | 'ops' | 'finance' | 'automation' | 'ai' | null;
-  const [expandedSection, setExpandedSection] = useState<AccordionSection>(null);
-
-  const toggleSection = (section: AccordionSection) => {
-    setExpandedSection((prev) => (prev === section ? null : section));
-  };
-
-  const openSection = (section: AccordionSection) => {
-    setExpandedSection(section);
-  };
-
-  const messengerOpen = expandedSection === 'messenger';
-  const crmOpen = expandedSection === 'crm';
-  const opsOpen = expandedSection === 'ops';
-  const financeOpen = expandedSection === 'finance';
-  const automationOpen = expandedSection === 'automation';
-  const aiOpen = expandedSection === 'ai';
-
   const initialMountRef = React.useRef(true);
 
   // If navigation was triggered from outside the sidebar and the active element is visible in the DOM, scroll it into view
@@ -378,19 +439,7 @@ export const Sidebar: React.FC = () => {
       return;
     }
     if (!clickedFromSidebarRef.current && sidebarNavRef.current) {
-      if (['conversations', 'bulk-overview', 'bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab)) {
-        setExpandedSection('messenger');
-      } else if (['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab)) {
-        setExpandedSection('crm');
-      } else if (['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab)) {
-        setExpandedSection('ops');
-      } else if (['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab)) {
-        setExpandedSection('finance');
-      } else if (['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab)) {
-        setExpandedSection('automation');
-      } else if (['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab)) {
-        setExpandedSection('ai');
-      }
+      setExpandedSection(getTabAccordionSection(activeTab));
       const timer = setTimeout(() => {
         if (sidebarNavRef.current) {
           const activeBtn = sidebarNavRef.current.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
@@ -1364,6 +1413,7 @@ export const Sidebar: React.FC = () => {
           href="/api/docs/"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => setExpandedSection(null)}
           className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-lg transition-all text-slate-400 hover:text-emerald-400 hover:bg-[#16233B] border border-dashed border-slate-700/60 my-1 group`}
           title="Open WhatsQ Cloud API Docs & Swagger UI"
         >
