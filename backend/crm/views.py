@@ -32,23 +32,58 @@ class LeadViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def convert_to_deal(self, request, pk=None):
         lead = self.get_object()
+        data = request.data or {}
+
+        deal_name = data.get('deal_name') or f"{lead.service} - {lead.name}"
+        raw_amount = data.get('amount')
+        try:
+            amount = float(raw_amount) if raw_amount is not None else lead.value
+        except (ValueError, TypeError):
+            amount = lead.value
+
+        deal_stage = data.get('stage') or 'proposal_sent'
+        deal_owner = data.get('deal_owner') or lead.owner
+        expected_close_date = data.get('expected_close_date') or 'May 20, 2024'
+        notes = data.get('notes') or lead.notes
+
         deal = Deal.objects.create(
-            deal_name=f"{lead.service} - {lead.name}",
+            deal_name=deal_name,
             customer_name=lead.name,
             phone=lead.phone,
             email=lead.email or f"{lead.name.lower().replace(' ', '')}@gmail.com",
-            amount=lead.value,
-            stage='proposal_sent',
-            probability=60,
-            deal_owner=lead.owner,
+            amount=amount,
+            stage=deal_stage,
+            probability=data.get('probability', 70 if deal_stage == 'won' else 60),
+            deal_owner=deal_owner,
             source=lead.source,
-            expected_close_date='May 20, 2024',
+            expected_close_date=expected_close_date,
             tags=lead.tags,
-            notes=lead.notes
+            notes=notes
         )
         lead.stage = 'won'
         lead.save()
-        return Response({'status': 'converted', 'deal': DealSerializer(deal).data}, status=status.HTTP_201_CREATED)
+
+        # Also create or update customer record in CRM
+        if data.get('create_customer', True):
+            customer, created = Customer.objects.get_or_create(
+                phone=lead.phone,
+                defaults={
+                    'name': lead.name,
+                    'email': lead.email,
+                    'address': lead.location,
+                    'tags': lead.tags,
+                    'notes': notes,
+                }
+            )
+            if not created and not customer.name:
+                customer.name = lead.name
+                customer.save()
+
+        return Response({
+            'status': 'converted',
+            'deal': DealSerializer(deal).data,
+            'lead': LeadSerializer(lead).data
+        }, status=status.HTTP_201_CREATED)
 
 class DealViewSet(viewsets.ModelViewSet):
     queryset = Deal.objects.all().order_by('-id')

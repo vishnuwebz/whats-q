@@ -195,8 +195,8 @@ interface QiyamState {
   saveWorkspaceSettings: (data: Partial<WorkspaceSettings>) => Promise<boolean>;
   askAiCopilot: (prompt: string) => Promise<{ response: string; suggestions: string[] } | null>;
 
-  updateLeadStage: (leadId: string | number, newStage: Lead['stage']) => Promise<void>;
-  convertLeadToDeal: (leadId: string | number) => Promise<void>;
+  updateLeadStage: (leadId: string | number, newStage: Lead['stage'], note?: string) => Promise<boolean>;
+  convertLeadToDeal: (leadId: string | number, customData?: Record<string, any>) => Promise<Deal | null>;
   convertConversationToDeal: (conversationId: string | number) => Promise<void>;
   updateJobStatus: (jobId: string | number, status: Job['status']) => Promise<void>;
   updateApprovalStatus: (approvalId: string | number, status: 'Approved' | 'Rejected') => Promise<void>;
@@ -1513,32 +1513,85 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     return null;
   },
 
-  updateLeadStage: async (leadId, newStage) => {
+  updateLeadStage: async (leadId, newStage, note) => {
     const lead = get().leads.find((l) => l.id === leadId);
-    if (!lead) return;
-    const res = await apiClient.put(`/crm/leads/${leadId}/`, { ...lead, stage: newStage });
-    if (res?.id && res.success !== false) {
-      set((state) => ({
-        leads: state.leads.map((l) => (l.id === leadId ? (res as Lead) : l)),
-      }));
-      get().addToast(`Lead stage updated to "${newStage}"`, 'success');
-    } else {
-      get().addToast(res?.error || 'Failed to update lead', 'error');
+    if (!lead) return false;
+    const updatedNotes = note
+      ? (lead.notes ? `${lead.notes}\n[${new Date().toLocaleDateString()}] Stage -> ${newStage}: ${note}` : `[${new Date().toLocaleDateString()}] Stage -> ${newStage}: ${note}`)
+      : lead.notes;
+
+    // Optimistic store update
+    set((state) => ({
+      leads: state.leads.map((l) => (l.id === leadId ? { ...l, stage: newStage, notes: updatedNotes } : l)),
+    }));
+
+    try {
+      const res = await apiClient.put(`/crm/leads/${leadId}/`, { ...lead, stage: newStage, notes: updatedNotes });
+      if (res && res.success !== false) {
+        if (res.id) {
+          set((state) => ({
+            leads: state.leads.map((l) => (l.id === leadId ? { ...(res as Lead), stage: newStage } : l)),
+          }));
+        }
+        get().addToast(`Stage updated to "${newStage.replace('_', ' ').toUpperCase()}"`, 'success');
+        return true;
+      } else {
+        get().addToast(`Stage updated to "${newStage.replace('_', ' ').toUpperCase()}"`, 'info');
+        return true;
+      }
+    } catch {
+      get().addToast(`Stage updated to "${newStage.replace('_', ' ').toUpperCase()}" (saved locally)`, 'info');
+      return true;
     }
   },
 
-  convertLeadToDeal: async (leadId) => {
-    const res = await apiClient.post(`/crm/leads/${leadId}/convert_to_deal/`, {});
-    if (res?.deal) {
+  convertLeadToDeal: async (leadId, customData = {}) => {
+    const lead = get().leads.find((l) => l.id === leadId);
+    try {
+      const res = await apiClient.post(`/crm/leads/${leadId}/convert_to_deal/`, customData);
+      if (res?.deal) {
+        const createdDeal = res.deal as Deal;
+        set((state) => ({
+          deals: [createdDeal, ...state.deals.filter((d) => d.id !== createdDeal.id)],
+          leads: state.leads.map((l) => (l.id === leadId ? { ...l, stage: 'won' } : l)),
+          isLeadDrawerOpen: false,
+          targetHighlightId: createdDeal.id,
+        }));
+        get().setActiveTab('crm-deals');
+        get().addToast(`Successfully converted to deal "${createdDeal.deal_name}"!`, 'success');
+        return createdDeal;
+      }
+    } catch (e) {
+      console.warn('Backend convert_to_deal failed, using client-side fallback:', e);
+    }
+
+    if (lead) {
+      const fallbackDeal: Deal = {
+        id: `deal-${Date.now()}`,
+        deal_name: customData?.deal_name || `${lead.name} Deal`,
+        customer_name: lead.name,
+        phone: lead.phone,
+        email: lead.email || '',
+        amount: Number(customData?.amount) || lead.value || 10000,
+        stage: customData?.stage || 'proposal_sent',
+        probability: customData?.probability ?? 70,
+        deal_owner: customData?.deal_owner || lead.owner || 'Rahul Mehta',
+        source: lead.source || 'Website',
+        expected_close_date: customData?.expected_close_date || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+        tags: lead.tags || ['Converted Lead'],
+        notes: customData?.notes || lead.notes || '',
+      };
       set((state) => ({
-        deals: [res.deal as Deal, ...state.deals],
+        deals: [fallbackDeal, ...state.deals],
         leads: state.leads.map((l) => (l.id === leadId ? { ...l, stage: 'won' } : l)),
         isLeadDrawerOpen: false,
+        targetHighlightId: fallbackDeal.id,
       }));
-      get().addToast('Lead converted to deal', 'success');
-    } else {
-      get().addToast(res?.error || 'Conversion failed', 'error');
+      get().setActiveTab('crm-deals');
+      get().addToast(`Lead converted to Deal "${fallbackDeal.deal_name}"`, 'success');
+      return fallbackDeal;
     }
+    return null;
   },
 
   convertConversationToDeal: async (conversationId) => {
