@@ -47,7 +47,17 @@ export async function forceHardRefresh(reason = 'OTA Deployment Update'): Promis
     console.warn('[OTA Update] LocalStorage cleanup warning:', err);
   }
 
-  // 4. Force browser navigation with unique cache-busting query parameter
+  // 4. Stamp a "just-refreshed" marker so the reloaded page suppresses
+  //    spurious re-detection during the first few seconds of boot.
+  try {
+    const targetCommit = useQiyamStore.getState().versionInfo?.latest_commit || '';
+    localStorage.setItem('whatsq_ota_just_refreshed', JSON.stringify({
+      ts: Date.now(),
+      commit: targetCommit,
+    }));
+  } catch { /* non-fatal */ }
+
+  // 5. Force browser navigation with unique cache-busting query parameter
   try {
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('_ota_refresh', Date.now().toString());
@@ -69,6 +79,13 @@ let initialBuildTimestamp: number | null = null;
 let otaIntervalTimer: any = null;
 let countdownIntervalTimer: any = null;
 let isUpdaterInitialized = false;
+/** Set to true once we've already triggered the update modal this session */
+let updateAlreadyTriggered = false;
+
+/** Returns the commit hash embedded in this page's loaded JS bundle. */
+export function getInitialBuildCommit(): string | null {
+  return initialBuildCommit;
+}
 
 /**
  * Extracts the primary entry bundle script src from the document
@@ -92,6 +109,13 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
   const store = useQiyamStore.getState();
   const cacheBuster = `_ota=${Date.now()}`;
 
+  // ── Guard: do not re-trigger if the update modal is already showing ──
+  // This prevents the countdown being restarted every 20 seconds while the
+  // user is still looking at the modal.
+  if (store.isUpdateModalOpen) {
+    return true; // Update already detected and displayed
+  }
+
   // Strategy 1: Check /version.json generated during build / deploy
   try {
     const res = await fetch(`/version.json?${cacheBuster}`, {
@@ -102,6 +126,7 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
     if (res.ok) {
       const data = await res.json();
       if (data && (data.commit || data.timestamp)) {
+        // Capture the running commit on first successful read (page boot baseline)
         if (!initialBuildCommit && data.commit) {
           initialBuildCommit = data.commit;
         }
@@ -109,13 +134,22 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
           initialBuildTimestamp = data.timestamp;
         }
 
-        // Check if commit changed
-        const currentRunningCommit = store.versionInfo?.current_commit || initialBuildCommit;
-        const isNewCommit = data.commit && currentRunningCommit && data.commit !== currentRunningCommit;
-        const isNewTimestamp = data.timestamp && initialBuildTimestamp && (data.timestamp > initialBuildTimestamp + 5000);
+        // ── Always compare against the module-level initialBuildCommit ──
+        // Do NOT use store.versionInfo?.current_commit: that value gets
+        // overwritten by triggerOtaDeploymentUpdate() to the OLD commit and
+        // would cause every subsequent poll to see a "new" version.
+        const currentRunningCommit = initialBuildCommit;
+        const isNewCommit = !!(data.commit && currentRunningCommit && data.commit !== currentRunningCommit);
+        const isNewTimestamp =
+          !!(data.timestamp && initialBuildTimestamp && data.timestamp > initialBuildTimestamp + 5000);
 
         if (isNewCommit || isNewTimestamp) {
+          if (updateAlreadyTriggered) {
+            // Already triggered once this session; skip re-trigger
+            return true;
+          }
           console.log(`[OTA Update] New deployment detected via /version.json! Active: ${currentRunningCommit} -> Remote: ${data.commit}`);
+          updateAlreadyTriggered = true;
           store.triggerOtaDeploymentUpdate({
             latest_commit: data.commit || 'latest',
             latest_message: data.message || 'New production release deployed to origin/main',
@@ -141,11 +175,12 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
     if (htmlRes.ok) {
       const htmlText = await htmlRes.text();
       // Match <script ... src="(/assets/index-[a-zA-Z0-9_-]+\.js)">
-      const match = htmlText.match(/<script[^>]+src=["']([^"']+\/assets\/index-[^"']+\.js)["']/i);
+      const match = htmlText.match(/<script[^>]+src=["']([^"']+\/assets\/index-[^"']+\.js)['"]/i);
       if (match && match[1]) {
         const remoteScriptSrc = match[1];
-        if (initialScriptSrc && remoteScriptSrc !== initialScriptSrc) {
+        if (initialScriptSrc && remoteScriptSrc !== initialScriptSrc && !updateAlreadyTriggered) {
           console.log(`[OTA Update] New deployment detected via index.html bundle hash! Current: ${initialScriptSrc} -> New: ${remoteScriptSrc}`);
+          updateAlreadyTriggered = true;
           store.triggerOtaDeploymentUpdate({
             latest_commit: 'new',
             latest_message: 'New production build bundle compiled and deployed',
@@ -214,22 +249,42 @@ export function initOtaUpdater(): () => void {
     return () => {};
   }
   isUpdaterInitialized = true;
+  updateAlreadyTriggered = false;
 
   // 1. Capture initial script src from DOM
   initialScriptSrc = getCurrentScriptSrc();
 
-  // 2. Read initial version.json if available
+  // 2. Read initial version.json if available — establishes the page's baseline commit
   fetch(`/version.json?_init=${Date.now()}`, { cache: 'no-store' })
     .then((r) => r.ok ? r.json() : null)
     .then((data) => {
       if (data) {
         initialBuildCommit = data.commit || null;
         initialBuildTimestamp = data.timestamp || null;
+        console.log(`[OTA Update] Baseline commit set from version.json: ${initialBuildCommit}`);
       }
     })
     .catch(() => {});
 
-  // 3. Setup window event listeners (visibilitychange & focus)
+  // 3. Check for the "just-refreshed" marker set by forceHardRefresh().
+  //    If present and recent (<30s), delay the first check to let version.json
+  //    settle and to avoid spuriously re-detecting the update we just applied.
+  let initialCheckDelay = 3000; // default: check after 3s
+  try {
+    const raw = localStorage.getItem('whatsq_ota_just_refreshed');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const age = Date.now() - (parsed.ts || 0);
+      if (age < 30000) {
+        // We refreshed less than 30 seconds ago — give the new build time to settle
+        initialCheckDelay = Math.max(3000, 20000 - age);
+        console.log(`[OTA Update] Just-refreshed marker found (${age}ms ago). Delaying first check by ${initialCheckDelay}ms.`);
+      }
+      localStorage.removeItem('whatsq_ota_just_refreshed');
+    }
+  } catch { /* non-fatal */ }
+
+  // 4. Setup window event listeners (visibilitychange & focus)
   const onWindowFocusOrVisible = () => {
     if (document.visibilityState === 'visible') {
       checkForDeploymentUpdate();
@@ -239,15 +294,15 @@ export function initOtaUpdater(): () => void {
   window.addEventListener('visibilitychange', onWindowFocusOrVisible);
   window.addEventListener('focus', onWindowFocusOrVisible);
 
-  // 4. Periodic polling every 20 seconds
+  // 5. Periodic polling every 20 seconds
   otaIntervalTimer = setInterval(() => {
     checkForDeploymentUpdate();
   }, 20000);
 
-  // 5. Initial check after 3 seconds of bootup
+  // 6. Initial check after delay (3s normally, up to 20s after a fresh OTA refresh)
   setTimeout(() => {
     checkForDeploymentUpdate();
-  }, 3000);
+  }, initialCheckDelay);
 
   // Cleanup handler
   return () => {

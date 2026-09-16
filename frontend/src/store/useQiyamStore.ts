@@ -3158,6 +3158,14 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     set({ versionInfo: info });
     if (!info.update_available) return;
 
+    // ── Guard: don't re-open if already showing or countdown is running ──
+    // This prevents backend polling (fetchVersionInfo every 60s) and SSE events
+    // from restarting the countdown while the user is already looking at the modal.
+    const currentState = get();
+    if (currentState.isUpdateModalOpen || currentState.isOtaCountdownActive) {
+      return;
+    }
+
     // Check temporary snooze (Update Later — 15 minute temporary dismiss)
     try {
       const raw = localStorage.getItem('whatsq_update_snooze');
@@ -3169,7 +3177,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       }
     } catch {}
 
-    // Clear stale dismissals since a real update is available
+    // Show modal and start countdown
     set({ isUpdateModalOpen: true });
     startOtaCountdown(5);
   },

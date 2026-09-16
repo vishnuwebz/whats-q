@@ -31,11 +31,14 @@ class SystemUpdateService:
         env['GIT_ASKPASS'] = 'echo'
 
         info = {
-            'current_commit': '2a7383e',
-            'current_author': 'Vishnu G',
+            # Use empty string as unknown sentinel — never hardcode a stale commit.
+            # If we cannot determine current_commit, we cannot reliably compare against
+            # the latest remote commit, so update_available defaults to False.
+            'current_commit': '',
+            'current_author': 'WhatsQ',
             'current_date': now_formatted,
             'current_message': 'System is operating on the latest release',
-            'latest_commit': '2a7383e',
+            'latest_commit': '',
             'latest_message': 'System is up to date with origin/main',
             'latest_author': 'WhatsQ Team',
             'latest_date': now_formatted,
@@ -121,6 +124,17 @@ class SystemUpdateService:
                     info['last_updated'] = parts[1]
         except Exception as e:
             logger.warning(f'Error reading local git: {e}')
+
+        # If local commit is unknown (git failed and version_meta.json was absent),
+        # skip all remote comparisons — we cannot reliably detect updates without
+        # knowing what version is currently running.
+        if not info.get('current_commit'):
+            logger.warning('[SystemVersionView] current_commit unknown — skipping remote update check')
+            info['update_available'] = False
+            info['last_checked'] = datetime.now().strftime('%b %d, %Y, %I:%M %p')
+            cls._cached_info = info
+            cls._cache_time = now
+            return info
 
         # 2. Check Remote Repository via git ls-remote (fast, non-rate-limited)
         remote_detected = False
