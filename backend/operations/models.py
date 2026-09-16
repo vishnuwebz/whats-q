@@ -132,6 +132,7 @@ class InventoryItem(models.Model):
     reorder_level = models.IntegerField(default=50)
     reorder_qty = models.IntegerField(default=100)
     supplier = models.CharField(max_length=150, default='Fresh Supplies Pvt. Ltd.')
+    image_url = models.TextField(blank=True, default='')
 
     def __str__(self):
         return f"{self.name} ({self.sku})"

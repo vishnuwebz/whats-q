@@ -277,6 +277,7 @@ export interface InventoryItem {
   reorder_level: number;
   reorder_qty: number;
   supplier: string;
+  image_url?: string;
 }
 
 export interface Transaction {

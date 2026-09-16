@@ -633,10 +633,10 @@ class Command(BaseCommand):
 
         InventoryItem.objects.all().delete()
         inventory_data = [
-            {'name': 'Basmati Rice 5kg', 'sku': 'GROC-001', 'category': 'Grocery', 'stock_units': 245, 'stock_value': 12250.0, 'status': 'in_stock', 'location': 'Main Warehouse Aisle 01 - Rack 02', 'reorder_level': 50, 'reorder_qty': 100, 'supplier': 'Fresh Supplies Pvt. Ltd.'},
-            {'name': 'Sunflower Oil 1L', 'sku': 'GROC-002', 'category': 'Grocery', 'stock_units': 28, 'stock_value': 1960.0, 'status': 'low_stock', 'location': 'Main Warehouse Aisle 02 - Rack 01', 'reorder_level': 30, 'reorder_qty': 80, 'supplier': 'Fresh Supplies Pvt. Ltd.'},
-            {'name': 'Milk Powder 500g', 'sku': 'DAIRY-001', 'category': 'Dairy', 'stock_units': 0, 'stock_value': 0.0, 'status': 'out_of_stock', 'location': 'Main Warehouse Aisle 03 - Rack 01', 'reorder_level': 20, 'reorder_qty': 50, 'supplier': 'Milma Dairy'},
-            {'name': 'Colgate Toothpaste 100g', 'sku': 'HPC-001', 'category': 'Personal Care', 'stock_units': 156, 'stock_value': 3120.0, 'status': 'in_stock', 'location': 'Main Warehouse Aisle 04 - Rack 03', 'reorder_level': 40, 'reorder_qty': 100, 'supplier': 'Colgate Palmolive'},
+            {'name': 'Basmati Rice 5kg', 'sku': 'GROC-001', 'category': 'Grocery', 'stock_units': 245, 'stock_value': 12250.0, 'status': 'in_stock', 'location': 'Main Warehouse Aisle 01 - Rack 02', 'reorder_level': 50, 'reorder_qty': 100, 'supplier': 'Fresh Supplies Pvt. Ltd.', 'image_url': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&auto=format&fit=crop&q=80'},
+            {'name': 'Sunflower Oil 1L', 'sku': 'GROC-002', 'category': 'Grocery', 'stock_units': 28, 'stock_value': 1960.0, 'status': 'low_stock', 'location': 'Main Warehouse Aisle 02 - Rack 01', 'reorder_level': 30, 'reorder_qty': 80, 'supplier': 'Fresh Supplies Pvt. Ltd.', 'image_url': 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80'},
+            {'name': 'Milk Powder 500g', 'sku': 'DAIRY-001', 'category': 'Dairy', 'stock_units': 0, 'stock_value': 0.0, 'status': 'out_of_stock', 'location': 'Main Warehouse Aisle 03 - Rack 01', 'reorder_level': 20, 'reorder_qty': 50, 'supplier': 'Milma Dairy', 'image_url': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80'},
+            {'name': 'Colgate Toothpaste 100g', 'sku': 'HPC-001', 'category': 'Personal Care', 'stock_units': 156, 'stock_value': 3120.0, 'status': 'in_stock', 'location': 'Main Warehouse Aisle 04 - Rack 03', 'reorder_level': 40, 'reorder_qty': 100, 'supplier': 'Colgate Palmolive', 'image_url': 'https://images.unsplash.com/photo-1559591937-e10b14421b59?w=400&auto=format&fit=crop&q=80'},
         ]
         for inv_item in inventory_data:
             InventoryItem.objects.create(**inv_item)

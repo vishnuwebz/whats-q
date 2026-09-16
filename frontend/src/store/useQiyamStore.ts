@@ -371,6 +371,9 @@ interface QiyamState {
   addExpense: (exp: Partial<Expense>) => Promise<Expense>;
   addTask: (task: Partial<Task>) => Promise<Task>;
   addInventoryItem: (inv: Partial<InventoryItem>) => Promise<InventoryItem>;
+  updateInventoryItem: (id: string | number, updates: Partial<InventoryItem>) => Promise<void>;
+  deleteInventoryItem: (id: string | number) => Promise<void>;
+
   addTransaction: (tx: Partial<Transaction>) => Promise<Transaction>;
   addApproval: (ap: Partial<Approval>) => Promise<Approval>;
   addFollowUp: (fu: Partial<FollowUp>) => Promise<FollowUp>;
@@ -2933,6 +2936,32 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       set((state) => ({ inventory: [item, ...state.inventory] }));
       get().addToast(`SKU "${item.sku}" added`, 'success');
       return item;
+    }
+  },
+
+  updateInventoryItem: async (id, updates) => {
+    set((state) => ({
+      inventory: state.inventory.map((item) =>
+        String(item.id) === String(id) ? { ...item, ...updates } : item
+      ),
+    }));
+    get().addToast('Inventory item updated', 'success');
+    try {
+      await apiClient.patch(`/operations/inventory/${id}/`, updates);
+    } catch {
+      // Optimistic update fallback
+    }
+  },
+
+  deleteInventoryItem: async (id) => {
+    set((state) => ({
+      inventory: state.inventory.filter((item) => String(item.id) !== String(id)),
+    }));
+    get().addToast('Inventory item removed', 'info');
+    try {
+      await apiClient.delete(`/operations/inventory/${id}/`);
+    } catch {
+      // Optimistic delete fallback
     }
   },
 
