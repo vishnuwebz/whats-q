@@ -1,9 +1,10 @@
-﻿import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
   Package, Search, Plus, X, Edit3, Trash2, ImagePlus,
   ZoomIn, Download, UploadCloud, RefreshCw, Camera, AlertTriangle,
+  ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, Filter,
 } from 'lucide-react';
 import { InventoryItem } from '@/types';
 
@@ -111,10 +112,20 @@ const blankForm = (): Partial<InventoryItem> & { image_url: string } => ({
   status: 'in_stock', image_url: '',
 });
 
+// Urgency ordering weights (Out of stock is #1 critical)
+const statusUrgencyWeights: Record<string, number> = {
+  out_of_stock: 1,
+  low_stock: 2,
+  in_stock: 3,
+  discontinued: 4,
+};
+
 // ─── Main View ────────────────────────────────────────────────────────────────
 export const InventoryView: React.FC = () => {
   const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, addToast, globalFilter, targetHighlightId } = useQiyamStore();
   const [selectedCat, setSelectedCat] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'default' | 'status_urgent' | 'status_healthy' | 'units_asc' | 'units_desc' | 'value_desc' | 'name_asc'>('default');
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
@@ -123,17 +134,48 @@ export const InventoryView: React.FC = () => {
   const [form, setForm] = useState<Partial<InventoryItem> & { image_url: string }>(blankForm());
 
   const categories = ['All', 'Grocery', 'Dairy', 'Personal Care', 'Hardware', 'Appliances'];
-  const filtered = inventory.filter((item) => {
-    if (selectedCat !== 'All' && item.category !== selectedCat) return false;
-    if (globalFilter.status && globalFilter.status !== 'all' && item.status !== globalFilter.status) return false;
-    const q = (search || globalFilter.query || '').toLowerCase();
-    if (q) return item.name.toLowerCase().includes(q) || item.sku.toLowerCase().includes(q);
-    return true;
-  });
 
+  // Stats calculation
   const totalValue = inventory.reduce((s, i) => s + i.stock_value, 0);
-  const lowStock = inventory.filter((i) => i.status === 'low_stock').length;
-  const outOfStock = inventory.filter((i) => i.status === 'out_of_stock').length;
+  const inStockCount = inventory.filter((i) => i.status === 'in_stock').length;
+  const lowStockCount = inventory.filter((i) => i.status === 'low_stock').length;
+  const outOfStockCount = inventory.filter((i) => i.status === 'out_of_stock').length;
+  const discontinuedCount = inventory.filter((i) => i.status === 'discontinued').length;
+
+  // Filter and sort
+  const filtered = inventory
+    .filter((item) => {
+      if (selectedCat !== 'All' && item.category !== selectedCat) return false;
+      if (selectedStatus !== 'all' && item.status !== selectedStatus) return false;
+      if (globalFilter.status && globalFilter.status !== 'all' && item.status !== globalFilter.status) return false;
+      const q = (search || globalFilter.query || '').toLowerCase();
+      if (q) {
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.sku.toLowerCase().includes(q) ||
+          (item.location || '').toLowerCase().includes(q) ||
+          (item.supplier || '').toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'status_urgent') {
+        const wA = statusUrgencyWeights[a.status] || 99;
+        const wB = statusUrgencyWeights[b.status] || 99;
+        return wA - wB;
+      }
+      if (sortBy === 'status_healthy') {
+        const wA = statusUrgencyWeights[a.status] || 99;
+        const wB = statusUrgencyWeights[b.status] || 99;
+        return wB - wA;
+      }
+      if (sortBy === 'units_asc') return a.stock_units - b.stock_units;
+      if (sortBy === 'units_desc') return b.stock_units - a.stock_units;
+      if (sortBy === 'value_desc') return b.stock_value - a.stock_value;
+      if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
+      return 0;
+    });
 
   const openAdd = () => { setForm(blankForm()); setIsAddOpen(true); };
   const openEdit = (item: InventoryItem) => { setEditItem(item); setForm({ ...item, image_url: item.image_url || '' }); };
@@ -207,34 +249,138 @@ export const InventoryView: React.FC = () => {
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header title="Inventory & Stock Management" subtitle="Manage warehouse SKU stocks, rack aisle locations, low stock alerts, and suppliers." primaryActionLabel="Add New SKU" onPrimaryAction={openAdd} />
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Stats */}
+        {/* Interactive Stats / Quick Filter Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {[
-            { label: 'Total SKUs', value: inventory.length, color: 'text-slate-900' },
-            { label: 'Stock Units', value: inventory.reduce((s, i) => s + i.stock_units, 0).toLocaleString(), color: 'text-slate-900' },
-            { label: 'Total Stock Value', value: `₹${totalValue.toLocaleString()}`, color: 'text-emerald-600' },
-            { label: 'Low Stock SKUs', value: lowStock, color: 'text-amber-500' },
-            { label: 'Out of Stock', value: outOfStock, color: 'text-red-500' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="text-xs font-semibold text-slate-500">{label}</div>
-              <div className={`text-xl sm:text-2xl font-black mt-1 ${color}`}>{value}</div>
-            </div>
-          ))}
+            { label: 'Total SKUs', value: inventory.length, color: 'text-slate-900', statusKey: 'all', sub: 'Click to show all' },
+            { label: 'Stock Units', value: inventory.reduce((s, i) => s + i.stock_units, 0).toLocaleString(), color: 'text-slate-900', statusKey: null, sub: 'Warehouse volume' },
+            { label: 'Total Stock Value', value: `₹${totalValue.toLocaleString()}`, color: 'text-emerald-600', statusKey: null, sub: 'Inventory valuation' },
+            { label: 'Low Stock SKUs', value: lowStockCount, color: 'text-amber-500', statusKey: 'low_stock', sub: 'Click to filter' },
+            { label: 'Out of Stock', value: outOfStockCount, color: 'text-red-500', statusKey: 'out_of_stock', sub: 'Click to filter' },
+          ].map(({ label, value, color, statusKey, sub }) => {
+            const isCardActive = statusKey && selectedStatus === statusKey;
+            return (
+              <div
+                key={label}
+                onClick={() => {
+                  if (statusKey) {
+                    setSelectedStatus(selectedStatus === statusKey && statusKey !== 'all' ? 'all' : statusKey);
+                  }
+                }}
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all select-none ${
+                  statusKey ? 'cursor-pointer hover:shadow-md active:scale-[0.99]' : ''
+                } ${
+                  isCardActive
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-emerald-500'
+                    : 'bg-white border-slate-200 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`text-xs font-semibold ${isCardActive ? 'text-slate-300' : 'text-slate-500'}`}>{label}</div>
+                  {statusKey && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                      isCardActive ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {statusKey === 'all' ? 'ALL' : 'FILTER'}
+                    </span>
+                  )}
+                </div>
+                <div className={`text-xl sm:text-2xl font-black mt-1 ${isCardActive ? 'text-white' : color}`}>{value}</div>
+                <div className={`text-[10px] mt-0.5 ${isCardActive ? 'text-slate-400' : 'text-slate-400'}`}>{sub}</div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Filter Bar */}
-        <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {categories.map((cat) => (
-              <button key={cat} onClick={() => setSelectedCat(cat)}
-                className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-all ${selectedCat === cat ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{cat}</button>
-            ))}
+        {/* Filter Bar: Categories + Status Filters + Search + Sort */}
+        <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-xs">
+          {/* Top Row: Categories & Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden md:inline">Category:</span>
+              {categories.map((cat) => (
+                <button key={cat} onClick={() => setSelectedCat(cat)}
+                  className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-all cursor-pointer ${selectedCat === cat ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>{cat}</button>
+              ))}
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SKU, item, location..."
+                className="w-full sm:w-60 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
           </div>
-          <div className="relative w-full sm:w-auto">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SKU or item..."
-              className="w-full sm:w-56 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500" />
+
+          {/* Bottom Row: Status Filter Badges + Sorting Dropdown */}
+          <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+            {/* Status Filter Badges */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+                <Filter className="w-3 h-3" /> Status:
+              </span>
+              {[
+                { id: 'all', label: 'All', count: inventory.length },
+                { id: 'in_stock', label: 'In Stock', count: inStockCount, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+                { id: 'low_stock', label: 'Low Stock', count: lowStockCount, color: 'text-amber-700 bg-amber-50 border-amber-200' },
+                { id: 'out_of_stock', label: 'Out of Stock', count: outOfStockCount, color: 'text-red-700 bg-red-50 border-red-200' },
+                { id: 'discontinued', label: 'Discontinued', count: discontinuedCount, color: 'text-slate-600 bg-slate-100 border-slate-200' },
+              ].map((s) => {
+                const isActive = selectedStatus === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedStatus(s.id)}
+                    className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap text-[11px] border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isActive
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : `${s.color || 'bg-slate-50 text-slate-600 border-slate-200'} hover:opacity-80`
+                    }`}
+                  >
+                    <span>{s.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700 font-semibold'
+                    }`}>
+                      {s.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sort Dropdown & Reset */}
+            <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
+              <div className="relative flex items-center">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none"
+                >
+                  <option value="default">Sort: Default</option>
+                  <option value="status_urgent">Sort: Status (Out of Stock → Low Stock)</option>
+                  <option value="status_healthy">Sort: Status (In Stock First)</option>
+                  <option value="units_asc">Sort: Units (Low to High)</option>
+                  <option value="units_desc">Sort: Units (High to Low)</option>
+                  <option value="value_desc">Sort: Value (High to Low)</option>
+                  <option value="name_asc">Sort: Item Name (A-Z)</option>
+                </select>
+              </div>
+
+              {(selectedCat !== 'All' || selectedStatus !== 'all' || sortBy !== 'default' || search) && (
+                <button
+                  onClick={() => {
+                    setSelectedCat('All');
+                    setSelectedStatus('all');
+                    setSortBy('default');
+                    setSearch('');
+                  }}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                  title="Reset all filters and sorting"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Reset</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -245,13 +391,67 @@ export const InventoryView: React.FC = () => {
               <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4 w-14">Image</th>
-                  <th className="py-3 px-4">Item Name</th>
+                  <th
+                    onClick={() => setSortBy(prev => prev === 'name_asc' ? 'default' : 'name_asc')}
+                    className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort alphabetically by name"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Item Name</span>
+                      {sortBy === 'name_asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowUpDown className="w-3 h-3 text-slate-300" />}
+                    </div>
+                  </th>
                   <th className="py-3 px-4">SKU</th>
                   <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Stock Units</th>
-                  <th className="py-3 px-4">Stock Value</th>
+                  <th
+                    onClick={() => setSortBy(prev => prev === 'units_desc' ? 'units_asc' : 'units_desc')}
+                    className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort by stock units"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Stock Units</span>
+                      {sortBy === 'units_desc' ? <ArrowDown className="w-3.5 h-3.5 text-emerald-600" /> : sortBy === 'units_asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowUpDown className="w-3 h-3 text-slate-300" />}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => setSortBy(prev => prev === 'value_desc' ? 'default' : 'value_desc')}
+                    className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort by stock value"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Stock Value</span>
+                      {sortBy === 'value_desc' ? <ArrowDown className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowUpDown className="w-3 h-3 text-slate-300" />}
+                    </div>
+                  </th>
                   <th className="py-3 px-4">Warehouse Location</th>
-                  <th className="py-3 px-4">Status</th>
+                  <th
+                    onClick={() => {
+                      setSortBy(prev =>
+                        prev === 'status_urgent'
+                          ? 'status_healthy'
+                          : prev === 'status_healthy'
+                          ? 'default'
+                          : 'status_urgent'
+                      );
+                    }}
+                    className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort by status (Urgent first → Healthy first)"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Status</span>
+                      {sortBy === 'status_urgent' ? (
+                        <span className="flex items-center text-red-600 font-bold text-[10px]">
+                          <ArrowDown className="w-3.5 h-3.5 mr-0.5" /> Urgent
+                        </span>
+                      ) : sortBy === 'status_healthy' ? (
+                        <span className="flex items-center text-emerald-600 font-bold text-[10px]">
+                          <ArrowUp className="w-3.5 h-3.5 mr-0.5" /> Healthy
+                        </span>
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-3 px-4">Supplier</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
