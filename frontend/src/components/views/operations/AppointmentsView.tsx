@@ -20,10 +20,20 @@ export const AppointmentsView: React.FC = () => {
     setActiveTab,
     globalFilter,
     targetHighlightId,
+    isNewBookingModalOpen,
+    setIsNewBookingModalOpen,
   } = useQiyamStore();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (isNewBookingModalOpen) {
+      setIsBookModalOpen(true);
+      setIsNewBookingModalOpen(false);
+    }
+  }, [isNewBookingModalOpen, setIsNewBookingModalOpen]);
+
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
 

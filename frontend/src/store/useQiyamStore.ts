@@ -245,6 +245,8 @@ interface QiyamState {
   setIsSimulatorOpen: (open: boolean) => void;
   isNewWorkflowModalOpen: boolean;
   setIsNewWorkflowModalOpen: (open: boolean) => void;
+  isNewBookingModalOpen: boolean;
+  setIsNewBookingModalOpen: (open: boolean) => void;
   isLeadDrawerOpen: boolean;
   setIsLeadDrawerOpen: (open: boolean) => void;
   selectedLead: Lead | null;
@@ -1175,6 +1177,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   setIsSimulatorOpen: (open) => set({ isSimulatorOpen: open }),
   isNewWorkflowModalOpen: false,
   setIsNewWorkflowModalOpen: (open) => set({ isNewWorkflowModalOpen: open }),
+  isNewBookingModalOpen: false,
+  setIsNewBookingModalOpen: (open) => set({ isNewBookingModalOpen: open }),
   isLeadDrawerOpen: false,
   setIsLeadDrawerOpen: (open) => set({ isLeadDrawerOpen: open }),
   selectedLead: null,
