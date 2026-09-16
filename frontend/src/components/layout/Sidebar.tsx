@@ -137,24 +137,16 @@ export const Sidebar: React.FC = () => {
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-branches', 'automation-logs', 'automation-approvals'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
-  // Accordion states
-  const [bulkOpen, setBulkOpen] = useState(true);
-  const [crmOpen, setCrmOpen] = useState(true);
-  const [opsOpen, setOpsOpen] = useState(true);
+  // Accordion states - Always collapsed by default, expanded only on manual user click
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [crmOpen, setCrmOpen] = useState(false);
+  const [opsOpen, setOpsOpen] = useState(false);
   const [financeOpen, setFinanceOpen] = useState(false);
-  const [automationOpen, setAutomationOpen] = useState(true);
+  const [automationOpen, setAutomationOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
 
-  // Auto-expand accordion when an active tab belongs to that section
-  // Also, if navigation was triggered from outside the sidebar, gently scroll the active item into view
+  // If navigation was triggered from outside the sidebar and the active element is visible in the DOM, scroll it into view
   React.useEffect(() => {
-    if (isBulkActive) setBulkOpen(true);
-    else if (isCrmActive) setCrmOpen(true);
-    else if (isOpsActive) setOpsOpen(true);
-    else if (isFinanceActive) setFinanceOpen(true);
-    else if (isAutomationActive) setAutomationOpen(true);
-    else if (isAiActive) setAiOpen(true);
-
     if (!clickedFromSidebarRef.current && sidebarNavRef.current) {
       const timer = setTimeout(() => {
         if (sidebarNavRef.current) {
@@ -167,7 +159,7 @@ export const Sidebar: React.FC = () => {
       return () => clearTimeout(timer);
     }
     clickedFromSidebarRef.current = false;
-  }, [activeTab, isBulkActive, isCrmActive, isOpsActive, isFinanceActive, isAutomationActive, isAiActive]);
+  }, [activeTab]);
 
   const isActive = (tab: TabType) => activeTab === tab;
 
