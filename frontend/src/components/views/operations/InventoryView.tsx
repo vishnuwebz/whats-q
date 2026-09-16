@@ -11,9 +11,18 @@ import { InventoryItem } from '@/types';
 // ─── Image Upload Zone ────────────────────────────────────────────────────────
 interface ImageZoneProps { value: string; onChange: (url: string) => void; }
 
+const SAMPLE_PRESETS = [
+  { label: 'Basmati Rice', category: 'Grocery', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Sunflower Oil', category: 'Grocery', url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Milk Powder', category: 'Dairy', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Colgate Toothpaste', category: 'Personal Care', url: 'https://images.unsplash.com/photo-1559591937-e10b14421b59?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Hardware Tool Box', category: 'Hardware', url: 'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Grocery Pack', category: 'Grocery', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80' },
+];
+
 const ImageZone: React.FC<ImageZoneProps> = ({ value, onChange }) => {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<'upload' | 'url'>('upload');
+  const [tab, setTab] = useState<'upload' | 'url' | 'sample'>('upload');
   const [urlInput, setUrlInput] = useState('');
   const [dragging, setDragging] = useState(false);
 
@@ -32,15 +41,15 @@ const ImageZone: React.FC<ImageZoneProps> = ({ value, onChange }) => {
   return (
     <div className="space-y-2.5">
       <div className="flex gap-1 bg-slate-100 p-0.5 rounded-xl w-fit text-xs">
-        {(['upload', 'url'] as const).map((t) => (
+        {(['upload', 'url', 'sample'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all ${tab === t ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
-            {t === 'upload' ? '↑ Upload File' : '🔗 From URL'}
+            className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${tab === t ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
+            {t === 'upload' ? '↑ Upload File' : t === 'url' ? '🔗 From URL' : '✨ Sample Presets'}
           </button>
         ))}
       </div>
 
-      {tab === 'upload' ? (
+      {tab === 'upload' && (
         <div
           onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
@@ -54,13 +63,36 @@ const ImageZone: React.FC<ImageZoneProps> = ({ value, onChange }) => {
           <input ref={fileRef} type="file" accept="image/*" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); }} />
         </div>
-      ) : (
+      )}
+
+      {tab === 'url' && (
         <div className="flex gap-2">
           <input type="url" placeholder="https://example.com/product.jpg" value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800" />
           <button type="button" onClick={() => { if (urlInput) onChange(urlInput); }}
-            className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700">Apply</button>
+            className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 cursor-pointer">Apply</button>
+        </div>
+      )}
+
+      {tab === 'sample' && (
+        <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl max-h-48 overflow-y-auto">
+          {SAMPLE_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => onChange(preset.url)}
+              className={`p-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+                value === preset.url ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' : 'border-slate-200 bg-white hover:border-emerald-300'
+              }`}
+            >
+              <div className="w-full aspect-video rounded overflow-hidden bg-slate-100 mb-1">
+                <img src={preset.url} alt={preset.label} className="w-full h-full object-cover group-hover:scale-105 transition" />
+              </div>
+              <div className="font-semibold text-[10px] text-slate-800 truncate">{preset.label}</div>
+              <div className="text-[9px] text-slate-400">{preset.category}</div>
+            </button>
+          ))}
         </div>
       )}
 
@@ -69,11 +101,11 @@ const ImageZone: React.FC<ImageZoneProps> = ({ value, onChange }) => {
           <img src={value} alt="Preview" className="w-full h-full object-contain" />
           <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <button type="button" onClick={() => { setUrlInput(''); onChange(''); }}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold">
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold cursor-pointer">
               <X className="w-3 h-3" /> Remove
             </button>
             <button type="button" onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-semibold">
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-semibold cursor-pointer">
               <RefreshCw className="w-3 h-3" /> Replace
             </button>
           </div>
@@ -86,7 +118,7 @@ const ImageZone: React.FC<ImageZoneProps> = ({ value, onChange }) => {
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
 const Lightbox: React.FC<{ src: string; name: string; onClose: () => void }> = ({ src, name, onClose }) => (
   <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
-    <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"><X className="w-5 h-5" /></button>
+    <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"><X className="w-5 h-5" /></button>
     <a href={src} download={name} onClick={(e) => e.stopPropagation()} className="absolute top-4 right-16 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white" title="Download"><Download className="w-5 h-5" /></a>
     <img src={src} alt={name} className="max-w-full max-h-[88vh] object-contain rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs font-medium bg-black/40 px-3 py-1.5 rounded-full">{name}</div>
@@ -102,6 +134,41 @@ const StatusBadge: React.FC<{ status: InventoryItem['status'] }> = ({ status }) 
     discontinued: 'bg-slate-100 text-slate-500 border-slate-200',
   };
   return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${map[status] || map.in_stock}`}>{status.replace(/_/g, ' ').toUpperCase()}</span>;
+};
+
+// ─── Sample Product Images Auto-Resolver ───────────────────────────────────────
+export const getEffectiveItemImage = (item: Partial<InventoryItem>): string => {
+  if (item.image_url && item.image_url.trim()) return item.image_url;
+
+  const name = (item.name || '').toLowerCase();
+  const sku = (item.sku || '').toUpperCase();
+  const cat = (item.category || '').toLowerCase();
+
+  if (sku === 'GROC-001' || name.includes('basmati') || name.includes('rice')) {
+    return 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&auto=format&fit=crop&q=80';
+  }
+  if (sku === 'GROC-002' || name.includes('sunflower') || name.includes('oil')) {
+    return 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80';
+  }
+  if (sku === 'DAIRY-001' || name.includes('milk') || name.includes('dairy')) {
+    return 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80';
+  }
+  if (sku === 'HPC-001' || name.includes('colgate') || name.includes('toothpaste') || name.includes('dental')) {
+    return 'https://images.unsplash.com/photo-1559591937-e10b14421b59?w=400&auto=format&fit=crop&q=80';
+  }
+  if (name.includes('instrument') || name.includes('box') || name.includes('tool') || cat.includes('hardware')) {
+    return 'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=400&auto=format&fit=crop&q=80';
+  }
+  if (cat.includes('appliance') || name.includes('ac') || name.includes('motor')) {
+    return 'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=400&auto=format&fit=crop&q=80';
+  }
+  if (cat.includes('personal') || name.includes('soap') || name.includes('cream')) {
+    return 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80';
+  }
+  if (cat.includes('grocery') || name.includes('flour') || name.includes('kutyf') || name.includes('wheat') || name.includes('sugar')) {
+    return 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80';
+  }
+  return '';
 };
 
 // ─── Blank form ───────────────────────────────────────────────────────────────
@@ -178,7 +245,10 @@ export const InventoryView: React.FC = () => {
     });
 
   const openAdd = () => { setForm(blankForm()); setIsAddOpen(true); };
-  const openEdit = (item: InventoryItem) => { setEditItem(item); setForm({ ...item, image_url: item.image_url || '' }); };
+  const openEdit = (item: InventoryItem) => {
+    setEditItem(item);
+    setForm({ ...item, image_url: item.image_url || getEffectiveItemImage(item) });
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -465,18 +535,21 @@ export const InventoryView: React.FC = () => {
                   return (
                     <tr key={item.id} className={`transition-colors ${isTarget ? 'bg-amber-50 ring-2 ring-inset ring-amber-400' : 'hover:bg-slate-50/80'}`}>
                       <td className="py-2.5 px-4">
-                        {item.image_url ? (
-                          <button type="button" onClick={() => setLightboxItem({ src: item.image_url!, name: item.name })}
-                            className="relative group w-9 h-9 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:ring-2 hover:ring-emerald-400 transition-all" title="View full image">
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIn className="w-3.5 h-3.5 text-white" /></div>
-                          </button>
-                        ) : (
-                          <button type="button" onClick={() => openEdit(item)} title="Add product image"
-                            className="w-9 h-9 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-500">
-                            <ImagePlus className="w-4 h-4" />
-                          </button>
-                        )}
+                        {(() => {
+                          const displayImg = getEffectiveItemImage(item);
+                          return displayImg ? (
+                            <button type="button" onClick={() => setLightboxItem({ src: displayImg, name: item.name })}
+                              className="relative group w-9 h-9 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:ring-2 hover:ring-emerald-400 transition-all cursor-pointer shadow-xs" title="View full image">
+                              <img src={displayImg} alt={item.name} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><ZoomIn className="w-3.5 h-3.5 text-white" /></div>
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => openEdit(item)} title="Add product image"
+                              className="w-9 h-9 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-500 cursor-pointer">
+                              <ImagePlus className="w-4 h-4" />
+                            </button>
+                          );
+                        })()}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">
                         <div className="flex items-center gap-1.5">{item.name}
