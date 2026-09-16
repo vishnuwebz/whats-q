@@ -42,6 +42,7 @@ export const LeadsView: React.FC = () => {
     addToast,
     setActiveTab,
     addLead,
+    openConversationForContact,
     globalFilter,
     targetHighlightId,
   } = useQiyamStore();
@@ -360,8 +361,8 @@ export const LeadsView: React.FC = () => {
         ) : (
           /* List View Table */
           <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto scrollbar-thin">
-              <table className="w-full text-left text-xs min-w-[650px]">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto scrollbar-thin min-h-[460px] pb-32">
+              <table className="w-full text-left text-xs min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
                   <tr>
                     <th className="py-3 px-4">Lead Name</th>
@@ -378,7 +379,8 @@ export const LeadsView: React.FC = () => {
                   {filteredLeads.map((lead, idx) => {
                     const currentStageCfg = getStageConfig(lead.stage);
                     const isPopoverOpen = activeStagePopoverId === lead.id;
-                    const isNearBottom = idx >= filteredLeads.length - 2 && filteredLeads.length > 2;
+                    // If row is in the lower half (or index >= 3), open UPWARDS so the popover never gets cut off
+                    const isNearBottom = idx >= 3 || (filteredLeads.length > 0 && idx >= Math.floor(filteredLeads.length / 2));
 
                     return (
                       <tr
@@ -410,7 +412,7 @@ export const LeadsView: React.FC = () => {
                                 handleToggleStagePopover(lead.id);
                               }}
                               className={`group/badge inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer shadow-2xs ${currentStageCfg.badgeClass} hover:ring-2 hover:ring-offset-1 hover:ring-slate-300`}
-                              title="Click or hover to change pipeline stage"
+                              title={isPopoverOpen ? undefined : "Click or hover to change pipeline stage"}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${currentStageCfg.dotColor}`} />
                               <span className="capitalize">{currentStageCfg.label}</span>
@@ -423,15 +425,20 @@ export const LeadsView: React.FC = () => {
                                 onMouseEnter={handlePopoverMouseEnter}
                                 onMouseLeave={handleMouseLeaveStage}
                                 className={`absolute left-0 ${
-                                  isNearBottom ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-                                } z-40 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 p-1.5 animate-in fade-in zoom-in-95 duration-150`}
+                                  isNearBottom ? 'bottom-full mb-2' : 'top-full mt-2'
+                                } z-50 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 ring-1 ring-black/5 p-2 animate-in fade-in zoom-in-95 duration-150`}
                                 onClick={(e) => e.stopPropagation()}
                               >
+                                {isNearBottom ? (
+                                  <div className="absolute -bottom-1.5 left-5 w-3 h-3 bg-white border-b border-r border-slate-200 rotate-45" />
+                                ) : (
+                                  <div className="absolute -top-1.5 left-5 w-3 h-3 bg-white border-t border-l border-slate-200 rotate-45" />
+                                )}
                                 <div className="px-2 py-1.5 border-b border-slate-100 mb-1 flex items-center justify-between">
                                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change Stage</span>
                                   <span className="text-[10px] text-slate-400 font-medium">Select target</span>
                                 </div>
-                                <div className="space-y-0.5">
+                                <div className="space-y-0.5 max-h-[260px] overflow-y-auto scrollbar-thin pr-0.5">
                                   {ALL_LEAD_STAGES.map((s) => {
                                     const isCurrent = lead.stage === s.id;
                                     return (
@@ -471,19 +478,47 @@ export const LeadsView: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-slate-600">{lead.owner}</td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenConvertModal(lead);
-                            }}
-                            className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200/60 rounded-lg font-bold text-[11px] inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                            title="Convert this lead to a CRM Deal"
-                          >
-                            <UserPlus className="w-3 h-3" />
-                            <span>Convert</span>
-                          </button>
+                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* WhatsApp Chat Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openConversationForContact({
+                                  name: lead.name,
+                                  phone: lead.phone,
+                                  service: lead.service,
+                                  location: lead.location,
+                                });
+                              }}
+                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
+                              title={`Open WhatsApp chat with ${lead.name}`}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="hidden xl:inline text-[10px] font-bold">Chat</span>
+                            </button>
+
+                            {/* Direct Phone Call Button */}
+                            <a
+                              href={`tel:${lead.phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer shadow-2xs inline-flex items-center"
+                              title={`Call ${lead.name} (${lead.phone})`}
+                            >
+                              <Phone className="w-3.5 h-3.5 text-slate-500" />
+                            </a>
+
+                            {/* Convert to Deal Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenConvertModal(lead)}
+                              className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border border-purple-200/80 rounded-lg font-bold text-[11px] inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                              title="Convert this lead to a CRM Deal"
+                            >
+                              <UserPlus className="w-3 h-3 text-purple-600" />
+                              <span>Convert</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -520,10 +555,14 @@ export const LeadsView: React.FC = () => {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
-                  addToast(`Opening WhatsApp chat for ${selectedLead.name}...`, 'info');
-                  setActiveTab('conversations');
+                  openConversationForContact({
+                    name: selectedLead.name,
+                    phone: selectedLead.phone,
+                    service: selectedLead.service,
+                    location: selectedLead.location,
+                  });
                 }}
-                className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>WhatsApp Chat</span>

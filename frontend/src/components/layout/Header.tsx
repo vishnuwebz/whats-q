@@ -190,9 +190,9 @@ export const Header: React.FC<HeaderProps> = ({
           onMouseLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
-          className="flex-1 overflow-x-auto scrollbar-hide"
+          className="flex-1 overflow-x-auto scrollbar-hide min-w-0"
         >
-          <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1 shrink-0">
 
           {/* Date Range */}
           <div className="relative shrink-0">
@@ -242,7 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
             return (
               <button
                 onClick={() => { if (!isUpdatingSystem) setIsUpdateModalOpen(true); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                   showUpdating
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md animate-pulse ring-2 ring-amber-400/50'
                     : showUpdateReady
@@ -252,8 +252,8 @@ export const Header: React.FC<HeaderProps> = ({
                 title={showUpdating ? 'Applying update...' : showUpdateReady ? `Update available (${versionInfo.latest_commit})` : `WhatsQ v${versionInfo.current_commit} • Up to date`}
               >
                 {showUpdating ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Updating...</span></>) :
-                 showUpdateReady ? (<><Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" /><span>Update Ready ({versionInfo.latest_commit})</span></>) :
-                 (<><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Version Updated ✓</span></>)}
+                 showUpdateReady ? (<><Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" /><span>Update Ready</span></>) :
+                 (<><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Up to date ✓</span></>)}
               </button>
             );
           })()}
@@ -261,7 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* WhatsApp Simulator */}
           <button
             onClick={() => setIsSimulatorOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 whitespace-nowrap"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 whitespace-nowrap"
             title="Simulate Customer Inbound WhatsApp"
           >
             <span>💬 WhatsApp Sim</span>
