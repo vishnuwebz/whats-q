@@ -64,7 +64,7 @@ export const LeadsView: React.FC = () => {
 
   // Interactive Stage Popover & Accidental Touch Prevention State
   const [activeStagePopoverId, setActiveStagePopoverId] = useState<string | number | null>(null);
-  const popoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const popoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingStageChange, setPendingStageChange] = useState<{ lead: Lead; targetStage: Lead['stage'] } | null>(null);
   const [stageNote, setStageNote] = useState('');
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
