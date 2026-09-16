@@ -85,14 +85,27 @@ export const Sidebar: React.FC = () => {
 
   const isCollapsed = isSidebarCollapsed && !isMobileSidebarOpen;
 
+  const sidebarNavRef = React.useRef<HTMLElement>(null);
+  const clickedFromSidebarRef = React.useRef(false);
+
   const handleTabClick = (tab: TabType) => {
+    clickedFromSidebarRef.current = true;
     setActiveTab(tab);
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
+      // Reset scroll position ONLY for main content view containers, keeping sidebar scroll intact
       const scrollContainers = document.querySelectorAll('.overflow-y-auto');
       scrollContainers.forEach((el) => {
+        // Exclude sidebar navigation and any container inside the sidebar aside
+        if (el.closest('aside') || (sidebarNavRef.current && (el === sidebarNavRef.current || sidebarNavRef.current.contains(el)))) {
+          return;
+        }
         el.scrollTop = 0;
       });
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        mainEl.scrollTop = 0;
+      }
     }
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsMobileSidebarOpen(false);
@@ -116,6 +129,14 @@ export const Sidebar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleSidebarCollapse]);
 
+  // Accordion active group indicators
+  const isBulkActive = ['bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab);
+  const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
+  const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory'].includes(activeTab);
+  const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
+  const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-branches', 'automation-logs', 'automation-approvals'].includes(activeTab);
+  const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
+
   // Accordion states
   const [bulkOpen, setBulkOpen] = useState(true);
   const [crmOpen, setCrmOpen] = useState(true);
@@ -123,6 +144,30 @@ export const Sidebar: React.FC = () => {
   const [financeOpen, setFinanceOpen] = useState(false);
   const [automationOpen, setAutomationOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
+
+  // Auto-expand accordion when an active tab belongs to that section
+  // Also, if navigation was triggered from outside the sidebar, gently scroll the active item into view
+  React.useEffect(() => {
+    if (isBulkActive) setBulkOpen(true);
+    else if (isCrmActive) setCrmOpen(true);
+    else if (isOpsActive) setOpsOpen(true);
+    else if (isFinanceActive) setFinanceOpen(true);
+    else if (isAutomationActive) setAutomationOpen(true);
+    else if (isAiActive) setAiOpen(true);
+
+    if (!clickedFromSidebarRef.current && sidebarNavRef.current) {
+      const timer = setTimeout(() => {
+        if (sidebarNavRef.current) {
+          const activeBtn = sidebarNavRef.current.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+          if (activeBtn) {
+            activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+    clickedFromSidebarRef.current = false;
+  }, [activeTab, isBulkActive, isCrmActive, isOpsActive, isFinanceActive, isAutomationActive, isAiActive]);
 
   const isActive = (tab: TabType) => activeTab === tab;
 
@@ -187,127 +232,146 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Navigation Links (Scrollable) */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1 text-xs font-medium scrollbar-thin scrollbar-thumb-slate-800">
+        <nav
+          ref={sidebarNavRef}
+          className="flex-1 overflow-y-auto px-3 py-3 space-y-1 text-xs font-medium scrollbar-thin scrollbar-thumb-slate-800"
+        >
           {/* Dashboard */}
           <button
+            data-tab="dashboard"
             onClick={() => handleTabClick('dashboard')}
-          title="Dashboard"
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
-            isActive('dashboard')
-              ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-              : 'hover:bg-[#16233B] text-slate-300'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4 shrink-0" />
-          {!isCollapsed && <span>Dashboard</span>}
-        </button>
+            title="Dashboard"
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+              isActive('dashboard')
+                ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                : 'hover:bg-[#16233B] text-slate-300'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span>Dashboard</span>}
+          </button>
 
-        {/* Conversations */}
-        <button
-          onClick={() => handleTabClick('conversations')}
-          title={`Conversations${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-3 py-2'} rounded-lg transition-all ${
-            isActive('conversations')
-              ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-              : 'hover:bg-[#16233B] text-slate-300'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <MessageSquare className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span>Conversations</span>}
-          </div>
-          {unreadConversationsCount > 0 && (
-            isCollapsed ? (
-              <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            ) : (
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {unreadConversationsCount}
-              </span>
-            )
-          )}
-        </button>
+          {/* Conversations */}
+          <button
+            data-tab="conversations"
+            onClick={() => handleTabClick('conversations')}
+            title={`Conversations${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-3 py-2'} rounded-lg transition-all ${
+              isActive('conversations')
+                ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                : 'hover:bg-[#16233B] text-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>Conversations</span>}
+            </div>
+            {unreadConversationsCount > 0 && (
+              isCollapsed ? (
+                <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              ) : (
+                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  {unreadConversationsCount}
+                </span>
+              )
+            )}
+          </button>
 
-        {/* Bulk Message */}
-        <div>
-          {isCollapsed ? (
-            <button
-              onClick={() => {
-                toggleSidebarCollapse();
-                setBulkOpen(true);
-              }}
-              title="Bulk Message (Send, Templates, Campaigns, Recipients, Scheduled)"
-              className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
-                ['bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab)
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'hover:bg-[#16233B] text-slate-300'
-              }`}
-            >
-              <Send className="w-4 h-4 shrink-0" />
-            </button>
-          ) : (
-            <>
+          {/* Bulk Message */}
+          <div>
+            {isCollapsed ? (
               <button
-                onClick={() => setBulkOpen(!bulkOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#16233B] text-slate-300 transition-all cursor-pointer"
+                onClick={() => {
+                  toggleSidebarCollapse();
+                  setBulkOpen(true);
+                }}
+                title="Bulk Message (Send, Templates, Campaigns, Recipients, Scheduled)"
+                className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
+                  isBulkActive
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'hover:bg-[#16233B] text-slate-300'
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <Send className="w-4 h-4 text-emerald-400" />
-                  <span>Bulk Message</span>
-                </div>
-                {bulkOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <Send className="w-4 h-4 shrink-0" />
               </button>
-              {bulkOpen && (
-                <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
-                  <button
-                    onClick={() => handleTabClick('bulk-send')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('bulk-send') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Send Message</span>
-                  </button>
-                  <button
-                    onClick={() => handleTabClick('bulk-templates')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('bulk-templates') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Message Templates</span>
-                  </button>
-                  <button
-                    onClick={() => handleTabClick('bulk-campaigns')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('bulk-campaigns') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Campaign History</span>
-                  </button>
-                  <button
-                    onClick={() => handleTabClick('bulk-recipients')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('bulk-recipients') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Recipient Lists</span>
-                  </button>
-                  <button
-                    onClick={() => handleTabClick('bulk-scheduled')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('bulk-scheduled') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Scheduled Messages</span>
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setBulkOpen(!bulkOpen)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                    !bulkOpen && isBulkActive
+                      ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
+                      : isBulkActive
+                      ? 'text-white font-semibold hover:bg-[#16233B]'
+                      : 'text-slate-300 hover:bg-[#16233B]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Send className={`w-4 h-4 ${isBulkActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    <span>Bulk Message</span>
+                    {!bulkOpen && isBulkActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    )}
+                  </div>
+                  {bulkOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+                {bulkOpen && (
+                  <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
+                    <button
+                      data-tab="bulk-send"
+                      onClick={() => handleTabClick('bulk-send')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-send') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                      }`}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send Message</span>
+                    </button>
+                    <button
+                      data-tab="bulk-templates"
+                      onClick={() => handleTabClick('bulk-templates')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-templates') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Message Templates</span>
+                    </button>
+                    <button
+                      data-tab="bulk-campaigns"
+                      onClick={() => handleTabClick('bulk-campaigns')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-campaigns') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Campaign History</span>
+                    </button>
+                    <button
+                      data-tab="bulk-recipients"
+                      onClick={() => handleTabClick('bulk-recipients')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-recipients') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                      }`}
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Recipient Lists</span>
+                    </button>
+                    <button
+                      data-tab="bulk-scheduled"
+                      onClick={() => handleTabClick('bulk-scheduled')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-scheduled') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Scheduled Messages</span>
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
         {/* CRM */}
         <div>
@@ -319,7 +383,7 @@ export const Sidebar: React.FC = () => {
               }}
               title="CRM (Leads, Customers, Deals, Follow-ups)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
-                ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab)
+                isCrmActive
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'hover:bg-[#16233B] text-slate-300'
               }`}
@@ -330,19 +394,29 @@ export const Sidebar: React.FC = () => {
             <>
               <button
                 onClick={() => setCrmOpen(!crmOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#16233B] text-slate-300 transition-all cursor-pointer"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  !crmOpen && isCrmActive
+                    ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
+                    : isCrmActive
+                    ? 'text-white font-semibold hover:bg-[#16233B]'
+                    : 'text-slate-300 hover:bg-[#16233B]'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <Users className="w-4 h-4" />
+                  <Users className={`w-4 h-4 ${isCrmActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                   <span>CRM</span>
+                  {!crmOpen && isCrmActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
                 </div>
                 {crmOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               {crmOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
+                    data-tab="crm-leads"
                     onClick={() => handleTabClick('crm-leads')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('crm-leads') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -350,8 +424,9 @@ export const Sidebar: React.FC = () => {
                     <span>Leads</span>
                   </button>
                   <button
+                    data-tab="crm-customers"
                     onClick={() => handleTabClick('crm-customers')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('crm-customers') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -359,8 +434,9 @@ export const Sidebar: React.FC = () => {
                     <span>Customers</span>
                   </button>
                   <button
+                    data-tab="crm-deals"
                     onClick={() => handleTabClick('crm-deals')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('crm-deals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -368,8 +444,9 @@ export const Sidebar: React.FC = () => {
                     <span>Deals</span>
                   </button>
                   <button
+                    data-tab="crm-followups"
                     onClick={() => handleTabClick('crm-followups')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('crm-followups') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -392,7 +469,7 @@ export const Sidebar: React.FC = () => {
               }}
               title="Operations (Jobs, Appointments, Employees, Schedule, Attendance, Tasks, Routes, Inventory)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
-                ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory'].includes(activeTab)
+                isOpsActive
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'hover:bg-[#16233B] text-slate-300'
               }`}
@@ -403,19 +480,29 @@ export const Sidebar: React.FC = () => {
             <>
               <button
                 onClick={() => setOpsOpen(!opsOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#16233B] text-slate-300 transition-all cursor-pointer"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  !opsOpen && isOpsActive
+                    ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
+                    : isOpsActive
+                    ? 'text-white font-semibold hover:bg-[#16233B]'
+                    : 'text-slate-300 hover:bg-[#16233B]'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <Briefcase className="w-4 h-4" />
+                  <Briefcase className={`w-4 h-4 ${isOpsActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                   <span>Operations</span>
+                  {!opsOpen && isOpsActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
                 </div>
                 {opsOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               {opsOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
+                    data-tab="ops-jobs"
                     onClick={() => handleTabClick('ops-jobs')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-jobs') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -423,8 +510,9 @@ export const Sidebar: React.FC = () => {
                     <span>Jobs</span>
                   </button>
                   <button
+                    data-tab="ops-appointments"
                     onClick={() => handleTabClick('ops-appointments')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-appointments') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -432,8 +520,9 @@ export const Sidebar: React.FC = () => {
                     <span>Appointments</span>
                   </button>
                   <button
+                    data-tab="ops-employees"
                     onClick={() => handleTabClick('ops-employees')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-employees') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -441,8 +530,9 @@ export const Sidebar: React.FC = () => {
                     <span>Employee Management</span>
                   </button>
                   <button
+                    data-tab="ops-schedule"
                     onClick={() => handleTabClick('ops-schedule')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-schedule') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -450,8 +540,9 @@ export const Sidebar: React.FC = () => {
                     <span>Schedule</span>
                   </button>
                   <button
+                    data-tab="ops-attendance"
                     onClick={() => handleTabClick('ops-attendance')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-attendance') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -459,8 +550,9 @@ export const Sidebar: React.FC = () => {
                     <span>Attendance</span>
                   </button>
                   <button
+                    data-tab="ops-tasks"
                     onClick={() => handleTabClick('ops-tasks')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-tasks') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -468,8 +560,9 @@ export const Sidebar: React.FC = () => {
                     <span>Tasks</span>
                   </button>
                   <button
+                    data-tab="ops-routes"
                     onClick={() => handleTabClick('ops-routes')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-routes') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -477,8 +570,9 @@ export const Sidebar: React.FC = () => {
                     <span>Route Optimization</span>
                   </button>
                   <button
+                    data-tab="ops-inventory"
                     onClick={() => handleTabClick('ops-inventory')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ops-inventory') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -501,7 +595,7 @@ export const Sidebar: React.FC = () => {
               }}
               title="Finance (Overview, Transactions, Invoices, Expenses, Payments, Accounts, Reports)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
-                ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab)
+                isFinanceActive
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'hover:bg-[#16233B] text-slate-300'
               }`}
@@ -512,19 +606,29 @@ export const Sidebar: React.FC = () => {
             <>
               <button
                 onClick={() => setFinanceOpen(!financeOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#16233B] text-slate-300 transition-all cursor-pointer"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  !financeOpen && isFinanceActive
+                    ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
+                    : isFinanceActive
+                    ? 'text-white font-semibold hover:bg-[#16233B]'
+                    : 'text-slate-300 hover:bg-[#16233B]'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className={`w-4 h-4 ${isFinanceActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                   <span>Finance</span>
+                  {!financeOpen && isFinanceActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
                 </div>
                 {financeOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               {financeOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
+                    data-tab="finance-overview"
                     onClick={() => handleTabClick('finance-overview')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-overview') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -532,8 +636,9 @@ export const Sidebar: React.FC = () => {
                     <span>Overview</span>
                   </button>
                   <button
+                    data-tab="finance-transactions"
                     onClick={() => handleTabClick('finance-transactions')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-transactions') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -541,8 +646,9 @@ export const Sidebar: React.FC = () => {
                     <span>Transactions</span>
                   </button>
                   <button
+                    data-tab="finance-invoices"
                     onClick={() => handleTabClick('finance-invoices')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-invoices') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -550,8 +656,9 @@ export const Sidebar: React.FC = () => {
                     <span>Invoices</span>
                   </button>
                   <button
+                    data-tab="finance-expenses"
                     onClick={() => handleTabClick('finance-expenses')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-expenses') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -559,8 +666,9 @@ export const Sidebar: React.FC = () => {
                     <span>Expenses</span>
                   </button>
                   <button
+                    data-tab="finance-payments"
                     onClick={() => handleTabClick('finance-payments')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-payments') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -568,8 +676,9 @@ export const Sidebar: React.FC = () => {
                     <span>Payments</span>
                   </button>
                   <button
+                    data-tab="finance-accounts"
                     onClick={() => handleTabClick('finance-accounts')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-accounts') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -577,8 +686,9 @@ export const Sidebar: React.FC = () => {
                     <span>Accounts</span>
                   </button>
                   <button
+                    data-tab="finance-reports"
                     onClick={() => handleTabClick('finance-reports')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('finance-reports') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -601,7 +711,7 @@ export const Sidebar: React.FC = () => {
               }}
               title="Automation (Workflow Builder, Workflows, Templates, Branches, Logs, Approvals)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
-                ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-branches', 'automation-logs', 'automation-approvals'].includes(activeTab)
+                isAutomationActive
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'hover:bg-[#16233B] text-slate-300'
               }`}
@@ -612,19 +722,29 @@ export const Sidebar: React.FC = () => {
             <>
               <button
                 onClick={() => setAutomationOpen(!automationOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#16233B] text-slate-300 transition-all cursor-pointer"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  !automationOpen && isAutomationActive
+                    ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
+                    : isAutomationActive
+                    ? 'text-white font-semibold hover:bg-[#16233B]'
+                    : 'text-slate-300 hover:bg-[#16233B]'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <Zap className="w-4 h-4" />
+                  <Zap className={`w-4 h-4 ${isAutomationActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                   <span>Automation</span>
+                  {!automationOpen && isAutomationActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
                 </div>
                 {automationOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               {automationOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
+                    data-tab="automation-builder"
                     onClick={() => handleTabClick('automation-builder')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('automation-builder') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -632,8 +752,9 @@ export const Sidebar: React.FC = () => {
                     <span>Workflow Builder</span>
                   </button>
                   <button
+                    data-tab="automation-workflows"
                     onClick={() => handleTabClick('automation-workflows')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('automation-workflows') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -641,8 +762,9 @@ export const Sidebar: React.FC = () => {
                     <span>Workflows</span>
                   </button>
                   <button
+                    data-tab="automation-templates"
                     onClick={() => handleTabClick('automation-templates')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('automation-templates') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -650,8 +772,9 @@ export const Sidebar: React.FC = () => {
                     <span>Templates</span>
                   </button>
                   <button
+                    data-tab="automation-branches"
                     onClick={() => handleTabClick('automation-branches')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('automation-branches') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -659,8 +782,9 @@ export const Sidebar: React.FC = () => {
                     <span>Branches</span>
                   </button>
                   <button
+                    data-tab="automation-logs"
                     onClick={() => handleTabClick('automation-logs')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('automation-logs') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -668,8 +792,9 @@ export const Sidebar: React.FC = () => {
                     <span>Logs</span>
                   </button>
                   <button
+                    data-tab="automation-approvals"
                     onClick={() => handleTabClick('automation-approvals')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('automation-approvals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -692,7 +817,7 @@ export const Sidebar: React.FC = () => {
               }}
               title="AI Assistant (Overview, Knowledge Base, Templates, Settings)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all relative ${
-                ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab)
+                isAiActive
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'hover:bg-[#16233B] text-slate-300'
               }`}
@@ -704,11 +829,20 @@ export const Sidebar: React.FC = () => {
             <>
               <button
                 onClick={() => setAiOpen(!aiOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#16233B] text-slate-300 transition-all cursor-pointer"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  !aiOpen && isAiActive
+                    ? 'bg-purple-600/20 text-purple-300 font-semibold border border-purple-500/30'
+                    : isAiActive
+                    ? 'text-white font-semibold hover:bg-[#16233B]'
+                    : 'text-slate-300 hover:bg-[#16233B]'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <Bot className="w-4 h-4 text-purple-400" />
+                  <Bot className={`w-4 h-4 ${isAiActive ? 'text-purple-400' : 'text-purple-400/70'}`} />
                   <span>AI Assistant</span>
+                  {!aiOpen && isAiActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-1.5 py-0.2 rounded border border-purple-500/30">
@@ -720,8 +854,9 @@ export const Sidebar: React.FC = () => {
               {aiOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
                   <button
+                    data-tab="ai-overview"
                     onClick={() => handleTabClick('ai-overview')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ai-overview') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -729,8 +864,9 @@ export const Sidebar: React.FC = () => {
                     <span>Overview</span>
                   </button>
                   <button
+                    data-tab="ai-knowledgebase"
                     onClick={() => handleTabClick('ai-knowledgebase')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ai-knowledgebase') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -738,8 +874,9 @@ export const Sidebar: React.FC = () => {
                     <span>Knowledge Base</span>
                   </button>
                   <button
+                    data-tab="template-hub"
                     onClick={() => handleTabClick('template-hub')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('template-hub') || isActive('ai-templates') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -747,11 +884,12 @@ export const Sidebar: React.FC = () => {
                     <span>Template Hub</span>
                   </button>
                   <button
+                    data-tab="template-create"
                     onClick={() => {
                       setEditingTemplate(null);
                       handleTabClick('template-create');
                     }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('template-create') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -759,8 +897,9 @@ export const Sidebar: React.FC = () => {
                     <span>Create Template</span>
                   </button>
                   <button
+                    data-tab="ai-settings"
                     onClick={() => handleTabClick('ai-settings')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       isActive('ai-settings') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
@@ -775,6 +914,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Analytics */}
         <button
+          data-tab="analytics"
           onClick={() => handleTabClick('analytics')}
           title="Analytics"
           className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
@@ -789,6 +929,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Integrations */}
         <button
+          data-tab="integrations"
           onClick={() => handleTabClick('integrations')}
           title="Integrations"
           className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
@@ -803,6 +944,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Settings */}
         <button
+          data-tab="settings"
           onClick={() => handleTabClick('settings')}
           title="Settings"
           className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
