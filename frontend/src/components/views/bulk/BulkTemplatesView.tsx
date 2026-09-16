@@ -22,6 +22,9 @@ import {
   Image as ImageIcon,
   Video,
   Paperclip,
+  Edit3,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkTemplateItem } from '../../../types';
@@ -63,6 +66,8 @@ export const BulkTemplatesView: React.FC = () => {
   const {
     bulkTemplates,
     createBulkTemplate,
+    updateBulkTemplate,
+    deleteBulkTemplate,
     updateBulkTemplateStatus,
     duplicateCampaign,
     setActiveTab,
@@ -103,6 +108,21 @@ export const BulkTemplatesView: React.FC = () => {
   );
   const [button1Text, setButton1Text] = useState('Download Brochure');
   const [button2Text, setButton2Text] = useState('Book Inspection');
+
+  // Edit Template Modal state
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<BulkTemplateItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState('marketing');
+  const [editLang, setEditLang] = useState('en_US');
+  const [editHeaderType, setEditHeaderType] = useState<'NONE' | 'DOCUMENT' | 'IMAGE' | 'VIDEO'>('NONE');
+  const [editHeaderContent, setEditHeaderContent] = useState('');
+  const [editHeaderFileName, setEditHeaderFileName] = useState('');
+  const [editHeaderFileSize, setEditHeaderFileSize] = useState('');
+  const [editBodyText, setEditBodyText] = useState('');
+  const [editFooterText, setEditFooterText] = useState('');
+  const [editButton1Text, setEditButton1Text] = useState('');
+  const [editButton2Text, setEditButton2Text] = useState('');
 
   // Filter templates
   const filteredTemplates = useMemo(() => {
@@ -218,6 +238,137 @@ export const BulkTemplatesView: React.FC = () => {
       buttons: tmpl.buttons,
     });
     addToast(`Duplicated "${tmpl.name}" successfully`, 'success');
+  };
+
+  const handleStartEdit = (tmpl: BulkTemplateItem) => {
+    setEditingTemplate(tmpl);
+    setEditName(tmpl.name);
+    setEditCategory(tmpl.category?.toLowerCase() || 'marketing');
+    setEditLang(tmpl.language === 'English' ? 'en_US' : tmpl.language || 'en_US');
+    setEditHeaderType((tmpl.headerType as any) || (tmpl.header === 'None' ? 'NONE' : 'NONE'));
+    setEditHeaderContent(tmpl.headerContent || '');
+    setEditHeaderFileName(tmpl.headerFileName || (tmpl.headerType === 'DOCUMENT' ? 'document.pdf' : ''));
+    setEditHeaderFileSize(tmpl.headerFileSize || (tmpl.headerType === 'DOCUMENT' ? '1.5 MB' : ''));
+    setEditBodyText(tmpl.bodyText || tmpl.body || '');
+    setEditFooterText(tmpl.footerText || (tmpl.footer !== 'None' ? tmpl.footer || '' : ''));
+
+    if (tmpl.buttons && tmpl.buttons.length > 0) {
+      setEditButton1Text(tmpl.buttons[0]?.text || '');
+      setEditButton2Text(tmpl.buttons[1]?.text || '');
+    } else {
+      setEditButton1Text('View Details');
+      setEditButton2Text('');
+    }
+
+    setIsEditOpen(true);
+  };
+
+  const handleEditFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+    setEditHeaderFileName(file.name);
+    setEditHeaderFileSize(`${sizeInMB} MB`);
+
+    if (file.type.includes('pdf')) {
+      setEditHeaderType('DOCUMENT');
+      setEditHeaderContent(URL.createObjectURL(file));
+      addToast(`Attached PDF Document: "${file.name}" (${sizeInMB} MB)`, 'info');
+    } else if (file.type.includes('image')) {
+      setEditHeaderType('IMAGE');
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setEditHeaderContent(ev.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      addToast(`Attached Image Header: "${file.name}"`, 'info');
+    } else if (file.type.includes('video')) {
+      setEditHeaderType('VIDEO');
+      setEditHeaderContent(URL.createObjectURL(file));
+      addToast(`Attached Video Header: "${file.name}"`, 'info');
+    }
+  };
+
+  const handleEditSelectPreset = (preset: (typeof PRESET_MEDIA_OPTIONS)[0]) => {
+    setEditHeaderType(preset.type);
+    setEditHeaderFileName(preset.name);
+    setEditHeaderFileSize(preset.size);
+    setEditHeaderContent(preset.url);
+    addToast(`Selected media preset: ${preset.name}`, 'info');
+  };
+
+  const insertEditVariable = (varNum: number) => {
+    setEditBodyText((prev) => `${prev} {{${varNum}}}`);
+  };
+
+  const insertEditEmoji = (emoji: string) => {
+    setEditBodyText((prev) => `${prev} ${emoji}`);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTemplate) return;
+    if (!editName.trim() || !editBodyText.trim()) {
+      addToast('Please provide both template name and message body', 'error');
+      return;
+    }
+
+    const buttons = [];
+    if (editButton1Text.trim()) {
+      buttons.push({ type: 'URL', text: editButton1Text.trim() });
+    }
+    if (editButton2Text.trim()) {
+      buttons.push({ type: 'QUICK_REPLY', text: editButton2Text.trim() });
+    }
+
+    const updatedTemplateData: Partial<BulkTemplateItem> = {
+      name: editName.trim(),
+      category: editCategory,
+      language: editLang,
+      headerType: editHeaderType,
+      headerContent: editHeaderContent || undefined,
+      headerFileName: editHeaderType === 'DOCUMENT' ? editHeaderFileName : undefined,
+      headerFileSize: editHeaderType === 'DOCUMENT' ? editHeaderFileSize : undefined,
+      bodyText: editBodyText,
+      body: editBodyText,
+      footerText: editFooterText.trim() || undefined,
+      footer: editFooterText.trim() || undefined,
+      buttons,
+      status: 'PENDING',
+      meta_status: 'PENDING',
+      qualityRating: 'High',
+    };
+
+    updateBulkTemplate(editingTemplate.id, updatedTemplateData);
+
+    // Update selectedTemplate if currently open in drawer
+    if (selectedTemplate && selectedTemplate.id === editingTemplate.id) {
+      setSelectedTemplate({
+        ...selectedTemplate,
+        ...updatedTemplateData,
+        status: 'PENDING',
+        meta_status: 'PENDING',
+        lastUpdated: 'Just now',
+      });
+    }
+
+    setIsEditOpen(false);
+    setEditingTemplate(null);
+    addToast(
+      `Template "${editName}" updated and resubmitted to Meta for review! Automated callback will approve in ~8s.`,
+      'success'
+    );
+  };
+
+  const handleDeleteTemplate = (tmpl: BulkTemplateItem) => {
+    if (confirm(`Are you sure you want to delete template "${tmpl.name}"?`)) {
+      deleteBulkTemplate(tmpl.id);
+      if (selectedTemplate?.id === tmpl.id) {
+        setIsDrawerOpen(false);
+        setSelectedTemplate(null);
+      }
+    }
   };
 
   return (
@@ -427,6 +578,14 @@ export const BulkTemplatesView: React.FC = () => {
 
                   <div className="flex items-center gap-1.5">
                     <button
+                      onClick={() => handleStartEdit(tmpl)}
+                      title="Edit Template"
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer flex items-center gap-1 font-semibold text-xs"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-slate-600" />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                    <button
                       onClick={() => handleDuplicate(tmpl)}
                       title="Duplicate Template"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
@@ -471,12 +630,23 @@ export const BulkTemplatesView: React.FC = () => {
                 <h3 className="font-bold text-slate-900 text-sm">Template Details</h3>
                 <p className="text-[11px] text-slate-500">{selectedTemplate.name}</p>
               </div>
-              <button
-                onClick={() => setIsDrawerOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(selectedTemplate)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 hover:text-emerald-700 text-slate-700 font-bold text-xs transition cursor-pointer shadow-xs"
+                  title="Edit Template"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Drawer Body */}
@@ -621,39 +791,60 @@ export const BulkTemplatesView: React.FC = () => {
               </div>
 
               {/* Official Meta note */}
-              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  This template is registered under WhatsApp Business Account ID{' '}
-                  <code className="font-bold">WABA-QIYAM-2026</code>. Template edits require
-                  re-approval by Meta.
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    This template is registered under WhatsApp Business Account ID{' '}
+                    <code className="font-bold">WABA-QIYAM-2026</code>. Template edits require
+                    re-approval by Meta.
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(selectedTemplate)}
+                  className="shrink-0 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  Edit
+                </button>
               </div>
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
               <a
                 href="https://business.facebook.com/wa/manage/message-templates/"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] font-semibold text-slate-600 hover:text-emerald-700 flex items-center gap-1"
+                className="text-[11px] font-semibold text-slate-600 hover:text-emerald-700 flex items-center gap-1 truncate"
               >
-                View in Meta Manager <ExternalLink className="w-3 h-3" />
+                View in Meta <ExternalLink className="w-3 h-3 shrink-0" />
               </a>
 
-              <button
-                onClick={() => handleUseInCampaign(selectedTemplate)}
-                disabled={selectedTemplate.status !== 'APPROVED'}
-                className={`px-4 py-2 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 ${
-                  selectedTemplate.status === 'APPROVED'
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <Send className="w-3.5 h-3.5" />
-                Use in Campaign
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(selectedTemplate)}
+                  className="px-3.5 py-2 font-bold text-xs rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                  Edit Template
+                </button>
+
+                <button
+                  onClick={() => handleUseInCampaign(selectedTemplate)}
+                  disabled={selectedTemplate.status !== 'APPROVED'}
+                  className={`px-3.5 py-2 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 ${
+                    selectedTemplate.status === 'APPROVED'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Use in Campaign
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1005,6 +1196,442 @@ export const BulkTemplatesView: React.FC = () => {
                   <div>
                     <strong>Automated Meta Review:</strong> Templates submitted here are parsed for
                     formatting and queued for Meta approval callback in real time.
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TEMPLATE MODAL */}
+      {isEditOpen && editingTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-800 text-white p-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-700/80 flex items-center justify-center font-bold text-emerald-200 border border-emerald-500/50">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm">Edit WhatsApp Message Template</h3>
+                    <span className="text-[10px] bg-emerald-700 text-emerald-200 font-mono px-2 py-0.5 rounded-md border border-emerald-600">
+                      {editingTemplate.id}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-200">
+                    Modifying "{editingTemplate.name}" • Meta WhatsApp Cloud API Sync
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsEditOpen(false);
+                  setEditingTemplate(null);
+                }}
+                className="text-emerald-200 hover:text-white p-1.5 rounded-lg hover:bg-emerald-700/50 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <form
+              onSubmit={handleSaveEdit}
+              className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto"
+            >
+              {/* LEFT: FORM FIELDS */}
+              <div className="lg:col-span-7 p-5 space-y-4 text-xs border-r border-slate-200">
+                {/* Meta Re-approval Warning */}
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2.5 leading-relaxed">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Meta Re-approval Notice:</strong> In accordance with Meta WhatsApp Business policies, saving changes to this template will resubmit it for compliance review. Its status will temporarily change to <span className="font-bold text-amber-700">PENDING</span> until approved via webhook.
+                  </div>
+                </div>
+
+                {/* Template Name */}
+                <div>
+                  <label className="block font-semibold text-slate-800 mb-1">
+                    Template Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g. Appointment Reminder"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                {/* Category & Language */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">Category</label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-hidden font-semibold bg-white"
+                    >
+                      <option value="marketing">Marketing (Promotions & Offers)</option>
+                      <option value="utility">Utility (Transactional & Alerts)</option>
+                      <option value="authentication">Authentication (OTP & Passcodes)</option>
+                      <option value="appointments">Appointments (Bookings & Reminders)</option>
+                      <option value="customer support">Customer Support & Inquiries</option>
+                      <option value="operations">Operations & Status Updates</option>
+                      <option value="payments">Payments & Invoicing</option>
+                      <option value="billing">Billing & Subscriptions</option>
+                      <option value="general">General Announcements</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">Language</label>
+                    <select
+                      value={editLang}
+                      onChange={(e) => setEditLang(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-hidden font-semibold bg-white"
+                    >
+                      <option value="en_US">English (US)</option>
+                      <option value="en_GB">English (UK)</option>
+                      <option value="hi_IN">Hindi (India)</option>
+                      <option value="ar_SA">Arabic (Saudi Arabia)</option>
+                      <option value="es_ES">Spanish (Español)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Header Media Selector */}
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block font-bold text-slate-900 text-xs">
+                      Header Media Attachment (Optional)
+                    </label>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
+                      {editHeaderType === 'NONE' ? 'Text Only' : `${editHeaderType} Selected`}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { type: 'NONE' as const, label: 'None', icon: MessageSquare },
+                      { type: 'DOCUMENT' as const, label: 'PDF Document', icon: File },
+                      { type: 'IMAGE' as const, label: 'Image', icon: ImageIcon },
+                      { type: 'VIDEO' as const, label: 'Video', icon: Video },
+                    ].map((item) => (
+                      <button
+                        key={item.type}
+                        type="button"
+                        onClick={() => setEditHeaderType(item.type)}
+                        className={`py-2 px-1.5 rounded-xl border font-bold text-[11px] transition text-center flex flex-col items-center gap-1 cursor-pointer ${
+                          editHeaderType === item.type
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        <item.icon className="w-3.5 h-3.5" />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {editHeaderType !== 'NONE' && (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center gap-2">
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded-xl text-[11px] font-semibold text-slate-700 cursor-pointer transition shadow-xs">
+                          <Upload className="w-3 h-3 text-slate-500" />
+                          <span>Replace {editHeaderType === 'DOCUMENT' ? 'PDF' : editHeaderType}</span>
+                          <input
+                            type="file"
+                            accept={
+                              editHeaderType === 'DOCUMENT'
+                                ? '.pdf,application/pdf'
+                                : editHeaderType === 'IMAGE'
+                                ? 'image/*'
+                                : 'video/*'
+                            }
+                            onChange={handleEditFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        <div className="text-[11px] text-slate-600 font-medium truncate flex-1">
+                          {editHeaderFileName || 'Custom attachment selected'} {editHeaderFileSize ? `(${editHeaderFileSize})` : ''}
+                        </div>
+                      </div>
+
+                      {/* Presets */}
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-semibold block mb-1">
+                          Or Choose from Media Presets:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PRESET_MEDIA_OPTIONS.map((preset, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleEditSelectPreset(preset)}
+                              className={`text-[10px] px-2 py-1 rounded-lg border transition cursor-pointer ${
+                                editHeaderFileName === preset.name
+                                  ? 'bg-emerald-50 border-emerald-400 text-emerald-800 font-bold'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Body Message Text */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-800">
+                      Message Body Text
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {editBodyText.length} characters
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={5}
+                    value={editBodyText}
+                    onChange={(e) => setEditBodyText(e.target.value)}
+                    placeholder="Type your WhatsApp message text..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    required
+                  />
+
+                  {/* Variables and Emojis Bar */}
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Insert Variable:</span>
+                      {[1, 2, 3, 4, 5].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => insertEditVariable(num)}
+                          className="px-2 py-0.5 rounded-md bg-white border border-slate-300 text-[10px] font-mono font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 transition cursor-pointer shadow-2xs"
+                          title={`Insert {{${num}}}`}
+                        >
+                          + {'{{' + num + '}}'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {['👋', '📅', '🛠️', '💰', '🔔', '✅', '📍', '💬'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => insertEditEmoji(emoji)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md bg-white border border-slate-200 hover:bg-slate-100 text-xs transition cursor-pointer shadow-2xs"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Text */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-800">
+                      Footer Text (Optional)
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {editFooterText.length}/60 chars
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={editFooterText}
+                    maxLength={60}
+                    onChange={(e) => setEditFooterText(e.target.value)}
+                    placeholder="e.g. Reply STOP to unsubscribe"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-hidden"
+                  />
+                </div>
+
+                {/* Interactive Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Button 1 (URL / Call-to-Action)
+                    </label>
+                    <input
+                      type="text"
+                      value={editButton1Text}
+                      onChange={(e) => setEditButton1Text(e.target.value)}
+                      placeholder="e.g. View Details"
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Button 2 (Quick Reply)
+                    </label>
+                    <input
+                      type="text"
+                      value={editButton2Text}
+                      onChange={(e) => setEditButton2Text(e.target.value)}
+                      placeholder="e.g. Contact Support"
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer Action Buttons */}
+                <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTemplate(editingTemplate)}
+                    className="px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Template
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditOpen(false);
+                        setEditingTemplate(null);
+                      }}
+                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold text-xs transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 text-xs"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      Save & Resubmit to Meta
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT: LIVE SMARTPHONE WHATSAPP PREVIEW */}
+              <div className="lg:col-span-5 p-5 bg-slate-50 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200">
+                    <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Live WhatsApp Preview
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">Customer Screen</span>
+                  </div>
+
+                  {/* Phone frame */}
+                  <div className="rounded-2xl border-4 border-slate-800 bg-[#ECE5DD] p-3 shadow-md max-w-xs mx-auto overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-[#075E54] text-white p-2 -m-3 mb-2.5 flex items-center gap-2 rounded-t-xl">
+                      <div className="w-6 h-6 rounded-full bg-emerald-300 text-emerald-950 font-bold flex items-center justify-center text-[10px]">
+                        Q
+                      </div>
+                      <div>
+                        <div className="font-bold text-[11px] leading-tight">Qiyam Business Solutions</div>
+                        <div className="text-[8px] text-emerald-200">Official Business Account • Verified</div>
+                      </div>
+                    </div>
+
+                    {/* Chat bubble */}
+                    <div className="bg-white rounded-xl shadow-xs p-3 space-y-2 text-slate-800 border border-slate-200">
+                      {/* Media Header Preview */}
+                      {editHeaderType === 'DOCUMENT' && (
+                        <div className="rounded-xl bg-[#005c4b]/10 border border-emerald-300/50 p-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2 truncate">
+                            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-extrabold text-[10px] shrink-0">
+                              PDF
+                            </div>
+                            <div className="truncate">
+                              <div className="font-bold text-slate-900 text-[11px] truncate max-w-[140px]">
+                                {editHeaderFileName || 'Document.pdf'}
+                              </div>
+                              <div className="text-[9px] text-slate-500">
+                                {editHeaderFileSize || '1.8 MB'} • PDF Document
+                              </div>
+                            </div>
+                          </div>
+                          <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <Download className="w-3 h-3" />
+                          </div>
+                        </div>
+                      )}
+
+                      {editHeaderType === 'IMAGE' && (
+                        <div className="rounded-lg overflow-hidden aspect-video bg-slate-100 border border-slate-200">
+                          <img
+                            src={editHeaderContent || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80'}
+                            alt="Header"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {editHeaderType === 'VIDEO' && (
+                        <div className="rounded-lg aspect-video bg-slate-900 flex items-center justify-center text-white">
+                          <Video className="w-7 h-7 text-white/80" />
+                        </div>
+                      )}
+
+                      {/* Body */}
+                      <div className="whitespace-pre-line leading-relaxed text-[11px] text-slate-900">
+                        {editBodyText
+                          ? editBodyText
+                              .replace(/\{\{1\}\}/g, 'Amit Verma')
+                              .replace(/\{\{2\}\}/g, 'AC Master Service')
+                              .replace(/\{\{3\}\}/g, 'Tomorrow, 10:00 AM')
+                              .replace(/\{\{4\}\}/g, '12:00 PM')
+                              .replace(/\{\{5\}\}/g, 'CoolFix Services')
+                          : 'Message body will appear here...'}
+                      </div>
+
+                      {/* Footer */}
+                      {editFooterText && (
+                        <div className="text-[9px] text-slate-400 pt-1 border-t border-slate-100">
+                          {editFooterText}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-1 text-[8px] text-slate-400">
+                        <span>10:45 AM</span>
+                        <CheckCheck className="w-3 h-3 text-[#53bdeb]" />
+                      </div>
+
+                      {/* Buttons */}
+                      {(editButton1Text || editButton2Text) && (
+                        <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                          {editButton1Text && (
+                            <div className="py-1 text-center font-bold text-emerald-600 bg-slate-50 rounded border border-slate-200 text-[10px]">
+                              {editButton1Text}
+                            </div>
+                          )}
+                          {editButton2Text && (
+                            <div className="py-1 text-center font-bold text-emerald-600 bg-slate-50 rounded border border-slate-200 text-[10px]">
+                              {editButton2Text}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Instant Webhook Testing:</strong> After saving, test Meta approval immediately with the "Instant Approve (Meta Webhook)" button or wait ~8s for auto-approval callback.
                   </div>
                 </div>
               </div>

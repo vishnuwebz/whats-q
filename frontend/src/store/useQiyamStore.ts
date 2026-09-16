@@ -299,6 +299,8 @@ interface QiyamState {
   sendScheduledMessageNow: (id: string | number) => void;
   duplicateCampaign: (campaignId: string | number) => void;
   createBulkTemplate: (params: any) => void;
+  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => void;
+  deleteBulkTemplate: (templateId: string) => void;
   updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => void;
   importContactsToRecipientList: (listName: string, contacts: BulkContact[]) => BulkRecipientList;
   saveIntegrationConfig: (id: string | number, config: Record<string, any>, status?: 'connected' | 'partially_connected' | 'not_connected') => Promise<boolean>;
@@ -2054,6 +2056,59 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       }));
       get().addToast(`🎉 Meta WhatsApp Approved! Template "${template.name}" is now approved and ready for broadcasts!`, 'success');
     }, 8000);
+  },
+
+  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => {
+    const nowStr = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    set((state) => ({
+      bulkTemplates: state.bulkTemplates.map((t) =>
+        t.id === templateId
+          ? {
+              ...t,
+              ...updates,
+              body: updates.bodyText || updates.body || t.body,
+              bodyText: updates.bodyText || updates.body || t.bodyText,
+              footer: updates.footerText || updates.footer || t.footer,
+              footerText: updates.footerText || updates.footer || t.footerText,
+              status: 'PENDING',
+              meta_status: 'PENDING',
+              lastUpdated: nowStr,
+              updatedBy: 'Rahul Mehta',
+            }
+          : t
+      ),
+    }));
+    get().addToast(
+      `Template "${updates.name || templateId}" updated & queued for Meta re-approval (Status: PENDING)`,
+      'info'
+    );
+
+    // Automated Meta WhatsApp re-approval simulation (8 seconds)
+    setTimeout(() => {
+      set((state) => ({
+        bulkTemplates: state.bulkTemplates.map((t) =>
+          t.id === templateId
+            ? { ...t, status: 'APPROVED', meta_status: 'APPROVED', approvedOn: 'Just now' }
+            : t
+        ),
+      }));
+      get().addToast(
+        `🎉 Meta WhatsApp Re-approved! Template "${updates.name || templateId}" is now verified & ready for broadcast!`,
+        'success'
+      );
+    }, 8000);
+  },
+
+  deleteBulkTemplate: (templateId: string) => {
+    const tmpl = get().bulkTemplates.find((t) => t.id === templateId);
+    set((state) => ({
+      bulkTemplates: state.bulkTemplates.filter((t) => t.id !== templateId),
+    }));
+    get().addToast(`Template "${tmpl?.name || templateId}" deleted successfully`, 'info');
   },
 
   updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => {
