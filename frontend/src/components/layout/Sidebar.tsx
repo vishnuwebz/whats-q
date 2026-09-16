@@ -10,7 +10,7 @@ import {
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
   User, Shield, LogOut, ArrowRight, ExternalLink, Send,
-  RefreshCw, Search
+  RefreshCw, Search, Database
 } from 'lucide-react';
 
 interface SidebarMenuItem {
@@ -63,7 +63,8 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'ai-settings', title: 'AI Engine Settings', category: 'AI Assistant', icon: SettingsIcon, keywords: 'model temperature tokens provider config' },
   { tab: 'analytics', title: 'Analytics', category: 'Intelligence', icon: BarChart3, keywords: 'reports bi performance trends kpi metrics' },
   { tab: 'integrations', title: 'Integrations', category: 'Ecosystem', icon: Puzzle, keywords: 'webhooks crm zapier apps rest api meta' },
-  { tab: 'settings', title: 'Workspace Settings', category: 'Settings', icon: SettingsIcon, keywords: 'backup restore data auto-backup general preferences security' },
+  { tab: 'settings', title: 'Workspace Settings', category: 'Settings', icon: SettingsIcon, keywords: 'workspace general preferences business brand organization profile' },
+  { tab: 'settings-backup', title: 'Data Backup & Restore', category: 'Settings', icon: Database, keywords: 'backup restore data auto-backup last backup import export snapshot database disaster recovery postgresql sqlite' },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -1304,8 +1305,8 @@ export const Sidebar: React.FC = () => {
         <button
           data-tab="settings"
           onClick={() => handleTabClick('settings')}
-          title="Settings"
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+          title="Workspace Settings"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
             isActive('settings')
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
@@ -1313,6 +1314,28 @@ export const Sidebar: React.FC = () => {
         >
           <SettingsIcon className="w-4 h-4 shrink-0" />
           {!isCollapsed && <span>Settings</span>}
+        </button>
+
+        {/* Data Backup & Restore */}
+        <button
+          data-tab="settings-backup"
+          onClick={() => handleTabClick('settings-backup')}
+          title="Data Backup & Restore (Zero-Loss Engine, Auto-Backup, Dynamic Database Sync)"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
+            isActive('settings-backup')
+              ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+              : 'hover:bg-[#16233B] text-slate-300'
+          }`}
+        >
+          <Database className="w-4 h-4 shrink-0" />
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span>Data Backup</span>
+              <span className="text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                Live
+              </span>
+            </div>
+          )}
         </button>
 
         {/* API Endpoints & Swagger Hub */}

@@ -259,3 +259,76 @@ class EventSyncView(APIView):
         })
 
 
+from .backup_service import DatabaseBackupService
+from django.http import HttpResponse
+
+class BackupStatusView(APIView):
+    """
+    Returns live database connection status, production/local environment details,
+    engine, latency, table breakdown counts, and last auto-backup information.
+    """
+    def get(self, request):
+        info = DatabaseBackupService.get_database_info()
+        return Response(info)
+
+
+class BackupExportView(APIView):
+    """
+    Exports full live database dump with metadata and sha256 checksum.
+    Supports ?download=1 to return as a downloadable attachment.
+    """
+    def get(self, request):
+        payload = DatabaseBackupService.export_full_backup()
+        if request.GET.get('download') in ['1', 'true', 'True']:
+            env = payload['metadata']['environment']
+            timestamp = time.strftime('%Y-%m-%d-%H%M')
+            filename = f"whatsq-{env}-db-backup-{timestamp}.json"
+            response = HttpResponse(json.dumps(payload, indent=2), content_type='application/json')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        return Response(payload)
+
+
+class BackupImportView(APIView):
+    """
+    Imports and restores database payload within a safe database transaction.
+    Accepts raw JSON payload or uploaded JSON file.
+    """
+    def post(self, request):
+        payload = None
+        if 'file' in request.FILES:
+            try:
+                uploaded = request.FILES['file']
+                payload = json.loads(uploaded.read().decode('utf-8'))
+            except Exception as e:
+                return Response({'success': False, 'error': f"Failed to parse uploaded JSON file: {str(e)}"}, status=400)
+        elif request.data:
+            payload = request.data
+
+        if not payload:
+            return Response({'success': False, 'error': 'No backup data provided'}, status=400)
+
+        result = DatabaseBackupService.import_backup(payload)
+        status_code = 200 if result.get('success') else 400
+        return Response(result, status=status_code)
+
+
+class AutoBackupTriggerView(APIView):
+    """
+    Triggers an automated server-side snapshot of the database and records the time.
+    """
+    def post(self, request):
+        result = DatabaseBackupService.save_auto_backup()
+        return Response(result)
+
+
+class BackupSnapshotsView(APIView):
+    """
+    Lists stored server-side snapshots with size, date, environment, and total records.
+    """
+    def get(self, request):
+        snapshots = DatabaseBackupService.list_snapshots()
+        return Response(snapshots)
+
+
+

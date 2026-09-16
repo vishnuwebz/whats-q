@@ -114,6 +114,7 @@ const TAB_TO_PATH: Record<TabType, string> = {
   'analytics': '/analytics',
   'integrations': '/integrations',
   'settings': '/settings',
+  'settings-backup': '/settings/backup',
 };
 
 const resolveTabFromPath = (path: string): TabType => {
@@ -290,6 +291,8 @@ export const App: React.FC = () => {
         return <IntegrationsView />;
       case 'settings':
         return <SettingsView />;
+      case 'settings-backup':
+        return <SettingsView initialTab="backup" />;
 
       default:
         return <DashboardView />;

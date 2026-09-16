@@ -24,12 +24,22 @@ import { SecuritySettings } from './settings/SecuritySettings';
 import { NotificationSettings } from './settings/NotificationSettings';
 import { exportBackupToFile } from '@/utils/backupManager';
 
-type SettingsTab = 'general' | 'backup' | 'whatsapp' | 'subscription' | 'security' | 'notifications';
+export type SettingsTab = 'general' | 'backup' | 'whatsapp' | 'subscription' | 'security' | 'notifications';
 
-export const SettingsView: React.FC = () => {
+interface SettingsViewProps {
+  initialTab?: SettingsTab;
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'general' }) => {
   const { addToast } = useQiyamStore();
-  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('general');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveSettingsTab(initialTab);
+    }
+  }, [initialTab]);
 
   const handleExportQuickBackup = () => {
     try {
