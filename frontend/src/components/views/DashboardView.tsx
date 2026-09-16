@@ -11,7 +11,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
 export const DashboardView: React.FC = () => {
-  const { setActiveTab, conversations, leads, jobs, appointments, invoices, addToast, setIsNewBookingModalOpen } = useQiyamStore();
+  const { setActiveTab, conversations, leads, jobs, appointments, invoices, addToast, setIsSimulatorOpen } = useQiyamStore();
 
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [isRecentActivityModalOpen, setIsRecentActivityModalOpen] = useState(false);
@@ -166,8 +166,8 @@ export const DashboardView: React.FC = () => {
         subtitle="Good morning, Rahul! Here's what's happening in your business today."
         primaryActionLabel="New Booking"
         onPrimaryAction={() => {
-          setIsNewBookingModalOpen(true);
-          setActiveTab('ops-appointments');
+          setActiveTab('conversations');
+          setIsSimulatorOpen(true);
         }}
       />
 
