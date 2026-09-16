@@ -58,6 +58,7 @@ class Integration(models.Model):
     connected_on = models.CharField(max_length=100, blank=True, null=True)
     automations_enabled = models.IntegerField(default=0)
     icon_slug = models.CharField(max_length=50, default='google')
+    config = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.name

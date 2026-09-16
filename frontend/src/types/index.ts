@@ -466,6 +466,7 @@ export interface IntegrationItem {
   connected_on?: string;
   automations_enabled: number;
   icon_slug: string;
+  config?: Record<string, any>;
 }
 
 export interface BranchItem {

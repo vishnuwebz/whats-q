@@ -195,13 +195,125 @@ class Command(BaseCommand):
         # 3. Integrations
         Integration.objects.all().delete()
         integrations_data = [
-            {'name': 'WhatsApp Cloud API', 'category': 'Communication', 'description': 'Official Meta WhatsApp Business API for automated broadcasts and inbox messaging', 'status': 'connected', 'connected_on': 'May 28, 2024', 'automations_enabled': 12, 'icon_slug': 'whatsapp'},
-            {'name': 'Google Workspace', 'category': 'Productivity', 'description': 'Gmail, Google Drive, Calendar sync and document automation', 'status': 'connected', 'connected_on': 'May 28, 2024', 'automations_enabled': 4, 'icon_slug': 'google'},
-            {'name': 'Slack', 'category': 'Communication', 'description': 'Internal team notifications, job completion alerts, and escalation channels', 'status': 'connected', 'connected_on': 'May 24, 2024', 'automations_enabled': 3, 'icon_slug': 'slack'},
-            {'name': 'Zoho CRM', 'category': 'CRM', 'description': 'Bidirectional contact, deal and lead synchronization', 'status': 'connected', 'connected_on': 'May 20, 2024', 'automations_enabled': 2, 'icon_slug': 'zoho'},
-            {'name': 'QuickBooks Online', 'category': 'Accounting & Finance', 'description': 'Automated ledger synchronization and invoice tax tracking', 'status': 'partially_connected', 'connected_on': 'May 18, 2024', 'automations_enabled': 1, 'icon_slug': 'quickbooks'},
-            {'name': 'Shopify', 'category': 'E-Commerce', 'description': 'E-commerce store orders, cart abandonment notifications, and catalog sync', 'status': 'partially_connected', 'connected_on': 'May 10, 2024', 'automations_enabled': 2, 'icon_slug': 'shopify'},
-            {'name': 'Razorpay', 'category': 'Payments', 'description': 'Instant UPI payment links, QR codes and payment confirmation webhooks', 'status': 'connected', 'connected_on': 'May 15, 2024', 'automations_enabled': 3, 'icon_slug': 'razorpay'},
+            {
+                'name': 'WhatsApp Cloud API',
+                'category': 'Communication',
+                'description': 'Official Meta WhatsApp Business API for automated broadcasts and inbox messaging',
+                'status': 'connected',
+                'connected_on': 'May 28, 2024',
+                'automations_enabled': 12,
+                'icon_slug': 'whatsapp',
+                'config': {
+                    'phone_number_id': '109823485721982',
+                    'waba_id': '891238472918234',
+                    'api_version': 'v21.0',
+                    'business_name': 'CoolFix Services',
+                    'business_phone_display': '+91 98765 43210',
+                    'auto_reply_enabled': True,
+                    'dual_mode_enabled': True,
+                }
+            },
+            {
+                'name': 'Google Workspace',
+                'category': 'Productivity',
+                'description': 'Gmail, Google Drive, Calendar sync and document automation',
+                'status': 'connected',
+                'connected_on': 'May 28, 2024',
+                'automations_enabled': 4,
+                'icon_slug': 'google',
+                'config': {
+                    'client_id': '489128391823-qiyam823.apps.googleusercontent.com',
+                    'service_account_email': 'whatsq-sync@coolfix-qiyam.iam.gserviceaccount.com',
+                    'calendar_id': 'primary',
+                    'sync_calendar_appointments': True,
+                    'backup_invoices_drive': True,
+                    'sync_gmail_leads': True,
+                }
+            },
+            {
+                'name': 'Slack',
+                'category': 'Communication',
+                'description': 'Internal team notifications, job completion alerts, and escalation channels',
+                'status': 'connected',
+                'connected_on': 'May 24, 2024',
+                'automations_enabled': 3,
+                'icon_slug': 'slack',
+                'config': {
+                    'bot_token': 'xoxb-demo-workspace-token',
+                    'default_channel': '#whatsq-alerts',
+                    'escalation_channel': '#urgent-escalations',
+                    'notify_inbound_whatsapp': True,
+                    'notify_job_complete': True,
+                    'notify_deal_won': True,
+                }
+            },
+            {
+                'name': 'Zoho CRM',
+                'category': 'CRM',
+                'description': 'Bidirectional contact, deal and lead synchronization',
+                'status': 'connected',
+                'connected_on': 'May 20, 2024',
+                'automations_enabled': 2,
+                'icon_slug': 'zoho',
+                'config': {
+                    'datacenter': 'zoho.in',
+                    'client_id': '1000.QIYAM891238491823ZOHOIN',
+                    'client_secret': '••••••••••••••••••••••••',
+                    'sync_leads': True,
+                    'sync_deals': True,
+                    'auto_create_whatsapp_contact': True,
+                }
+            },
+            {
+                'name': 'QuickBooks Online',
+                'category': 'Accounting & Finance',
+                'description': 'Automated ledger synchronization and invoice tax tracking',
+                'status': 'partially_connected',
+                'connected_on': 'May 18, 2024',
+                'automations_enabled': 1,
+                'icon_slug': 'quickbooks',
+                'config': {
+                    'environment': 'sandbox',
+                    'realm_id': '46208163653198234',
+                    'client_id': 'ABQIYAM89123891238Intuit',
+                    'sync_invoices_ledger': True,
+                    'auto_record_payments': False,
+                }
+            },
+            {
+                'name': 'Shopify',
+                'category': 'E-Commerce',
+                'description': 'E-commerce store orders, cart abandonment notifications, and catalog sync',
+                'status': 'partially_connected',
+                'connected_on': 'May 10, 2024',
+                'automations_enabled': 2,
+                'icon_slug': 'shopify',
+                'config': {
+                    'store_domain': 'coolfix-parts.myshopify.com',
+                    'access_token': 'shpat_8912389182391823ab98',
+                    'order_confirmation_whatsapp': True,
+                    'abandoned_cart_recovery': True,
+                    'cart_recovery_delay_mins': 30,
+                }
+            },
+            {
+                'name': 'Razorpay',
+                'category': 'Payments',
+                'description': 'Instant UPI payment links, QR codes and payment confirmation webhooks',
+                'status': 'connected',
+                'connected_on': 'May 15, 2024',
+                'automations_enabled': 3,
+                'icon_slug': 'razorpay',
+                'config': {
+                    'mode': 'live',
+                    'key_id': 'rzp_live_QIYAM891238491',
+                    'key_secret': '••••••••••••••••••••••••',
+                    'webhook_secret': 'rzp_whsec_qiyam_2026',
+                    'auto_upi_links_invoice': True,
+                    'instant_pdf_receipt_whatsapp': True,
+                    'payment_reminder_whatsapp': True,
+                }
+            },
         ]
         for i in integrations_data:
             Integration.objects.create(**i)
