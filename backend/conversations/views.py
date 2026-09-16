@@ -230,9 +230,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 conv = Conversation.objects.filter(phone_number=pk).first()
 
             if conv:
+                conv_id = conv.id
                 contact_name = conv.contact_name
                 conv.messages.all().delete()
                 conv.delete()
+                try:
+                    from core.events import event_bus
+                    event_bus.publish('conversation.deleted', {'id': conv_id, 'contact_name': contact_name})
+                except Exception:
+                    pass
                 logger.info(f"Conversation {pk} ({contact_name}) permanently deleted.")
                 return Response({'success': True, 'message': f"Conversation with {contact_name} deleted."}, status=status.HTTP_200_OK)
             return Response({'success': True, 'message': 'Conversation already removed or not found.'}, status=status.HTTP_200_OK)

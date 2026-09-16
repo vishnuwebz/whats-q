@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Conversation } from '@/types';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { Trash2, X, MessageSquare, ShieldAlert, Loader2 } from 'lucide-react';
@@ -24,16 +24,13 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
   const phoneNumber = conversation.phone_number || 'Unknown Number';
   const messageCount = conversation.messages?.length || 0;
 
-  const handleDelete = async () => {
-    try {
-      setIsDeleting(true);
-      await onConfirmDelete(conversation.id);
-      onClose();
-    } catch (e) {
+  const handleDelete = () => {
+    // Instantly close modal — 0ms wait for snappy user experience
+    onClose();
+    // Fire deletion optimistically in background
+    onConfirmDelete(conversation.id).catch((e) => {
       console.error('Failed to delete conversation:', e);
-    } finally {
-      setIsDeleting(false);
-    }
+    });
   };
 
   return (

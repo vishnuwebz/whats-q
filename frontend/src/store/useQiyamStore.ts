@@ -1158,16 +1158,17 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       };
     });
 
-    try {
-      await qiyamApi.deleteConversation(id);
-    } catch (e) {
-      console.warn('Backend delete conversation notice:', e);
-    }
-
+    // Instant toast feedback!
     get().addToast(
       `Conversation with ${deletedContactName || 'contact'} deleted successfully.`,
       'success'
     );
+
+    // Non-blocking background sync with backend
+    qiyamApi.deleteConversation(id).catch((e) => {
+      console.warn('Backend delete conversation notice:', e);
+    });
+
     return true;
   },
   isSimulatorOpen: false,

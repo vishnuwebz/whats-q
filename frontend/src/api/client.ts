@@ -91,9 +91,13 @@ export const apiClient = {
 
   async delete(endpoint: string) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'DELETE',
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (!res.ok) {
         console.warn(`API DELETE ${endpoint} failed:`, res.status);
         return false;
