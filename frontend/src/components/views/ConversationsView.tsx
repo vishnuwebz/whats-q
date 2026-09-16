@@ -7,12 +7,14 @@ import {
   Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
-  SlidersHorizontal
+  SlidersHorizontal, Trash2
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
 import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
+import { DeleteConversationModal } from './conversations/DeleteConversationModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
+import { Conversation } from '@/types';
 import { apiClient } from '@/api/client';
 import {
   sortConversationsByRecency,
@@ -31,6 +33,7 @@ export const ConversationsView: React.FC = () => {
     conversations,
     selectedConversationId,
     setSelectedConversationId,
+    deleteConversation,
     markConversationAsRead,
     sendMessage,
     sendTemplateMessage,
@@ -50,6 +53,7 @@ export const ConversationsView: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -493,6 +497,14 @@ export const ConversationsView: React.FC = () => {
           >
             Dispatch Job
           </button>
+          <button
+            onClick={() => setConversationToDelete(currentConv)}
+            title="Delete this conversation"
+            className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Conversation</span>
+          </button>
         </div>
       </>
     );
@@ -817,7 +829,7 @@ export const ConversationsView: React.FC = () => {
                       setSelectedConversationId(conv.id);
                       setIsMobileChatOpen(true);
                     }}
-                    className={`p-3 cursor-pointer transition-all flex items-start gap-3 hover:bg-slate-50 ${
+                    className={`group relative p-3 cursor-pointer transition-all flex items-start gap-3 hover:bg-slate-50 ${
                       isSelected ? 'bg-emerald-50/50 border-l-4 border-emerald-600' : ''
                     }`}
                   >
@@ -886,6 +898,19 @@ export const ConversationsView: React.FC = () => {
                             {conv.unread_count}
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConversationToDelete(conv);
+                          }}
+                          title={`Delete conversation with ${conv.contact_name || 'customer'}`}
+                          className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all cursor-pointer shrink-0 ${
+                            (conv.unread_count || 0) > 0 ? 'ml-1' : 'ml-auto'
+                          }`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1009,6 +1034,13 @@ export const ConversationsView: React.FC = () => {
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>Send Quotation</span>
+                  </button>
+                  <button
+                    onClick={() => setConversationToDelete(currentConv)}
+                    className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                    title="Delete Conversation"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
 
                   {/* Customer 360 info toggle for screens < xl */}
@@ -1350,6 +1382,20 @@ export const ConversationsView: React.FC = () => {
           conversation={currentConv}
         />
       )}
+
+      {/* Delete Conversation Confirmation Modal with Warning */}
+      <DeleteConversationModal
+        isOpen={Boolean(conversationToDelete)}
+        onClose={() => setConversationToDelete(null)}
+        conversation={conversationToDelete}
+        onConfirmDelete={async (id) => {
+          await deleteConversation(id);
+          if (currentConv && String(currentConv.id) === String(id)) {
+            setIsMobileChatOpen(false);
+            setIsCustomerDetailsOpen(false);
+          }
+        }}
+      />
     </div>
   );
 };

@@ -119,24 +119,53 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
   }
 ];
 
+const DELETED_CONVERSATIONS_KEY = 'whatsq_deleted_conversations';
+
+export function getDeletedConversationIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(DELETED_CONVERSATIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedConversationId(id: string | number) {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = getDeletedConversationIds();
+    const strId = String(id);
+    if (!list.includes(strId)) {
+      list.push(strId);
+      localStorage.setItem(DELETED_CONVERSATIONS_KEY, JSON.stringify(list));
+    }
+  } catch {
+    // Ignore storage error
+  }
+}
+
 function getStoredConversations(): Conversation[] {
-  if (typeof window === 'undefined') return DEFAULT_SEED_CONVERSATIONS;
+  const deletedIds = getDeletedConversationIds();
+  if (typeof window === 'undefined') {
+    return DEFAULT_SEED_CONVERSATIONS.filter((c) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name));
+  }
   try {
     const raw = localStorage.getItem(CONVERSATIONS_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((c: Conversation) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name));
       }
     }
   } catch (e) {
     // Ignore cache parse errors
   }
-  return DEFAULT_SEED_CONVERSATIONS;
+  return DEFAULT_SEED_CONVERSATIONS.filter((c) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name));
 }
 
 function persistConversations(convs: Conversation[]) {
-  if (typeof window === 'undefined' || !Array.isArray(convs) || convs.length === 0) return;
+  if (typeof window === 'undefined' || !Array.isArray(convs)) return;
   try {
     localStorage.setItem(CONVERSATIONS_CACHE_KEY, JSON.stringify(convs));
   } catch (e) {
@@ -204,6 +233,7 @@ interface QiyamState {
   setSelectedConversationId: (id: string | number) => void;
   markConversationAsRead: (id: string | number) => Promise<void>;
   markAllConversationsAsRead: () => Promise<void>;
+  deleteConversation: (id: string | number) => Promise<boolean>;
   isSimulatorOpen: boolean;
   setIsSimulatorOpen: (open: boolean) => void;
   isNewWorkflowModalOpen: boolean;
@@ -910,6 +940,47 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       console.warn('Failed to mark all conversations read on backend:', e);
     }
   },
+
+  deleteConversation: async (id: string | number) => {
+    const strId = String(id);
+    addDeletedConversationId(id);
+
+    let deletedContactName = '';
+    set((state) => {
+      const target = state.conversations.find((c) => String(c.id) === strId || c.contact_name === strId);
+      if (target) {
+        deletedContactName = target.contact_name;
+        addDeletedConversationId(target.id);
+        if (target.contact_name) addDeletedConversationId(target.contact_name);
+      }
+      const remaining = state.conversations.filter(
+        (c) => String(c.id) !== strId && c.contact_name !== strId
+      );
+      persistConversations(remaining);
+
+      const isCurrentDeleted = String(state.selectedConversationId) === strId || (target && String(state.selectedConversationId) === String(target.id));
+      const nextSelectedId = isCurrentDeleted
+        ? (remaining[0]?.id ?? '')
+        : state.selectedConversationId;
+
+      return {
+        conversations: remaining,
+        selectedConversationId: nextSelectedId,
+      };
+    });
+
+    try {
+      await qiyamApi.deleteConversation(id);
+    } catch (e) {
+      console.warn('Backend delete conversation notice:', e);
+    }
+
+    get().addToast(
+      `Conversation with ${deletedContactName || 'contact'} deleted successfully.`,
+      'success'
+    );
+    return true;
+  },
   isSimulatorOpen: false,
   setIsSimulatorOpen: (open) => set({ isSimulatorOpen: open }),
   isNewWorkflowModalOpen: false,
@@ -1177,10 +1248,14 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   refreshConversations: async () => {
     try {
       const serverConvs = await qiyamApi.fetchConversations();
-      if (serverConvs && serverConvs.length > 0) {
+      const deletedIds = getDeletedConversationIds();
+      const filteredServerConvs = (serverConvs || []).filter(
+        (c) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name)
+      );
+      if (filteredServerConvs && filteredServerConvs.length > 0) {
         set((state) => {
           // Merge optimistic messages that might be pending locally
-          const merged = serverConvs.map((sConv) => {
+          const merged = filteredServerConvs.map((sConv) => {
             const localConv = state.conversations.find((c) => String(c.id) === String(sConv.id));
             if (!localConv) return sConv;
 
@@ -1196,7 +1271,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
 
           // Preserve local conversations that haven't synced yet (e.g. newly created for appointments or offline)
           const localOnly = state.conversations.filter(
-            (local) => !serverConvs.some((sConv) => String(sConv.id) === String(local.id))
+            (local) => !filteredServerConvs.some((sConv) => String(sConv.id) === String(local.id)) &&
+              !deletedIds.includes(String(local.id)) && !deletedIds.includes(local.contact_name)
           );
           const allMerged = [...localOnly, ...merged];
           const sortedMerged = sortConversationsByRecency(allMerged);

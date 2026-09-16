@@ -106,6 +106,16 @@ export const qiyamApi = {
     }
   },
 
+  async deleteConversation(id: string | number): Promise<boolean> {
+    try {
+      await apiClient.delete(`/conversations/threads/${id}/`);
+      return true;
+    } catch (e) {
+      console.warn('Could not delete conversation on backend:', e);
+      return false;
+    }
+  },
+
   async fetchTemplates(): Promise<WhatsAppTemplateItem[]> {
     return list<WhatsAppTemplateItem>('/conversations/templates/');
   },

@@ -218,6 +218,28 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 logger.error(f"Failed to auto-seed conversations: {e}")
         return super().list(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        try:
+            conv = None
+            if str(pk).isdigit():
+                conv = Conversation.objects.filter(pk=int(pk)).first()
+            if not conv:
+                conv = Conversation.objects.filter(contact_name=pk).first()
+            if not conv:
+                conv = Conversation.objects.filter(phone_number=pk).first()
+
+            if conv:
+                contact_name = conv.contact_name
+                conv.messages.all().delete()
+                conv.delete()
+                logger.info(f"Conversation {pk} ({contact_name}) permanently deleted.")
+                return Response({'success': True, 'message': f"Conversation with {contact_name} deleted."}, status=status.HTTP_200_OK)
+            return Response({'success': True, 'message': 'Conversation already removed or not found.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Failed to delete conversation {pk}: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
         conversation = self.get_object()
