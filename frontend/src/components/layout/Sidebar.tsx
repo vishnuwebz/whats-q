@@ -350,13 +350,24 @@ export const Sidebar: React.FC = () => {
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
-  // Accordion states - Always collapsed by default, expanded only on manual user click
-  const [messengerOpen, setMessengerOpen] = useState(false);
-  const [crmOpen, setCrmOpen] = useState(false);
-  const [opsOpen, setOpsOpen] = useState(false);
-  const [financeOpen, setFinanceOpen] = useState(false);
-  const [automationOpen, setAutomationOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
+  // Mutually exclusive single-accordion state: opening one automatically collapses all others to save space & scrolling
+  type AccordionSection = 'messenger' | 'crm' | 'ops' | 'finance' | 'automation' | 'ai' | null;
+  const [expandedSection, setExpandedSection] = useState<AccordionSection>(null);
+
+  const toggleSection = (section: AccordionSection) => {
+    setExpandedSection((prev) => (prev === section ? null : section));
+  };
+
+  const openSection = (section: AccordionSection) => {
+    setExpandedSection(section);
+  };
+
+  const messengerOpen = expandedSection === 'messenger';
+  const crmOpen = expandedSection === 'crm';
+  const opsOpen = expandedSection === 'ops';
+  const financeOpen = expandedSection === 'finance';
+  const automationOpen = expandedSection === 'automation';
+  const aiOpen = expandedSection === 'ai';
 
   const initialMountRef = React.useRef(true);
 
@@ -368,7 +379,17 @@ export const Sidebar: React.FC = () => {
     }
     if (!clickedFromSidebarRef.current && sidebarNavRef.current) {
       if (['conversations', 'bulk-overview', 'bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab)) {
-        setMessengerOpen(true);
+        setExpandedSection('messenger');
+      } else if (['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab)) {
+        setExpandedSection('crm');
+      } else if (['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab)) {
+        setExpandedSection('ops');
+      } else if (['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab)) {
+        setExpandedSection('finance');
+      } else if (['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab)) {
+        setExpandedSection('automation');
+      } else if (['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab)) {
+        setExpandedSection('ai');
       }
       const timer = setTimeout(() => {
         if (sidebarNavRef.current) {
@@ -572,7 +593,7 @@ export const Sidebar: React.FC = () => {
               <button
                 onClick={() => {
                   toggleSidebarCollapse();
-                  setMessengerOpen(true);
+                  openSection('messenger');
                 }}
                 title={`Messenger (Conversations, Bulk Messages)${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
                 className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all relative cursor-pointer ${
@@ -589,7 +610,7 @@ export const Sidebar: React.FC = () => {
             ) : (
               <>
                 <button
-                  onClick={() => setMessengerOpen(!messengerOpen)}
+                  onClick={() => toggleSection('messenger')}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
                     !messengerOpen && isMessengerActive
                       ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
@@ -733,7 +754,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={() => {
                 toggleSidebarCollapse();
-                setCrmOpen(true);
+                openSection('crm');
               }}
               title="CRM (Leads, Customers, Deals, Follow-ups)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
@@ -747,7 +768,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => setCrmOpen(!crmOpen)}
+                onClick={() => toggleSection('crm')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   !crmOpen && isCrmActive
                     ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
@@ -834,7 +855,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={() => {
                 toggleSidebarCollapse();
-                setOpsOpen(true);
+                openSection('ops');
               }}
               title="Operations (Jobs, Appointments, Employees, Schedule, Attendance, Tasks, Routes, Inventory, Approvals)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
@@ -848,7 +869,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => setOpsOpen(!opsOpen)}
+                onClick={() => toggleSection('ops')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   !opsOpen && isOpsActive
                     ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
@@ -970,7 +991,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={() => {
                 toggleSidebarCollapse();
-                setFinanceOpen(true);
+                openSection('finance');
               }}
               title="Finance (Overview, Transactions, Invoices, Expenses, Payments, Accounts, Reports)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
@@ -984,7 +1005,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => setFinanceOpen(!financeOpen)}
+                onClick={() => toggleSection('finance')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   !financeOpen && isFinanceActive
                     ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
@@ -1086,7 +1107,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={() => {
                 toggleSidebarCollapse();
-                setAutomationOpen(true);
+                openSection('automation');
               }}
               title="Automation (Workflow Builder, Workflows, Templates, Logs)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
@@ -1100,7 +1121,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => setAutomationOpen(!automationOpen)}
+                onClick={() => toggleSection('automation')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   !automationOpen && isAutomationActive
                     ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
@@ -1172,7 +1193,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={() => {
                 toggleSidebarCollapse();
-                setAiOpen(true);
+                openSection('ai');
               }}
               title="AI Assistant (Overview, Knowledge Base, Templates, Settings)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all relative ${
@@ -1187,7 +1208,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => setAiOpen(!aiOpen)}
+                onClick={() => toggleSection('ai')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   !aiOpen && isAiActive
                     ? 'bg-purple-600/20 text-purple-300 font-semibold border border-purple-500/30'
