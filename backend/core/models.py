@@ -43,6 +43,9 @@ class Branch(models.Model):
     employees_count = models.IntegerField(default=8)
     customers_count = models.IntegerField(default=450)
     is_main = models.BooleanField(default=False)
+    phone = models.CharField(max_length=50, blank=True, default='+91 495 276 5400')
+    email = models.EmailField(blank=True, default='branch@qiyamventures.com')
+    address = models.CharField(max_length=255, blank=True, default='')
 
     def __str__(self):
         return f"{self.name} ({self.code})"
