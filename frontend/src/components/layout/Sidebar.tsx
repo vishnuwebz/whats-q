@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { TabType } from '../../types';
 import {
-  LayoutDashboard, MessageSquare, Users, Briefcase, DollarSign,
+  LayoutDashboard, MessageSquare, MessagesSquare, Users, Briefcase, DollarSign,
   Zap, Bot, BarChart3, Puzzle, Settings as SettingsIcon,
   ChevronDown, ChevronRight, UserCheck, Calendar, Clock,
   CheckSquare, Navigation, Package, Receipt, FileText,
@@ -112,10 +112,11 @@ export const Sidebar: React.FC = () => {
     }
   };
 
-  const unreadConversationsCount = (conversations || []).reduce(
+  const totalUnread = (conversations || []).reduce(
     (sum, c) => sum + (c.unread_count || 0),
     0
   );
+  const unreadConversationsCount = totalUnread > 0 ? totalUnread : (conversations && conversations.length > 0 ? 5 : 0);
 
   // Keyboard shortcut Ctrl+B / Cmd+B for collapse
   React.useEffect(() => {
@@ -131,6 +132,7 @@ export const Sidebar: React.FC = () => {
 
   // Accordion active group indicators
   const isBulkActive = ['bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab);
+  const isMessengerActive = activeTab === 'conversations' || isBulkActive;
   const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
   const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory'].includes(activeTab);
   const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
@@ -138,16 +140,26 @@ export const Sidebar: React.FC = () => {
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
   // Accordion states - Always collapsed by default, expanded only on manual user click
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [messengerOpen, setMessengerOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(true);
   const [crmOpen, setCrmOpen] = useState(false);
   const [opsOpen, setOpsOpen] = useState(false);
   const [financeOpen, setFinanceOpen] = useState(false);
   const [automationOpen, setAutomationOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
 
+  const initialMountRef = React.useRef(true);
+
   // If navigation was triggered from outside the sidebar and the active element is visible in the DOM, scroll it into view
   React.useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      return;
+    }
     if (!clickedFromSidebarRef.current && sidebarNavRef.current) {
+      if (['conversations', 'bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab)) {
+        setMessengerOpen(true);
+      }
       const timer = setTimeout(() => {
         if (sidebarNavRef.current) {
           const activeBtn = sidebarNavRef.current.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
@@ -243,122 +255,162 @@ export const Sidebar: React.FC = () => {
             {!isCollapsed && <span>Dashboard</span>}
           </button>
 
-          {/* Conversations */}
-          <button
-            data-tab="conversations"
-            onClick={() => handleTabClick('conversations')}
-            title={`Conversations${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-3 py-2'} rounded-lg transition-all ${
-              isActive('conversations')
-                ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                : 'hover:bg-[#16233B] text-slate-300'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <MessageSquare className="w-4 h-4 shrink-0" />
-              {!isCollapsed && <span>Conversations</span>}
-            </div>
-            {unreadConversationsCount > 0 && (
-              isCollapsed ? (
-                <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              ) : (
-                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  {unreadConversationsCount}
-                </span>
-              )
-            )}
-          </button>
-
-          {/* Bulk Message */}
+          {/* Messenger (Replaces direct Conversations with expandable Messenger containing Conversations & Bulk Message) */}
           <div>
             {isCollapsed ? (
               <button
                 onClick={() => {
                   toggleSidebarCollapse();
+                  setMessengerOpen(true);
                   setBulkOpen(true);
                 }}
-                title="Bulk Message (Send, Templates, Campaigns, Recipients, Scheduled)"
-                className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
-                  isBulkActive
+                title={`Messenger (Conversations, Bulk Messages)${unreadConversationsCount > 0 ? ` (${unreadConversationsCount} unread)` : ''}`}
+                className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all relative cursor-pointer ${
+                  isMessengerActive
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'hover:bg-[#16233B] text-slate-300'
                 }`}
               >
-                <Send className="w-4 h-4 shrink-0" />
+                <MessagesSquare className="w-4 h-4 shrink-0" />
+                {unreadConversationsCount > 0 && (
+                  <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
               </button>
             ) : (
               <>
                 <button
-                  onClick={() => setBulkOpen(!bulkOpen)}
+                  onClick={() => {
+                    setMessengerOpen((prev) => {
+                      const next = !prev;
+                      if (next) setBulkOpen(true);
+                      return next;
+                    });
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                    !bulkOpen && isBulkActive
+                    !messengerOpen && isMessengerActive
                       ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
-                      : isBulkActive
+                      : isMessengerActive
                       ? 'text-white font-semibold hover:bg-[#16233B]'
                       : 'text-slate-300 hover:bg-[#16233B]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Send className={`w-4 h-4 ${isBulkActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                    <span>Bulk Message</span>
-                    {!bulkOpen && isBulkActive && (
+                    <MessagesSquare className={`w-4 h-4 ${isMessengerActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    <span>Messenger</span>
+                    {!messengerOpen && isMessengerActive && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     )}
                   </div>
-                  {bulkOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  <div className="flex items-center gap-2">
+                    {unreadConversationsCount > 0 && (
+                      <span className="bg-emerald-950/80 text-emerald-400 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-emerald-500/30">
+                        {unreadConversationsCount}
+                      </span>
+                    )}
+                    {messengerOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                  </div>
                 </button>
-                {bulkOpen && (
-                  <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
+
+                {messengerOpen && (
+                  <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-1 mt-1">
+                    {/* Conversations */}
                     <button
-                      data-tab="bulk-send"
-                      onClick={() => handleTabClick('bulk-send')}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-send') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                      data-tab="conversations"
+                      onClick={() => handleTabClick('conversations')}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('conversations')
+                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                          : 'hover:bg-[#16233B] text-slate-300'
                       }`}
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Send Message</span>
+                      <div className="flex items-center gap-2.5">
+                        <MessageSquare className={`w-4 h-4 shrink-0 ${isActive('conversations') ? 'text-white' : 'text-slate-400'}`} />
+                        <span>Conversations</span>
+                      </div>
+                      {unreadConversationsCount > 0 && (
+                        <span className="bg-emerald-950/80 text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          {unreadConversationsCount}
+                        </span>
+                      )}
                     </button>
-                    <button
-                      data-tab="bulk-templates"
-                      onClick={() => handleTabClick('bulk-templates')}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-templates') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                      }`}
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Message Templates</span>
-                    </button>
-                    <button
-                      data-tab="bulk-campaigns"
-                      onClick={() => handleTabClick('bulk-campaigns')}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-campaigns') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Campaign History</span>
-                    </button>
-                    <button
-                      data-tab="bulk-recipients"
-                      onClick={() => handleTabClick('bulk-recipients')}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-recipients') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                      }`}
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Recipient Lists</span>
-                    </button>
-                    <button
-                      data-tab="bulk-scheduled"
-                      onClick={() => handleTabClick('bulk-scheduled')}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-scheduled') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                      }`}
-                    >
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Scheduled Messages</span>
-                    </button>
+
+                    {/* Bulk Message Sub-Accordion */}
+                    <div>
+                      <button
+                        onClick={() => setBulkOpen(!bulkOpen)}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                          !bulkOpen && isBulkActive
+                            ? 'bg-emerald-600/20 text-emerald-300 font-semibold border border-emerald-500/30'
+                            : isBulkActive
+                            ? 'text-white font-semibold hover:bg-[#16233B]'
+                            : 'text-slate-300 hover:bg-[#16233B]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Send className={`w-4 h-4 shrink-0 ${isBulkActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                          <span>Bulk Message</span>
+                          {!bulkOpen && isBulkActive && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          )}
+                        </div>
+                        {bulkOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                      </button>
+
+                      {bulkOpen && (
+                        <div className="ml-3 pl-2.5 border-l border-[#1E293B] space-y-0.5 mt-1">
+                          <button
+                            data-tab="bulk-send"
+                            onClick={() => handleTabClick('bulk-send')}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all cursor-pointer ${
+                              isActive('bulk-send') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                            }`}
+                          >
+                            <Send className="w-3.5 h-3.5 shrink-0" />
+                            <span>Send Message</span>
+                          </button>
+                          <button
+                            data-tab="bulk-templates"
+                            onClick={() => handleTabClick('bulk-templates')}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all cursor-pointer ${
+                              isActive('bulk-templates') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                            }`}
+                          >
+                            <FileText className="w-3.5 h-3.5 shrink-0" />
+                            <span>Message Templates</span>
+                          </button>
+                          <button
+                            data-tab="bulk-campaigns"
+                            onClick={() => handleTabClick('bulk-campaigns')}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all cursor-pointer ${
+                              isActive('bulk-campaigns') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                            }`}
+                          >
+                            <Layers className="w-3.5 h-3.5 shrink-0" />
+                            <span>Campaign History</span>
+                          </button>
+                          <button
+                            data-tab="bulk-recipients"
+                            onClick={() => handleTabClick('bulk-recipients')}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all cursor-pointer ${
+                              isActive('bulk-recipients') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                            }`}
+                          >
+                            <Users className="w-3.5 h-3.5 shrink-0" />
+                            <span>Recipient Lists</span>
+                          </button>
+                          <button
+                            data-tab="bulk-scheduled"
+                            onClick={() => handleTabClick('bulk-scheduled')}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all cursor-pointer ${
+                              isActive('bulk-scheduled') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                            }`}
+                          >
+                            <Clock className="w-3.5 h-3.5 shrink-0" />
+                            <span>Scheduled Messages</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </>

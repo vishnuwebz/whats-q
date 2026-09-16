@@ -115,6 +115,7 @@ const TAB_TO_PATH: Record<TabType, string> = {
 
 const resolveTabFromPath = (path: string): TabType => {
   const normalized = path.toLowerCase().replace(/\/$/, '') || '/dashboard';
+  if (normalized === '/messenger') return 'conversations';
   for (const [tab, p] of Object.entries(TAB_TO_PATH)) {
     if (p === normalized || `/${tab}` === normalized) {
       return tab as TabType;

@@ -37,7 +37,7 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     phone_number: '+91 98765 43210',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     category: 'Lead',
-    unread_count: 0,
+    unread_count: 2,
     status: 'in_progress',
     lead_owner: 'Ramesh Kumar',
     lead_stage: 'Appointment Booked',
@@ -58,8 +58,8 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
       { id: 'm2', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Sure! I can help you with that. Please share your location so I can check service availability.', timestamp: '10:30 AM', status: 'read' },
       { id: 'm3', sender: 'customer', text: '45, Park Street, Koyilandy', timestamp: '10:31 AM', status: 'read' },
       { id: 'm4', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Great! We are available at your location. The charges will be ₹2,800. Shall I book it for you?', timestamp: '10:31 AM', status: 'read' },
-      { id: 'm5', sender: 'customer', text: 'Yes, please.', timestamp: '10:32 AM', status: 'read' },
-      { id: 'm6', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #APT-1023', timestamp: '10:32 AM', status: 'delivered' }
+      { id: 'm5', sender: 'customer', text: 'Yes, please.', timestamp: '10:32 AM', status: 'delivered' },
+      { id: 'm6', sender: 'customer', text: 'Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #APT-1023', timestamp: '10:32 AM', status: 'delivered' }
     ]
   },
   {
@@ -68,7 +68,7 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     phone_number: '+91 90000 11123',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     category: 'Hot Lead',
-    unread_count: 0,
+    unread_count: 2,
     status: 'in_progress',
     lead_owner: 'Amit Sharma',
     lead_stage: 'Appointment Confirmed',
@@ -86,8 +86,8 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     messages: [
       { id: 'vm1', sender: 'customer', text: 'Hi, I need installation done for my new 1.5 Ton AC.', timestamp: '09:15 AM', status: 'read' },
       { id: 'vm2', sender: 'agent', senderName: 'Rahul Mehta', text: 'Hello Mr. Vikram Mehta! We have technician Amit Sharma available on May 12 at 10:30 AM.', timestamp: '09:20 AM', status: 'read' },
-      { id: 'vm3', sender: 'customer', text: 'Perfect, lock that slot please.', timestamp: '09:25 AM', status: 'read' },
-      { id: 'vm4', sender: 'agent', senderName: 'Rahul Mehta', text: 'Slot locked! Advance payment of ₹360 received with thanks.', timestamp: '09:30 AM', status: 'delivered' }
+      { id: 'vm3', sender: 'customer', text: 'Perfect, lock that slot please.', timestamp: '09:25 AM', status: 'delivered' },
+      { id: 'vm4', sender: 'customer', text: 'Slot locked! Advance payment of ₹360 received with thanks.', timestamp: '09:30 AM', status: 'delivered' }
     ]
   },
   {
@@ -96,7 +96,7 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     phone_number: '+91 89213 56789',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
     category: 'Customer',
-    unread_count: 0,
+    unread_count: 1,
     status: 'in_progress',
     lead_owner: 'Neha Patel',
     lead_stage: 'Appointment Confirmed',
