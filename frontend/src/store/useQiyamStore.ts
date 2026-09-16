@@ -27,6 +27,7 @@ import {
   initialBulkRecipientLists,
   initialBulkScheduledMessages
 } from './bulkData';
+import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
 
 const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
 
@@ -222,8 +223,14 @@ interface QiyamState {
   isUpdateModalOpen: boolean;
   isUpdatingSystem: boolean;
   updateProgressStep: string;
+  otaCountdown: number | null;
+  isOtaCountdownActive: boolean;
   setIsUpdateModalOpen: (open: boolean) => void;
-  fetchVersionInfo: () => Promise<void>;
+  setOtaCountdown: (count: number | null) => void;
+  pauseOtaCountdown: () => void;
+  triggerForceHardRefresh: (reason?: string) => Promise<void>;
+  triggerOtaDeploymentUpdate: (info: Partial<VersionInfo>) => void;
+  fetchVersionInfo: (force?: boolean) => Promise<void>;
   triggerSystemUpdate: () => Promise<{ success: boolean; error?: string }>;
   snoozeUpdate: () => void;
   applyGlobalUpdateAvailable: (info: VersionInfo) => void;
@@ -906,7 +913,51 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   isUpdateModalOpen: false,
   isUpdatingSystem: false,
   updateProgressStep: '',
+  otaCountdown: null,
+  isOtaCountdownActive: false,
   setIsUpdateModalOpen: (open) => set({ isUpdateModalOpen: open }),
+  setOtaCountdown: (count) => set({ otaCountdown: count, isOtaCountdownActive: count !== null }),
+  pauseOtaCountdown: () => {
+    stopOtaCountdown();
+    set({ otaCountdown: null, isOtaCountdownActive: false });
+  },
+  triggerForceHardRefresh: async (reason = 'Manual refresh requested') => {
+    await forceHardRefresh(reason);
+  },
+  triggerOtaDeploymentUpdate: (info) => {
+    const current = get().versionInfo;
+    const nowFormatted = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).format(new Date());
+
+    const merged: VersionInfo = {
+      current_commit: current?.current_commit || 'active',
+      current_author: current?.current_author || 'WhatsQ',
+      current_date: current?.current_date || nowFormatted,
+      current_message: current?.current_message || 'Current running release',
+      latest_commit: info.latest_commit || 'latest',
+      latest_author: info.latest_author || 'WhatsQ Core Team',
+      latest_date: info.latest_date || nowFormatted,
+      latest_message: info.latest_message || 'New production release deployed to origin/main',
+      update_available: true,
+      is_git: true,
+      last_updated: current?.last_updated || nowFormatted,
+      last_checked: nowFormatted,
+      ...info,
+    };
+
+    set({
+      versionInfo: merged,
+      isUpdateModalOpen: true,
+    });
+
+    startOtaCountdown(5);
+  },
 
   selectedConversationId: getStoredConversations()[0]?.id || '',
   setSelectedConversationId: (id) => {
@@ -2893,9 +2944,10 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     }
   },
 
-  fetchVersionInfo: async () => {
+  fetchVersionInfo: async (force = false) => {
     try {
-      const res = await apiClient.get('/core/system-version/');
+      const url = force ? '/core/system-version/?force=true' : '/core/system-version/';
+      const res = await apiClient.get(url);
       if (res && res.current_commit) {
         const info = res as VersionInfo;
         set({ versionInfo: info });
@@ -2912,15 +2964,8 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     set({ versionInfo: info });
     if (!info.update_available) return;
 
-    const dismissKey = `whatsq_update_dismissed_${info.current_commit}_${info.latest_commit}`;
-
+    // Check temporary snooze (Update Later — 15 minute temporary dismiss)
     try {
-      // Check permanent dismiss (set when user clicks Update Now or after update completes)
-      if (localStorage.getItem(dismissKey) === 'true') {
-        return;
-      }
-
-      // Check snooze (Update Later — 30 minute temporary dismiss)
       const raw = localStorage.getItem('whatsq_update_snooze');
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -2930,20 +2975,23 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       }
     } catch {}
 
+    // Clear stale dismissals since a real update is available
     set({ isUpdateModalOpen: true });
+    startOtaCountdown(5);
   },
 
   snoozeUpdate: () => {
+    stopOtaCountdown();
     const latestCommit = get().versionInfo?.latest_commit || 'latest';
-    const snoozeUntil = Date.now() + 30 * 60 * 1000; // 30 minutes
+    const snoozeUntil = Date.now() + 15 * 60 * 1000; // 15 minutes
     try {
       localStorage.setItem('whatsq_update_snooze', JSON.stringify({
         commit: latestCommit,
         snoozeUntil,
       }));
     } catch {}
-    set({ isUpdateModalOpen: false });
-    get().addToast('Update postponed for 30 minutes. You can apply it anytime from the header button.', 'info');
+    set({ isUpdateModalOpen: false, otaCountdown: null, isOtaCountdownActive: false });
+    get().addToast('Auto-refresh postponed for 15 minutes. Update banner remains accessible.', 'info');
   },
 
   simulateGlobalUpdate: async () => {
@@ -2955,6 +3003,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         } catch {}
         get().applyGlobalUpdateAvailable(res.broadcast as VersionInfo);
         get().addToast('Global Update Broadcast simulated!', 'info');
+        return;
       }
     } catch (e) {
       const nowFormatted = new Intl.DateTimeFormat('en-US', {
@@ -2967,14 +3016,14 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       }).format(new Date());
 
       const simulated: VersionInfo = {
-        current_commit: get().versionInfo?.current_commit || '2a7383e',
+        current_commit: get().versionInfo?.current_commit || '518339e',
         current_author: 'Vishnu G',
         current_date: get().versionInfo?.current_date || nowFormatted,
         current_message: 'System running production release',
-        latest_commit: '89ef12c',
+        latest_commit: '9c8f12a',
         latest_author: 'WhatsQ Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Critical Security Shields & High-Concurrency Engine v2.4.2',
+        latest_message: 'Instant OTA Hard-Refresh & Real-Time Sync v2.4.3',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,
@@ -2983,38 +3032,28 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       try {
         localStorage.removeItem('whatsq_update_snooze');
       } catch {}
-      set({ versionInfo: simulated, isUpdateModalOpen: true });
-      get().addToast('Simulated global update available!', 'info');
+      get().applyGlobalUpdateAvailable(simulated);
+      get().addToast('Simulated OTA update broadcast: countdown started!', 'info');
     }
   },
 
   triggerSystemUpdate: async () => {
-    const info = get().versionInfo;
-    // Permanently dismiss this update for this commit pair immediately on click
-    if (info?.current_commit && info?.latest_commit) {
-      const dismissKey = `whatsq_update_dismissed_${info.current_commit}_${info.latest_commit}`;
-      try { localStorage.setItem(dismissKey, 'true'); } catch {}
-      try { localStorage.removeItem('whatsq_update_snooze'); } catch {}
-    }
-    // Close modal immediately so it never reappears for this update
-    set({ isUpdateModalOpen: false, isUpdatingSystem: true, updateProgressStep: '⚡ Applying update...' });
+    stopOtaCountdown();
+    set({
+      isUpdatingSystem: true,
+      updateProgressStep: '⚡ Clearing caches & forcefully hard-refreshing WhatsQ...',
+    });
+
     try {
-      const res = await apiClient.post('/core/system-update/', {});
-      if (res && res.success !== false) {
-        set({ updateProgressStep: '⚡ Done! Reloading...' });
-        window.location.reload();
-        return { success: true };
-      } else {
-        set({ isUpdatingSystem: false, updateProgressStep: '' });
-        // Mark versionInfo as up-to-date locally so no re-trigger
-        if (info) set({ versionInfo: { ...info, update_available: false } });
-        return { success: false, error: res?.error || 'System update failed' };
-      }
-    } catch (e: any) {
-      set({ isUpdatingSystem: false, updateProgressStep: '' });
-      // Even on failure, mark locally as up-to-date so modal doesn't reappear
-      if (info) set({ versionInfo: { ...info, update_available: false } });
-      return { success: false, error: e.message || 'System update failed' };
-    }
+      // Notify backend to apply update if on server
+      apiClient.post('/core/system-update/', {}).catch(() => {});
+    } catch {}
+
+    // Give browser UI a moment to show the hard refresh spinner
+    await new Promise((r) => setTimeout(r, 600));
+
+    // Force hard refresh immediately bypassing disk cache
+    await forceHardRefresh('Triggered from SystemUpdateModal');
+    return { success: true };
   },
 }));

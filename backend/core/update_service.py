@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SystemUpdateService:
     _cached_info = None
     _cache_time = 0
-    _CACHE_DURATION = 60  # seconds — prevents hammering GitHub API
+    _CACHE_DURATION = 20  # seconds — fast propagation of updates
 
     @classmethod
     def get_version_info(cls, simulate=False, force=False):

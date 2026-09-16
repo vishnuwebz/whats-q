@@ -69,7 +69,7 @@ COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
 COMMIT_MSG=$(git log -1 --pretty=format:'%s')
 COMMIT_DATE=$(git log -1 --pretty=format:'%cd' --date=format:'%b %d, %Y, %I:%M %p')
 
-# Generate version metadata snapshot for instant backend consumption
+# Generate version metadata snapshot for instant backend & frontend consumption
 cat <<EOF > "$APP_DIR/backend/version_meta.json"
 {
   "current_commit": "$COMMIT_HASH",
@@ -77,6 +77,17 @@ cat <<EOF > "$APP_DIR/backend/version_meta.json"
   "current_date": "$COMMIT_DATE",
   "current_message": "$COMMIT_MSG",
   "last_updated": "$COMMIT_DATE"
+}
+EOF
+
+mkdir -p "$APP_DIR/frontend/public"
+cat <<EOF > "$APP_DIR/frontend/public/version.json"
+{
+  "commit": "$COMMIT_HASH",
+  "author": "$COMMIT_AUTHOR",
+  "date": "$COMMIT_DATE",
+  "message": "$COMMIT_MSG",
+  "timestamp": $(date +%s%3N 2>/dev/null || date +%s)
 }
 EOF
 
@@ -136,6 +147,7 @@ echo -e "\n${YELLOW}[4/5] Building Frontend...${NC}"
 cd "$APP_DIR/frontend"
 npm install --silent
 npm run build
+cp "$APP_DIR/frontend/public/version.json" "$APP_DIR/frontend/dist/version.json" 2>/dev/null || true
 
 # 5. RESTART SERVICES
 echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"
@@ -164,6 +176,22 @@ else
 fi
 
 $SUDO_CMD systemctl reload nginx 2>/dev/null || true
+
+# Instant broadcast of OTA update event to active browser SSE streams
+echo -e "\n${YELLOW}[OTA] Broadcasting deployment event to active browser sessions...${NC}"
+cd "$APP_DIR/backend"
+source venv/bin/activate 2>/dev/null || true
+python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiyam_backend.settings')
+django.setup()
+from core.events import event_bus
+from core.update_service import SystemUpdateService
+info = SystemUpdateService.get_version_info(force=True)
+event_bus.publish('system.update_available', info)
+event_bus.publish('system.deployed', info)
+print('[OTA] Broadcast complete: system.update_available & system.deployed sent.')
+" 2>/dev/null || true
 
 # Sync update script binary
 $SUDO_CMD cp "$APP_DIR/deploy.sh" /usr/local/bin/update-whatsq 2>/dev/null || true

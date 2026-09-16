@@ -299,18 +299,15 @@ export const Sidebar: React.FC = () => {
     // 1. Perform automated backup of all state
     const backedUp = handleBackupAllData();
     if (backedUp) {
-      addToast('All data backed up successfully! Restarting WhatsQ...', 'success');
+      addToast('All data backed up successfully! Force hard-refreshing WhatsQ...', 'success');
     }
 
-    // 2. Mark update applied
+    // 2. Trigger forceful hard refresh & backend update
     try {
       await triggerSystemUpdate();
-    } catch {}
-
-    // 3. Perform hard refresh
-    setTimeout(() => {
+    } catch {
       window.location.reload();
-    }, 700);
+    }
   };
 
   const isUpdateAvailable = (versionInfo?.update_available || checkResult === 'available') && !isRestarting;

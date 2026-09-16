@@ -129,6 +129,15 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('system.deployed', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing system.deployed event:', err);
+        }
+      });
+
       this.eventSource.addEventListener('message.reaction', (e: any) => {
         try {
           const payload = JSON.parse(e.data);
@@ -304,7 +313,8 @@ class RealtimeSyncManager {
         break;
       }
 
-      case 'system.update_available': {
+      case 'system.update_available':
+      case 'system.deployed': {
         if (event.data) {
           store.applyGlobalUpdateAvailable(event.data);
         }

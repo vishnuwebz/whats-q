@@ -47,7 +47,10 @@ export const SystemUpdateModal: React.FC = () => {
     setIsUpdateModalOpen,
     isUpdatingSystem,
     updateProgressStep,
+    otaCountdown,
+    pauseOtaCountdown,
     triggerSystemUpdate,
+    triggerForceHardRefresh,
     snoozeUpdate,
     addToast
   } = useQiyamStore();
@@ -55,12 +58,7 @@ export const SystemUpdateModal: React.FC = () => {
   if (!isUpdateModalOpen || !versionInfo) return null;
 
   const handleUpdateNow = async () => {
-    // Modal closes immediately inside triggerSystemUpdate (store handles dismiss)
-    const res = await triggerSystemUpdate();
-    if (!res.success) {
-      // Show as info since the modal is already closed — not a hard error for the user
-      addToast('Update queued. If the backend is offline, it will apply on next server restart.', 'info');
-    }
+    await triggerSystemUpdate();
   };
 
   const isUpToDate = !versionInfo.update_available;
@@ -144,6 +142,42 @@ export const SystemUpdateModal: React.FC = () => {
 
         {/* Modal Content */}
         <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto">
+          {/* Automatic Forceful Hard-Refresh Countdown Banner */}
+          {versionInfo.update_available && otaCountdown !== null && (
+            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-amber-500/10 border-2 border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-3 w-3 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-900 tracking-tight">
+                    Automatic Hard Refresh in <span className="font-mono text-emerald-700 text-sm font-black">{otaCountdown}s</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={pauseOtaCountdown}
+                  className="text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition cursor-pointer"
+                >
+                  Pause Countdown
+                </button>
+              </div>
+
+              {/* Live Countdown Progress Bar */}
+              <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden shadow-inner">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-1000 ease-linear rounded-full"
+                  style={{ width: `${Math.max(0, Math.min(100, (otaCountdown / 5) * 100))}%` }}
+                />
+              </div>
+
+              <p className="text-[10.5px] text-slate-600 leading-snug">
+                WhatsQ will automatically clear browser CacheStorage, unregister ServiceWorkers, and hard-refresh to load the new production build.
+              </p>
+            </div>
+          )}
+
           {/* Version Comparison Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/90 p-3.5 rounded-2xl border border-slate-200 text-xs">
             {/* Previous / Current Version */}
@@ -312,11 +346,12 @@ export const SystemUpdateModal: React.FC = () => {
                   {isUpdatingSystem ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Updating WhatsQ...</span>
+                      <span>Purging Cache & Hard-Refreshing...</span>
                     </>
                   ) : (
                     <>
-                      <span>Update Now</span>
+                      <Zap className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Hard Refresh Now</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}

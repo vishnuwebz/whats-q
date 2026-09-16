@@ -272,6 +272,19 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
 
+          {/* Update Available Badge */}
+          {versionInfo?.update_available && (
+            <button
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-xs animate-pulse"
+              title="New system deployment ready! Click to review and update"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Update Ready</span>
+            </button>
+          )}
+
         </div>{/* end w-max inner */}
         </div>{/* end overflow-x-auto */}
 
