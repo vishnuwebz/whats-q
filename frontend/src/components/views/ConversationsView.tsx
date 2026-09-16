@@ -115,6 +115,13 @@ export const ConversationsView: React.FC = () => {
     }
   }, [currentConv?.id, currentConv?.unread_count, markConversationAsRead]);
 
+  // Open mobile chat automatically when an individual conversation is selected
+  React.useEffect(() => {
+    if (selectedConversationId) {
+      setIsMobileChatOpen(true);
+    }
+  }, [selectedConversationId]);
+
   // Active real-time synchronizer: keeps conversation thread lively even across multi-worker servers
   React.useEffect(() => {
     useQiyamStore.getState().refreshConversations();

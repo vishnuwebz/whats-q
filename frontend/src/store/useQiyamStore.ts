@@ -30,8 +30,97 @@ import {
 
 const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
 
+const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
+  {
+    id: 'conv-c1',
+    contact_name: 'Amit Verma',
+    phone_number: '+91 98765 43210',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    category: 'Lead',
+    unread_count: 0,
+    status: 'in_progress',
+    lead_owner: 'Ramesh Kumar',
+    lead_stage: 'Appointment Booked',
+    source: 'WhatsApp',
+    first_contact_date: 'May 12, 2024 10:30 AM',
+    last_contact_date: 'May 12, 2024 10:32 AM',
+    location: 'Koyilandy, Kerala',
+    language: 'English',
+    tags: ['AC Service', 'High Value'],
+    notes: 'Customer wants service tomorrow morning. Prefers 10 AM - 12 PM slot.',
+    service_needed: 'AC Repair (Gas Leakage)',
+    estimated_value: 2800,
+    active_workflow: 'Service Booking Flow',
+    is_online: true,
+    last_seen: 'Online',
+    messages: [
+      { id: 'm1', sender: 'customer', text: 'I need AC service tomorrow.', timestamp: '10:30 AM', status: 'read' },
+      { id: 'm2', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Sure! I can help you with that. Please share your location so I can check service availability.', timestamp: '10:30 AM', status: 'read' },
+      { id: 'm3', sender: 'customer', text: '45, Park Street, Koyilandy', timestamp: '10:31 AM', status: 'read' },
+      { id: 'm4', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Great! We are available at your location. The charges will be ₹2,800. Shall I book it for you?', timestamp: '10:31 AM', status: 'read' },
+      { id: 'm5', sender: 'customer', text: 'Yes, please.', timestamp: '10:32 AM', status: 'read' },
+      { id: 'm6', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #APT-1023', timestamp: '10:32 AM', status: 'delivered' }
+    ]
+  },
+  {
+    id: 'conv-c2',
+    contact_name: 'Vikram Mehta',
+    phone_number: '+91 90000 11123',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    category: 'Hot Lead',
+    unread_count: 0,
+    status: 'in_progress',
+    lead_owner: 'Amit Sharma',
+    lead_stage: 'Appointment Confirmed',
+    source: 'WhatsApp',
+    first_contact_date: 'May 10, 2024 09:15 AM',
+    last_contact_date: 'May 12, 2024 09:30 AM',
+    location: 'Kozhikode, Kerala',
+    language: 'English',
+    tags: ['AC Installation', 'VIP'],
+    notes: 'Customer requested morning slot for 1.5 Ton Inverter AC Installation.',
+    service_needed: 'AC Installation (1.5 Ton Inverter AC)',
+    estimated_value: 1200,
+    is_online: true,
+    last_seen: 'Online',
+    messages: [
+      { id: 'vm1', sender: 'customer', text: 'Hi, I need installation done for my new 1.5 Ton AC.', timestamp: '09:15 AM', status: 'read' },
+      { id: 'vm2', sender: 'agent', senderName: 'Rahul Mehta', text: 'Hello Mr. Vikram Mehta! We have technician Amit Sharma available on May 12 at 10:30 AM.', timestamp: '09:20 AM', status: 'read' },
+      { id: 'vm3', sender: 'customer', text: 'Perfect, lock that slot please.', timestamp: '09:25 AM', status: 'read' },
+      { id: 'vm4', sender: 'agent', senderName: 'Rahul Mehta', text: 'Slot locked! Advance payment of ₹360 received with thanks.', timestamp: '09:30 AM', status: 'delivered' }
+    ]
+  },
+  {
+    id: 'conv-c3',
+    contact_name: 'Priya Sharma',
+    phone_number: '+91 89213 56789',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    category: 'Customer',
+    unread_count: 0,
+    status: 'in_progress',
+    lead_owner: 'Neha Patel',
+    lead_stage: 'Appointment Confirmed',
+    source: 'WhatsApp Web',
+    first_contact_date: 'May 11, 2024 11:00 AM',
+    last_contact_date: 'May 12, 2024 10:24 AM',
+    location: 'Ramanattukara, Kerala',
+    language: 'English',
+    tags: ['Cleaning', 'Residential'],
+    notes: 'Full home deep cleaning scheduled for May 13 at 09:00 AM.',
+    service_needed: 'Deep Cleaning (Full Home)',
+    estimated_value: 4500,
+    is_online: false,
+    last_seen: '10:25 AM',
+    messages: [
+      { id: 'ps1', sender: 'customer', text: 'Can I get the quotation for 3 BHK deep cleaning?', timestamp: '10:20 AM', status: 'read' },
+      { id: 'ps2', sender: 'agent', senderName: 'Rahul Mehta', text: 'Hello Priya, our 3 BHK deep cleaning is ₹4,500 with eco-friendly sanitization.', timestamp: '10:22 AM', status: 'read' },
+      { id: 'ps3', sender: 'customer', text: 'Book it for May 13 morning 9 AM please.', timestamp: '10:24 AM', status: 'read' }
+    ]
+  }
+];
+
 function getStoredConversations(): Conversation[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return DEFAULT_SEED_CONVERSATIONS;
   try {
     const raw = localStorage.getItem(CONVERSATIONS_CACHE_KEY);
     if (raw) {
@@ -43,7 +132,7 @@ function getStoredConversations(): Conversation[] {
   } catch (e) {
     // Ignore cache parse errors
   }
-  return [];
+  return DEFAULT_SEED_CONVERSATIONS;
 }
 
 function persistConversations(convs: Conversation[]) {
@@ -228,6 +317,13 @@ interface QiyamState {
   addJob: (job: Partial<Job>) => Promise<Job>;
   addInvoice: (inv: Partial<Invoice>) => Promise<Invoice>;
   addAppointment: (apt: Partial<Appointment>) => Promise<Appointment>;
+  openConversationForAppointment: (
+    apt: Appointment,
+    options?: { sendReminder?: boolean; customMessage?: string }
+  ) => Promise<string | number>;
+  openConversationForContact: (
+    contact: { name: string; phone: string; service?: string; location?: string; initialMessage?: string }
+  ) => Promise<string | number>;
   addCustomer: (cust: Record<string, unknown>) => Promise<Record<string, unknown>>;
   addExpense: (exp: Partial<Expense>) => Promise<Expense>;
   addTask: (task: Partial<Task>) => Promise<Task>;
@@ -271,6 +367,63 @@ const INITIAL_NOTIFICATIONS: QNotification[] = [
   { id: 4, title: 'AI Route RTE-001 Ready', text: '12-stop GPS optimized route created for Ramesh Kumar.', time: '1h ago', unread: true, target: 'ops-routes', itemId: 'RTE-001', itemType: 'route' },
   { id: 5, title: 'New WhatsApp Click-to-Ad Lead', text: 'Inquiry from +91 90000 11123 for AC Installation.', time: '2h ago', unread: true, target: 'crm-leads', itemId: 1, itemType: 'lead' },
   { id: 6, title: 'Purchase Approval Needed', text: 'Warehouse spare parts request APR-1024 (₹25,000) pending.', time: '3h ago', unread: true, target: 'automation-approvals', itemId: 'APR-1024', itemType: 'approval' },
+];
+
+const INITIAL_APPOINTMENTS: Appointment[] = [
+  {
+    id: 1,
+    apt_id_str: 'APT-1024',
+    customer_name: 'Vikram Mehta',
+    phone: '+91 90000 11123',
+    service: 'AC Installation (1.5 Ton Inverter AC)',
+    employee: 'Amit Sharma',
+    date_str: 'May 12, 2024',
+    time_str: '10:30 AM',
+    status: 'confirmed',
+    duration: '2h 00m',
+    location: 'Kozhikode, Kerala',
+    amount: 1200,
+    advance: 360,
+    payment_status: 'advance_paid',
+    source: 'WhatsApp Assistant',
+    notes: 'Customer requested morning slot. Advance ₹360 paid via UPI.',
+  },
+  {
+    id: 2,
+    apt_id_str: 'APT-1023',
+    customer_name: 'Amit Verma',
+    phone: '+91 98765 43210',
+    service: 'AC Repair (Gas Leakage)',
+    employee: 'Priya Sharma',
+    date_str: 'May 12, 2024',
+    time_str: '12:00 PM',
+    status: 'upcoming',
+    duration: '1h 30m',
+    location: 'Koyilandy, Kerala',
+    amount: 2800,
+    advance: 0,
+    payment_status: 'pending',
+    source: 'WhatsApp Assistant',
+    notes: 'Customer inquired about refrigerant top-up and leakage fix.',
+  },
+  {
+    id: 3,
+    apt_id_str: 'APT-1022',
+    customer_name: 'Priya Sharma',
+    phone: '+91 89213 56789',
+    service: 'Deep Cleaning (Full Home)',
+    employee: 'Neha Patel',
+    date_str: 'May 13, 2024',
+    time_str: '09:00 AM',
+    status: 'confirmed',
+    duration: '3h 00m',
+    location: 'Ramanattukara, Kerala',
+    amount: 4500,
+    advance: 450,
+    payment_status: 'advance_paid',
+    source: 'WhatsApp Web',
+    notes: '3 BHK flat deep clean before family event.',
+  },
 ];
 
 const INITIAL_BRANCHES: BranchItem[] = [
@@ -840,7 +993,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   followups: [],
   customers: [],
   jobs: [],
-  appointments: [],
+  appointments: INITIAL_APPOINTMENTS,
   employees: [],
   attendance: [],
   tasks: [],
@@ -985,7 +1138,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       followups,
       customers,
       jobs,
-      appointments,
+      appointments: appointments.length > 0 ? appointments : INITIAL_APPOINTMENTS,
       employees,
       attendance,
       tasks,
@@ -1041,13 +1194,19 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
             };
           });
 
-          const sortedMerged = sortConversationsByRecency(merged);
+          // Preserve local conversations that haven't synced yet (e.g. newly created for appointments or offline)
+          const localOnly = state.conversations.filter(
+            (local) => !serverConvs.some((sConv) => String(sConv.id) === String(local.id))
+          );
+          const allMerged = [...localOnly, ...merged];
+          const sortedMerged = sortConversationsByRecency(allMerged);
           persistConversations(sortedMerged);
 
           const current = state.selectedConversationId;
-          const nextSelected = (!current || !sortedMerged.some((c) => String(c.id) === String(current)))
-            ? sortedMerged[0].id
-            : current;
+          const currentExists = sortedMerged.some((c) => String(c.id) === String(current));
+          const nextSelected = (current && currentExists)
+            ? current
+            : (sortedMerged[0]?.id || current || '');
 
           return {
             conversations: sortedMerged,
@@ -2107,6 +2266,184 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       get().addToast(`Appointment for ${item.customer_name} booked`, 'success');
       return item;
     }
+  },
+
+  openConversationForAppointment: async (apt, options) => {
+    const normTarget = (apt.phone || '').replace(/\D/g, '').slice(-10);
+    const cleanName = (apt.customer_name || '').trim().toLowerCase();
+
+    const state = get();
+    // 1. Match by phone or exact name
+    let targetConv = state.conversations.find((c) => {
+      if (normTarget && normTarget.length >= 7) {
+        const cNorm = (c.phone_number || '').replace(/\D/g, '').slice(-10);
+        if (cNorm && cNorm === normTarget) return true;
+      }
+      if (cleanName && c.contact_name) {
+        const cName = c.contact_name.trim().toLowerCase();
+        if (cName === cleanName) return true;
+      }
+      return false;
+    });
+
+    // 2. Loose name match if not matched
+    if (!targetConv) {
+      targetConv = state.conversations.find((c) => {
+        if (!c.contact_name) return false;
+        const cName = c.contact_name.trim().toLowerCase();
+        return cName.includes(cleanName) || cleanName.includes(cName);
+      });
+    }
+
+    // 3. If still not found, create a new conversation thread
+    if (!targetConv) {
+      const newId = `conv-apt-${apt.id || Date.now()}`;
+      const newConv: Conversation = {
+        id: newId,
+        contact_name: apt.customer_name,
+        phone_number: apt.phone,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(apt.customer_name)}&background=0D9488&color=fff`,
+        category: 'Customer',
+        unread_count: 0,
+        status: 'in_progress',
+        lead_owner: apt.employee || 'Rahul Mehta',
+        lead_stage: 'Appointment Confirmed',
+        source: apt.source || 'Appointments',
+        first_contact_date: apt.date_str || 'Today',
+        last_contact_date: 'Just now',
+        location: apt.location || 'Kozhikode, Kerala',
+        language: 'English',
+        tags: ['Appointment', apt.service ? apt.service.split(' ')[0] : 'Service'],
+        notes: `Appointment ${apt.apt_id_str} scheduled for ${apt.date_str} at ${apt.time_str}`,
+        service_needed: apt.service,
+        estimated_value: apt.amount,
+        messages: [],
+        is_online: true,
+        last_seen: 'Online',
+      };
+
+      set((s) => ({
+        conversations: [newConv, ...s.conversations],
+        selectedConversationId: newConv.id,
+      }));
+      persistConversations([newConv, ...state.conversations]);
+      targetConv = newConv;
+
+      try {
+        apiClient.post('/conversations/threads/', {
+          contact_name: apt.customer_name,
+          phone_number: apt.phone,
+          category: 'Customer',
+          status: 'in_progress',
+          location: apt.location || 'Kozhikode, Kerala',
+          service_needed: apt.service,
+          notes: `Appointment ${apt.apt_id_str}`,
+        }).catch(() => {});
+      } catch {}
+    } else {
+      set({ selectedConversationId: targetConv.id });
+    }
+
+    // 4. Send reminder message if requested
+    const shouldSend = options?.sendReminder !== false;
+    if (shouldSend) {
+      const balance = Math.max(0, (apt.amount || 0) - (apt.advance || 0));
+      const reminderText = options?.customMessage ||
+`🗓️ *Appointment Reminder: ${apt.service}*
+
+Hello *${apt.customer_name}*,
+This is a confirmation reminder for your upcoming service appointment with Qiyam Services:
+
+📋 *Booking ID:* ${apt.apt_id_str || `APT-${apt.id}`}
+🔧 *Service:* ${apt.service}
+📅 *Date:* ${apt.date_str}
+⏰ *Time:* ${apt.time_str} (${apt.duration || 'Standard'})
+👨‍🔧 *Assigned Specialist:* ${apt.employee || 'Assigned Technician'}
+📍 *Location:* ${apt.location || 'Your Registered Address'}
+
+💰 *Total Fee:* ₹${apt.amount}
+✅ *Advance Paid:* ₹${apt.advance}
+💳 *Balance Due:* ₹${balance}
+
+Please reply to this chat if you have any questions or need to reschedule. Our team looks forward to serving you!`;
+
+      await get().sendMessage(targetConv.id, reminderText, 'agent');
+    }
+
+    // 5. Navigate to conversations tab
+    set({ activeTab: 'conversations' });
+    get().addToast(`Opened WhatsApp chat with ${apt.customer_name}${shouldSend ? ' (Reminder sent)' : ''}`, 'success');
+
+    return targetConv.id;
+  },
+
+  openConversationForContact: async (contact) => {
+    const normTarget = (contact.phone || '').replace(/\D/g, '').slice(-10);
+    const cleanName = (contact.name || '').trim().toLowerCase();
+
+    const state = get();
+    let targetConv = state.conversations.find((c) => {
+      if (normTarget && normTarget.length >= 7) {
+        const cNorm = (c.phone_number || '').replace(/\D/g, '').slice(-10);
+        if (cNorm && cNorm === normTarget) return true;
+      }
+      if (cleanName && c.contact_name) {
+        const cName = c.contact_name.trim().toLowerCase();
+        if (cName === cleanName) return true;
+      }
+      return false;
+    });
+
+    if (!targetConv) {
+      targetConv = state.conversations.find((c) => {
+        if (!c.contact_name) return false;
+        const cName = c.contact_name.trim().toLowerCase();
+        return cName.includes(cleanName) || cleanName.includes(cName);
+      });
+    }
+
+    if (!targetConv) {
+      const newId = `conv-${Date.now()}`;
+      const newConv: Conversation = {
+        id: newId,
+        contact_name: contact.name,
+        phone_number: contact.phone,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=0D9488&color=fff`,
+        category: 'Customer',
+        unread_count: 0,
+        status: 'in_progress',
+        lead_owner: 'Rahul Mehta',
+        lead_stage: 'Active Chat',
+        source: 'CRM Directory',
+        first_contact_date: 'Today',
+        last_contact_date: 'Just now',
+        location: contact.location || 'Kozhikode, Kerala',
+        language: 'English',
+        tags: ['Customer', contact.service ? contact.service.split(' ')[0] : 'General'],
+        notes: `Contact thread for ${contact.name}`,
+        service_needed: contact.service,
+        messages: [],
+        is_online: true,
+        last_seen: 'Online',
+      };
+
+      set((s) => ({
+        conversations: [newConv, ...s.conversations],
+        selectedConversationId: newConv.id,
+      }));
+      persistConversations([newConv, ...state.conversations]);
+      targetConv = newConv;
+    } else {
+      set({ selectedConversationId: targetConv.id });
+    }
+
+    if (contact.initialMessage) {
+      await get().sendMessage(targetConv.id, contact.initialMessage, 'agent');
+    }
+
+    set({ activeTab: 'conversations' });
+    get().addToast(`Opened WhatsApp chat with ${contact.name}`, 'info');
+    return targetConv.id;
   },
 
   addCustomer: async (cust) => {
