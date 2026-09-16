@@ -97,7 +97,8 @@ const TAB_TO_PATH: Record<TabType, string> = {
   'automation-builder': '/automation/builder',
   'automation-workflows': '/automation/workflows',
   'automation-templates': '/automation/templates',
-  'automation-branches': '/automation/branches',
+  'branches': '/branches',
+  'automation-branches': '/branches',
   'automation-logs': '/automation/logs',
   'automation-approvals': '/automation/approvals',
   'ai-overview': '/ai/overview',
@@ -243,6 +244,7 @@ export const App: React.FC = () => {
         return <WorkflowsView />;
       case 'automation-templates':
         return <AutomationTemplatesView />;
+      case 'branches':
       case 'automation-branches':
         return <BranchesView />;
       case 'automation-logs':

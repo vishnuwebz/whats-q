@@ -134,7 +134,7 @@ export const Sidebar: React.FC = () => {
   const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
   const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory'].includes(activeTab);
   const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
-  const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-branches', 'automation-logs', 'automation-approvals'].includes(activeTab);
+  const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs', 'automation-approvals'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
   // Accordion states - Always collapsed by default, expanded only on manual user click
@@ -451,6 +451,21 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
 
+        {/* Branches */}
+        <button
+          data-tab="branches"
+          onClick={() => handleTabClick('branches')}
+          title="Branches - Manage all business branches"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
+            isActive('branches')
+              ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+              : 'hover:bg-[#16233B] text-slate-300'
+          }`}
+        >
+          <Building2 className={`w-4 h-4 shrink-0 ${isActive('branches') ? 'text-white' : 'text-emerald-400'}`} />
+          {!isCollapsed && <span>Branches</span>}
+        </button>
+
         {/* Operations */}
         <div>
           {isCollapsed ? (
@@ -762,16 +777,6 @@ export const Sidebar: React.FC = () => {
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     <span>Templates</span>
-                  </button>
-                  <button
-                    data-tab="automation-branches"
-                    onClick={() => handleTabClick('automation-branches')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('automation-branches') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Branches</span>
                   </button>
                   <button
                     data-tab="automation-logs"

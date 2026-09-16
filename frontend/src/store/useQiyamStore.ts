@@ -236,6 +236,8 @@ interface QiyamState {
   addApproval: (ap: Partial<Approval>) => Promise<Approval>;
   addFollowUp: (fu: Partial<FollowUp>) => Promise<FollowUp>;
   addBranch: (b: Partial<BranchItem>) => Promise<BranchItem>;
+  updateBranch: (branchId: string | number, updates: Partial<BranchItem>) => Promise<BranchItem | null>;
+  deleteBranch: (branchId: string | number) => Promise<boolean>;
   addKnowledgeArticle: (art: Partial<KnowledgeArticle>) => Promise<KnowledgeArticle>;
   addPaymentAccount: (acc: Partial<PaymentAccount>) => Promise<PaymentAccount>;
 
@@ -2167,6 +2169,42 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       get().addToast(`Branch "${item.name}" added`, 'success');
       return item;
     }
+  },
+
+  updateBranch: async (branchId, updates) => {
+    const branch = get().branches.find((b) => b.id === branchId || String(b.id) === String(branchId));
+    if (!branch) return null;
+    const updated = { ...branch, ...updates };
+
+    set((state) => ({
+      branches: state.branches.map((b) => (b.id === branchId || String(b.id) === String(branchId) ? updated : b)),
+    }));
+
+    try {
+      const res = await apiClient.put(`/core/branches/${branchId}/`, updated);
+      if (res && res.success !== false) {
+        get().addToast(`Branch "${updated.name}" updated successfully`, 'success');
+        return updated;
+      }
+    } catch {
+      // Keep optimistic update
+    }
+    get().addToast(`Branch "${updated.name}" updated`, 'success');
+    return updated;
+  },
+
+  deleteBranch: async (branchId) => {
+    const branch = get().branches.find((b) => b.id === branchId || String(b.id) === String(branchId));
+    set((state) => ({
+      branches: state.branches.filter((b) => b.id !== branchId && String(b.id) !== String(branchId)),
+    }));
+    try {
+      await apiClient.delete(`/core/branches/${branchId}/`);
+    } catch {
+      // Ignored
+    }
+    get().addToast(`Branch "${branch?.name || branchId}" removed`, 'info');
+    return true;
   },
 
   addKnowledgeArticle: async (art) => {

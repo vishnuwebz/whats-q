@@ -36,6 +36,13 @@ class Branch(models.Model):
     automations_count = models.IntegerField(default=0)
     tasks_automated = models.IntegerField(default=0)
     last_activity = models.CharField(max_length=100, default='Just now')
+    image = models.TextField(blank=True, default='')
+    pincode = models.CharField(max_length=20, blank=True, default='682016')
+    manager_name = models.CharField(max_length=100, blank=True, default='Rahul Mehta')
+    manager_role = models.CharField(max_length=100, blank=True, default='Branch Manager')
+    employees_count = models.IntegerField(default=8)
+    customers_count = models.IntegerField(default=450)
+    is_main = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} ({self.code})"

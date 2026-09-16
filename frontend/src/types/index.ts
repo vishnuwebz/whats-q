@@ -10,6 +10,7 @@ export type TabType =
   | 'crm-customers'
   | 'crm-deals'
   | 'crm-followups'
+  | 'branches'
   | 'ops-jobs'
   | 'ops-appointments'
   | 'ops-employees'
@@ -472,10 +473,20 @@ export interface BranchItem {
   branch_type: string;
   city: string;
   state: string;
+  pincode?: string;
   status: string;
   automations_count: number;
   tasks_automated: number;
   last_activity: string;
+  image?: string;
+  manager_name?: string;
+  manager_role?: string;
+  employees_count?: number;
+  customers_count?: number;
+  is_main?: boolean;
+  phone?: string;
+  email?: string;
+  address?: string;
 }
 
 export interface BulkCampaign {
