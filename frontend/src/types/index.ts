@@ -1,6 +1,7 @@
 export type TabType = 
   | 'dashboard'
   | 'conversations'
+  | 'bulk-overview'
   | 'bulk-send'
   | 'bulk-templates'
   | 'bulk-campaigns'

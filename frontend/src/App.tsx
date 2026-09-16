@@ -60,6 +60,7 @@ import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
 
 // Bulk Messaging Views
+import { BulkOverviewView } from './components/views/bulk/BulkOverviewView';
 import { BulkSendMessageView } from './components/views/bulk/BulkSendMessageView';
 import { BulkTemplatesView } from './components/views/bulk/BulkTemplatesView';
 import { BulkCampaignHistoryView } from './components/views/bulk/BulkCampaignHistoryView';
@@ -70,6 +71,7 @@ import { TabType } from './types';
 const TAB_TO_PATH: Record<TabType, string> = {
   'dashboard': '/dashboard',
   'conversations': '/conversations',
+  'bulk-overview': '/bulk/overview',
   'bulk-send': '/bulk/send',
   'bulk-templates': '/bulk/templates',
   'bulk-campaigns': '/bulk/campaigns',
@@ -194,6 +196,8 @@ export const App: React.FC = () => {
         return <ConversationsView />;
 
       // Bulk Messaging
+      case 'bulk-overview':
+        return <BulkOverviewView />;
       case 'bulk-send':
         return <BulkSendMessageView />;
       case 'bulk-templates':
