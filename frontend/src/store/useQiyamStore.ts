@@ -1686,6 +1686,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       createdAt: new Date().toISOString(),
       status: 'Active',
       sources: list.sources || { manual: 60, website: 20, csv: 15, other: 5 },
+      contactItems: list.contactItems,
     };
     set((state) => ({
       bulkRecipientLists: [newList, ...state.bulkRecipientLists],
