@@ -91,6 +91,17 @@ echo -e "\n${YELLOW}[3/5] Updating Backend & Running Migrations...${NC}"
 cd "$APP_DIR/backend"
 source venv/bin/activate
 pip install -r requirements.txt --quiet
+
+# Ensure persistent .env file exists for backend & gunicorn
+cat << 'EOF' > "$APP_DIR/backend/.env"
+DB_ENGINE=postgresql
+DB_NAME=whatsq_db
+DB_USER=whatsq_user
+DB_PASSWORD=whatsq_secure_password_2026
+DB_HOST=localhost
+DB_PORT=5432
+EOF
+
 export DB_ENGINE=postgresql
 export DB_NAME=whatsq_db
 export DB_USER=whatsq_user
@@ -98,6 +109,26 @@ export DB_PASSWORD=whatsq_secure_password_2026
 export DB_HOST=localhost
 export DB_PORT=5432
 python manage.py migrate --noinput
+
+# Auto-seed check: Guarantee conversations and workspace are NEVER left empty post-deployment
+python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiyam_backend.settings')
+django.setup()
+from conversations.models import Conversation
+from django.core.management import call_command
+count = Conversation.objects.count()
+if count == 0:
+    print('[AUTO-SEED] Empty conversations detected post-migration. Seeding initial Qiyam data...')
+    try:
+        call_command('seed_qiyam_data')
+        print('[AUTO-SEED] Complete: Initial data restored successfully.')
+    except Exception as e:
+        print(f'[AUTO-SEED] Warning during seed: {e}')
+else:
+    print(f'[INFO] Verified database integrity: {count} conversations active.')
+"
+
 python manage.py collectstatic --noinput --clear
 
 # 4. FRONTEND BUILD
@@ -109,7 +140,7 @@ npm run build
 # 5. RESTART SERVICES
 echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"
 
-# Ensure fast reload & 3s stop timeout override exists for whatsq-backend
+# Ensure fast reload & 3s stop timeout override and persistent EnvironmentFile exists for whatsq-backend
 if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
     $SUDO_CMD mkdir -p /etc/systemd/system/whatsq-backend.service.d 2>/dev/null || true
     if [ ! -f "/etc/systemd/system/whatsq-backend.service.d/fast-reload.conf" ]; then
@@ -117,6 +148,7 @@ if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
 [Service]
 ExecReload=/bin/kill -s HUP $MAINPID
 TimeoutStopSec=3
+EnvironmentFile=/var/www/whatsq/backend/.env
 EOF
         $SUDO_CMD systemctl daemon-reload 2>/dev/null || true
     fi

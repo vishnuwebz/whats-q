@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
@@ -6,14 +6,25 @@ import {
   Smile, Mic, CheckCheck, Clock, UserCheck, Calendar,
   Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
-  MessageSquare, Camera
+  MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
+  SlidersHorizontal
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
 import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { apiClient } from '@/api/client';
-import { sortConversationsByRecency, formatWhatsAppChatTime } from '@/utils/chatRecency';
+import {
+  sortConversationsByRecency,
+  formatWhatsAppChatTime,
+  formatMessageDateGroup,
+  getMessageDateObj,
+  getMessageDayKey,
+  formatFullMessageTooltip,
+  getTimeOfDaySlot,
+  getConversationDateBadge,
+  parseAnyDate,
+} from '@/utils/chatRecency';
 
 export const ConversationsView: React.FC = () => {
   const {
@@ -42,6 +53,29 @@ export const ConversationsView: React.FC = () => {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Date & Time Filter state
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterDatePreset, setFilterDatePreset] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'older'>('all');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [filterTimeSlot, setFilterTimeSlot] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'night'>('all');
+  const [filterCustomStart, setFilterCustomStart] = useState<string>('');
+  const [filterCustomEnd, setFilterCustomEnd] = useState<string>('');
+
+  const isAnyDateFilterActive =
+    filterDatePreset !== 'all' ||
+    filterMonth !== 'all' ||
+    filterTimeSlot !== 'all' ||
+    Boolean(filterCustomStart) ||
+    Boolean(filterCustomEnd);
+
+  const clearAllDateFilters = () => {
+    setFilterDatePreset('all');
+    setFilterMonth('all');
+    setFilterTimeSlot('all');
+    setFilterCustomStart('');
+    setFilterCustomEnd('');
+  };
 
   const { globalFilter } = useQiyamStore();
 
@@ -113,19 +147,158 @@ export const ConversationsView: React.FC = () => {
     resolved: conversations.filter((c) => c.status === 'resolved').length,
   };
 
+  const availableMonths = useMemo(() => {
+    const monthMap = new Map<string, { key: string; label: string; count: number }>();
+    conversations.forEach((c) => {
+      const lastMsg = (c.messages && c.messages.length > 0) ? c.messages[c.messages.length - 1] : null;
+      const d = lastMsg ? getMessageDateObj(lastMsg, c) : (parseAnyDate(c.last_contact_date) || null);
+      if (d && !isNaN(d.getTime())) {
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const existing = monthMap.get(ym);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          monthMap.set(ym, { key: ym, label, count: 1 });
+        }
+      }
+    });
+    return Array.from(monthMap.values()).sort((a, b) => b.key.localeCompare(a.key));
+  }, [conversations]);
+
+  const messageGroups = useMemo(() => {
+    if (!currentConv || !currentConv.messages || currentConv.messages.length === 0) {
+      return [];
+    }
+
+    const groups: {
+      dayKey: string;
+      label: string;
+      messages: typeof currentConv.messages;
+    }[] = [];
+
+    for (const msg of currentConv.messages) {
+      const msgDate = getMessageDateObj(msg, currentConv);
+      const dayKey = getMessageDayKey(msgDate);
+      const label = formatMessageDateGroup(msgDate);
+
+      let lastGroup = groups[groups.length - 1];
+      if (!lastGroup || lastGroup.dayKey !== dayKey) {
+        lastGroup = { dayKey, label, messages: [] };
+        groups.push(lastGroup);
+      }
+      lastGroup.messages.push(msg);
+    }
+
+    return groups;
+  }, [currentConv?.id, currentConv?.messages, currentConv?.last_contact_date]);
+
   const filteredConversations = sortConversationsByRecency(
     conversations.filter((c) => {
       if (activeFilterTab !== 'all' && c.status !== activeFilterTab) return false;
       if (globalFilter.status && globalFilter.status !== 'all' && c.status !== globalFilter.status) return false;
-      
-      const activeQuery = (searchQuery || globalFilter.query || '').toLowerCase();
+
+      const lastMsg = (c.messages && c.messages.length > 0) ? c.messages[c.messages.length - 1] : null;
+      const convDate = lastMsg ? getMessageDateObj(lastMsg, c) : (parseAnyDate(c.last_contact_date) || new Date());
+      const now = new Date();
+
+      // Date Preset Filter
+      if (filterDatePreset !== 'all') {
+        const isToday = convDate.toDateString() === now.toDateString();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        const isYesterday = convDate.toDateString() === yesterday.toDateString();
+        const diffDays = Math.floor((now.getTime() - convDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (filterDatePreset === 'today' && !isToday) return false;
+        if (filterDatePreset === 'yesterday' && !isYesterday) return false;
+        if (filterDatePreset === 'this_week' && (diffDays > 7 || diffDays < 0)) return false;
+        if (filterDatePreset === 'this_month') {
+          if (convDate.getMonth() !== now.getMonth() || convDate.getFullYear() !== now.getFullYear()) return false;
+        }
+        if (filterDatePreset === 'last_month') {
+          const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          if (convDate.getMonth() !== lastMonthDate.getMonth() || convDate.getFullYear() !== lastMonthDate.getFullYear()) return false;
+        }
+        if (filterDatePreset === 'older' && diffDays <= 14) return false;
+      }
+
+      // Month Filter (e.g. '2024-05')
+      if (filterMonth !== 'all') {
+        const convMonthYear = `${convDate.getFullYear()}-${String(convDate.getMonth() + 1).padStart(2, '0')}`;
+        if (convMonthYear !== filterMonth) return false;
+      }
+
+      // Time Slot Filter
+      if (filterTimeSlot !== 'all') {
+        const convSlot = getTimeOfDaySlot(convDate);
+        const hasMatchingMessage = (c.messages || []).some(m => getTimeOfDaySlot(getMessageDateObj(m, c)) === filterTimeSlot);
+        if (convSlot !== filterTimeSlot && !hasMatchingMessage) return false;
+      }
+
+      // Custom Range Filter
+      if (filterCustomStart) {
+        const start = new Date(filterCustomStart + 'T00:00:00');
+        if (convDate < start) return false;
+      }
+      if (filterCustomEnd) {
+        const end = new Date(filterCustomEnd + 'T23:59:59');
+        if (convDate > end) return false;
+      }
+
+      // Search Query
+      const activeQuery = (searchQuery || globalFilter.query || '').trim().toLowerCase();
       if (activeQuery) {
-        return (
+        const basicMatch =
           (c.contact_name || '').toLowerCase().includes(activeQuery) ||
           (c.phone_number || '').includes(activeQuery) ||
-          (c.service_needed || '').toLowerCase().includes(activeQuery)
+          (c.service_needed || '').toLowerCase().includes(activeQuery) ||
+          (c.tags || []).some(t => t.toLowerCase().includes(activeQuery));
+
+        if (basicMatch) return true;
+
+        // Month names
+        const monthLong = convDate.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
+        const monthShort = convDate.toLocaleDateString('en-US', { month: 'short' }).toLowerCase();
+        const yearStr = String(convDate.getFullYear());
+        const dayOfWeek = convDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        const dayOfWeekShort = convDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+
+        if (monthLong.includes(activeQuery) || monthShort.includes(activeQuery) || yearStr.includes(activeQuery)) {
+          return true;
+        }
+        if (dayOfWeek.includes(activeQuery) || dayOfWeekShort.includes(activeQuery)) {
+          return true;
+        }
+
+        if (activeQuery === 'today' && convDate.toDateString() === now.toDateString()) return true;
+        if (activeQuery === 'yesterday') {
+          const yesterday = new Date(now);
+          yesterday.setDate(now.getDate() - 1);
+          if (convDate.toDateString() === yesterday.toDateString()) return true;
+        }
+
+        // Time slot keyword
+        const slot = getTimeOfDaySlot(convDate);
+        if (
+          (activeQuery === 'morning' && slot === 'morning') ||
+          (activeQuery === 'afternoon' && slot === 'afternoon') ||
+          (activeQuery === 'evening' && slot === 'evening') ||
+          (activeQuery === 'night' && slot === 'night')
+        ) {
+          return true;
+        }
+
+        // Messages content match
+        const msgMatch = (c.messages || []).some(m =>
+          (m.text || '').toLowerCase().includes(activeQuery) ||
+          (m.timestamp || '').toLowerCase().includes(activeQuery)
         );
+        if (msgMatch) return true;
+
+        return false;
       }
+
       return true;
     })
   );
@@ -375,22 +548,226 @@ export const ConversationsView: React.FC = () => {
             </button>
           </div>
 
-          {/* Search Box */}
-          <div className="p-3 border-b border-slate-100 flex items-center gap-2">
+          {/* Search Box & Filter Controls */}
+          <div className="p-3 border-b border-slate-100 flex items-center gap-2 relative">
             <div className="relative flex-1">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversations..."
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="Search name, phone, month, time..."
+                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
-            <button className="p-1.5 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`p-1.5 border rounded-lg transition-all relative cursor-pointer ${
+                isAnyDateFilterActive || isFilterOpen
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+              title="Filter by Date, Month & Time"
+            >
               <Filter className="w-3.5 h-3.5" />
+              {isAnyDateFilterActive && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white animate-pulse" />
+              )}
             </button>
+
+            {/* Date / Month / Time Filter Popover */}
+            {isFilterOpen && (
+              <div className="absolute top-full right-2 left-2 md:left-auto md:w-80 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 p-4 space-y-3.5 text-xs text-slate-700 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Filter Conversations</span>
+                  </div>
+                  <button
+                    onClick={() => setIsFilterOpen(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Quick Date Presets */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Quick Presets
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+                    {[
+                      { id: 'all', label: 'All Dates' },
+                      { id: 'today', label: 'Today' },
+                      { id: 'yesterday', label: 'Yesterday' },
+                      { id: 'this_week', label: 'This Week' },
+                      { id: 'this_month', label: 'This Month' },
+                      { id: 'last_month', label: 'Last Month' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.id}
+                        onClick={() => setFilterDatePreset(preset.id as any)}
+                        className={`px-2 py-1.5 rounded-md border text-center transition-all cursor-pointer font-medium truncate ${
+                          filterDatePreset === preset.id
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-bold'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Month & Year Filter */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
+                    <span>Month & Year</span>
+                    {availableMonths.length > 0 && (
+                      <span className="text-[10px] text-slate-400 lowercase font-normal">
+                        ({availableMonths.length} active)
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={filterMonth}
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="all">All Months</option>
+                    {availableMonths.map((m) => (
+                      <option key={m.key} value={m.key}>
+                        {m.label} ({m.count} {m.count === 1 ? 'chat' : 'chats'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Time of Day Slot */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Time of Day
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                    {[
+                      { id: 'all', label: 'All Day', icon: Clock },
+                      { id: 'morning', label: 'Morning (6-12)', icon: Sun },
+                      { id: 'afternoon', label: 'Afternoon (12-5)', icon: Sun },
+                      { id: 'evening', label: 'Evening (5-10)', icon: Sunset },
+                    ].map((slot) => {
+                      const Icon = slot.icon;
+                      return (
+                        <button
+                          key={slot.id}
+                          onClick={() => setFilterTimeSlot(slot.id as any)}
+                          className={`px-2 py-1.5 rounded-md border flex items-center gap-1.5 transition-all cursor-pointer font-medium truncate ${
+                            filterTimeSlot === slot.id
+                              ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-bold'
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Icon className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{slot.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Date Range */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Custom Date Range
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block mb-0.5">From</span>
+                      <input
+                        type="date"
+                        value={filterCustomStart}
+                        onChange={(e) => setFilterCustomStart(e.target.value)}
+                        className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block mb-0.5">To</span>
+                      <input
+                        type="date"
+                        value={filterCustomEnd}
+                        onChange={(e) => setFilterCustomEnd(e.target.value)}
+                        className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    onClick={clearAllDateFilters}
+                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset</span>
+                  </button>
+                  <button
+                    onClick={() => setIsFilterOpen(false)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-xs transition"
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Active Filter Badges Bar */}
+          {isAnyDateFilterActive && (
+            <div className="px-3 py-1.5 bg-emerald-50/70 border-b border-emerald-100 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="font-semibold text-emerald-800 text-[10px] uppercase tracking-wider">Filtered:</span>
+              {filterDatePreset !== 'all' && (
+                <span className="inline-flex items-center gap-1 bg-white border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-md font-medium shadow-2xs">
+                  <span>📅 {filterDatePreset === 'this_week' ? 'This Week' : filterDatePreset === 'this_month' ? 'This Month' : filterDatePreset === 'last_month' ? 'Last Month' : filterDatePreset.charAt(0).toUpperCase() + filterDatePreset.slice(1)}</span>
+                  <button onClick={() => setFilterDatePreset('all')} className="hover:text-emerald-900 cursor-pointer"><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
+              {filterMonth !== 'all' && (
+                <span className="inline-flex items-center gap-1 bg-white border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-md font-medium shadow-2xs">
+                  <span>🗓️ {availableMonths.find(m => m.key === filterMonth)?.label || filterMonth}</span>
+                  <button onClick={() => setFilterMonth('all')} className="hover:text-emerald-900 cursor-pointer"><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
+              {filterTimeSlot !== 'all' && (
+                <span className="inline-flex items-center gap-1 bg-white border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-md font-medium shadow-2xs">
+                  <span>⏰ {filterTimeSlot.charAt(0).toUpperCase() + filterTimeSlot.slice(1)}</span>
+                  <button onClick={() => setFilterTimeSlot('all')} className="hover:text-emerald-900 cursor-pointer"><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
+              {(filterCustomStart || filterCustomEnd) && (
+                <span className="inline-flex items-center gap-1 bg-white border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-md font-medium shadow-2xs">
+                  <span>📆 {filterCustomStart || 'Start'} to {filterCustomEnd || 'End'}</span>
+                  <button onClick={() => { setFilterCustomStart(''); setFilterCustomEnd(''); }} className="hover:text-emerald-900 cursor-pointer"><X className="w-2.5 h-2.5" /></button>
+                </span>
+              )}
+              <button
+                onClick={clearAllDateFilters}
+                className="ml-auto text-[10px] text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
 
           {/* Conversations Scroll List */}
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
@@ -402,9 +779,17 @@ export const ConversationsView: React.FC = () => {
                 <div>
                   <h5 className="font-bold text-xs text-slate-700">No Conversations</h5>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {searchQuery ? 'No chats match this filter.' : 'Incoming WhatsApp messages will appear here.'}
+                    {searchQuery || isAnyDateFilterActive ? 'No chats match this date/time filter.' : 'Incoming WhatsApp messages will appear here.'}
                   </p>
                 </div>
+                {isAnyDateFilterActive && (
+                  <button
+                    onClick={clearAllDateFilters}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  >
+                    Clear Date Filters
+                  </button>
+                )}
                 <button
                   onClick={() => setIsSimulatorOpen(true)}
                   className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold transition cursor-pointer"
@@ -416,6 +801,7 @@ export const ConversationsView: React.FC = () => {
               filteredConversations.map((conv) => {
                 const isSelected = conv.id === selectedConversationId;
                 const lastMessage = (conv.messages && conv.messages.length > 0) ? conv.messages[conv.messages.length - 1] : null;
+                const dateBadge = getConversationDateBadge(conv);
 
                 return (
                   <div
@@ -431,9 +817,23 @@ export const ConversationsView: React.FC = () => {
                     <CustomerAvatar conversation={conv} size="md" showPresence={true} />
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-1.5">
                         <div className="font-bold text-xs text-slate-900 truncate">{conv.contact_name || 'Customer'}</div>
-                        <span className="text-[10px] text-slate-400 font-medium">{formatWhatsAppChatTime(conv)}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span
+                            className={`text-[9px] font-semibold px-1.5 py-0.2 rounded tracking-tight ${
+                              dateBadge.isToday
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70'
+                                : dateBadge.isYesterday
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200/70'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200/70'
+                            }`}
+                            title={`Conversation date: ${dateBadge.dateLabel}`}
+                          >
+                            {dateBadge.dateLabel}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium font-mono">{dateBadge.timeLabel}</span>
+                        </div>
                       </div>
 
                       <div className="text-[11px] text-slate-500 font-mono">{conv.phone_number}</div>
@@ -617,154 +1017,172 @@ export const ConversationsView: React.FC = () => {
 
               {/* Chat Messages Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                {(currentConv.messages || []).map((msg, msgIndex, allMessages) => {
-                  const isCustomer = msg.sender === 'customer';
-                  const isBot = msg.sender === 'bot';
-
-                  // WhatsApp Real-Time Monotonic Read Status Rule:
-                  // An outgoing message is Read (blue double checkmark) if:
-                  // 1. Its status is explicitly 'read' (or unset)
-                  // 2. Any subsequent outgoing message in this conversation was read (if a later message was read, earlier messages were by definition read)
-                  // 3. Any customer reply exists after this message (customer saw this message and responded)
-                  // 4. The customer is currently Online on WhatsApp and the message is delivered
-                  const isCustomerOnline = Boolean(
-                    onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false
-                  );
-
-                  const hasLaterReadOutbound = allMessages.slice(msgIndex + 1).some(
-                    (m) => m.sender !== 'customer' && (m.status === 'read' || !m.status)
-                  );
-                  const hasCustomerReplyAfter = allMessages.slice(msgIndex + 1).some(
-                    (m) => m.sender === 'customer'
-                  );
-
-                  const isRead = !isCustomer && (
-                    msg.status === 'read' ||
-                    !msg.status ||
-                    hasLaterReadOutbound ||
-                    hasCustomerReplyAfter ||
-                    (isCustomerOnline && msg.status === 'delivered')
-                  );
-
-                  const isDelivered = !isCustomer && !isRead && msg.status === 'delivered';
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'}`}
-                    >
-                      <div
-                        className={`max-w-md p-3.5 rounded-2xl shadow-sm text-xs leading-relaxed ${
-                          isCustomer
-                            ? 'bg-white text-slate-800 rounded-tl-sm border border-slate-200'
-                            : isBot
-                            ? 'bg-emerald-700 text-white rounded-tr-sm shadow-md'
-                            : 'bg-emerald-600 text-white rounded-tr-sm'
-                        }`}
-                      >
-                        {isBot && (
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200 mb-1">
-                            <Bot className="w-3 h-3" />
-                            <span>Qiyam AI Assistant</span>
-                          </div>
-                        )}
-                        <div>{msg.text}</div>
-
-                        {/* Rich Confirmation Card (Matching photo_5 booking card) */}
-                        {msg.richCard && msg.richCard.type === 'booking' && (
-                          <div className="mt-3 p-3 rounded-xl bg-white text-slate-900 border border-emerald-100 shadow-sm space-y-2">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                              <div className="flex items-center gap-1.5 font-bold text-emerald-700 text-xs">
-                                <Check className="w-3.5 h-3.5" />
-                                <span>{msg.richCard.title}</span>
-                              </div>
-                              <span className="text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                                {msg.richCard.bookingId}
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 text-[11px]">
-                              <div>
-                                <span className="text-slate-400 block text-[10px]">Date & Time</span>
-                                <span className="font-semibold text-slate-800">{msg.richCard.date}</span>
-                                <div className="text-slate-600">{msg.richCard.time}</div>
-                              </div>
-                              <div>
-                                <span className="text-slate-400 block text-[10px]">Service & Charges</span>
-                                <span className="font-semibold text-slate-800">{msg.richCard.service}</span>
-                                <div className="text-emerald-600 font-bold">₹{msg.richCard.amount}</div>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => setActiveTab('ops-appointments')}
-                              className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-center text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
-                            >
-                              <span>{msg.richCard.actionText || 'View Details'}</span>
-                              <ChevronRight className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-
-                        <div
-                          className={`text-[9px] mt-1 text-right flex items-center justify-end gap-1 ${
-                            isCustomer ? 'text-slate-400' : 'text-emerald-100'
-                          }`}
-                        >
-                          <span>{msg.timestamp}</span>
-                          {!isCustomer && (
-                            isRead ? (
-                              <span
-                                title="Read by recipient on WhatsApp (Double blue tick)"
-                                className="inline-flex items-center text-[#53bdeb] ml-0.5"
-                              >
-                                <CheckCheck className="w-3.5 h-3.5 stroke-[2.4]" />
-                              </span>
-                            ) : isDelivered ? (
-                              <button
-                                type="button"
-                                title="Delivered. Click to mark as read (Double blue tick)"
-                                className="inline-flex items-center text-slate-300 hover:text-[#53bdeb] ml-0.5 transition-colors cursor-pointer"
-                                onClick={() => {
-                                  useQiyamStore.getState().applyMessageStatus(currentConv.id, msg.id, 'read');
-                                  apiClient.post(`/conversations/threads/${currentConv.id}/mark_read/`, {}).catch(() => {});
-                                }}
-                              >
-                                <CheckCheck className="w-3.5 h-3.5 stroke-[2.2]" />
-                              </button>
-                            ) : (
-                              <span title="Sent" className="inline-flex items-center text-slate-300 ml-0.5">
-                                <Check className="w-3.5 h-3.5 stroke-[2.2]" />
-                              </span>
-                            )
-                          )}
+                {messageGroups.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 space-y-2">
+                    <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p className="text-xs text-slate-500">No messages yet in this conversation.</p>
+                  </div>
+                ) : (
+                  messageGroups.map((group) => (
+                    <div key={group.dayKey} className="space-y-4">
+                      {/* WhatsApp Sticky Centered Date Chip */}
+                      <div className="flex justify-center my-3 sticky top-1 z-10 select-none pointer-events-none">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xs text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+                          <Calendar className="w-3 h-3 text-emerald-600" />
+                          <span>{group.label}</span>
                         </div>
                       </div>
 
-                      {/* WhatsApp-style Emoji Reaction Bubbles */}
-                      {msg.reactions && msg.reactions.length > 0 && (
-                        <div className={`flex gap-1 mt-0.5 ${isCustomer ? 'justify-start pl-1' : 'justify-end pr-1'}`}>
-                          {/* Group same emojis and show count */}
-                          {Object.entries(
-                            msg.reactions.reduce((acc, r) => {
-                              acc[r.emoji] = (acc[r.emoji] || 0) + 1;
-                              return acc;
-                            }, {} as Record<string, number>)
-                          ).map(([emoji, count]) => (
-                            <span
-                              key={emoji}
-                              className="inline-flex items-center gap-0.5 bg-white border border-slate-200 shadow-sm rounded-full px-1.5 py-0.5 text-sm leading-none select-none"
-                              title={`${count} reaction${count > 1 ? 's' : ''}`}
+                      {group.messages.map((msg) => {
+                        const isCustomer = msg.sender === 'customer';
+                        const isBot = msg.sender === 'bot';
+                        const allMessages = currentConv.messages || [];
+                        const msgIndex = allMessages.findIndex((m) => m.id === msg.id);
+
+                        // WhatsApp Real-Time Monotonic Read Status Rule
+                        const isCustomerOnline = Boolean(
+                          onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false
+                        );
+
+                        const hasLaterReadOutbound = allMessages.slice(msgIndex + 1).some(
+                          (m) => m.sender !== 'customer' && (m.status === 'read' || !m.status)
+                        );
+                        const hasCustomerReplyAfter = allMessages.slice(msgIndex + 1).some(
+                          (m) => m.sender === 'customer'
+                        );
+
+                        const isRead = !isCustomer && (
+                          msg.status === 'read' ||
+                          !msg.status ||
+                          hasLaterReadOutbound ||
+                          hasCustomerReplyAfter ||
+                          (isCustomerOnline && msg.status === 'delivered')
+                        );
+
+                        const isDelivered = !isCustomer && !isRead && msg.status === 'delivered';
+                        const tooltipStr = formatFullMessageTooltip(msg, currentConv);
+
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'}`}
+                          >
+                            <div
+                              title={tooltipStr}
+                              className={`max-w-md p-3.5 rounded-2xl shadow-sm text-xs leading-relaxed ${
+                                isCustomer
+                                  ? 'bg-white text-slate-800 rounded-tl-sm border border-slate-200'
+                                  : isBot
+                                  ? 'bg-emerald-700 text-white rounded-tr-sm shadow-md'
+                                  : 'bg-emerald-600 text-white rounded-tr-sm'
+                              }`}
                             >
-                              <span>{emoji}</span>
-                              {count > 1 && <span className="text-[10px] font-semibold text-slate-500">{count}</span>}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                              {isBot && (
+                                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200 mb-1">
+                                  <Bot className="w-3 h-3" />
+                                  <span>Qiyam AI Assistant</span>
+                                </div>
+                              )}
+                              <div>{msg.text}</div>
+
+                              {/* Rich Confirmation Card */}
+                              {msg.richCard && msg.richCard.type === 'booking' && (
+                                <div className="mt-3 p-3 rounded-xl bg-white text-slate-900 border border-emerald-100 shadow-sm space-y-2">
+                                  <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                                    <div className="flex items-center gap-1.5 font-bold text-emerald-700 text-xs">
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>{msg.richCard.title}</span>
+                                    </div>
+                                    <span className="text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                                      {msg.richCard.bookingId}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                    <div>
+                                      <span className="text-slate-400 block text-[10px]">Date & Time</span>
+                                      <span className="font-semibold text-slate-800">{msg.richCard.date}</span>
+                                      <div className="text-slate-600">{msg.richCard.time}</div>
+                                    </div>
+                                    <div>
+                                      <span className="text-slate-400 block text-[10px]">Service & Charges</span>
+                                      <span className="font-semibold text-slate-800">{msg.richCard.service}</span>
+                                      <div className="text-emerald-600 font-bold">₹{msg.richCard.amount}</div>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => setActiveTab('ops-appointments')}
+                                    className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-center text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
+                                  >
+                                    <span>{msg.richCard.actionText || 'View Details'}</span>
+                                    <ChevronRight className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+
+                              <div
+                                className={`text-[9px] mt-1 text-right flex items-center justify-end gap-1 ${
+                                  isCustomer ? 'text-slate-400' : 'text-emerald-100'
+                                }`}
+                                title={tooltipStr}
+                              >
+                                <span>{msg.timestamp}</span>
+                                {!isCustomer && (
+                                  isRead ? (
+                                    <span
+                                      title="Read by recipient on WhatsApp (Double blue tick)"
+                                      className="inline-flex items-center text-[#53bdeb] ml-0.5"
+                                    >
+                                      <CheckCheck className="w-3.5 h-3.5 stroke-[2.4]" />
+                                    </span>
+                                  ) : isDelivered ? (
+                                    <button
+                                      type="button"
+                                      title="Delivered. Click to mark as read (Double blue tick)"
+                                      className="inline-flex items-center text-slate-300 hover:text-[#53bdeb] ml-0.5 transition-colors cursor-pointer"
+                                      onClick={() => {
+                                        useQiyamStore.getState().applyMessageStatus(currentConv.id, msg.id, 'read');
+                                        apiClient.post(`/conversations/threads/${currentConv.id}/mark_read/`, {}).catch(() => {});
+                                      }}
+                                    >
+                                      <CheckCheck className="w-3.5 h-3.5 stroke-[2.2]" />
+                                    </button>
+                                  ) : (
+                                    <span title="Sent" className="inline-flex items-center text-slate-300 ml-0.5">
+                                      <Check className="w-3.5 h-3.5 stroke-[2.2]" />
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            </div>
+
+                            {/* WhatsApp-style Emoji Reaction Bubbles */}
+                            {msg.reactions && msg.reactions.length > 0 && (
+                              <div className={`flex gap-1 mt-0.5 ${isCustomer ? 'justify-start pl-1' : 'justify-end pr-1'}`}>
+                                {Object.entries(
+                                  msg.reactions.reduce((acc, r) => {
+                                    acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                                    return acc;
+                                  }, {} as Record<string, number>)
+                                ).map(([emoji, count]) => (
+                                  <span
+                                    key={emoji}
+                                    className="inline-flex items-center gap-0.5 bg-white border border-slate-200 shadow-sm rounded-full px-1.5 py-0.5 text-sm leading-none select-none"
+                                    title={`${count} reaction${count > 1 ? 's' : ''}`}
+                                  >
+                                    <span>{emoji}</span>
+                                    {count > 1 && <span className="text-[10px] font-semibold text-slate-500">{count}</span>}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  ))
+                )}
 
                 {/* Real-time WhatsApp Client Typing Bubble */}
                 {typingUsers[currentConv.id] && (

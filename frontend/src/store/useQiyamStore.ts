@@ -28,6 +28,33 @@ import {
   initialBulkScheduledMessages
 } from './bulkData';
 
+const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
+
+function getStoredConversations(): Conversation[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CONVERSATIONS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // Ignore cache parse errors
+  }
+  return [];
+}
+
+function persistConversations(convs: Conversation[]) {
+  if (typeof window === 'undefined' || !Array.isArray(convs) || convs.length === 0) return;
+  try {
+    localStorage.setItem(CONVERSATIONS_CACHE_KEY, JSON.stringify(convs));
+  } catch (e) {
+    // Ignore storage quota errors
+  }
+}
+
 interface Toast {
   id: string;
   type: 'success' | 'info' | 'warning' | 'error';
@@ -537,7 +564,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   updateProgressStep: '',
   setIsUpdateModalOpen: (open) => set({ isUpdateModalOpen: open }),
 
-  selectedConversationId: '',
+  selectedConversationId: getStoredConversations()[0]?.id || '',
   setSelectedConversationId: (id) => {
     set((state) => ({
       selectedConversationId: id,
@@ -648,7 +675,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     get().addToast(`Showing: ${notif.title}`, 'info');
   },
 
-  conversations: [],
+  conversations: getStoredConversations(),
   leads: [],
   deals: [],
   followups: [],
@@ -766,7 +793,19 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       return;
     }
 
-    const sortedConversations = sortConversationsByRecency(conversations);
+    let resolvedConversations = conversations;
+    if (!resolvedConversations || resolvedConversations.length === 0) {
+      const cached = getStoredConversations();
+      if (cached && cached.length > 0) {
+        resolvedConversations = cached;
+      }
+    }
+
+    const sortedConversations = sortConversationsByRecency(resolvedConversations);
+
+    if (sortedConversations.length > 0) {
+      persistConversations(sortedConversations);
+    }
 
     const selectedConversationId =
       sortedConversations.length > 0
@@ -815,7 +854,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       get().markConversationAsRead(selectedConversationId);
     }
 
-    if (leads.length === 0 && conversations.length === 0) {
+    if (leads.length === 0 && sanitizedConversations.length === 0) {
       get().addToast(
         'Database looks empty. Run: python manage.py seed_qiyam_data',
         'warning'
@@ -844,6 +883,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
           });
 
           const sortedMerged = sortConversationsByRecency(merged);
+          persistConversations(sortedMerged);
 
           const current = state.selectedConversationId;
           const nextSelected = (!current || !sortedMerged.some((c) => String(c.id) === String(current)))

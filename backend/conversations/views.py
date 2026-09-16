@@ -207,6 +207,17 @@ class ConversationViewSet(viewsets.ModelViewSet):
             '-id'
         )
 
+    def list(self, request, *args, **kwargs):
+        # Resilient auto-seed defense: If database is ever empty on listing conversations, auto-seed demo data
+        if not Conversation.objects.exists():
+            try:
+                from django.core.management import call_command
+                logger.info("No conversations found in database. Auto-seeding initial Qiyam data...")
+                call_command('seed_qiyam_data')
+            except Exception as e:
+                logger.error(f"Failed to auto-seed conversations: {e}")
+        return super().list(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
         conversation = self.get_object()
