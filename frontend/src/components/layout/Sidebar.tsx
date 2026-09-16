@@ -9,7 +9,8 @@ import {
   CreditCard, Wallet, BookOpen, Layers, GitBranch,
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
-  User, Shield, LogOut, ArrowRight, ExternalLink, Send
+  User, Shield, LogOut, ArrowRight, ExternalLink, Send,
+  RefreshCw
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -23,7 +24,11 @@ export const Sidebar: React.FC = () => {
     isMobileSidebarOpen,
     setIsMobileSidebarOpen,
     conversations,
-    addToast
+    addToast,
+    versionInfo,
+    fetchVersionInfo,
+    triggerSystemUpdate,
+    simulateGlobalUpdate
   } = useQiyamStore();
 
   // Tenant / Organization Switcher state
@@ -82,6 +87,123 @@ export const Sidebar: React.FC = () => {
   // Profile & Help Modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  // Version Update & Auto-Backup State (Antigravity Style)
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [checkResult, setCheckResult] = useState<'latest' | 'available' | null>(null);
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const handleBackupAllData = () => {
+    try {
+      const store = useQiyamStore.getState();
+      const backupPayload = {
+        timestamp: new Date().toISOString(),
+        version: store.versionInfo?.current_commit || 'v2.4.2',
+        conversations: store.conversations || [],
+        leads: store.leads || [],
+        deals: store.deals || [],
+        appointments: store.appointments || [],
+        customers: store.customers || [],
+        jobs: store.jobs || [],
+        employees: store.employees || [],
+        attendance: store.attendance || [],
+        tasks: store.tasks || [],
+        routes: store.routes || [],
+        inventory: store.inventory || [],
+        transactions: store.transactions || [],
+        invoices: store.invoices || [],
+        expenses: store.expenses || [],
+        accounts: store.accounts || [],
+        workflows: store.workflows || [],
+        branches: store.branches || [],
+        bulkCampaigns: store.bulkCampaigns || [],
+        bulkRecipientLists: store.bulkRecipientLists || [],
+        bulkScheduledMessages: store.bulkScheduledMessages || [],
+      };
+      const serialized = JSON.stringify(backupPayload);
+      localStorage.setItem('whatsq_pre_update_backup', serialized);
+      localStorage.setItem(`whatsq_backup_archive_${Date.now()}`, serialized);
+      // Clean up older archive backups, keeping at most 5
+      try {
+        const allKeys = Object.keys(localStorage).filter((k) => k.startsWith('whatsq_backup_archive_'));
+        if (allKeys.length > 5) {
+          allKeys.sort().slice(0, allKeys.length - 5).forEach((k) => localStorage.removeItem(k));
+        }
+      } catch {}
+      return true;
+    } catch (err) {
+      console.error('Backup error:', err);
+      return false;
+    }
+  };
+
+  const handleCheckForUpdates = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (isCheckingUpdates || isRestarting) return;
+    setIsCheckingUpdates(true);
+    setCheckResult(null);
+
+    // If Alt key or Shift key is held during click, simulate an update available state for testing
+    const forceSimulate = e && (e.altKey || e.shiftKey);
+
+    try {
+      if (forceSimulate) {
+        await simulateGlobalUpdate();
+        await new Promise((r) => setTimeout(r, 1200));
+        setCheckResult('available');
+        addToast('New version update detected!', 'info');
+      } else {
+        await fetchVersionInfo();
+        await new Promise((r) => setTimeout(r, 1200));
+        const updatedInfo = useQiyamStore.getState().versionInfo;
+        if (updatedInfo?.update_available) {
+          setCheckResult('available');
+          addToast('New version update detected!', 'info');
+        } else {
+          setCheckResult('latest');
+          setTimeout(() => {
+            setCheckResult(null);
+          }, 3500);
+        }
+      }
+    } catch (err) {
+      setCheckResult('latest');
+      setTimeout(() => {
+        setCheckResult(null);
+      }, 3000);
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
+
+  const handleBackupAndRestart = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (isRestarting) return;
+    setIsRestarting(true);
+
+    addToast('Safely backing up all application data...', 'info');
+
+    // 1. Perform automated backup of all state
+    const backedUp = handleBackupAllData();
+    if (backedUp) {
+      addToast('All data backed up successfully! Restarting WhatsQ...', 'success');
+    }
+
+    // 2. Mark update applied
+    try {
+      await triggerSystemUpdate();
+    } catch {}
+
+    // 3. Perform hard refresh
+    setTimeout(() => {
+      window.location.reload();
+    }, 700);
+  };
+
+  const isUpdateAvailable = (versionInfo?.update_available || checkResult === 'available') && !isRestarting;
+  const currentVersion = versionInfo?.current_commit
+    ? (versionInfo.current_commit.length > 7 ? versionInfo.current_commit.slice(0, 7) : versionInfo.current_commit)
+    : 'v2.4.2';
 
   const isCollapsed = isSidebarCollapsed && !isMobileSidebarOpen;
 
@@ -1141,6 +1263,105 @@ export const Sidebar: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* ── Version & Update Section (Antigravity Style at End of Sidebar) ── */}
+      {!isCollapsed ? (
+        <div className="px-3 py-2 bg-[#060C18] border-t border-[#1E293B]/80 select-none">
+          {isRestarting ? (
+            <div className="flex items-center gap-2 text-emerald-400 font-semibold text-[11px] animate-pulse py-0.5">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <span>Backing up data & restarting...</span>
+            </div>
+          ) : isUpdateAvailable ? (
+            <div className="space-y-1.5 py-0.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="flex items-center gap-1.5 text-amber-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  Update Available
+                </span>
+                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.3'}</span>
+              </div>
+              <button
+                onClick={handleBackupAndRestart}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all shadow-md shadow-emerald-950/50 cursor-pointer group animate-pulse"
+                title="All data will be automatically backed up before restarting"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-12 transition-transform" />
+                  <span>Click here to restart</span>
+                </div>
+                <span className="text-[10px] bg-emerald-700/80 px-1.5 py-0.5 rounded font-mono text-emerald-100">
+                  Auto-backup
+                </span>
+              </button>
+            </div>
+          ) : isCheckingUpdates ? (
+            <div className="flex items-center justify-between text-slate-300 text-[11px] py-0.5">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-3 h-3 animate-spin text-emerald-400 shrink-0" />
+                <span>Checking for updates...</span>
+              </div>
+              <span className="text-[10px] font-mono text-slate-500">{currentVersion}</span>
+            </div>
+          ) : checkResult === 'latest' ? (
+            <div className="flex items-center justify-between text-[11px] py-0.5 animate-in fade-in duration-150">
+              <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>You're up to date</span>
+              </div>
+              <span className="text-[10px] font-mono text-slate-500">{currentVersion}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-[11px] py-0.5">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80" />
+                <span className="font-mono text-[10px] text-slate-300 font-medium">WhatsQ {currentVersion}</span>
+              </div>
+              <button
+                onClick={handleCheckForUpdates}
+                className="text-[10px] text-slate-400 hover:text-emerald-400 hover:underline font-medium transition cursor-pointer flex items-center gap-1"
+                title="Check for updates (Shift-click to simulate)"
+              >
+                <RefreshCw className="w-2.5 h-2.5 shrink-0" />
+                <span>Check for updates</span>
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="py-2.5 bg-[#060C18] border-t border-[#1E293B]/80 flex flex-col items-center justify-center select-none">
+          {isRestarting ? (
+            <span title="Backing up and restarting...">
+              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+            </span>
+          ) : isUpdateAvailable ? (
+            <button
+              onClick={handleBackupAndRestart}
+              className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/40 transition cursor-pointer relative animate-pulse"
+              title="Update available! Click here to backup data and restart"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            </button>
+          ) : isCheckingUpdates ? (
+            <span title="Checking for updates...">
+              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+            </span>
+          ) : checkResult === 'latest' ? (
+            <span title={`WhatsQ ${currentVersion} is up to date`}>
+              <Check className="w-4 h-4 text-emerald-400" />
+            </span>
+          ) : (
+            <button
+              onClick={handleCheckForUpdates}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-[#16233B] transition cursor-pointer"
+              title={`WhatsQ ${currentVersion} • Click to check for updates`}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
     </aside>
 
     {/* ── 1. Organization / Tenant Switcher Modal ── */}

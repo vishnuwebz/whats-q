@@ -233,31 +233,6 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Export</span>
           </button>
 
-          {/* Version / Update badge */}
-          {versionInfo && (() => {
-            const dismissKey = `whatsq_update_dismissed_${versionInfo.current_commit}_${versionInfo.latest_commit}`;
-            const wasDismissed = (() => { try { return localStorage.getItem(dismissKey) === 'true'; } catch { return false; } })();
-            const showUpdateReady = versionInfo.update_available && !isUpdatingSystem && !wasDismissed;
-            const showUpdating = isUpdatingSystem;
-            return (
-              <button
-                onClick={() => { if (!isUpdatingSystem) setIsUpdateModalOpen(true); }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                  showUpdating
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md animate-pulse ring-2 ring-amber-400/50'
-                    : showUpdateReady
-                    ? 'bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 hover:brightness-110 animate-pulse ring-2 ring-emerald-400/50'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
-                }`}
-                title={showUpdating ? 'Applying update...' : showUpdateReady ? `Update available (${versionInfo.latest_commit})` : `WhatsQ v${versionInfo.current_commit} • Up to date`}
-              >
-                {showUpdating ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Updating...</span></>) :
-                 showUpdateReady ? (<><Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" /><span>Update Ready</span></>) :
-                 (<><Check className="w-3.5 h-3.5 text-emerald-600" /><span>Up to date ✓</span></>)}
-              </button>
-            );
-          })()}
-
           {/* WhatsApp Simulator */}
           <button
             onClick={() => setIsSimulatorOpen(true)}
