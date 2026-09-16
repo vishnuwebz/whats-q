@@ -10,8 +10,60 @@ import {
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
   User, Shield, LogOut, ArrowRight, ExternalLink, Send,
-  RefreshCw
+  RefreshCw, Search
 } from 'lucide-react';
+
+interface SidebarMenuItem {
+  tab: TabType;
+  title: string;
+  category: string;
+  icon: React.ComponentType<{ className?: string }>;
+  keywords: string;
+}
+
+const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
+  { tab: 'dashboard', title: 'Dashboard', category: 'Main', icon: LayoutDashboard, keywords: 'home overview analytics metrics' },
+  { tab: 'conversations', title: 'Conversations', category: 'Messenger', icon: MessageSquare, keywords: 'chats messages inbox whatsapp live customer' },
+  { tab: 'bulk-send', title: 'Send Bulk Message', category: 'Messenger > Bulk Message', icon: Send, keywords: 'broadcast mass marketing campaigns blast' },
+  { tab: 'bulk-templates', title: 'Message Templates', category: 'Messenger > Bulk Message', icon: BookOpen, keywords: 'meta templates approved quick replies' },
+  { tab: 'bulk-campaigns', title: 'Campaign History', category: 'Messenger > Bulk Message', icon: Layers, keywords: 'broadcast analytics sent delivered open rates' },
+  { tab: 'bulk-recipients', title: 'Recipient Lists', category: 'Messenger > Bulk Message', icon: Users, keywords: 'contacts audience segments groups tags' },
+  { tab: 'bulk-scheduled', title: 'Scheduled Broadcasts', category: 'Messenger > Bulk Message', icon: Clock, keywords: 'timed future automated queue calendar' },
+  { tab: 'crm-leads', title: 'Leads', category: 'CRM', icon: Users, keywords: 'prospects pipeline inquiries conversion funnel' },
+  { tab: 'crm-customers', title: 'Customers', category: 'CRM', icon: UserCheck, keywords: 'clients directory accounts profiles' },
+  { tab: 'crm-deals', title: 'Pipeline Deals', category: 'CRM', icon: DollarSign, keywords: 'stages revenue opportunities sales forecast' },
+  { tab: 'crm-followups', title: 'Follow-ups', category: 'CRM', icon: Clock, keywords: 'reminders scheduled calls pending tasks' },
+  { tab: 'branches', title: 'Branches', category: 'Main', icon: Building2, keywords: 'locations outlets offices stores calicut kochi' },
+  { tab: 'ops-jobs', title: 'Jobs', category: 'Operations', icon: Briefcase, keywords: 'work orders field service tickets assignment' },
+  { tab: 'ops-appointments', title: 'Appointments', category: 'Operations', icon: Calendar, keywords: 'bookings customer visits scheduled meetings' },
+  { tab: 'ops-employees', title: 'Employee Management', category: 'Operations', icon: Users, keywords: 'staff team agents workers roster' },
+  { tab: 'ops-schedule', title: 'Schedule', category: 'Operations', icon: Calendar, keywords: 'roster shifts dispatch planning timetable' },
+  { tab: 'ops-attendance', title: 'Attendance', category: 'Operations', icon: Clock, keywords: 'check-in check-out hours leaves presence' },
+  { tab: 'ops-tasks', title: 'Tasks', category: 'Operations', icon: CheckSquare, keywords: 'to-do assignments checklists todo' },
+  { tab: 'ops-routes', title: 'Route Optimization', category: 'Operations', icon: Navigation, keywords: 'gps dispatch map delivery logistics navigation' },
+  { tab: 'ops-inventory', title: 'Inventory', category: 'Operations', icon: Package, keywords: 'stock warehouse products spare parts items' },
+  { tab: 'automation-approvals', title: 'Approvals', category: 'Operations', icon: ShieldCheck, keywords: 'authorization sign-off purchase orders leave requests' },
+  { tab: 'finance-overview', title: 'Finance Overview', category: 'Finance', icon: DollarSign, keywords: 'revenue profit cash flow ledger balance' },
+  { tab: 'finance-transactions', title: 'Transactions', category: 'Finance', icon: Receipt, keywords: 'payments bank entries debits credits log' },
+  { tab: 'finance-invoices', title: 'Invoices', category: 'Finance', icon: FileText, keywords: 'billing tax gst statements pdf receivables' },
+  { tab: 'finance-expenses', title: 'Expenses', category: 'Finance', icon: CreditCard, keywords: 'bills receipts disbursements spending' },
+  { tab: 'finance-payments', title: 'Payments', category: 'Finance', icon: Wallet, keywords: 'collections payout gateway settlement' },
+  { tab: 'finance-accounts', title: 'Chart of Accounts', category: 'Finance', icon: Layers, keywords: 'banking general ledger assets liabilities' },
+  { tab: 'finance-reports', title: 'Financial Reports', category: 'Finance', icon: BarChart3, keywords: 'p&l balance sheet cash statement' },
+  { tab: 'finance-budget', title: 'Budget Planning', category: 'Finance', icon: DollarSign, keywords: 'forecast limits quarterly targets allocation' },
+  { tab: 'automation-builder', title: 'Workflow Builder', category: 'Automation', icon: Zap, keywords: 'no-code visual trigger node action flow' },
+  { tab: 'automation-workflows', title: 'Workflows', category: 'Automation', icon: GitBranch, keywords: 'active rules automated sequences triggers' },
+  { tab: 'automation-templates', title: 'Templates', category: 'Automation', icon: BookOpen, keywords: 'bot flows auto-reply recipes blueprints' },
+  { tab: 'automation-logs', title: 'Logs', category: 'Automation', icon: Clock, keywords: 'execution history audit debug runs' },
+  { tab: 'ai-overview', title: 'AI Copilot Overview', category: 'AI Assistant', icon: Bot, keywords: 'smart bot copilot suggestions intelligence' },
+  { tab: 'ai-knowledgebase', title: 'Knowledge Base', category: 'AI Assistant', icon: BookOpen, keywords: 'rag articles documentation training articles' },
+  { tab: 'ai-templates', title: 'AI Prompt Templates', category: 'AI Assistant', icon: Layers, keywords: 'prompts system message tuning instructions' },
+  { tab: 'template-hub', title: 'Template Hub', category: 'AI Assistant', icon: Sparkles, keywords: 'marketplace pre-built community templates' },
+  { tab: 'ai-settings', title: 'AI Engine Settings', category: 'AI Assistant', icon: SettingsIcon, keywords: 'model temperature tokens provider config' },
+  { tab: 'analytics', title: 'Analytics', category: 'Intelligence', icon: BarChart3, keywords: 'reports bi performance trends kpi metrics' },
+  { tab: 'integrations', title: 'Integrations', category: 'Ecosystem', icon: Puzzle, keywords: 'webhooks crm zapier apps rest api meta' },
+  { tab: 'settings', title: 'Workspace Settings', category: 'Settings', icon: SettingsIcon, keywords: 'backup restore data auto-backup general preferences security' },
+];
 
 export const Sidebar: React.FC = () => {
   const {
@@ -208,7 +260,22 @@ export const Sidebar: React.FC = () => {
   const isCollapsed = isSidebarCollapsed && !isMobileSidebarOpen;
 
   const sidebarNavRef = React.useRef<HTMLElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const clickedFromSidebarRef = React.useRef(false);
+
+  // Dedicated Sidebar Menu Search state
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+
+  const filteredMenuItems = React.useMemo(() => {
+    const q = menuSearchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return ALL_SIDEBAR_ITEMS.filter((item) =>
+      item.title.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q) ||
+      item.keywords.toLowerCase().includes(q) ||
+      item.tab.toLowerCase().includes(q)
+    );
+  }, [menuSearchQuery]);
 
   const handleTabClick = (tab: TabType) => {
     clickedFromSidebarRef.current = true;
@@ -240,17 +307,30 @@ export const Sidebar: React.FC = () => {
   );
   const unreadConversationsCount = totalUnread > 0 ? totalUnread : (conversations && conversations.length > 0 ? 5 : 0);
 
-  // Keyboard shortcut Ctrl+B / Cmd+B for collapse
+  // Keyboard shortcut Ctrl+B / Cmd+B for collapse & Ctrl+/ or / for search
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         toggleSidebarCollapse();
       }
+      // Focus sidebar search on Ctrl + / or when pressing '/' outside inputs
+      if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.key.toLowerCase() === 'k')) {
+        const target = e.target as HTMLElement;
+        if (target && target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          if (isSidebarCollapsed) {
+            toggleSidebarCollapse();
+          }
+          setTimeout(() => {
+            searchInputRef.current?.focus();
+          }, 80);
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleSidebarCollapse]);
+  }, [toggleSidebarCollapse, isSidebarCollapsed]);
 
   // Accordion active group indicators
   const isBulkActive = ['bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab);
@@ -357,14 +437,115 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
 
+        {/* Dedicated Sidebar Menu Search Bar */}
+        {!isCollapsed ? (
+          <div className="px-3 pt-2.5 pb-1 border-b border-[#1E293B]/40">
+            <div className="relative flex items-center bg-[#070D18] hover:bg-[#0E182A] border border-[#1E293B] focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/20 rounded-lg transition-all">
+              <Search className="w-3.5 h-3.5 text-slate-400 ml-2.5 shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={menuSearchQuery}
+                onChange={(e) => setMenuSearchQuery(e.target.value)}
+                placeholder="Search menu... (Ctrl + /)"
+                className="w-full bg-transparent px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 outline-none font-normal"
+              />
+              {menuSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setMenuSearchQuery('')}
+                  className="mr-2 text-slate-400 hover:text-slate-200 p-0.5 rounded cursor-pointer transition"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              ) : (
+                <span className="mr-2 text-[9px] font-mono text-slate-500 bg-[#16233B]/80 px-1.5 py-0.5 rounded border border-slate-700/50 select-none">
+                  /
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="px-3 pt-2.5 pb-1 flex justify-center border-b border-[#1E293B]/40">
+            <button
+              type="button"
+              onClick={() => {
+                toggleSidebarCollapse();
+                setTimeout(() => {
+                  searchInputRef.current?.focus();
+                }, 100);
+              }}
+              title="Search menu (Ctrl + /)"
+              className="w-9 h-9 rounded-lg hover:bg-[#16233B] text-slate-400 hover:text-emerald-400 flex items-center justify-center transition cursor-pointer"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Navigation Links (Scrollable) */}
         <nav
           ref={sidebarNavRef}
           className="flex-1 overflow-y-auto px-3 py-3 space-y-1 text-xs font-medium scrollbar-thin scrollbar-thumb-slate-800"
         >
-          {/* Dashboard */}
-          <button
-            data-tab="dashboard"
+          {menuSearchQuery.trim() !== '' ? (
+            <div className="space-y-1 animate-in fade-in duration-150">
+              <div className="px-2 py-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span>Matching Menu Items ({filteredMenuItems.length})</span>
+                <button
+                  type="button"
+                  onClick={() => setMenuSearchQuery('')}
+                  className="text-emerald-400 hover:underline cursor-pointer lowercase text-[10px]"
+                >
+                  clear
+                </button>
+              </div>
+
+              {filteredMenuItems.length === 0 ? (
+                <div className="py-8 px-3 text-center text-slate-500">
+                  <Search className="w-6 h-6 mx-auto mb-2 opacity-30 text-slate-400" />
+                  <p className="text-xs font-medium text-slate-400">No matching menu items</p>
+                  <p className="text-[10px] text-slate-600 mt-1">Try searching for leads, jobs, deals, or backup</p>
+                </div>
+              ) : (
+                filteredMenuItems.map((item) => {
+                  const ItemIcon = item.icon;
+                  const isItemActive = isActive(item.tab);
+                  return (
+                    <button
+                      key={item.tab}
+                      data-tab={item.tab}
+                      onClick={() => {
+                        handleTabClick(item.tab);
+                        setMenuSearchQuery('');
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-all text-left cursor-pointer group ${
+                        isItemActive
+                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                          : 'hover:bg-[#16233B] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <ItemIcon className={`w-3.5 h-3.5 shrink-0 ${isItemActive ? 'text-white' : 'text-emerald-400 group-hover:text-emerald-300'}`} />
+                        <div className="truncate">
+                          <div className="text-xs truncate font-medium">{item.title}</div>
+                          <div className={`text-[10px] truncate ${isItemActive ? 'text-emerald-100' : 'text-slate-500'}`}>
+                            {item.category}
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className={`w-3 h-3 shrink-0 ${isItemActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Dashboard */}
+              <button
+                data-tab="dashboard"
             onClick={() => handleTabClick('dashboard')}
             title="Dashboard"
             className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
@@ -1150,6 +1331,8 @@ export const Sidebar: React.FC = () => {
             </>
           )}
         </a>
+            </>
+          )}
       </nav>
 
       {/* WhatsApp Connection Card & Simulator Trigger */}
