@@ -256,9 +256,9 @@ export const Sidebar: React.FC = () => {
   const isBulkActive = ['bulk-send', 'bulk-templates', 'bulk-campaigns', 'bulk-recipients', 'bulk-scheduled'].includes(activeTab);
   const isMessengerActive = activeTab === 'conversations' || isBulkActive;
   const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
-  const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory'].includes(activeTab);
+  const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab);
   const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
-  const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs', 'automation-approvals'].includes(activeTab);
+  const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
   // Accordion states - Always collapsed by default, expanded only on manual user click
@@ -648,7 +648,7 @@ export const Sidebar: React.FC = () => {
                 toggleSidebarCollapse();
                 setOpsOpen(true);
               }}
-              title="Operations (Jobs, Appointments, Employees, Schedule, Attendance, Tasks, Routes, Inventory)"
+              title="Operations (Jobs, Appointments, Employees, Schedule, Attendance, Tasks, Routes, Inventory, Approvals)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
                 isOpsActive
                   ? 'bg-emerald-600 text-white shadow-sm'
@@ -759,6 +759,16 @@ export const Sidebar: React.FC = () => {
                   >
                     <Package className="w-3.5 h-3.5" />
                     <span>Inventory</span>
+                  </button>
+                  <button
+                    data-tab="automation-approvals"
+                    onClick={() => handleTabClick('automation-approvals')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                      isActive('automation-approvals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Approvals</span>
                   </button>
                 </div>
               )}
@@ -890,7 +900,7 @@ export const Sidebar: React.FC = () => {
                 toggleSidebarCollapse();
                 setAutomationOpen(true);
               }}
-              title="Automation (Workflow Builder, Workflows, Templates, Branches, Logs, Approvals)"
+              title="Automation (Workflow Builder, Workflows, Templates, Logs)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
                 isAutomationActive
                   ? 'bg-emerald-600 text-white shadow-sm'
@@ -961,16 +971,6 @@ export const Sidebar: React.FC = () => {
                   >
                     <Clock className="w-3.5 h-3.5" />
                     <span>Logs</span>
-                  </button>
-                  <button
-                    data-tab="automation-approvals"
-                    onClick={() => handleTabClick('automation-approvals')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('automation-approvals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Approvals</span>
                   </button>
                 </div>
               )}
