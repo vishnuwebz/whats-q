@@ -58,6 +58,14 @@ export const SystemUpdateModal: React.FC = () => {
   if (!isUpdateModalOpen || !versionInfo) return null;
 
   const handleUpdateNow = async () => {
+    const targetCommit = versionInfo?.latest_commit || versionInfo?.current_commit || '';
+    if (targetCommit) {
+      try {
+        localStorage.setItem('whatsq_acknowledged_commit', targetCommit);
+        localStorage.setItem('whatsq_last_hard_refresh_time', Date.now().toString());
+      } catch {}
+    }
+    setIsUpdateModalOpen(false);
     await triggerSystemUpdate();
   };
 

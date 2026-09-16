@@ -32,13 +32,18 @@ export async function forceHardRefresh(reason = 'OTA Deployment Update'): Promis
     }
   }
 
-  // 3. Clear any update snooze or dismiss flags from localStorage
+  // 3. Clear temporary update snooze or dismiss flags from localStorage
+  //    IMPORTANT: Do NOT delete whatsq_acknowledged_commit or whatsq_last_hard_refresh_time!
   try {
     localStorage.removeItem('whatsq_update_snooze');
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('whatsq_update_dismissed_') || key.startsWith('whatsq_ota_'))) {
+      if (
+        key &&
+        (key.startsWith('whatsq_update_dismissed_') ||
+          (key.startsWith('whatsq_ota_') && key !== 'whatsq_ota_just_refreshed'))
+      ) {
         keysToRemove.push(key);
       }
     }
@@ -47,14 +52,26 @@ export async function forceHardRefresh(reason = 'OTA Deployment Update'): Promis
     console.warn('[OTA Update] LocalStorage cleanup warning:', err);
   }
 
-  // 4. Stamp a "just-refreshed" marker so the reloaded page suppresses
-  //    spurious re-detection during the first few seconds of boot.
+  // 4. Stamp acknowledged commit and just-refreshed marker so the reloaded page suppresses
+  //    spurious re-detection of the release the user just hard-refreshed for.
   try {
-    const targetCommit = useQiyamStore.getState().versionInfo?.latest_commit || '';
-    localStorage.setItem('whatsq_ota_just_refreshed', JSON.stringify({
-      ts: Date.now(),
-      commit: targetCommit,
-    }));
+    const store = useQiyamStore.getState();
+    const targetCommit =
+      store.versionInfo?.latest_commit ||
+      store.versionInfo?.current_commit ||
+      getInitialBuildCommit() ||
+      '';
+    if (targetCommit) {
+      localStorage.setItem('whatsq_acknowledged_commit', targetCommit);
+    }
+    localStorage.setItem('whatsq_last_hard_refresh_time', Date.now().toString());
+    localStorage.setItem(
+      'whatsq_ota_just_refreshed',
+      JSON.stringify({
+        ts: Date.now(),
+        commit: targetCommit,
+      })
+    );
   } catch { /* non-fatal */ }
 
   // 5. Force browser navigation with unique cache-busting query parameter
@@ -110,11 +127,13 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
   const cacheBuster = `_ota=${Date.now()}`;
 
   // ── Guard: do not re-trigger if the update modal is already showing ──
-  // This prevents the countdown being restarted every 20 seconds while the
-  // user is still looking at the modal.
   if (store.isUpdateModalOpen) {
     return true; // Update already detected and displayed
   }
+
+  const acknowledgedCommit = typeof window !== 'undefined' ? localStorage.getItem('whatsq_acknowledged_commit') : null;
+  const lastRefreshTime = typeof window !== 'undefined' ? Number(localStorage.getItem('whatsq_last_hard_refresh_time') || '0') : 0;
+  const justRefreshedRecently = Date.now() - lastRefreshTime < 180000;
 
   // Strategy 1: Check /version.json generated during build / deploy
   try {
@@ -134,10 +153,19 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
           initialBuildTimestamp = data.timestamp;
         }
 
+        const isAcknowledged = !!(
+          data.commit &&
+          acknowledgedCommit &&
+          (data.commit === acknowledgedCommit ||
+            acknowledgedCommit.startsWith(data.commit) ||
+            data.commit.startsWith(acknowledgedCommit))
+        );
+
+        if (isAcknowledged || (justRefreshedRecently && acknowledgedCommit)) {
+          return false;
+        }
+
         // ── Always compare against the module-level initialBuildCommit ──
-        // Do NOT use store.versionInfo?.current_commit: that value gets
-        // overwritten by triggerOtaDeploymentUpdate() to the OLD commit and
-        // would cause every subsequent poll to see a "new" version.
         const currentRunningCommit = initialBuildCommit;
         const isNewCommit = !!(data.commit && currentRunningCommit && data.commit !== currentRunningCommit);
         const isNewTimestamp =
@@ -251,6 +279,15 @@ export function initOtaUpdater(): () => void {
   isUpdaterInitialized = true;
   updateAlreadyTriggered = false;
 
+  // 0. Clean up any _ota_refresh query parameter from the URL cleanly
+  if (typeof window !== 'undefined' && window.location.search.includes('_ota_refresh')) {
+    try {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('_ota_refresh');
+      window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + cleanUrl.hash);
+    } catch {}
+  }
+
   // 1. Capture initial script src from DOM
   initialScriptSrc = getCurrentScriptSrc();
 
@@ -277,10 +314,13 @@ export function initOtaUpdater(): () => void {
       const age = Date.now() - (parsed.ts || 0);
       if (age < 30000) {
         // We refreshed less than 30 seconds ago — give the new build time to settle
-        initialCheckDelay = Math.max(3000, 20000 - age);
+        initialCheckDelay = Math.max(6000, 30000 - age);
         console.log(`[OTA Update] Just-refreshed marker found (${age}ms ago). Delaying first check by ${initialCheckDelay}ms.`);
       }
-      localStorage.removeItem('whatsq_ota_just_refreshed');
+      // Only remove if older than 60 seconds so ongoing boot cycles can read it
+      if (age > 60000) {
+        localStorage.removeItem('whatsq_ota_just_refreshed');
+      }
     }
   } catch { /* non-fatal */ }
 

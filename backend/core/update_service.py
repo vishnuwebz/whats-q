@@ -242,6 +242,8 @@ class SystemUpdateService:
         Runs the automated backup and update script.
         Robust against missing sudo, root execution, and non-Linux environments.
         """
+        cls._cached_info = None
+        cls._cache_time = 0
         import shutil
         script_path = '/usr/local/bin/update-whatsq'
         if os.path.exists(script_path):

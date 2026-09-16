@@ -1063,6 +1063,26 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     await forceHardRefresh(reason);
   },
   triggerOtaDeploymentUpdate: (info) => {
+    const acknowledgedCommit = typeof window !== 'undefined' ? localStorage.getItem('whatsq_acknowledged_commit') : null;
+    const lastRefreshTime = typeof window !== 'undefined' ? Number(localStorage.getItem('whatsq_last_hard_refresh_time') || '0') : 0;
+    const justRefreshedRecently = Date.now() - lastRefreshTime < 180000;
+
+    const isAcknowledged = !!(
+      info.latest_commit &&
+      acknowledgedCommit &&
+      (info.latest_commit === acknowledgedCommit ||
+        acknowledgedCommit.startsWith(info.latest_commit) ||
+        info.latest_commit.startsWith(acknowledgedCommit))
+    );
+
+    if (
+      isAcknowledged ||
+      (justRefreshedRecently && acknowledgedCommit && (!info.latest_commit || info.latest_commit === acknowledgedCommit))
+    ) {
+      console.log(`[OTA Update] Deployment update ${info.latest_commit} already applied via hard refresh. Skipping modal.`);
+      return;
+    }
+
     const current = get().versionInfo;
     const nowFormatted = new Intl.DateTimeFormat('en-US', {
       month: 'short',
@@ -3177,7 +3197,27 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       const url = force ? '/core/system-version/?force=true' : '/core/system-version/';
       const res = await apiClient.get(url);
       if (res && res.current_commit) {
-        const info = res as VersionInfo;
+        const info = { ...(res as VersionInfo) };
+        const acknowledgedCommit = typeof window !== 'undefined' ? localStorage.getItem('whatsq_acknowledged_commit') : null;
+        const lastRefreshTime = typeof window !== 'undefined' ? Number(localStorage.getItem('whatsq_last_hard_refresh_time') || '0') : 0;
+        const justRefreshedRecently = Date.now() - lastRefreshTime < 180000;
+
+        const isAcknowledged = !!(
+          info.latest_commit &&
+          acknowledgedCommit &&
+          (info.latest_commit === acknowledgedCommit ||
+            acknowledgedCommit.startsWith(info.latest_commit) ||
+            info.latest_commit.startsWith(acknowledgedCommit))
+        );
+
+        if (
+          isAcknowledged ||
+          (justRefreshedRecently && acknowledgedCommit && (!info.latest_commit || info.latest_commit === acknowledgedCommit))
+        ) {
+          info.update_available = false;
+          info.current_commit = info.latest_commit || info.current_commit;
+        }
+
         set({ versionInfo: info });
         if (info.update_available) {
           get().applyGlobalUpdateAvailable(info);
@@ -3189,8 +3229,41 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   applyGlobalUpdateAvailable: (info: VersionInfo) => {
+    const acknowledgedCommit = typeof window !== 'undefined' ? localStorage.getItem('whatsq_acknowledged_commit') : null;
+    const lastRefreshTime = typeof window !== 'undefined' ? Number(localStorage.getItem('whatsq_last_hard_refresh_time') || '0') : 0;
+    const justRefreshedRecently = Date.now() - lastRefreshTime < 180000;
+
+    const isAcknowledged = !!(
+      info.latest_commit &&
+      acknowledgedCommit &&
+      (info.latest_commit === acknowledgedCommit ||
+        acknowledgedCommit.startsWith(info.latest_commit) ||
+        info.latest_commit.startsWith(acknowledgedCommit))
+    );
+
+    if (
+      isAcknowledged ||
+      (justRefreshedRecently && acknowledgedCommit && (!info.latest_commit || info.latest_commit === acknowledgedCommit))
+    ) {
+      console.log(`[OTA Update] Commit ${info.latest_commit} already applied via Hard Refresh. Modal suppressed.`);
+      set({
+        versionInfo: {
+          ...info,
+          current_commit: info.latest_commit || info.current_commit,
+          update_available: false,
+        },
+        isUpdateModalOpen: false,
+        otaCountdown: null,
+        isOtaCountdownActive: false,
+      });
+      return;
+    }
+
     set({ versionInfo: info });
-    if (!info.update_available) return;
+    if (!info.update_available) {
+      set({ isUpdateModalOpen: false });
+      return;
+    }
 
     // ── Guard: don't re-open if already showing or countdown is running ──
     // This prevents backend polling (fetchVersionInfo every 60s) and SSE events
@@ -3232,11 +3305,11 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
 
   simulateGlobalUpdate: async () => {
     try {
+      localStorage.removeItem('whatsq_update_snooze');
+      localStorage.removeItem('whatsq_acknowledged_commit');
+      localStorage.removeItem('whatsq_last_hard_refresh_time');
       const res = await apiClient.post('/core/system-update/broadcast/', { simulate: true });
       if (res && res.broadcast) {
-        try {
-          localStorage.removeItem('whatsq_update_snooze');
-        } catch {}
         get().applyGlobalUpdateAvailable(res.broadcast as VersionInfo);
         get().addToast('Global Update Broadcast simulated!', 'info');
         return;
@@ -3265,9 +3338,9 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,
         last_checked: nowFormatted,
       };
-      try {
-        localStorage.removeItem('whatsq_update_snooze');
-      } catch {}
+      localStorage.removeItem('whatsq_update_snooze');
+      localStorage.removeItem('whatsq_acknowledged_commit');
+      localStorage.removeItem('whatsq_last_hard_refresh_time');
       get().applyGlobalUpdateAvailable(simulated);
       get().addToast('Simulated OTA update broadcast: countdown started!', 'info');
     }
@@ -3340,7 +3413,16 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     set({
       isUpdatingSystem: true,
       updateProgressStep: '⚡ Clearing caches & forcefully hard-refreshing WhatsQ...',
+      isUpdateModalOpen: false,
     });
+
+    const targetCommit = get().versionInfo?.latest_commit || get().versionInfo?.current_commit || '';
+    if (targetCommit) {
+      try {
+        localStorage.setItem('whatsq_acknowledged_commit', targetCommit);
+        localStorage.setItem('whatsq_last_hard_refresh_time', Date.now().toString());
+      } catch {}
+    }
 
     try {
       // Notify backend to apply update if on server
