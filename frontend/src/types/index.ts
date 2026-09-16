@@ -540,6 +540,19 @@ export interface BulkRecipientList {
     csv: number;
     other: number;
   };
+  contactItems?: BulkContact[];
+}
+
+export interface BulkContact {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  tag?: string;
+  validWhatsApp?: boolean;
+  optedOut?: boolean;
+  lastActive?: string;
+  source?: string;
 }
 
 export interface BulkScheduledMessage {
@@ -574,6 +587,7 @@ export interface BulkTemplateItem {
   category: 'Appointments' | 'Payments' | 'Marketing' | 'General' | 'Operations' | 'Customer Support' | 'Security' | 'Billing' | 'Other' | 'marketing' | 'utility' | 'authentication' | string;
   language: string;
   status: 'Approved' | 'Pending' | 'Rejected' | 'APPROVED' | 'PENDING' | 'REJECTED' | string;
+  meta_status?: 'APPROVED' | 'PENDING' | 'REJECTED' | 'PAUSED' | 'DRAFT' | string;
   lastUpdated?: string;
   updatedBy?: string;
   approvedOn?: string;
@@ -583,8 +597,10 @@ export interface BulkTemplateItem {
   footer?: string;
   footerText?: string;
   qualityRating?: 'High' | 'Medium' | 'Low' | string;
-  headerType?: 'NONE' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'TEXT' | string;
+  headerType?: 'NONE' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'AUDIO' | 'TEXT' | string;
   headerContent?: string;
+  headerFileName?: string;
+  headerFileSize?: string;
   buttons?: { type: string; text: string; url?: string }[];
   variables?: string[];
 }

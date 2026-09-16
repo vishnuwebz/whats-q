@@ -5,7 +5,7 @@ import {
   Invoice, Expense, PaymentAccount, Workflow, AutomationLog, Approval,
   KnowledgeArticle, WhatsAppTemplateItem, IntegrationItem, BranchItem, FlowNode, WhatsAppMessage,
   MetaConfig,
-  BulkCampaign, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
+  BulkCampaign, BulkContact, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
   MetaWalletInfo, MetaWalletTransaction
 } from '../types';
 import { apiClient } from '../api/client';
@@ -292,6 +292,8 @@ interface QiyamState {
   sendScheduledMessageNow: (id: string | number) => void;
   duplicateCampaign: (campaignId: string | number) => void;
   createBulkTemplate: (params: any) => void;
+  updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => void;
+  importContactsToRecipientList: (listName: string, contacts: BulkContact[]) => BulkRecipientList;
 
   addToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
   toasts: Toast[];
@@ -1823,16 +1825,21 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       day: 'numeric',
       year: 'numeric',
     });
+    const templateId = `tmpl-${Date.now()}`;
     const newTpl: BulkTemplateItem = {
-      id: `tmpl-${Date.now()}`,
+      id: templateId,
+      templateId: `meta_waba_${Math.random().toString(36).substring(2, 9)}`,
       name: template.name,
       category: template.category || 'marketing',
       language: template.language || 'en_US',
       status: 'PENDING',
+      meta_status: 'PENDING',
       bodyText: template.bodyText || template.body || '',
       body: template.bodyText || template.body || '',
       headerType: template.headerType || 'NONE',
       headerContent: template.headerContent,
+      headerFileName: template.headerFileName,
+      headerFileSize: template.headerFileSize,
       footerText: template.footerText || template.footer,
       footer: template.footerText || template.footer,
       buttons: template.buttons || [{ type: 'URL', text: 'View Details' }],
@@ -1843,7 +1850,63 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     set((state) => ({
       bulkTemplates: [newTpl, ...state.bulkTemplates],
     }));
-    get().addToast(`Template "${template.name}" created and submitted for review`, 'success');
+    get().addToast(`Template "${template.name}" submitted to Meta for review (Status: PENDING)`, 'info');
+
+    // Automated Meta WhatsApp review & approval simulation (8 seconds)
+    setTimeout(() => {
+      set((state) => ({
+        bulkTemplates: state.bulkTemplates.map((t) =>
+          t.id === templateId
+            ? { ...t, status: 'APPROVED', meta_status: 'APPROVED', approvedOn: 'Just now' }
+            : t
+        ),
+      }));
+      get().addToast(`🎉 Meta WhatsApp Approved! Template "${template.name}" is now approved and ready for broadcasts!`, 'success');
+    }, 8000);
+  },
+
+  updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => {
+    set((state) => ({
+      bulkTemplates: state.bulkTemplates.map((t) =>
+        t.id === templateId
+          ? {
+              ...t,
+              status,
+              meta_status: status,
+              approvedOn: status === 'APPROVED' ? 'Just now' : t.approvedOn,
+            }
+          : t
+      ),
+    }));
+    get().addToast(`Template status updated to ${status}`, 'success');
+  },
+
+  importContactsToRecipientList: (listName: string, contacts: BulkContact[]) => {
+    const nowStr = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const validCount = contacts.filter((c) => c.validWhatsApp && !c.optedOut).length;
+    const newList: BulkRecipientList = {
+      id: `lst-imported-${Date.now()}`,
+      name: listName,
+      description: `Direct imported contact list with ${contacts.length} numbers`,
+      type: 'Campaign',
+      contactCount: contacts.length,
+      validWhatsAppCount: validCount,
+      tags: ['Imported', 'CSV', 'Custom'],
+      createdOn: nowStr,
+      createdAt: new Date().toISOString(),
+      status: 'Active',
+      sources: { manual: 0, website: 0, csv: 100, other: 0 },
+      contactItems: contacts,
+    };
+    set((state) => ({
+      bulkRecipientLists: [newList, ...state.bulkRecipientLists],
+    }));
+    get().addToast(`Successfully imported ${contacts.length} contacts into "${listName}"!`, 'success');
+    return newList;
   },
 
   saveMetaConfig: async (configData) => {

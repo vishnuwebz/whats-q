@@ -1,5 +1,6 @@
 import {
   BulkCampaign,
+  BulkContact,
   BulkRecipientList,
   BulkScheduledMessage,
   BulkTemplateItem,
@@ -418,16 +419,45 @@ const rawBulkTemplates = [
   },
 ];
 
-export const initialBulkTemplates: BulkTemplateItem[] = rawBulkTemplates.map((t) => ({
-  ...t,
-  bodyText: t.body,
-  qualityRating: 'High',
-  headerType: t.header && t.header !== 'None' ? 'IMAGE' : 'NONE',
-  headerContent: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80',
-  footerText: t.footer && t.footer !== 'None' ? t.footer : 'Reply STOP to unsubscribe',
-  buttons: [{ type: 'URL', text: 'View Details' }],
-  status: (t.status || 'Approved').toUpperCase(),
-}));
+export const initialBulkTemplates: BulkTemplateItem[] = rawBulkTemplates.map((t) => {
+  let headerType = 'NONE';
+  let headerContent: string | undefined = undefined;
+  let headerFileName: string | undefined = undefined;
+  let headerFileSize: string | undefined = undefined;
+
+  if (t.id === 'tpl-1' || t.id === 'tpl-4') {
+    headerType = 'IMAGE';
+    headerContent = 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80';
+    headerFileName = 'diwali_mega_sale_flyer.jpg';
+    headerFileSize = '420 KB';
+  } else if (t.id === 'tpl-2' || t.id === 'tpl-5') {
+    headerType = 'DOCUMENT';
+    headerContent = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+    headerFileName = 'CoolFix_Comprehensive_Service_Catalog.pdf';
+    headerFileSize = '2.4 MB';
+  } else if (t.id === 'tpl-3') {
+    headerType = 'DOCUMENT';
+    headerContent = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+    headerFileName = 'Official_Invoice_Summary_Guide.pdf';
+    headerFileSize = '1.1 MB';
+  }
+
+  const rawStatus = (t.status || 'Approved').toUpperCase();
+
+  return {
+    ...t,
+    bodyText: t.body,
+    qualityRating: 'High',
+    headerType,
+    headerContent,
+    headerFileName,
+    headerFileSize,
+    footerText: t.footer && t.footer !== 'None' ? t.footer : 'Reply STOP to unsubscribe',
+    buttons: [{ type: 'URL', text: 'View Details' }],
+    status: rawStatus,
+    meta_status: rawStatus,
+  };
+});
 
 const rawBulkRecipientLists = [
   {
@@ -543,6 +573,36 @@ const rawBulkRecipientLists = [
   },
 ];
 
+export const SAMPLE_CONTACTS_POOL: Omit<BulkContact, 'id'>[] = [
+  { name: 'Dr. Tariq Al-Mansoor', phone: '+966 50 123 4567', email: 'tariq.mansoor@almansoor.med', tag: 'VIP', validWhatsApp: true, optedOut: false, lastActive: '2 hours ago', source: 'Website' },
+  { name: 'Rahul Sharma', phone: '+91 98765 43210', email: 'rahul.sharma@techcorp.in', tag: 'VIP', validWhatsApp: true, optedOut: false, lastActive: 'Yesterday', source: 'CRM' },
+  { name: 'Amina Al-Balushi', phone: '+968 9123 4567', email: 'amina.b@muscatlogistics.om', tag: 'Loyal', validWhatsApp: true, optedOut: false, lastActive: '3 days ago', source: 'WhatsApp' },
+  { name: 'Vikram Menon', phone: '+91 94470 12345', email: 'vikram.menon@koyilandy.com', tag: 'Corporate', validWhatsApp: true, optedOut: false, lastActive: 'Today', source: 'Referral' },
+  { name: 'Zainab Qasim', phone: '+971 52 345 6789', email: 'zainab.q@dubaifacilities.ae', tag: 'Loyal', validWhatsApp: true, optedOut: false, lastActive: '5 hours ago', source: 'Website' },
+  { name: 'Sneha Joshi', phone: '+91 98234 56789', email: 'sneha.j@punehomes.com', tag: 'Retail', validWhatsApp: true, optedOut: false, lastActive: '1 day ago', source: 'Campaign' },
+  { name: 'Mohammed Al-Fayed', phone: '+966 55 987 6543', email: 'alfayed@jeddahproperties.sa', tag: 'VIP', validWhatsApp: true, optedOut: false, lastActive: 'Today', source: 'CRM' },
+  { name: 'Arjun Nair', phone: '+91 97456 12389', email: 'arjun.nair@kochicooling.in', tag: 'Corporate', validWhatsApp: true, optedOut: false, lastActive: '2 days ago', source: 'Website' },
+  { name: 'Fatima Zahra', phone: '+971 50 789 0123', email: 'fatima.z@alzahra.ae', tag: 'VIP', validWhatsApp: true, optedOut: false, lastActive: '4 hours ago', source: 'WhatsApp' },
+  { name: 'Rajesh Pillai', phone: '+91 98471 99887', email: 'rajesh.p@calicutmarine.com', tag: 'Retail', validWhatsApp: true, optedOut: false, lastActive: 'Just now', source: 'Direct' },
+  { name: 'Nasser Al-Harthy', phone: '+968 9234 5678', email: 'nasser@omanindustrial.com', tag: 'Corporate', validWhatsApp: true, optedOut: false, lastActive: 'Yesterday', source: 'Manual' },
+  { name: 'Pooja Hegde', phone: '+91 91234 88776', email: 'pooja.h@bangalorelifestyle.com', tag: 'Loyal', validWhatsApp: true, optedOut: false, lastActive: '3 days ago', source: 'Website' },
+  { name: 'Abdulrahman Al-Nuaimi', phone: '+971 56 443 2211', email: 'nuaimi@sharjahholdings.ae', tag: 'VIP', validWhatsApp: true, optedOut: false, lastActive: 'Today', source: 'CRM' },
+  { name: 'Kavita Sundaram', phone: '+91 94462 33445', email: 'kavita.s@chennaibuilders.in', tag: 'Retail', validWhatsApp: true, optedOut: false, lastActive: '4 days ago', source: 'WhatsApp' },
+  { name: 'Omar Bin Rashid', phone: '+966 54 332 1100', email: 'omar.rashid@riyadhtrading.com', tag: 'VIP', validWhatsApp: true, optedOut: false, lastActive: 'Yesterday', source: 'Referral' },
+  { name: 'Siddharth Rao', phone: '+91 99887 76655', email: 'siddharth@hyderabadrealtors.com', tag: 'Corporate', validWhatsApp: true, optedOut: false, lastActive: '2 days ago', source: 'Website' },
+  { name: 'Laila Al-Kuwari', phone: '+974 5512 3456', email: 'laila@dohaservices.qa', tag: 'Loyal', validWhatsApp: true, optedOut: false, lastActive: '5 days ago', source: 'Campaign' },
+  { name: 'Ananya Deshmukh', phone: '+91 98200 11223', email: 'ananya@mumbaidesign.in', tag: 'Retail', validWhatsApp: true, optedOut: false, lastActive: 'Today', source: 'Website' },
+  { name: 'Inactive Contact (Opted Out)', phone: '+91 80000 00000', email: 'optout@sample.com', tag: 'Opt-Out', validWhatsApp: false, optedOut: true, lastActive: '6 months ago', source: 'Unsubscribe' },
+  { name: 'Unverified Lead', phone: '+91 70000 11111', email: 'unverified@test.com', tag: 'Unverified', validWhatsApp: false, optedOut: false, lastActive: '1 month ago', source: 'CSV' },
+];
+
+export const getSampleContactsForList = (listId: string, listName: string): BulkContact[] => {
+  return SAMPLE_CONTACTS_POOL.map((c, index) => ({
+    ...c,
+    id: `cnt-${listId}-${index + 1}`,
+  }));
+};
+
 export const initialBulkRecipientLists: BulkRecipientList[] = rawBulkRecipientLists.map((l) => ({
   ...l,
   contactCount: l.contacts,
@@ -550,6 +610,7 @@ export const initialBulkRecipientLists: BulkRecipientList[] = rawBulkRecipientLi
   tags: ['VIP', 'Active', 'Marketing'],
   createdAt: l.createdOn,
   lastUsedAt: l.lastUpdated,
+  contactItems: getSampleContactsForList(l.id, l.name),
 }));
 
 const rawBulkScheduledMessages = [
