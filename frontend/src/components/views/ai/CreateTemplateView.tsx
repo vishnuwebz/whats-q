@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   ArrowLeft, Check, AlertCircle, Sparkles, Image, Video, FileText,
   Smartphone, Plus, Trash2, Globe, Phone, ExternalLink,
-  Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw, Paperclip, Mic
+  Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw, Paperclip, Mic, UploadCloud, X
 } from 'lucide-react';
 import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
@@ -65,7 +65,47 @@ export const CreateTemplateView: React.FC = () => {
   const [previewMode, setPreviewMode] = useState<'sample' | 'raw'>('sample');
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  const [mediaInputMode, setMediaInputMode] = useState<'upload' | 'url'>('upload');
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (headerType === 'IMAGE') {
+      if (!file.type.startsWith('image/')) {
+        addToast('Please select a valid image file (JPG, PNG)', 'error');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        addToast('Image size exceeds Meta 5MB limit', 'error');
+        return;
+      }
+    } else if (headerType === 'DOCUMENT') {
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        addToast('Please select a PDF document file', 'error');
+        return;
+      }
+      if (file.size > 100 * 1024 * 1024) {
+        addToast('Document exceeds Meta 100MB limit', 'error');
+        return;
+      }
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setHeaderUrl(result);
+      setUploadedFileName(file.name);
+      addToast(`Sample ${headerType.toLowerCase()} attached successfully!`, 'success');
+    };
+    reader.onerror = () => {
+      addToast('Failed to read selected file', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (editingTemplate) {
@@ -210,6 +250,9 @@ export const CreateTemplateView: React.FC = () => {
     }
 
     if (headerType === 'TEXT' && headerText.length > 60) return 'Header text cannot exceed 60 characters.';
+    if (headerType === 'IMAGE' && !headerUrl) {
+      return 'Please upload a sample image thumbnail or provide an image URL for the IMAGE header.';
+    }
     if (footerText && footerText.length > 60) return 'Footer text cannot exceed 60 characters.';
     return null;
   };
@@ -250,10 +293,14 @@ export const CreateTemplateView: React.FC = () => {
       const payload = buildPayload();
       const saved = await saveMetaTemplate(payload);
       if (saved && saved.id) {
-        await submitTemplateToMeta(saved.id);
-        addToast('Template submitted to Meta Graph API for review!', 'success');
-        setEditingTemplate(null);
-        setActiveTab('template-hub');
+        const success = await submitTemplateToMeta(saved.id);
+        if (success) {
+          addToast('Template submitted to Meta Graph API for review!', 'success');
+          setEditingTemplate(null);
+          setActiveTab('template-hub');
+        } else {
+          setValidationError('Meta rejected the template submission. Please review the error message above.');
+        }
       }
     } catch (e: any) {
       addToast(`Submission error: ${e.message}`, 'error');
@@ -530,16 +577,165 @@ export const CreateTemplateView: React.FC = () => {
               </div>
             )}
 
-            {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && (
+            {headerType === 'IMAGE' && (
+              <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-700 block">Header Thumbnail Sample</span>
+                    <span className="text-[10px] text-slate-400">Required by Meta for template review</span>
+                  </div>
+                  <div className="flex items-center bg-slate-200/70 p-0.5 rounded-lg text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setMediaInputMode('upload')}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
+                        mediaInputMode === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMediaInputMode('url')}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
+                        mediaInputMode === 'url' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Image URL
+                    </button>
+                  </div>
+                </div>
+
+                {mediaInputMode === 'upload' ? (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    {headerUrl ? (
+                      <div className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+                        <div className="w-16 h-16 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                          <img
+                            src={headerUrl}
+                            alt="Sample preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">
+                            {uploadedFileName || 'Thumbnail Image Attached'}
+                          </p>
+                          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            <span>Ready for Meta Resumable Upload</span>
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="text-[11px] font-bold text-slate-700 hover:text-slate-900 underline"
+                            >
+                              Replace File
+                            </button>
+                            <span className="text-slate-300">•</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHeaderUrl('');
+                                setUploadedFileName('');
+                              }}
+                              className="text-[11px] font-bold text-red-600 hover:text-red-700"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-6 border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white rounded-xl text-center cursor-pointer transition-all hover:bg-emerald-50/20 group"
+                      >
+                        <UploadCloud className="w-7 h-7 text-slate-400 group-hover:text-emerald-600 mx-auto mb-1.5 transition-colors" />
+                        <span className="text-xs font-bold text-slate-800 block">
+                          Click to upload sample image thumbnail
+                        </span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          JPEG or PNG format, max 5MB (Meta Cloud API requirement)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <input
+                      type="url"
+                      value={headerUrl}
+                      onChange={(e) => setHeaderUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/... or public image URL"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      Our backend will download the image and upload it to Meta's Resumable Upload API automatically.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {headerType === 'DOCUMENT' && (
+              <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <label className="block text-[11px] font-bold text-slate-700">
+                  Sample PDF Document
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <input
+                    type="text"
+                    value={headerUrl}
+                    onChange={(e) => setHeaderUrl(e.target.value)}
+                    placeholder="https://example.com/sample.pdf or upload below"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1.5 shrink-0"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Upload PDF</span>
+                  </button>
+                </div>
+                {uploadedFileName && (
+                  <p className="text-[10px] text-emerald-600 font-semibold">
+                    Attached: {uploadedFileName}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {headerType === 'VIDEO' && (
               <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <label className="block text-[11px] font-bold text-slate-700">
-                  Sample Media URL ({headerType})
+                  Sample Video URL (MP4)
                 </label>
                 <input
                   type="url"
                   value={headerUrl}
                   onChange={(e) => setHeaderUrl(e.target.value)}
-                  placeholder="https://example.com/sample-image.jpg"
+                  placeholder="https://example.com/sample-video.mp4"
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs"
                 />
               </div>

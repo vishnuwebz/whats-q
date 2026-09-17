@@ -89,14 +89,159 @@ class MetaWhatsAppService:
             return False, "Template name can only contain lowercase letters, numbers, and underscores (no spaces or hyphens)."
         return True, ""
 
+
     @classmethod
-    def build_meta_components(cls, template_obj) -> list:
+    def get_app_id(cls, access_token: str, api_version: str = DEFAULT_API_VERSION):
         """
-        Converts local template configuration into Meta's official Graph API components array.
+        Retrieves the Meta App ID associated with the access token.
+        """
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/app"
+        try:
+            resp = requests.get(url, params={"access_token": access_token.strip()}, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("id")
+        except Exception as e:
+            logger.error(f"Error fetching Meta App ID: {e}")
+        return None
+
+    @classmethod
+    def upload_resumable_media(cls, access_token: str, media_source: str, header_type: str, api_version: str = DEFAULT_API_VERSION):
+        """
+        Uploads sample media via Meta Resumable Upload API to obtain a valid header_handle.
+        Required by Meta Graph API for template headers with IMAGE, VIDEO, or DOCUMENT format.
+        """
+        import base64
+        import mimetypes
+
+        app_id = cls.get_app_id(access_token, api_version)
+        if not app_id:
+            return {"success": False, "error": "Unable to determine Meta App ID from access token"}
+
+        media_bytes = None
+        mime_type = "image/png"
+        file_name = "sample_media.png"
+
+        if header_type == "IMAGE":
+            mime_type = "image/jpeg"
+            file_name = "sample_header.jpg"
+        elif header_type == "DOCUMENT":
+            mime_type = "application/pdf"
+            file_name = "sample_document.pdf"
+        elif header_type == "VIDEO":
+            mime_type = "video/mp4"
+            file_name = "sample_video.mp4"
+
+        # 1. Parse media source
+        media_source = (media_source or "").strip()
+        if media_source.startswith("data:"):
+            # Base64 Data URL: data:<mime>;base64,<encoded>
+            try:
+                header_part, data_part = media_source.split(";base64,", 1)
+                parsed_mime = header_part.replace("data:", "").strip()
+                if parsed_mime:
+                    mime_type = parsed_mime
+                media_bytes = base64.b64decode(data_part)
+                ext = mimetypes.guess_extension(mime_type) or (".jpg" if header_type == "IMAGE" else ".pdf")
+                file_name = f"sample_header{ext}"
+            except Exception as e:
+                logger.error(f"Failed to decode base64 media source: {e}")
+        elif media_source.startswith("http://") or media_source.startswith("https://"):
+            try:
+                r = requests.get(media_source, timeout=15)
+                if r.status_code == 200 and r.content:
+                    media_bytes = r.content
+                    content_type = r.headers.get("Content-Type", "").split(";")[0].strip()
+                    if content_type and content_type != "application/octet-stream":
+                        mime_type = content_type
+                    ext = mimetypes.guess_extension(mime_type) or (".jpg" if header_type == "IMAGE" else ".pdf")
+                    file_name = f"sample_header{ext}"
+            except Exception as e:
+                logger.warning(f"Failed to download remote media from {media_source}: {e}")
+
+        # Fallback if no media downloaded or provided
+        if not media_bytes:
+            if header_type == "IMAGE":
+                # Valid 1x1 PNG fallback
+                media_bytes = (
+                    b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06'
+                    b'\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc`\x00\x00\x00\x02\x00\x01H\xaf'
+                    b'\xa4q\x00\x00\x00\x00IEND\xaeB`\x82'
+                )
+                mime_type = "image/png"
+                file_name = "sample_header.png"
+            elif header_type == "DOCUMENT":
+                # Valid minimal PDF document fallback
+                media_bytes = (
+                    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+                    b"2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n"
+                    b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\n"
+                    b"xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000108 00000 n \n"
+                    b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n189\n%%EOF"
+                )
+                mime_type = "application/pdf"
+                file_name = "sample_document.pdf"
+            else:
+                return {"success": False, "error": f"Valid sample media required for {header_type} template header"}
+
+        # Validate file size (Meta max limit 5MB for images)
+        if header_type == "IMAGE" and len(media_bytes) > 5 * 1024 * 1024:
+            return {"success": False, "error": "Sample image exceeds Meta limit of 5MB"}
+
+        version = api_version or cls.DEFAULT_API_VERSION
+        session_url = f"{cls.GRAPH_BASE_URL}/{version}/{app_id}/uploads"
+        try:
+            session_resp = requests.post(
+                session_url,
+                params={
+                    "file_name": file_name,
+                    "file_length": len(media_bytes),
+                    "file_type": mime_type,
+                    "access_token": access_token.strip()
+                },
+                timeout=20
+            )
+            if session_resp.status_code not in [200, 201]:
+                err = session_resp.json().get("error", {}).get("message", "Failed to initiate Meta upload session")
+                return {"success": False, "error": f"Meta Resumable Upload session failed: {err}"}
+
+            session_id = session_resp.json().get("id")
+            if not session_id:
+                return {"success": False, "error": "No session ID returned by Meta upload endpoint"}
+
+            upload_url = f"{cls.GRAPH_BASE_URL}/{version}/{session_id}"
+            upload_resp = requests.post(
+                upload_url,
+                headers={
+                    "Authorization": f"OAuth {access_token.strip()}",
+                    "file_offset": "0"
+                },
+                data=media_bytes,
+                timeout=30
+            )
+            if upload_resp.status_code not in [200, 201]:
+                err = upload_resp.json().get("error", {}).get("message", "Failed to upload media data to Meta")
+                return {"success": False, "error": f"Meta Resumable Upload data transfer failed: {err}"}
+
+            handle = upload_resp.json().get("h")
+            if not handle:
+                return {"success": False, "error": "Meta did not return a valid upload handle 'h'"}
+
+            return {"success": True, "handle": handle}
+        except Exception as e:
+            return {"success": False, "error": f"Network error during Meta media upload: {str(e)}"}
+
+    @classmethod
+    def build_meta_components(cls, template_obj, media_handle: str = None):
+        """
+        Converts template into Meta Graph API components payload.
+        Handles headers (TEXT with {{1}}, IMAGE, VIDEO, DOCUMENT with media handles),
+        body with {{1}}, {{2}} and sample variables, footer, and buttons.
         """
         components = []
 
-        # 1. HEADER
+        # 1. HEADER (Optional)
         header_type = (getattr(template_obj, 'header_type', None) or "NONE").upper()
         if header_type == "TEXT" and getattr(template_obj, 'header_text', None):
             header_comp = {
@@ -114,8 +259,8 @@ class MetaWhatsAppService:
                 "type": "HEADER",
                 "format": header_type,
             }
-            sample_handle = getattr(template_obj, 'header_url', '') or "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800"
-            header_comp["example"] = {"header_handle": [sample_handle]}
+            if media_handle:
+                header_comp["example"] = {"header_handle": [media_handle]}
             components.append(header_comp)
 
         # 2. BODY (Required)
@@ -196,18 +341,37 @@ class MetaWhatsAppService:
     def create_meta_template(cls, waba_id: str, access_token: str, template_obj, api_version: str = DEFAULT_API_VERSION):
         """
         Submits template to Meta Graph API: POST /{WABA_ID}/message_templates
+        Handles sample media handles for media headers automatically.
         """
         valid, err_msg = cls.validate_template_name(template_obj.name)
         if not valid:
             return {"success": False, "error": err_msg}
 
         version = api_version or cls.DEFAULT_API_VERSION
+        header_type = (getattr(template_obj, 'header_type', None) or "NONE").upper()
+        media_handle = None
+
+        if header_type in ["IMAGE", "VIDEO", "DOCUMENT"]:
+            media_source = getattr(template_obj, 'header_url', '') or ''
+            upload_res = cls.upload_resumable_media(
+                access_token=access_token,
+                media_source=media_source,
+                header_type=header_type,
+                api_version=version
+            )
+            if not upload_res.get("success"):
+                return {
+                    "success": False,
+                    "error": f"Failed to upload sample header thumbnail to Meta: {upload_res.get('error')}"
+                }
+            media_handle = upload_res.get("handle")
+
         url = f"{cls.GRAPH_BASE_URL}/{version}/{waba_id.strip()}/message_templates"
         headers = cls.get_headers(access_token)
 
         category = getattr(template_obj, 'meta_category', 'UTILITY') or 'UTILITY'
         language = getattr(template_obj, 'language', 'en_US') or 'en_US'
-        components = cls.build_meta_components(template_obj)
+        components = cls.build_meta_components(template_obj, media_handle=media_handle)
 
         payload = {
             "name": template_obj.name,
@@ -218,7 +382,7 @@ class MetaWhatsAppService:
         }
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            resp = requests.post(url, headers=headers, json=payload, timeout=20)
             data = resp.json()
             if resp.status_code in [200, 201]:
                 return {
@@ -240,19 +404,32 @@ class MetaWhatsAppService:
     @classmethod
     def fetch_meta_templates(cls, waba_id: str, access_token: str, api_version: str = DEFAULT_API_VERSION):
         """
-        Fetches all message templates for a WABA: GET /{WABA_ID}/message_templates
+        Fetches all message templates for a WABA: GET /{WABA_ID}/message_templates (paginated)
         """
         version = api_version or cls.DEFAULT_API_VERSION
         url = f"{cls.GRAPH_BASE_URL}/{version}/{waba_id.strip()}/message_templates"
         headers = cls.get_headers(access_token)
 
         try:
-            resp = requests.get(url, headers=headers, params={"limit": 100}, timeout=15)
-            if resp.status_code == 200:
-                return {"success": True, "templates": resp.json().get("data", [])}
-            else:
-                err = resp.json().get("error", {}).get("message", "Failed to fetch templates")
-                return {"success": False, "error": err, "details": resp.json()}
+            all_templates = []
+            next_url = url
+            params = {"limit": 100}
+            while next_url:
+                if next_url == url:
+                    resp = requests.get(next_url, headers=headers, params=params, timeout=15)
+                else:
+                    resp = requests.get(next_url, headers=headers, timeout=15)
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    all_templates.extend(data.get("data", []))
+                    paging = data.get("paging", {})
+                    next_url = paging.get("next")
+                else:
+                    err = resp.json().get("error", {}).get("message", "Failed to fetch templates")
+                    return {"success": False, "error": err, "details": resp.json()}
+
+            return {"success": True, "templates": all_templates}
         except Exception as e:
             return {"success": False, "error": f"Network error: {str(e)}"}
 

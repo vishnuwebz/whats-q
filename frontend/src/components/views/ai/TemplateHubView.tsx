@@ -5,7 +5,8 @@ import {
   MessageSquare, Plus, Search, Filter, Copy, Sparkles,
   RefreshCw, CheckCircle2, Clock, AlertTriangle, Send,
   Globe, ExternalLink, Settings, Smartphone, Trash2, Edit3,
-  ArrowRight, Phone, Check, CheckCheck, FileText, Share2, Layers
+  ArrowRight, Phone, Check, CheckCheck, FileText, Share2, Layers,
+  Image, AlertCircle
 } from 'lucide-react';
 import { WhatsAppTemplateItem } from '@/types';
 import { MetaConfigModal } from './MetaConfigModal';
@@ -291,10 +292,42 @@ export const TemplateHubView: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Header Thumbnail Preview if IMAGE or VIDEO */}
+                    {['IMAGE', 'VIDEO'].includes(tmpl.header_type || '') && (
+                      <div className="mb-2 flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-200">
+                          <img
+                            src={tmpl.header_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200'}
+                            alt="Header Media"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200';
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-bold text-slate-700 block">
+                            Header: {tmpl.header_type} Thumbnail
+                          </span>
+                          <span className="text-[9px] text-slate-400 block truncate">
+                            Attached sample media
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Body snippet */}
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 font-mono text-[11px] text-slate-700 leading-relaxed whitespace-pre-line max-h-24 overflow-hidden text-ellipsis">
                       {tmpl.body_text || tmpl.body}
                     </div>
+
+                    {/* Rejection alert */}
+                    {tmpl.rejection_reason && tmpl.meta_status === 'REJECTED' && (
+                      <div className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-xl text-[10px] text-red-700 flex items-start gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0 mt-0.5" />
+                        <span className="break-words font-medium">{tmpl.rejection_reason}</span>
+                      </div>
+                    )}
 
                     {/* Buttons tags */}
                     {tmpl.buttons && tmpl.buttons.length > 0 && (
@@ -455,6 +488,9 @@ export const TemplateHubView: React.FC = () => {
                           src={activeTemplate.header_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800'}
                           alt="Template Header Media"
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800';
+                          }}
                         />
                       </div>
                     )}

@@ -679,6 +679,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
         else:
             template.rejection_reason = res.get('error', 'Meta rejected template')
+            template.meta_status = 'REJECTED'
             template.save()
             return Response({
                 'status': 'error',
@@ -720,6 +721,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
             body_text = ''
             header_type = 'NONE'
             header_text = ''
+            header_url = ''
             footer_text = ''
             buttons = []
 
@@ -732,6 +734,11 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     header_type = header_format
                     if header_format == 'TEXT':
                         header_text = comp.get('text', '')
+                    elif header_format in ['IMAGE', 'VIDEO', 'DOCUMENT']:
+                        ex = comp.get('example', {})
+                        handles = ex.get('header_handle', [])
+                        if handles:
+                            header_url = handles[0]
                 elif c_type == 'FOOTER':
                     footer_text = comp.get('text', '')
                 elif c_type == 'BUTTONS':
@@ -747,26 +754,30 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                             btn_data['code'] = b.get('example', [''])[0] if isinstance(b.get('example'), list) else b.get('example', '')
                         buttons.append(btn_data)
 
-            # Find matching local template or create
-            tmpl, created = WhatsAppTemplate.objects.get_or_create(
-                name=name,
-                defaults={
-                    'category': 'Sales & Marketing' if category == 'MARKETING' else 'Customer Updates',
-                    'meta_category': category,
-                    'status': 'Active' if status_val == 'APPROVED' else 'Pending',
-                    'meta_status': status_val,
-                    'language': lang,
-                    'body': body_text or 'Synced from Meta',
-                    'body_text': body_text or 'Synced from Meta',
-                    'header_type': header_type,
-                    'header_text': header_text,
-                    'footer_text': footer_text,
-                    'buttons': buttons,
-                    'meta_template_id': m.get('id', '')
-                }
-            )
-            if not created:
+            # Find matching local template or create safely
+            tmpl = WhatsAppTemplate.objects.filter(name=name).first()
+            if not tmpl:
+                tmpl = WhatsAppTemplate.objects.create(
+                    name=name,
+                    category='Sales & Marketing' if category == 'MARKETING' else 'Customer Updates',
+                    meta_category=category,
+                    status='Active' if status_val == 'APPROVED' else 'Pending',
+                    meta_status=status_val,
+                    language=lang,
+                    body=body_text or 'Synced from Meta',
+                    body_text=body_text or 'Synced from Meta',
+                    header_type=header_type,
+                    header_text=header_text,
+                    header_url=header_url,
+                    footer_text=footer_text,
+                    buttons=buttons,
+                    meta_template_id=m.get('id', '')
+                )
+            else:
                 tmpl.meta_status = status_val
+                tmpl.meta_category = category
+                tmpl.language = lang
+                tmpl.status = 'Active' if status_val == 'APPROVED' else 'Pending'
                 tmpl.meta_template_id = m.get('id', tmpl.meta_template_id)
                 if body_text:
                     tmpl.body = body_text
@@ -774,6 +785,8 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                 if header_type != 'NONE':
                     tmpl.header_type = header_type
                     tmpl.header_text = header_text
+                    if header_url:
+                        tmpl.header_url = header_url
                 if footer_text:
                     tmpl.footer_text = footer_text
                 if buttons:
