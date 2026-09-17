@@ -394,6 +394,8 @@ interface QiyamState {
   bulkScheduledMessages: BulkScheduledMessage[];
   bulkTemplates: BulkTemplateItem[];
   suppressionList: SuppressionRecord[];
+  suppressionSearchQuery: string;
+  setSuppressionSearchQuery: (query: string) => void;
 
   addSuppressionRecord: (record: Partial<SuppressionRecord> & { name: string; phone: string; reason: string; type: SuppressionRecord['type'] }) => void;
   removeSuppressionRecord: (idOrPhone: string) => Promise<void> | void;
@@ -1577,6 +1579,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   bulkScheduledMessages: initialBulkScheduledMessages,
   bulkTemplates: initialBulkTemplates,
   suppressionList: INITIAL_SUPPRESSION_LIST,
+  suppressionSearchQuery: '',
 
   loadInitialData: async () => {
     // Use Promise.allSettled so a single endpoint failure doesn't crash the whole app
@@ -2408,6 +2411,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       return sClean && (sClean.endsWith(clean.slice(-10)) || clean.endsWith(sClean.slice(-10)));
     });
   },
+
+  setSuppressionSearchQuery: (query: string) => set({ suppressionSearchQuery: query }),
 
   createScheduledMessage: (msg: any) => {
     const nowFull =

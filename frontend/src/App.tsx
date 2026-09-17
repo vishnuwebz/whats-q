@@ -60,6 +60,7 @@ import { AISettingsView } from './components/views/ai/AISettingsView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
+import { LandingPageView } from './components/views/LandingPageView';
 
 // Bulk Messaging Views
 import { BulkOverviewView } from './components/views/bulk/BulkOverviewView';
@@ -79,6 +80,7 @@ const TAB_TO_PATH: Record<TabType, string> = {
   'bulk-templates': '/bulk/templates',
   'bulk-campaigns': '/bulk/campaigns',
   'bulk-recipients': '/bulk/recipients',
+  'bulk-suppression': '/bulk/suppression',
   'bulk-scheduled': '/bulk/scheduled',
   'crm-leads': '/crm/leads',
   'crm-deals': '/crm/deals',
@@ -119,11 +121,13 @@ const TAB_TO_PATH: Record<TabType, string> = {
   'settings': '/settings',
   'settings-backup': '/settings/backup',
   'settings-whatsapp': '/settings/whatsapp',
+  'landing': '/landing',
 };
 
 const resolveTabFromPath = (path: string): TabType => {
   const normalized = path.toLowerCase().replace(/\/$/, '') || '/dashboard';
   if (normalized === '/messenger') return 'conversations';
+  if (['/landing', '/showcase', '/welcome', '/home'].includes(normalized)) return 'landing';
   for (const [tab, p] of Object.entries(TAB_TO_PATH)) {
     if (p === normalized || `/${tab}` === normalized) {
       return tab as TabType;
@@ -232,7 +236,9 @@ export const App: React.FC = () => {
       case 'bulk-campaigns':
         return <BulkCampaignHistoryView />;
       case 'bulk-recipients':
-        return <BulkRecipientListsView />;
+        return <BulkRecipientListsView initialViewMode="lists" />;
+      case 'bulk-suppression':
+        return <BulkRecipientListsView initialViewMode="suppression" />;
       case 'bulk-scheduled':
         return <BulkScheduledMessagesView />;
 
@@ -335,6 +341,17 @@ export const App: React.FC = () => {
         onExit={() => {
           setMobileGrabberToken(null);
           window.history.replaceState(null, '', '/');
+        }}
+      />
+    );
+  }
+
+  if (activeTab === 'landing') {
+    return (
+      <LandingPageView
+        onLaunchApp={() => {
+          setActiveTab('dashboard');
+          window.history.pushState(null, '', '/dashboard');
         }}
       />
     );

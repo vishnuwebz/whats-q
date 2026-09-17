@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Users,
   Plus,
@@ -44,24 +44,47 @@ import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { WhatsAppGroupExtractorModal } from './WhatsAppGroupExtractorModal';
 
-export const BulkRecipientListsView: React.FC = () => {
+interface BulkRecipientListsViewProps {
+  initialViewMode?: 'lists' | 'suppression';
+}
+
+export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ initialViewMode }) => {
   const {
     bulkRecipientLists,
     createRecipientList,
     setActiveTab,
+    activeTab,
     addToast,
     suppressionList,
     addSuppressionRecord,
     removeSuppressionRecord,
     setSelectedConversationId,
     conversations,
+    suppressionSearchQuery,
+    setSuppressionSearchQuery,
   } = useQiyamStore();
 
-  // View mode tab state
-  const [viewMode, setViewMode] = useState<'lists' | 'suppression'>('lists');
+  // View mode tab state - auto switch to suppression if routed via /bulk/suppression or prop
+  const isSuppressionTab = initialViewMode === 'suppression' || activeTab === 'bulk-suppression';
+  const [viewMode, setViewMode] = useState<'lists' | 'suppression'>(isSuppressionTab ? 'suppression' : 'lists');
 
-  // Suppression list filters and modal state
-  const [suppressionSearch, setSuppressionSearch] = useState('');
+  useEffect(() => {
+    if (initialViewMode === 'suppression' || activeTab === 'bulk-suppression') {
+      setViewMode('suppression');
+    } else if (initialViewMode === 'lists' || activeTab === 'bulk-recipients') {
+      setViewMode('lists');
+    }
+  }, [initialViewMode, activeTab]);
+
+  // Suppression list filters and modal state - auto populated if linked from a customer in chat
+  const [suppressionSearch, setSuppressionSearch] = useState(suppressionSearchQuery || '');
+
+  useEffect(() => {
+    if (suppressionSearchQuery) {
+      setSuppressionSearch(suppressionSearchQuery);
+      setViewMode('suppression');
+    }
+  }, [suppressionSearchQuery]);
   const [suppressionFilter, setSuppressionFilter] = useState<'all' | 'blocked' | 'opted_out' | 'button' | 'manual'>('all');
   const [isAddManualSuppressionOpen, setIsAddManualSuppressionOpen] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -538,7 +561,10 @@ export const BulkRecipientListsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setViewMode('lists')}
+              onClick={() => {
+                setViewMode('lists');
+                setActiveTab('bulk-recipients');
+              }}
               className={`py-3 px-4 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 viewMode === 'lists'
                   ? 'border-emerald-600 text-emerald-700'
@@ -551,7 +577,10 @@ export const BulkRecipientListsView: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setViewMode('suppression')}
+              onClick={() => {
+                setViewMode('suppression');
+                setActiveTab('bulk-suppression');
+              }}
               className={`py-3 px-4 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 viewMode === 'suppression'
                   ? 'border-rose-600 text-rose-700'

@@ -55,6 +55,7 @@ export const ConversationsView: React.FC = () => {
     removeSuppressionRecord,
     isPhoneSuppressed,
     addSuppressionRecord,
+    setSuppressionSearchQuery,
     requestSendConfirmation,
   } = useQiyamStore();
 
@@ -643,6 +644,20 @@ export const ConversationsView: React.FC = () => {
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Re-subscribe with Consent</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentConv) {
+                    const cleanPhone = currentConv.phone_number.replace(/\s+/g, '');
+                    setSuppressionSearchQuery(cleanPhone || currentConv.contact_name || '');
+                  }
+                  setActiveTab('bulk-suppression');
+                }}
+                className="w-full mt-1 py-1 bg-white hover:bg-rose-50 text-rose-800 border border-rose-300 rounded-lg text-[10px] font-bold shadow-2xs transition cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span>View in Suppression Hub</span>
+                <ExternalLink className="w-2.5 h-2.5" />
               </button>
             </div>
           ) : (
@@ -1397,8 +1412,14 @@ export const ConversationsView: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveTab('bulk-recipients')}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                      onClick={() => {
+                        if (currentConv) {
+                          const cleanPhone = currentConv.phone_number.replace(/\s+/g, '');
+                          setSuppressionSearchQuery(cleanPhone || currentConv.contact_name || '');
+                        }
+                        setActiveTab('bulk-suppression');
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
                       title="Open Compliance & Suppression List Hub"
                     >
                       <span>Suppression Hub</span>

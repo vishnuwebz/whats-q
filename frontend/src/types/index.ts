@@ -1,4 +1,5 @@
 export type TabType = 
+  | 'landing'
   | 'dashboard'
   | 'conversations'
   | 'bulk-overview'
@@ -6,6 +7,7 @@ export type TabType =
   | 'bulk-templates'
   | 'bulk-campaigns'
   | 'bulk-recipients'
+  | 'bulk-suppression'
   | 'bulk-scheduled'
   | 'crm-leads'
   | 'crm-customers'

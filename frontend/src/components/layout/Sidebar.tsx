@@ -10,7 +10,7 @@ import {
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
   User, Shield, LogOut, ArrowRight, ExternalLink, Send,
-  RefreshCw, Search, Database
+  RefreshCw, Search, Database, Globe, Ban
 } from 'lucide-react';
 
 interface SidebarMenuItem {
@@ -22,6 +22,7 @@ interface SidebarMenuItem {
 }
 
 const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
+  { tab: 'landing', title: 'Landing Page Showcase', category: 'Main', icon: Globe, keywords: 'landing website marketing showcase public portal' },
   { tab: 'dashboard', title: 'Dashboard', category: 'Main', icon: LayoutDashboard, keywords: 'home overview analytics metrics' },
   { tab: 'conversations', title: 'Conversations', category: 'Messenger', icon: MessageSquare, keywords: 'chats messages inbox whatsapp live customer' },
   { tab: 'bulk-overview', title: 'Bulk Message Overview', category: 'Messenger', icon: BarChart3, keywords: 'broadcast dashboard stats metrics analytics reach' },
@@ -29,6 +30,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'bulk-templates', title: 'Message Templates', category: 'Messenger', icon: BookOpen, keywords: 'meta templates approved quick replies' },
   { tab: 'bulk-campaigns', title: 'Campaign History', category: 'Messenger', icon: Layers, keywords: 'broadcast analytics sent delivered open rates' },
   { tab: 'bulk-recipients', title: 'Recipient Lists', category: 'Messenger', icon: Users, keywords: 'contacts audience segments groups tags' },
+  { tab: 'bulk-suppression', title: 'Suppression & Compliance', category: 'Messenger', icon: Ban, keywords: 'opt-out blocked stop unsubscribe dnd suppression compliance blacklisted hub' },
   { tab: 'bulk-scheduled', title: 'Scheduled Messages', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar' },
   { tab: 'crm-leads', title: 'Leads', category: 'CRM', icon: Users, keywords: 'prospects pipeline inquiries conversion funnel' },
   { tab: 'crm-customers', title: 'Customers', category: 'CRM', icon: UserCheck, keywords: 'clients directory accounts profiles' },
@@ -77,6 +79,7 @@ export const getTabAccordionSection = (tab: string): AccordionSection => {
     'bulk-templates',
     'bulk-campaigns',
     'bulk-recipients',
+    'bulk-suppression',
     'bulk-scheduled',
   ].includes(tab)) {
     return 'messenger';
@@ -142,7 +145,8 @@ export const Sidebar: React.FC = () => {
     fetchVersionInfo,
     triggerSystemUpdate,
     simulateGlobalUpdate,
-    metaConfig
+    metaConfig,
+    suppressionList,
   } = useQiyamStore();
 
   // Tenant / Organization Switcher state
@@ -420,6 +424,7 @@ export const Sidebar: React.FC = () => {
     'bulk-templates',
     'bulk-campaigns',
     'bulk-recipients',
+    'bulk-suppression',
     'bulk-scheduled',
   ].includes(activeTab);
   const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
@@ -631,20 +636,42 @@ export const Sidebar: React.FC = () => {
             </div>
           ) : (
             <>
+              {/* Landing Page Showcase */}
+              <button
+                data-tab="landing"
+                onClick={() => handleTabClick('landing')}
+                title="Landing Page Showcase"
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
+                  isActive('landing')
+                    ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                    : 'hover:bg-[#16233B] text-emerald-400 font-medium'
+                }`}
+              >
+                <Globe className="w-4 h-4 shrink-0 text-emerald-400" />
+                {!isCollapsed && (
+                  <div className="flex items-center justify-between w-full">
+                    <span>Landing Page</span>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold border border-emerald-500/30">
+                      LIVE
+                    </span>
+                  </div>
+                )}
+              </button>
+
               {/* Dashboard */}
               <button
                 data-tab="dashboard"
-            onClick={() => handleTabClick('dashboard')}
-            title="Dashboard"
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
-              isActive('dashboard')
-                ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                : 'hover:bg-[#16233B] text-slate-300'
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span>Dashboard</span>}
-          </button>
+                onClick={() => handleTabClick('dashboard')}
+                title="Dashboard"
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+                  isActive('dashboard')
+                    ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                    : 'hover:bg-[#16233B] text-slate-300'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4 shrink-0" />
+                {!isCollapsed && <span>Dashboard</span>}
+              </button>
 
           {/* Messenger (Accordion containing Conversations, Bulk Message Overview, Send Bulk Message, etc.) */}
           <div>
@@ -786,6 +813,31 @@ export const Sidebar: React.FC = () => {
                     >
                       <Users className={`w-4 h-4 shrink-0 ${isActive('bulk-recipients') ? 'text-white' : 'text-slate-400'}`} />
                       <span>Recipient Lists</span>
+                    </button>
+
+                    {/* Suppression & Compliance Hub */}
+                    <button
+                      data-tab="bulk-suppression"
+                      onClick={() => handleTabClick('bulk-suppression')}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-suppression')
+                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                          : 'hover:bg-[#16233B] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Ban className={`w-4 h-4 shrink-0 ${isActive('bulk-suppression') ? 'text-white' : 'text-slate-400'}`} />
+                        <span>Suppression &amp; Opt-outs</span>
+                      </div>
+                      {suppressionList && suppressionList.length > 0 && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                          isActive('bulk-suppression')
+                            ? 'bg-white/20 text-white'
+                            : 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                        }`}>
+                          {suppressionList.length}
+                        </span>
+                      )}
                     </button>
 
                     {/* Scheduled Messages */}
