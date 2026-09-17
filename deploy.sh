@@ -103,8 +103,9 @@ cd "$APP_DIR/backend"
 source venv/bin/activate
 pip install -r requirements.txt --quiet
 
-# Ensure persistent .env file exists for backend & gunicorn
-cat << 'EOF' > "$APP_DIR/backend/.env"
+# Ensure persistent .env file exists for backend & gunicorn without overwriting existing secrets
+if [ ! -f "$APP_DIR/backend/.env" ]; then
+    cat << 'EOF' > "$APP_DIR/backend/.env"
 DB_ENGINE=postgresql
 DB_NAME=whatsq_db
 DB_USER=whatsq_user
@@ -114,15 +115,12 @@ DB_PORT=5432
 DJANGO_DEBUG=False
 ALLOWED_HOSTS=whatsq.qiyambusinesssolutions.com,localhost,127.0.0.1
 EOF
+fi
 
-export DB_ENGINE=postgresql
-export DB_NAME=whatsq_db
-export DB_USER=whatsq_user
-export DB_PASSWORD=whatsq_secure_password_2026
-export DB_HOST=localhost
-export DB_PORT=5432
-export DJANGO_DEBUG=False
-export ALLOWED_HOSTS=whatsq.qiyambusinesssolutions.com,localhost,127.0.0.1
+# Load persistent environment variables
+set -a
+[ -f "$APP_DIR/backend/.env" ] && . "$APP_DIR/backend/.env"
+set +a
 python manage.py migrate --noinput
 
 # Auto-seed check: Guarantee conversations and workspace are NEVER left empty post-deployment

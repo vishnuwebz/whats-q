@@ -71,6 +71,27 @@ class MetaConfigViewSet(viewsets.ViewSet):
         config = MetaWhatsAppConfig.objects.first()
         if not config:
             config = MetaWhatsAppConfig.objects.create()
+
+        # Seamless Enterprise auto-seed from deployment environment variables
+        needs_save = False
+        if not config.access_token and os.environ.get('META_ACCESS_TOKEN'):
+            config.access_token = os.environ.get('META_ACCESS_TOKEN').strip()
+            needs_save = True
+        if not config.phone_number_id and os.environ.get('META_PHONE_NUMBER_ID'):
+            config.phone_number_id = os.environ.get('META_PHONE_NUMBER_ID').strip()
+            needs_save = True
+        if not config.waba_id and os.environ.get('META_WABA_ID'):
+            config.waba_id = os.environ.get('META_WABA_ID').strip()
+            needs_save = True
+        if not config.app_secret and os.environ.get('META_APP_SECRET'):
+            config.app_secret = os.environ.get('META_APP_SECRET').strip()
+            needs_save = True
+        if os.environ.get('META_WEBHOOK_VERIFY_TOKEN') and config.verify_token in ('', 'qiyam_whatsapp_secret_token_2026'):
+            config.verify_token = os.environ.get('META_WEBHOOK_VERIFY_TOKEN').strip()
+            needs_save = True
+        if needs_save:
+            config.save()
+
         return Response(MetaWhatsAppConfigSerializer(config).data)
 
     def create(self, request):
@@ -1118,11 +1139,15 @@ class WhatsAppWebhookView(APIView):
             clean_sender = re.sub(r'\D', '', str(sender_phone)) if sender_phone else ''
             if clean_sender:
                 conv = None
-                for c in Conversation.objects.all():
-                    c_clean = re.sub(r'\D', '', str(c.phone_number))
-                    if len(clean_sender) >= 10 and c_clean.endswith(clean_sender[-10:]):
-                        conv = c
-                        break
+                if len(clean_sender) >= 10:
+                    last_10 = clean_sender[-10:]
+                    conv = Conversation.objects.filter(phone_number__endswith=last_10).first()
+                if not conv:
+                    for c in Conversation.objects.all():
+                        c_clean = re.sub(r'\D', '', str(c.phone_number))
+                        if len(clean_sender) >= 10 and c_clean.endswith(clean_sender[-10:]):
+                            conv = c
+                            break
                 if conv:
                     emit_event('conversation.typing', {
                         'conversation_id': conv.id,
@@ -1259,11 +1284,13 @@ class WhatsAppWebhookView(APIView):
                                 conv = Conversation.objects.filter(phone_number=clean_sender).first()
                             if not conv and len(clean_sender) >= 10:
                                 last_10 = clean_sender[-10:]
-                                for c in Conversation.objects.all():
-                                    c_clean = re.sub(r'\D', '', str(c.phone_number))
-                                    if c_clean.endswith(last_10):
-                                        conv = c
-                                        break
+                                conv = Conversation.objects.filter(phone_number__endswith=last_10).first()
+                                if not conv:
+                                    for c in Conversation.objects.all():
+                                        c_clean = re.sub(r'\D', '', str(c.phone_number))
+                                        if c_clean.endswith(last_10):
+                                            conv = c
+                                            break
 
                         if not conv:
                             conv = Conversation.objects.create(

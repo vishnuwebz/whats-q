@@ -1,4 +1,5 @@
-const API_BASE = '/api';
+const customBase = ((import.meta as any).env?.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '');
+export const API_BASE = customBase ? (customBase.endsWith('/api') ? customBase : `${customBase}/api`) : '/api';
 
 export const apiClient = {
   async get(endpoint: string) {

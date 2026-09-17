@@ -19,6 +19,17 @@ class MetaWhatsAppService:
     GRAPH_BASE_URL = "https://graph.facebook.com"
 
     @classmethod
+    def clean_phone_number(cls, phone: str) -> str:
+        """
+        Cleans and normalizes phone number for Meta Cloud API.
+        If a 10-digit number is provided without country prefix, defaults to +91.
+        """
+        clean = re.sub(r'[^0-9]', '', str(phone or ''))
+        if len(clean) == 10:
+            clean = '91' + clean
+        return clean
+
+    @classmethod
     def get_headers(cls, access_token: str):
         return {
             "Authorization": f"Bearer {access_token.strip()}",
@@ -462,7 +473,7 @@ class MetaWhatsAppService:
         url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
         headers = cls.get_headers(access_token)
 
-        clean_phone = re.sub(r'[^0-9]', '', str(to_phone))
+        clean_phone = cls.clean_phone_number(to_phone)
 
         payload = {
             "messaging_product": "whatsapp",
@@ -494,7 +505,7 @@ class MetaWhatsAppService:
         url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
         headers = cls.get_headers(access_token)
 
-        clean_phone = re.sub(r'[^0-9]', '', str(to_phone))
+        clean_phone = cls.clean_phone_number(to_phone)
 
         payload = {
             "messaging_product": "whatsapp",
@@ -532,7 +543,7 @@ class MetaWhatsAppService:
         url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
         headers = cls.get_headers(access_token)
 
-        clean_phone = re.sub(r'[^0-9]', '', str(to_phone))
+        clean_phone = cls.clean_phone_number(to_phone)
 
         # Format buttons for Meta interactive API
         formatted_buttons = []

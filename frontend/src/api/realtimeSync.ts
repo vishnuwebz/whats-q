@@ -1,5 +1,6 @@
 import { useQiyamStore } from '../store/useQiyamStore';
 import { mapMessage } from './mappers';
+import { API_BASE } from './client';
 
 export interface RealtimeEvent {
   id: string;
@@ -57,7 +58,7 @@ class RealtimeSyncManager {
       }
 
       useQiyamStore.getState().setSyncStatus('reconnecting');
-      this.eventSource = new EventSource('/api/core/events/stream/');
+      this.eventSource = new EventSource(`${API_BASE}/core/events/stream/`);
 
       this.eventSource.onopen = () => {
         this.reconnectAttempts = 0;
@@ -213,7 +214,7 @@ class RealtimeSyncManager {
 
   private async pollDeltaEvents() {
     try {
-      const res = await fetch(`/api/core/events/sync/?since=${this.lastTimestamp}`);
+      const res = await fetch(`${API_BASE}/core/events/sync/?since=${this.lastTimestamp}`);
       if (!res.ok) return;
       const data = await res.json();
       if (data.events && Array.isArray(data.events)) {
