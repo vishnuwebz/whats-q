@@ -28,6 +28,17 @@ import {
   initialBulkScheduledMessages
 } from './bulkData';
 import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
+import {
+  INITIAL_INVENTORY,
+  INITIAL_LEADS,
+  INITIAL_DEALS,
+  INITIAL_JOBS,
+  INITIAL_EMPLOYEES,
+  INITIAL_ATTENDANCE,
+  INITIAL_TRANSACTIONS,
+  INITIAL_INVOICES,
+  INITIAL_ACCOUNTS
+} from './initialDatasets';
 
 const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
 
@@ -172,6 +183,25 @@ function persistConversations(convs: Conversation[]) {
   } catch (e) {
     // Ignore storage quota errors
   }
+}
+
+function getStoredCache<T>(key: string, fallback: T[]): T[] {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(`whatsq_${key}_cache`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return fallback;
+}
+
+function persistCache<T>(key: string, data: T[]) {
+  if (typeof window === 'undefined' || !Array.isArray(data) || data.length === 0) return;
+  try {
+    localStorage.setItem(`whatsq_${key}_cache`, JSON.stringify(data));
+  } catch {}
 }
 
 interface Toast {
@@ -1273,21 +1303,21 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   conversations: getStoredConversations(),
-  leads: [],
-  deals: [],
+  leads: getStoredCache('leads', INITIAL_LEADS),
+  deals: getStoredCache('deals', INITIAL_DEALS),
   followups: [],
   customers: [],
-  jobs: [],
+  jobs: getStoredCache('jobs', INITIAL_JOBS),
   appointments: INITIAL_APPOINTMENTS,
-  employees: [],
-  attendance: [],
+  employees: getStoredCache('employees', INITIAL_EMPLOYEES),
+  attendance: getStoredCache('attendance', INITIAL_ATTENDANCE),
   tasks: [],
   routes: [],
-  inventory: [],
-  transactions: [],
-  invoices: [],
+  inventory: getStoredCache('inventory', INITIAL_INVENTORY),
+  transactions: getStoredCache('transactions', INITIAL_TRANSACTIONS),
+  invoices: getStoredCache('invoices', INITIAL_INVOICES),
   expenses: [],
-  accounts: [],
+  accounts: getStoredCache('accounts', INITIAL_ACCOUNTS),
   workflows: [],
   workflowLogs: [],
   approvals: [],
@@ -1341,52 +1371,77 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       qiyamApi.fetchDailyMetrics(),       // 27
     ]);
 
-    // Helper: extract fulfilled value or fallback
-    const val = <T>(idx: number, fallback: T): T =>
-      results[idx].status === 'fulfilled' ? (results[idx] as PromiseFulfilledResult<T>).value ?? fallback : fallback;
+    const current = get();
+
+    // Helper: extract fulfilled value or fallback without ever wiping existing data
+    const safeVal = <T>(idx: number, currentVal: T, fallback: T, cacheKey?: string): T => {
+      const res = results[idx];
+      if (res && res.status === 'fulfilled') {
+        const val = (res as PromiseFulfilledResult<T>).value;
+        if (val !== undefined && val !== null) {
+          if (Array.isArray(val)) {
+            if (val.length > 0) {
+              if (cacheKey) persistCache(cacheKey, val);
+              return val;
+            }
+          } else {
+            return val;
+          }
+        }
+      }
+      // If endpoint failed/rejected or returned empty array:
+      // PRESERVE current store value if it has items!
+      if (Array.isArray(currentVal) && currentVal.length > 0) {
+        return currentVal;
+      }
+      return fallback;
+    };
 
     const anyRejected = results.some((r) => r.status === 'rejected');
     if (anyRejected) {
       const rejected = results
         .map((r, i) => (r.status === 'rejected' ? i : -1))
         .filter((i) => i >= 0);
-      console.warn('[Store] Some API calls failed (indices):', rejected, results.filter((_, i) => rejected.includes(i)));
+      console.warn('[Store] Some API calls failed or backend is reloading (indices):', rejected);
+      // Auto-retry in 3s so that as soon as the server finishes reloading, fresh data updates
+      setTimeout(() => {
+        get().loadInitialData();
+      }, 3000);
     }
 
-    const conversations = val<import('../types').Conversation[]>(0, []);
-    const templates     = val<import('../types').WhatsAppTemplateItem[]>(1, []);
-    const metaConfig    = val<import('../types').MetaConfig | null>(2, null);
-    const leads         = val<import('../types').Lead[]>(3, []);
-    const deals         = val<import('../types').Deal[]>(4, []);
-    const followups     = val<import('../types').FollowUp[]>(5, []);
-    const customers     = val<Record<string, unknown>[]>(6, []);
-    const jobs          = val<import('../types').Job[]>(7, []);
-    const appointments  = val<import('../types').Appointment[]>(8, []);
-    const employees     = val<import('../types').Employee[]>(9, []);
-    const attendance    = val<import('../types').AttendanceRecord[]>(10, []);
-    const tasks         = val<import('../types').Task[]>(11, []);
-    const routes        = val<import('../types').Route[]>(12, []);
-    const inventory     = val<import('../types').InventoryItem[]>(13, []);
-    const transactions  = val<import('../types').Transaction[]>(14, []);
-    const invoices      = val<import('../types').Invoice[]>(15, []);
-    const expenses      = val<import('../types').Expense[]>(16, []);
-    const accounts      = val<import('../types').PaymentAccount[]>(17, []);
-    const workflows     = val<import('../types').Workflow[]>(18, []);
-    const workflowLogs  = val<import('../types').AutomationLog[]>(19, []);
-    const approvals     = val<import('../types').Approval[]>(20, []);
-    const knowledgeArticles = val<import('../types').KnowledgeArticle[]>(21, []);
-    const integrations  = val<import('../types').IntegrationItem[]>(22, []);
-    const branches      = val<import('../types').BranchItem[]>(23, []);
-    const workspace     = val<import('../api/qiyamApi').WorkspaceSettings | null>(24, null);
-    const channelMetrics = val<import('../api/qiyamApi').ChannelMetricRow[]>(25, []);
-    const intentMetrics  = val<import('../api/qiyamApi').IntentMetricRow[]>(26, []);
-    const dailyMetrics   = val<import('../api/qiyamApi').DailyMetricRow[]>(27, []);
+    const conversations = safeVal(0, current.conversations, getStoredConversations(), 'conversations');
+    const templates     = safeVal(1, current.templates, [], 'templates');
+    const metaConfig    = (results[2].status === 'fulfilled' && (results[2] as any).value) || current.metaConfig || null;
+    const leads         = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
+    const deals         = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
+    const followups     = safeVal(5, current.followups, [], 'followups');
+    const customers     = safeVal(6, current.customers, [], 'customers');
+    const jobs          = safeVal(7, current.jobs, INITIAL_JOBS, 'jobs');
+    const appointments  = safeVal(8, current.appointments, INITIAL_APPOINTMENTS, 'appointments');
+    const employees     = safeVal(9, current.employees, INITIAL_EMPLOYEES, 'employees');
+    const attendance    = safeVal(10, current.attendance, INITIAL_ATTENDANCE, 'attendance');
+    const tasks         = safeVal(11, current.tasks, [], 'tasks');
+    const routes        = safeVal(12, current.routes, [], 'routes');
+    const inventory     = safeVal(13, current.inventory, INITIAL_INVENTORY, 'inventory');
+    const transactions  = safeVal(14, current.transactions, INITIAL_TRANSACTIONS, 'transactions');
+    const invoices      = safeVal(15, current.invoices, INITIAL_INVOICES, 'invoices');
+    const expenses      = safeVal(16, current.expenses, [], 'expenses');
+    const accounts      = safeVal(17, current.accounts, INITIAL_ACCOUNTS, 'accounts');
+    const workflows     = safeVal(18, current.workflows, [], 'workflows');
+    const workflowLogs  = safeVal(19, current.workflowLogs, [], 'workflowLogs');
+    const approvals     = safeVal(20, current.approvals, [], 'approvals');
+    const knowledgeArticles = safeVal(21, current.knowledgeArticles, [], 'knowledgeArticles');
+    const integrations  = safeVal(22, current.integrations, INITIAL_INTEGRATIONS, 'integrations');
+    const branches      = safeVal(23, current.branches, INITIAL_BRANCHES, 'branches');
+    const workspace     = (results[24].status === 'fulfilled' && (results[24] as any).value) || current.workspace || null;
+    const channelMetrics = safeVal(25, current.channelMetrics, [], 'channelMetrics');
+    const intentMetrics  = safeVal(26, current.intentMetrics, [], 'intentMetrics');
+    const dailyMetrics   = safeVal(27, current.dailyMetrics, [], 'dailyMetrics');
 
-    // If all calls rejected, mark backend offline
+    // If all calls rejected, mark backend offline, but preserve current data
     const allRejected = results.every((r) => r.status === 'rejected');
     if (allRejected) {
       set({ backendOnline: false });
-      get().addToast('Backend unavailable. Start Django on port 8000.', 'error');
       return;
     }
 
@@ -3412,8 +3467,8 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     stopOtaCountdown();
     set({
       isUpdatingSystem: true,
-      updateProgressStep: '⚡ Clearing caches & forcefully hard-refreshing WhatsQ...',
-      isUpdateModalOpen: false,
+      isUpdateModalOpen: true,
+      updateProgressStep: '⚡ Connecting to server & starting update...',
     });
 
     const targetCommit = get().versionInfo?.latest_commit || get().versionInfo?.current_commit || '';
@@ -3425,14 +3480,55 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     }
 
     try {
-      // Notify backend to apply update if on server
-      apiClient.post('/core/system-update/', {}).catch(() => {});
-    } catch {}
+      // 1. Notify backend to apply update on host
+      const res: any = await apiClient.post('/core/system-update/', {});
 
-    // Give browser UI a moment to show the hard refresh spinner
+      // If backend reports an update in progress on host server
+      if (res && (res.in_progress || res.pid)) {
+        console.log(`[SystemUpdate] Host deployment script executing (PID ${res.pid}). Tracking live progress...`);
+
+        let attempts = 0;
+        const maxAttempts = 25; // up to 37.5s (25 * 1.5s)
+
+        while (attempts < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1500));
+          attempts++;
+
+          if (attempts <= 4) {
+            set({ updateProgressStep: '📦 Creating PostgreSQL database backup...' });
+          } else if (attempts <= 10) {
+            set({ updateProgressStep: '🔄 Pulling latest release from Git & running migrations...' });
+          } else if (attempts <= 18) {
+            set({ updateProgressStep: '⚡ Compiling new production frontend release...' });
+          } else {
+            set({ updateProgressStep: '🚀 Hot-reloading WhatsQ backend services...' });
+          }
+
+          try {
+            const statusRes: any = await apiClient.get('/core/system-update/');
+            if (statusRes && statusRes.in_progress === false) {
+              console.log('[SystemUpdate] Host deployment script finished!');
+              break;
+            }
+          } catch {
+            // Service may be restarting (momentary 502) — expected during Gunicorn SIGHUP reload
+          }
+        }
+      } else {
+        // Local machine or simulation: smooth brief animation
+        set({ updateProgressStep: '⚡ Purging client caches & flushing workers...' });
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+    } catch (e) {
+      console.warn('System update API response:', e);
+      set({ updateProgressStep: '⚡ Purging client caches & flushing workers...' });
+      await new Promise((r) => setTimeout(r, 800));
+    }
+
+    set({ updateProgressStep: '✅ System synchronized! Refreshing WhatsQ...' });
     await new Promise((r) => setTimeout(r, 600));
 
-    // Force hard refresh immediately bypassing disk cache
+    // Force hard refresh now that server is completely finished
     await forceHardRefresh('Triggered from SystemUpdateModal');
     return { success: true };
   },

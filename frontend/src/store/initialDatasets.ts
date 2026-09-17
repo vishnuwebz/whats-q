@@ -1,0 +1,232 @@
+import {
+  InventoryItem, Lead, Deal, FollowUp, Job, Employee,
+  AttendanceRecord, Task, Route, Transaction, Invoice, Expense, PaymentAccount
+} from '../types';
+
+export const INITIAL_INVENTORY: InventoryItem[] = [
+  {
+    id: 1,
+    name: 'Basmati Rice 5kg',
+    sku: 'GROC-001',
+    category: 'Grocery',
+    stock_units: 245,
+    stock_value: 12250.0,
+    status: 'in_stock',
+    location: 'Main Warehouse Aisle 01 - Rack 02',
+    reorder_level: 50,
+    reorder_qty: 100,
+    supplier: 'Fresh Supplies Pvt. Ltd.',
+    image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 2,
+    name: 'Sunflower Oil 1L',
+    sku: 'GROC-002',
+    category: 'Grocery',
+    stock_units: 28,
+    stock_value: 1960.0,
+    status: 'low_stock',
+    location: 'Main Warehouse Aisle 02 - Rack 01',
+    reorder_level: 30,
+    reorder_qty: 80,
+    supplier: 'Fresh Supplies Pvt. Ltd.',
+    image_url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 3,
+    name: 'Milk Powder 500g',
+    sku: 'DAIRY-001',
+    category: 'Dairy',
+    stock_units: 0,
+    stock_value: 0.0,
+    status: 'out_of_stock',
+    location: 'Main Warehouse Aisle 03 - Rack 01',
+    reorder_level: 20,
+    reorder_qty: 50,
+    supplier: 'Milma Dairy',
+    image_url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 4,
+    name: 'Colgate Toothpaste 100g',
+    sku: 'HPC-001',
+    category: 'Personal Care',
+    stock_units: 156,
+    stock_value: 3120.0,
+    status: 'in_stock',
+    location: 'Main Warehouse Aisle 04 - Rack 03',
+    reorder_level: 40,
+    reorder_qty: 100,
+    supplier: 'Colgate Palmolive',
+    image_url: 'https://images.unsplash.com/photo-1559591937-e10b14421b59?w=400&auto=format&fit=crop&q=80',
+  },
+];
+
+export const INITIAL_LEADS: Lead[] = [
+  { id: 1, name: 'Amit Verma', phone: '+91 98765 43210', service: 'AC Repair', location: 'Koyilandy, Kerala', value: 2800.0, stage: 'new', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'May 12, 2024', last_contact_str: 'May 12, 2024', notes: 'Customer needs AC repair tomorrow morning. Prefers 10 AM - 12 PM slot.', tags: ['AC Service', 'Urgent'] },
+  { id: 2, name: 'Priya Sharma', phone: '+91 89213 56789', service: 'Home Cleaning', location: 'Kozhikode, Kerala', value: 1200.0, stage: 'new', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'May 12, 2024', last_contact_str: 'May 12, 2024', notes: 'Requested quotation for 3 BHK flat.', tags: ['Cleaning'] },
+  { id: 3, name: 'Rahul Singh', phone: '+91 98764 11122', service: 'Electrical Work', location: 'Koyilandy, Kerala', value: 3500.0, stage: 'new', owner: 'Ramesh Kumar', source: 'Website', created_at_str: 'May 11, 2024', last_contact_str: 'May 11, 2024', notes: 'Full house wiring check.', tags: ['Electrical'] },
+  { id: 4, name: 'Neha Patel', phone: '+91 96789 11223', service: 'Plumbing', location: 'Kozhikode, Kerala', value: 2200.0, stage: 'new', owner: 'Ramesh Kumar', source: 'Referral', created_at_str: 'May 11, 2024', last_contact_str: 'May 11, 2024', notes: 'Bathroom pipe leakage.', tags: ['Plumbing'] },
+  { id: 5, name: 'Vikram Mehta', phone: '+91 90000 11123', service: 'AC Installation', location: 'Calicut, Kerala', value: 4500.0, stage: 'contacted', owner: 'Priya Sharma', source: 'WhatsApp', created_at_str: 'May 10, 2024', last_contact_str: 'May 12, 2024', notes: 'Discussed installation quote.', tags: ['AC Service'] },
+  { id: 6, name: 'Sneha Joshi', phone: '+91 96789 66771', service: 'Pest Control', location: 'Koyilandy, Kerala', value: 2000.0, stage: 'contacted', owner: 'Priya Sharma', source: 'Direct Call', created_at_str: 'May 10, 2024', last_contact_str: 'May 11, 2024', notes: 'Follow up scheduled for tomorrow.', tags: ['Pest Control'] },
+  { id: 7, name: 'Anita Singh', phone: '+91 98765 11199', service: 'AC Repair (Split Unit)', location: 'Koyilandy, Kerala', value: 2800.0, stage: 'qualified', owner: 'Anita Singh', source: 'WhatsApp', created_at_str: 'May 09, 2024', last_contact_str: 'May 10, 2024', notes: 'Gas refill verified.', tags: ['AC Service'] },
+  { id: 8, name: 'Deepak Patel', phone: '+91 85471 22330', service: 'AC Servicing (3 Units)', location: 'Calicut, Kerala', value: 5600.0, stage: 'proposal_sent', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'May 08, 2024', last_contact_str: 'May 10, 2024', notes: 'Proposal sent with 10% AMC discount.', tags: ['AC Service', 'AMC'] },
+  { id: 9, name: 'Kiran Kumar', phone: '+91 81234 55667', service: 'AC Installation + Ducting', location: 'Kozhikode, Kerala', value: 12000.0, stage: 'negotiation', owner: 'Rahul Mehta', source: 'Walk-in', created_at_str: 'May 07, 2024', last_contact_str: 'May 09, 2024', notes: 'Commercial site quotation under review.', tags: ['Commercial', 'High Value'] },
+];
+
+export const INITIAL_DEALS: Deal[] = [
+  { id: 1, deal_name: 'AC Installation - Vikram Mehta', customer_name: 'Vikram Mehta', phone: '+91 90000 11123', amount: 12000.0, stage: 'proposal_sent', probability: 60, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'Jun 15, 2024', tags: ['AC Service', 'High Value'], notes: 'Customer interested in 1.5 ton inverter AC installation. Shared quotation.' },
+  { id: 2, deal_name: 'AC Repair AMC - Pooja Iyer', customer_name: 'Pooja Iyer', phone: '+91 96789 12345', amount: 18000.0, stage: 'proposal_sent', probability: 75, deal_owner: 'Priya Sharma', source: 'Direct Call', expected_close_date: 'Jun 18, 2024', tags: ['AMC', 'VIP'], notes: 'Annual maintenance contract for 5 AC units.' },
+  { id: 3, deal_name: 'Full Home Cleaning - Anil Gupta', customer_name: 'Anil Gupta', phone: '+91 98765 22334', amount: 15000.0, stage: 'negotiation', probability: 85, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'Jun 20, 2024', tags: ['Cleaning'], notes: 'Deep cleaning prior to house warming.' },
+  { id: 4, deal_name: 'AC Duct Cleaning - Kiran Kumar', customer_name: 'Kiran Kumar', phone: '+91 81234 55667', amount: 7200.0, stage: 'negotiation', probability: 80, deal_owner: 'Rahul Mehta', source: 'Referral', expected_close_date: 'Jun 22, 2024', tags: ['AC Service'], notes: 'Commercial office ducting.' },
+  { id: 5, deal_name: 'AC Repair - Deepak Patel', customer_name: 'Deepak Patel', phone: '+91 85471 22330', amount: 2800.0, stage: 'won', probability: 100, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'May 30, 2024', tags: ['AC Service'], notes: 'Service completed and invoice paid.' },
+];
+
+export const INITIAL_JOBS: Job[] = [
+  {
+    id: 1,
+    job_id_str: 'JOB-1024',
+    customer_name: 'Vikram Mehta',
+    phone: '+91 90000 11123',
+    service: 'AC Installation - 1.5 Ton Inverter AC',
+    date_str: 'May 12, 2024',
+    time_str: '10:30 AM',
+    assigned_to: 'Amit Sharma',
+    status: 'in_progress',
+    priority: 'high',
+    location: 'Kozhikode, Kerala',
+    amount: 1200.0,
+    advance_paid: 360.0,
+    payment_status: 'partially_paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'May 10, 10:15 AM', by: 'System', completed: true },
+      { title: 'Assigned to Amit Sharma', timestamp: 'May 10, 10:20 AM', by: 'System', completed: true },
+      { title: 'Customer Confirmed', timestamp: 'May 10, 11:05 AM', by: 'Customer', completed: true },
+      { title: 'Job Started', timestamp: 'May 12, 10:35 AM', by: 'Amit Sharma', completed: true },
+      { title: 'Job Completed', timestamp: 'Pending', by: 'Technician', completed: false },
+    ]
+  },
+  {
+    id: 2,
+    job_id_str: 'JOB-1023',
+    customer_name: 'Amit Verma',
+    phone: '+91 98765 43210',
+    service: 'AC Repair (Gas Leakage)',
+    date_str: 'May 12, 2024',
+    time_str: '12:00 PM',
+    assigned_to: 'Priya Sharma',
+    status: 'scheduled',
+    priority: 'high',
+    location: 'Kozhikode, Kerala',
+    amount: 2800.0,
+    advance_paid: 840.0,
+    payment_status: 'advance_paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'May 11, 09:00 AM', by: 'System', completed: true },
+      { title: 'Assigned to Priya Sharma', timestamp: 'May 11, 09:30 AM', by: 'System', completed: true },
+      { title: 'Customer Confirmed', timestamp: 'May 11, 10:00 AM', by: 'Customer', completed: true }
+    ]
+  },
+  {
+    id: 3,
+    job_id_str: 'JOB-1022',
+    customer_name: 'Priya Sharma',
+    phone: '+91 89213 56789',
+    service: 'Deep Cleaning (Full Home)',
+    date_str: 'May 13, 2024',
+    time_str: '09:00 AM',
+    assigned_to: 'Neha Patel',
+    status: 'scheduled',
+    priority: 'medium',
+    location: 'Ramanattukara, Kerala',
+    amount: 4500.0,
+    advance_paid: 1350.0,
+    payment_status: 'advance_paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'May 11, 02:00 PM', by: 'System', completed: true },
+      { title: 'Assigned to Neha Patel', timestamp: 'May 11, 02:15 PM', by: 'System', completed: true }
+    ]
+  },
+  {
+    id: 4,
+    job_id_str: 'JOB-1020',
+    customer_name: 'Sneha Joshi',
+    phone: '+91 96789 66771',
+    service: 'AC Maintenance (General Service)',
+    date_str: 'May 13, 2024',
+    time_str: '04:00 PM',
+    assigned_to: 'Arjun Nair',
+    status: 'completed',
+    priority: 'low',
+    location: 'Vadakara, Kerala',
+    amount: 1500.0,
+    advance_paid: 1500.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'May 09, 10:00 AM', by: 'System', completed: true },
+      { title: 'Service Completed', timestamp: 'May 13, 05:00 PM', by: 'Arjun Nair', completed: true }
+    ]
+  },
+  {
+    id: 5,
+    job_id_str: 'JOB-1019',
+    customer_name: 'Sunil Joseph',
+    phone: '+91 90321 45000',
+    service: 'Electrical Work (Wiring & Switches)',
+    date_str: 'May 14, 2024',
+    time_str: '10:00 AM',
+    assigned_to: 'Amit Sharma',
+    status: 'cancelled',
+    priority: 'low',
+    location: 'Kozhikode, Kerala',
+    amount: 1800.0,
+    advance_paid: 0.0,
+    payment_status: 'pending',
+    timeline: [
+      { title: 'Job Created', timestamp: 'May 08, 11:00 AM', by: 'System', completed: true },
+      { title: 'Customer Cancelled', timestamp: 'May 08, 02:00 PM', by: 'Customer', completed: true }
+    ]
+  },
+];
+
+export const INITIAL_EMPLOYEES: Employee[] = [
+  { id: 1, name: 'Amit Sharma', employee_id_str: 'EMP-001', role: 'Field Technician', department: 'AC Services', phone: '+91 90000 11123', email: 'amit.sharma@qiyam.com', status: 'on_duty', location: 'Kozhikode, Kerala', rating: 4.8, jobs_completed_month: 28, on_time_percent: 96 },
+  { id: 2, name: 'Priya Sharma', employee_id_str: 'EMP-002', role: 'Customer Support', department: 'Support', phone: '+91 89213 56789', email: 'priya.sharma@qiyam.com', status: 'active', location: 'Kozhikode Office', rating: 4.6, jobs_completed_month: 120, on_time_percent: 98 },
+  { id: 3, name: 'Rahul Singh', employee_id_str: 'EMP-003', role: 'Plumbing Technician', department: 'Plumbing', phone: '+91 98764 11122', email: 'rahul.singh@qiyam.com', status: 'on_duty', location: 'Vadakara, Kerala', rating: 4.7, jobs_completed_month: 22, on_time_percent: 94 },
+  { id: 4, name: 'Neha Patel', employee_id_str: 'EMP-004', role: 'Housekeeper Lead', department: 'Cleaning', phone: '+91 96789 11223', email: 'neha.patel@qiyam.com', status: 'on_leave', location: 'Kozhikode, Kerala', rating: 4.5, jobs_completed_month: 18, on_time_percent: 90 },
+  { id: 5, name: 'Arjun Nair', employee_id_str: 'EMP-005', role: 'Electrician', department: 'Electrical', phone: '+91 85471 22330', email: 'arjun.nair@qiyam.com', status: 'on_duty', location: 'Ramanattukara, Kerala', rating: 4.6, jobs_completed_month: 31, on_time_percent: 95 },
+  { id: 6, name: 'Sneha Joshi', employee_id_str: 'EMP-006', role: 'Team Lead', department: 'AC Services', phone: '+91 96789 66771', email: 'sneha.joshi@qiyam.com', status: 'active', location: 'Kozhikode Office', rating: 4.9, jobs_completed_month: 56, on_time_percent: 99 },
+];
+
+export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
+  { id: 1, employee_id_str: 'EMP-001', employee_name: 'Amit Sharma', department: 'AC Services', shift: '9:00 AM - 6:00 PM', check_in: '8:58 AM', check_out: undefined, work_hours: '8h 58m', status: 'present', location: 'Kozhikode, Kerala', device: 'WhatsApp Geo-Punch (Android)' },
+  { id: 2, employee_id_str: 'EMP-002', employee_name: 'Priya Sharma', department: 'Customer Support', shift: '9:00 AM - 6:00 PM', check_in: '9:02 AM', check_out: undefined, work_hours: '8h 54m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Chrome)' },
+  { id: 3, employee_id_str: 'EMP-003', employee_name: 'Rahul Singh', department: 'Plumbing Services', shift: '9:00 AM - 6:00 PM', check_in: '8:50 AM', check_out: undefined, work_hours: '9h 05m', status: 'present', location: 'Vadakara, Kerala', device: 'WhatsApp Geo-Punch (iOS)' },
+  { id: 4, employee_id_str: 'EMP-004', employee_name: 'Neha Patel', department: 'Housekeeping Lead', shift: '9:00 AM - 6:00 PM', check_in: '-', check_out: undefined, work_hours: '0h 00m', status: 'absent', location: 'Kozhikode, Kerala', device: 'Leave Portal (Approved)' },
+  { id: 5, employee_id_str: 'EMP-005', employee_name: 'Arjun Nair', department: 'Electrical Services', shift: '9:00 AM - 6:00 PM', check_in: '9:00 AM', check_out: undefined, work_hours: '8h 56m', status: 'present', location: 'Ramanattukara, Kerala', device: 'WhatsApp Geo-Punch (Android)' },
+];
+
+export const INITIAL_TRANSACTIONS: Transaction[] = [
+  { id: 1, date_str: 'May 31, 2024', tx_type: 'income', description: 'Payment from AC Services', category: 'AC Services', party: 'Amit Sharma', account: 'HDFC Bank - 1234', amount: 12500.0, payment_mode: 'UPI', reference_id: 'INV-2024-0521', status: 'completed' },
+  { id: 2, date_str: 'May 30, 2024', tx_type: 'expense', description: 'Salary - May 2024', category: 'Salaries & Wages', party: 'Payroll', account: 'ICICI Bank - 5678', amount: 265000.0, payment_mode: 'Bank Transfer', reference_id: 'EXP-2024-0311', status: 'completed' },
+  { id: 3, date_str: 'May 29, 2024', tx_type: 'income', description: 'Digital Marketing Project', category: 'Marketing', party: 'Digital Ads', account: 'HDFC Bank - 1234', amount: 18750.0, payment_mode: 'UPI', reference_id: 'INV-2024-0518', status: 'completed' },
+  { id: 4, date_str: 'May 28, 2024', tx_type: 'expense', description: 'Office Rent - May', category: 'Rent & Utilities', party: 'Landlord', account: 'Axis Bank - 9012', amount: 55000.0, payment_mode: 'NEFT', reference_id: 'EXP-2024-0308', status: 'completed' },
+  { id: 5, date_str: 'May 27, 2024', tx_type: 'income', description: 'Website Development', category: 'Web Services', party: 'Rahul Singh', account: 'HDFC Bank - 1234', amount: 75000.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2024-0512', status: 'completed' },
+];
+
+export const INITIAL_INVOICES: Invoice[] = [
+  { id: 1, invoice_number: 'INV-2024-0186', customer_name: 'AC Services', customer_email: 'acservices@gmail.com', customer_phone: '+91 98765 43210', invoice_date: 'May 31, 2024', due_date: 'Jun 14, 2024', amount: 12500.0, status: 'paid', paid_amount: 12500.0, payment_method: 'UPI', payment_date: 'May 31, 2024', items: [{ description: 'AC Repair & Gas Refill', qty: 2, unitPrice: 6250, amount: 12500 }] },
+  { id: 2, invoice_number: 'INV-2024-0185', customer_name: 'Digital Ads Pvt. Ltd.', customer_email: 'info@digitalads.com', customer_phone: '+91 98765 11122', invoice_date: 'May 30, 2024', due_date: 'Jun 13, 2024', amount: 18750.0, status: 'paid', paid_amount: 18750.0, payment_method: 'Bank Transfer', payment_date: 'May 30, 2024' },
+  { id: 3, invoice_number: 'INV-2024-0184', customer_name: 'Zoho Corp', customer_email: 'accounts@zohocorp.com', customer_phone: '+91 85471 22330', invoice_date: 'May 29, 2024', due_date: 'Jun 12, 2024', amount: 4200.0, status: 'partial_paid', paid_amount: 2100.0, payment_method: 'Card' },
+  { id: 4, invoice_number: 'INV-2024-0183', customer_name: 'Priya Sharma', customer_email: 'priya.sharma@gmail.com', customer_phone: '+91 89213 56789', invoice_date: 'May 28, 2024', due_date: 'Jun 11, 2024', amount: 32000.0, status: 'overdue', paid_amount: 0.0, payment_method: 'UPI' },
+  { id: 5, invoice_number: 'INV-2024-0182', customer_name: 'Rahul Singh', customer_email: 'rahulsingh@gmail.com', customer_phone: '+91 96789 11223', invoice_date: 'May 27, 2024', due_date: 'Jun 10, 2024', amount: 7600.0, status: 'sent', paid_amount: 0.0, payment_method: 'UPI' },
+];
+
+export const INITIAL_ACCOUNTS: PaymentAccount[] = [
+  { id: 1, name: 'Qiyam Business Current A/c', account_number: '50200012345678', account_type: 'Bank Account', provider: 'Federal Bank', current_balance: 2478350.0, status: 'Active' },
+  { id: 2, name: 'HDFC Business Account', account_number: '50100234567890', account_type: 'Bank Account', provider: 'HDFC Bank', current_balance: 1245600.0, status: 'Active' },
+  { id: 3, name: 'Axis Current Account', account_number: '917020123456789', account_type: 'Bank Account', provider: 'Axis Bank', current_balance: 838400.0, status: 'Active' },
+  { id: 4, name: 'Razorpay Online Payments', account_number: 'rzp_a1b2c3d4e5f6', account_type: 'Payment Gateway', provider: 'Razorpay', current_balance: 350000.0, status: 'Active' },
+  { id: 5, name: 'PayPal Business', account_number: 'paypal.me/qiyambs', account_type: 'Payment Gateway', provider: 'PayPal', current_balance: 525200.0, status: 'Active' },
+  { id: 6, name: 'Head Office Cash', account_number: '', account_type: 'Cash Account', provider: 'Cash in Hand', current_balance: 125600.0, status: 'Active' },
+];

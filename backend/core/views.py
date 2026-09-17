@@ -239,8 +239,12 @@ class SystemVersionView(APIView):
 
 class SystemUpdateView(APIView):
     """
-    Triggers automated backup & live update on the host.
+    Triggers automated backup & live update on the host or queries current status.
     """
+    def get(self, request):
+        status = SystemUpdateService.get_update_status()
+        return Response(status)
+
     def post(self, request):
         result = SystemUpdateService.apply_update()
         status_code = 200 if result.get('success') else 400

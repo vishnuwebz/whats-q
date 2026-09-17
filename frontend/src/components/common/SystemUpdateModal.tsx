@@ -65,7 +65,6 @@ export const SystemUpdateModal: React.FC = () => {
         localStorage.setItem('whatsq_last_hard_refresh_time', Date.now().toString());
       } catch {}
     }
-    setIsUpdateModalOpen(false);
     await triggerSystemUpdate();
   };
 

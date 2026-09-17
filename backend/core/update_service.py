@@ -15,6 +15,8 @@ class SystemUpdateService:
     _cached_info = None
     _cache_time = 0
     _CACHE_DURATION = 20  # seconds — fast propagation of updates
+    _current_update_proc = None
+    _update_start_time = 0
 
     @classmethod
     def get_version_info(cls, simulate=False, force=False):
@@ -237,6 +239,32 @@ class SystemUpdateService:
         return info
 
     @classmethod
+    def get_update_status(cls):
+        """
+        Returns live progress status of the background update process.
+        """
+        if cls._current_update_proc is not None:
+            poll = cls._current_update_proc.poll()
+            if poll is None:
+                elapsed = int(time.time() - getattr(cls, '_update_start_time', time.time()))
+                return {
+                    'in_progress': True,
+                    'elapsed_seconds': elapsed,
+                    'pid': cls._current_update_proc.pid,
+                    'status': 'running'
+                }
+            else:
+                proc = cls._current_update_proc
+                cls._current_update_proc = None
+                return {
+                    'in_progress': False,
+                    'success': (poll == 0),
+                    'returncode': poll,
+                    'status': 'completed' if poll == 0 else 'failed'
+                }
+        return {'in_progress': False, 'success': True, 'status': 'idle'}
+
+    @classmethod
     def apply_update(cls):
         """
         Runs the automated backup and update script.
@@ -244,6 +272,7 @@ class SystemUpdateService:
         """
         cls._cached_info = None
         cls._cache_time = 0
+        cls._update_start_time = time.time()
         import shutil
         script_path = '/usr/local/bin/update-whatsq'
         if os.path.exists(script_path):
@@ -271,10 +300,12 @@ class SystemUpdateService:
                     stderr=subprocess.PIPE,
                     text=True
                 )
+                cls._current_update_proc = proc
                 return {
                     'success': True,
                     'message': 'System update and PostgreSQL backup initiated successfully!',
-                    'pid': proc.pid
+                    'pid': proc.pid,
+                    'in_progress': True
                 }
             except Exception as e:
                 logger.error(f"Failed to execute update script: {e}")
@@ -286,15 +317,20 @@ class SystemUpdateService:
                         stderr=subprocess.PIPE,
                         text=True
                     )
+                    cls._current_update_proc = proc
                     return {
                         'success': True,
                         'message': 'System update initiated via fallback shell!',
-                        'pid': proc.pid
+                        'pid': proc.pid,
+                        'in_progress': True
                     }
                 except Exception as inner_e:
-                    return {'success': False, 'error': f"Update execution error: {str(e)}"}
+                    cls._current_update_proc = None
+                    return {'success': False, 'error': f"Update execution error: {str(e)}", 'in_progress': False}
         else:
+            cls._current_update_proc = None
             return {
                 'success': True,
-                'message': 'Update simulation completed successfully on local machine.'
+                'message': 'Update simulation completed successfully on local machine.',
+                'in_progress': False
             }

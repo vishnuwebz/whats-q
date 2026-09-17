@@ -86,7 +86,7 @@ export async function forceHardRefresh(reason = 'OTA Deployment Update'): Promis
   // Fallback in case location.replace does not trigger an immediate hard document reload
   setTimeout(() => {
     window.location.reload();
-  }, 250);
+  }, 1500);
 }
 
 // Module-level tracking variables
