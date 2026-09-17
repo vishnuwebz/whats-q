@@ -44,7 +44,8 @@ export type TabType =
   | 'analytics'
   | 'integrations'
   | 'settings'
-  | 'settings-backup';
+  | 'settings-backup'
+  | 'settings-whatsapp';
 
 export interface WhatsAppMessage {
   id: string | number;

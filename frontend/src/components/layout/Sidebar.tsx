@@ -1457,16 +1457,20 @@ export const Sidebar: React.FC = () => {
           </button>
         ) : (
           <div className="bg-[#111C33] p-2.5 rounded-lg border border-[#1E293B] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div
+              onClick={() => setActiveTab('settings-whatsapp')}
+              className="flex items-center gap-2 cursor-pointer group flex-1 mr-2"
+              title="Click to configure WhatsApp sender line in Settings"
+            >
+              <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
                 <MessageSquare className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                <div className="text-[10px] text-emerald-400 group-hover:text-emerald-300 font-bold flex items-center gap-1 transition-colors">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Outbound Sender Line</span>
                 </div>
-                <div className="text-[11px] font-mono font-bold text-white tracking-wide">
+                <div className="text-[11px] font-mono font-bold text-white group-hover:underline tracking-wide">
                   {metaConfig?.business_phone_display || '+91 98765 43210'}
                 </div>
               </div>

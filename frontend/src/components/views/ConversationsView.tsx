@@ -551,6 +551,39 @@ export const ConversationsView: React.FC = () => {
           </div>
         </div>
 
+        {/* Active WhatsApp Outbound Sender Line Card */}
+        <div
+          onClick={() => setActiveTab('settings-whatsapp')}
+          className="p-3 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 hover:from-emerald-100/90 hover:to-teal-100/90 border border-emerald-200/90 rounded-xl transition-all cursor-pointer group shadow-2xs"
+          title="Click to configure WhatsApp Cloud API credentials and sender lines in Settings"
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-[10px] font-bold text-emerald-950 uppercase tracking-wider">
+                Outbound Sender Line
+              </span>
+            </div>
+            <span className="text-[10px] text-emerald-700 group-hover:text-emerald-950 font-semibold flex items-center gap-0.5">
+              <span>Configure</span>
+              <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="font-mono font-extrabold text-sm text-emerald-950 tracking-wide">
+              {metaConfig?.business_phone_display || '+91 98765 43210'}
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white text-emerald-800 border border-emerald-300/80 shadow-2xs">
+              Meta Verified
+            </span>
+          </div>
+
+          <p className="text-[10px] text-emerald-800/80 mt-1 leading-snug font-medium">
+            All WhatsApp messages to {currentConv.contact_name || 'this customer'} originate from this line
+          </p>
+        </div>
+
         {/* WhatsApp Compliance & Suppression Status Card */}
         <div className={`p-3 rounded-xl border ${
           currentSuppression
@@ -651,6 +684,17 @@ export const ConversationsView: React.FC = () => {
             <div className="flex justify-between">
               <span className="text-slate-400">Language:</span>
               <span className="font-medium text-slate-800">{currentConv.language || 'English'}</span>
+            </div>
+            <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+              <span className="text-slate-400">Sending Line:</span>
+              <span
+                onClick={() => setActiveTab('settings-whatsapp')}
+                className="font-mono font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer flex items-center gap-0.5"
+                title="Click to configure WhatsApp sender line in Settings"
+              >
+                <span>{metaConfig?.business_phone_display || '+91 98765 43210'}</span>
+                <ChevronRight className="w-3 h-3 text-emerald-600" />
+              </span>
             </div>
           </div>
         </div>
@@ -1267,16 +1311,6 @@ export const ConversationsView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  {/* Active Sender Line Pill */}
-                  <div
-                    onClick={() => setActiveTab('settings')}
-                    className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-slate-700 cursor-pointer hover:bg-emerald-100/70 transition-colors"
-                    title={`Messages sent to ${currentConv.contact_name} originate from verified Meta line: ${metaConfig?.business_phone_display || '+91 98765 43210'}. Click to view settings.`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="font-semibold text-emerald-950">Sender Line:</span>
-                    <span className="font-mono font-bold text-emerald-800">{metaConfig?.business_phone_display || '+91 98765 43210'}</span>
-                  </div>
                   <button
                     onClick={() => {
                       addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
@@ -1630,7 +1664,7 @@ export const ConversationsView: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('settings')}
+                  onClick={() => setActiveTab('settings-whatsapp')}
                   className="text-emerald-700 hover:text-emerald-900 font-semibold hover:underline flex items-center gap-1 text-[10px] shrink-0 cursor-pointer"
                   title="View or configure Meta Cloud API outbound numbers in Settings"
                 >

@@ -31,15 +31,23 @@ interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'general' }) => {
-  const { addToast } = useQiyamStore();
-  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(initialTab);
+  const { addToast, activeTab } = useQiyamStore();
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(() => {
+    if (activeTab === 'settings-whatsapp') return 'whatsapp';
+    if (activeTab === 'settings-backup') return 'backup';
+    return initialTab;
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   React.useEffect(() => {
-    if (initialTab) {
+    if (activeTab === 'settings-whatsapp') {
+      setActiveSettingsTab('whatsapp');
+    } else if (activeTab === 'settings-backup') {
+      setActiveSettingsTab('backup');
+    } else if (initialTab) {
       setActiveSettingsTab(initialTab);
     }
-  }, [initialTab]);
+  }, [initialTab, activeTab]);
 
   const handleExportQuickBackup = () => {
     try {
