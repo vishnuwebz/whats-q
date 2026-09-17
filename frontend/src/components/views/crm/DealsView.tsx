@@ -393,6 +393,16 @@ export const DealsView: React.FC = () => {
                       phone: selectedDeal.phone,
                       service: selectedDeal.deal_name,
                       initialMessage: `Hello *${selectedDeal.customer_name}*,\nFollowing up regarding our deal proposal *${selectedDeal.deal_name}* (₹${selectedDeal.amount.toLocaleString()}). How can we help finalize this?`,
+                      confirmationTitle: 'Send Deal Proposal Message?',
+                      confirmationSubtitle: `Confirm before delivering this deal follow-up to ${selectedDeal.customer_name}.`,
+                      confirmationBadge: 'DEAL PROPOSAL',
+                      confirmationBadgeColor: 'purple',
+                      confirmationMetadata: [
+                        { label: 'Deal Name', value: selectedDeal.deal_name },
+                        { label: 'Deal Value', value: `₹${selectedDeal.amount.toLocaleString()}` },
+                        { label: 'Stage', value: selectedDeal.stage.toUpperCase() },
+                        { label: 'Expected Close', value: selectedDeal.expected_close_date },
+                      ],
                     });
                     setSelectedDeal(null);
                   }}

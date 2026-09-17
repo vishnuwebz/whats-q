@@ -49,6 +49,7 @@ export const BulkSendMessageView: React.FC = () => {
     importContactsToRecipientList,
     addToast,
     setActiveTab,
+    requestSendConfirmation,
   } = useQiyamStore();
 
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
@@ -387,40 +388,65 @@ export const BulkSendMessageView: React.FC = () => {
       return;
     }
 
-    setIsSending(true);
+    const campaignPreviewText = messageType === 'template'
+      ? (activeTemplate.bodyText || activeTemplate.body || `Template: ${activeTemplate.name}`)
+      : freeformText;
 
-    if (sendType === 'schedule') {
-      createScheduledMessage({
-        campaignName,
-        recipientGroupId: activeList.id,
-        recipientGroupName: `${activeList.name} (${audienceCount} selected)`,
-        recipientCount: audienceCount,
-        scheduledFor: scheduledDateTime,
-        templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Message',
-        category,
-        estimatedCost,
-      });
-      setIsSending(false);
-      addToast(`Campaign scheduled successfully for ${scheduledDateTime}!`, 'success');
-      setActiveTab('bulk-scheduled');
-    } else {
-      setTimeout(() => {
-        sendBulkMessage({
-          name: campaignName,
-          category,
-          audienceListName: `${activeList.name} (${audienceCount} selected)`,
-          totalRecipients: audienceCount,
-          templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Broadcast',
-          cost: estimatedCost,
-        });
-        setIsSending(false);
-        addToast(
-          `Campaign "${campaignName}" launched successfully to ${audienceCount} selected contacts!`,
-          'success'
-        );
-        setActiveTab('bulk-campaigns');
-      }, 1000);
-    }
+    requestSendConfirmation({
+      title: sendType === 'schedule' ? 'Schedule WhatsApp Campaign?' : 'Launch WhatsApp Broadcast Campaign?',
+      subtitle: sendType === 'schedule'
+        ? `Confirm scheduling campaign "${campaignName}" for ${audienceCount} recipients.`
+        : `Confirm broadcasting campaign "${campaignName}" to ${audienceCount} verified customer contacts.`,
+      recipientName: `${activeList.name} (${audienceCount} recipients)`,
+      recipientPhone: `Estimated Meta API Cost: ₹${estimatedCost.toFixed(2)}`,
+      badgeText: category.toUpperCase(),
+      badgeColor: 'amber',
+      messagePreview: campaignPreviewText,
+      metadata: [
+        { label: 'Campaign Name', value: campaignName },
+        { label: 'Audience Group', value: `${activeList.name} (${audienceCount} contacts)` },
+        { label: 'Category', value: category.toUpperCase() },
+        { label: 'Wallet Debit', value: `₹${estimatedCost.toFixed(2)}` },
+        { label: 'Timing', value: sendType === 'schedule' ? `Scheduled for ${scheduledDateTime}` : 'Immediate Broadcast' },
+      ],
+      confirmLabel: sendType === 'schedule' ? 'Confirm & Schedule Campaign' : 'Confirm & Launch Broadcast Now',
+      onConfirm: () => {
+        setIsSending(true);
+
+        if (sendType === 'schedule') {
+          createScheduledMessage({
+            campaignName,
+            recipientGroupId: activeList.id,
+            recipientGroupName: `${activeList.name} (${audienceCount} selected)`,
+            recipientCount: audienceCount,
+            scheduledFor: scheduledDateTime,
+            templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Message',
+            category,
+            estimatedCost,
+          });
+          setIsSending(false);
+          addToast(`Campaign scheduled successfully for ${scheduledDateTime}!`, 'success');
+          setActiveTab('bulk-scheduled');
+        } else {
+          setTimeout(() => {
+            sendBulkMessage({
+              name: campaignName,
+              category,
+              audienceListName: `${activeList.name} (${audienceCount} selected)`,
+              totalRecipients: audienceCount,
+              templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Broadcast',
+              cost: estimatedCost,
+            });
+            setIsSending(false);
+            addToast(
+              `Campaign "${campaignName}" launched successfully to ${audienceCount} selected contacts!`,
+              'success'
+            );
+            setActiveTab('bulk-campaigns');
+          }, 1000);
+        }
+      },
+    });
   };
 
   const handleTestSend = () => {

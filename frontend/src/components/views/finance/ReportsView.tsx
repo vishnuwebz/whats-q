@@ -309,12 +309,21 @@ https://upi.qiyam.in/pay?inv=${record.invoice_number}&amt=${balance}
 
 Please ignore this message if you have already completed the transfer. If you require an updated statement or have questions, feel free to reply directly here. Thank you!`;
 
-    addToast(`Dispatching payment reminder to ${record.customer_name}...`, 'info');
     await openConversationForContact({
       name: record.customer_name,
       phone: record.phone,
       service: record.service,
       initialMessage: msg,
+      confirmationTitle: 'Send Aging Payment Reminder?',
+      confirmationSubtitle: `Confirm before dispatching an overdue balance reminder to ${record.customer_name}.`,
+      confirmationBadge: 'AGING REMINDER',
+      confirmationBadgeColor: 'amber',
+      confirmationMetadata: [
+        { label: 'Invoice Number', value: record.invoice_number },
+        { label: 'Service', value: record.service },
+        { label: 'Outstanding Balance', value: `₹${balance.toLocaleString()}` },
+        { label: 'Due Date', value: record.due_date },
+      ],
     });
   };
 

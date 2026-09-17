@@ -65,6 +65,7 @@ Please feel free to ask if you have any questions or require an itemized breakdo
       phone: invoice.customer_phone,
       service: `Invoice ${invoice.invoice_number}`,
       initialMessage: message,
+      skipConfirmation: true,
     });
 
     if (mode === 'share') {

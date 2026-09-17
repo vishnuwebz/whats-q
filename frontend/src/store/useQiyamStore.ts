@@ -277,6 +277,21 @@ export interface VersionInfo {
   last_checked?: string;
 }
 
+export interface SendConfirmationConfig {
+  title?: string;
+  subtitle?: string;
+  recipientName: string;
+  recipientPhone: string;
+  badgeText?: string;
+  badgeColor?: 'emerald' | 'amber' | 'blue' | 'purple' | 'indigo';
+  messagePreview: string;
+  metadata?: { label: string; value: string }[];
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void | Promise<void>;
+  onCancel?: () => void;
+}
+
 export interface QNotification {
   id: number;
   title: string;
@@ -292,6 +307,10 @@ interface QiyamState {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   backendOnline: boolean;
+
+  sendConfirmation: SendConfirmationConfig | null;
+  requestSendConfirmation: (config: SendConfirmationConfig) => void;
+  closeSendConfirmation: () => void;
 
   isSidebarCollapsed: boolean;
   toggleSidebarCollapse: () => void;
@@ -457,7 +476,19 @@ interface QiyamState {
     options?: { sendReminder?: boolean; customMessage?: string; openChat?: boolean }
   ) => Promise<string | number>;
   openConversationForContact: (
-    contact: { name: string; phone: string; service?: string; location?: string; initialMessage?: string }
+    contact: {
+      name: string;
+      phone: string;
+      service?: string;
+      location?: string;
+      initialMessage?: string;
+      skipConfirmation?: boolean;
+      confirmationTitle?: string;
+      confirmationSubtitle?: string;
+      confirmationBadge?: string;
+      confirmationBadgeColor?: 'emerald' | 'amber' | 'blue' | 'purple' | 'indigo';
+      confirmationMetadata?: { label: string; value: string }[];
+    }
   ) => Promise<string | number>;
   addCustomer: (cust: Record<string, unknown>) => Promise<Record<string, unknown>>;
   addExpense: (exp: Partial<Expense>) => Promise<Expense>;
@@ -988,6 +1019,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: 'dashboard',
   setActiveTab: (tab) => set({ activeTab: tab }),
   backendOnline: false,
+
+  sendConfirmation: null,
+  requestSendConfirmation: (config) => set({ sendConfirmation: config }),
+  closeSendConfirmation: () => set({ sendConfirmation: null }),
 
   syncStatus: 'connected',
   setSyncStatus: (status) => set({ syncStatus: status }),
@@ -3377,10 +3412,36 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     }
 
     if (contact.initialMessage) {
-      await get().sendMessage(targetConv.id, contact.initialMessage, 'agent');
+      if (contact.skipConfirmation) {
+        await get().sendMessage(targetConv.id, contact.initialMessage, 'agent');
+        get().addToast(`Message dispatched to ${contact.name}!`, 'success');
+      } else {
+        // Accidental touch protection: Trigger global confirmation modal
+        const messageToSend = contact.initialMessage;
+        const convId = targetConv.id;
+        get().requestSendConfirmation({
+          title: contact.confirmationTitle || `Send WhatsApp Message?`,
+          subtitle: contact.confirmationSubtitle || `Confirm before dispatching this message to ${contact.name}.`,
+          recipientName: contact.name,
+          recipientPhone: contact.phone,
+          badgeText: contact.confirmationBadge || (contact.service ? contact.service.toUpperCase() : 'WHATSAPP'),
+          badgeColor: contact.confirmationBadgeColor || 'emerald',
+          messagePreview: messageToSend,
+          metadata: contact.confirmationMetadata || (contact.service ? [{ label: 'Context / Service', value: contact.service }] : undefined),
+          confirmLabel: 'Confirm & Send to Customer',
+          onConfirm: async () => {
+            await get().sendMessage(convId, messageToSend, 'agent');
+            get().addToast(`Message dispatched to ${contact.name}!`, 'success');
+          },
+          onCancel: () => {
+            get().addToast(`Message cancelled. Nothing was sent to ${contact.name}.`, 'info');
+          },
+        });
+      }
+    } else {
+      get().addToast(`Opened WhatsApp chat with ${contact.name}`, 'info');
     }
 
-    get().addToast(`Opened WhatsApp chat with ${contact.name}`, 'info');
     return targetConv.id;
   },
 

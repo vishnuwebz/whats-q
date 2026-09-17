@@ -90,6 +90,16 @@ export const FollowupsView: React.FC = () => {
         phone: item.phone,
         service: item.related_to || item.title,
         initialMessage: `👋 Hello *${item.customer_name}*,\nFollowing up regarding *${item.title}* (${item.related_to || 'Service Inquiry'}). How can our team assist you today?`,
+        confirmationTitle: 'Send Follow-up Message?',
+        confirmationSubtitle: `Confirm before dispatching this follow-up message to ${item.customer_name}.`,
+        confirmationBadge: 'CRM FOLLOW-UP',
+        confirmationBadgeColor: 'blue',
+        confirmationMetadata: [
+          { label: 'Follow-up Topic', value: item.title },
+          { label: 'Related To', value: item.related_to || 'Service Inquiry' },
+          { label: 'Scheduled Due', value: `${item.due_date} at ${item.due_time}` },
+          { label: 'Priority', value: item.priority.toUpperCase() },
+        ],
       });
     } else if (action === 'complete') {
       await updateFollowUp(item.id, { status: 'completed' });

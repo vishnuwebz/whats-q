@@ -56,6 +56,7 @@ export const ConversationsView: React.FC = () => {
     removeSuppressionRecord,
     isPhoneSuppressed,
     addSuppressionRecord,
+    requestSendConfirmation,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
@@ -449,8 +450,27 @@ export const ConversationsView: React.FC = () => {
       });
       setActiveTab('crm-leads');
     } else if (action === 'Send Quotation') {
-      sendMessage(currentConv.id, `Hello ${currentConv.contact_name}, here is the official quotation for ${currentConv.service_needed || 'AC Repair'}: ₹${currentConv.estimated_value || 2800}. Let us know if you would like to proceed!`, 'agent');
-      addToast('Quotation sent to WhatsApp', 'success');
+      const quoteService = currentConv.service_needed || 'AC Repair';
+      const quoteVal = currentConv.estimated_value || 2800;
+      const quoteMsg = `Hello ${currentConv.contact_name}, here is the official quotation for ${quoteService}: ₹${quoteVal}. Let us know if you would like to proceed!`;
+      requestSendConfirmation({
+        title: 'Send Official Quotation?',
+        subtitle: `Confirm before sending this price quotation to ${currentConv.contact_name} on WhatsApp.`,
+        recipientName: currentConv.contact_name,
+        recipientPhone: currentConv.phone_number,
+        badgeText: 'QUOTATION',
+        badgeColor: 'blue',
+        messagePreview: quoteMsg,
+        metadata: [
+          { label: 'Service', value: quoteService },
+          { label: 'Quotation Amount', value: `₹${quoteVal.toLocaleString()}` },
+        ],
+        confirmLabel: 'Confirm & Send Quotation',
+        onConfirm: () => {
+          sendMessage(currentConv.id, quoteMsg, 'agent');
+          addToast('Quotation sent to WhatsApp', 'success');
+        },
+      });
     } else if (action === 'Create Appointment') {
       await addAppointment({
         customer_name: currentConv.contact_name,

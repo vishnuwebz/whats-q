@@ -234,9 +234,18 @@ You can settle this payment instantly via Google Pay, PhonePe, Paytm, or BHIM UP
                       phone: qrForm.phone || '+91 98765 43210',
                       service: qrForm.note || 'Payment Request',
                       initialMessage: message,
+                      confirmationTitle: 'Send UPI Payment Request?',
+                      confirmationSubtitle: `Confirm before delivering this payment request to ${qrForm.customer_name}.`,
+                      confirmationBadge: 'UPI PAYMENT',
+                      confirmationBadgeColor: 'emerald',
+                      confirmationMetadata: [
+                        { label: 'Recipient', value: qrForm.customer_name },
+                        { label: 'Amount Due', value: `₹${qrForm.amount.toLocaleString()}` },
+                        { label: 'Reference Note', value: qrForm.note || 'Service Payment' },
+                        { label: 'UPI VPA', value: 'qiyamsolutions@icici' },
+                      ],
                     });
                     setIsQrModalOpen(false);
-                    addToast(`Payment request of ₹${qrForm.amount.toLocaleString()} dispatched to WhatsApp chat!`, 'success');
                   }}
                   className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 >
