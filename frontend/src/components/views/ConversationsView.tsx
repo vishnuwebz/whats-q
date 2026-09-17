@@ -619,7 +619,6 @@ export const ConversationsView: React.FC = () => {
                 type="button"
                 onClick={() => {
                   removeSuppressionRecord(currentConv.phone_number);
-                  addToast(`Consent verified! ${currentConv.contact_name} re-subscribed.`, 'success');
                 }}
                 className="w-full mt-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
               >
@@ -1385,7 +1384,6 @@ export const ConversationsView: React.FC = () => {
                       onClick={() => {
                         if (currentConv) {
                           removeSuppressionRecord(currentConv.phone_number);
-                          addToast(`Consent re-recorded for ${currentConv.contact_name}. Customer re-subscribed!`, 'success');
                         }
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
@@ -1687,7 +1685,6 @@ export const ConversationsView: React.FC = () => {
                     onClick={() => {
                       if (currentConv) {
                         removeSuppressionRecord(currentConv.phone_number);
-                        addToast(`Consent re-recorded for ${currentConv.contact_name}. Customer re-subscribed.`, 'success');
                       }
                     }}
                     className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline shrink-0 ml-2 cursor-pointer"

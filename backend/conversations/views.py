@@ -246,6 +246,55 @@ class ConversationViewSet(viewsets.ModelViewSet):
             logger.error(f"Failed to delete conversation {pk}: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['post'])
+    def resubscribe(self, request):
+        """
+        Re-subscribe a contact with explicit consent.
+        Clears is_blocked, is_opted_out, suppression_reason, suppression_date,
+        and removes suppression tags.
+        """
+        phone = request.data.get('phone', '')
+        conv_id = request.data.get('id', '')
+        conv = None
+        if conv_id and str(conv_id).isdigit():
+            conv = Conversation.objects.filter(pk=int(conv_id)).first()
+        if not conv and phone:
+            clean_digits = re.sub(r'\D', '', str(phone))
+            if clean_digits:
+                suffix = clean_digits[-10:] if len(clean_digits) >= 10 else clean_digits
+                conv = Conversation.objects.filter(phone_number__endswith=suffix).first()
+        if not conv and conv_id:
+            conv = Conversation.objects.filter(contact_name=conv_id).first()
+
+        if conv:
+            conv.is_blocked = False
+            conv.is_opted_out = False
+            conv.suppression_reason = ''
+            conv.suppression_date = None
+            if conv.tags:
+                conv.tags = [t for t in conv.tags if str(t).lower() not in ['blocked', 'opted out', 'opt-out', 'unsubscribed']]
+            conv.save()
+            try:
+                from core.events import event_bus
+                event_bus.publish('conversation.resubscribed', {
+                    'id': conv.id,
+                    'phone_number': conv.phone_number,
+                    'contact_name': conv.contact_name,
+                })
+            except Exception:
+                pass
+            logger.info(f"Conversation {conv.id} ({conv.contact_name}) re-subscribed with consent.")
+            return Response({
+                'success': True,
+                'message': f"{conv.contact_name} re-subscribed with consent.",
+                'conversation': ConversationSerializer(conv).data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': True,
+            'message': 'Suppression record cleared.'
+        }, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
         try:

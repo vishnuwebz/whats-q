@@ -376,7 +376,7 @@ interface QiyamState {
   suppressionList: SuppressionRecord[];
 
   addSuppressionRecord: (record: Partial<SuppressionRecord> & { name: string; phone: string; reason: string; type: SuppressionRecord['type'] }) => void;
-  removeSuppressionRecord: (id: string) => void;
+  removeSuppressionRecord: (idOrPhone: string) => Promise<void> | void;
   isPhoneSuppressed: (phone: string) => boolean;
 
   sendBulkMessage: (params: any) => Promise<{ success: boolean; campaignId?: string | number; error?: string }> | any;
@@ -2232,24 +2232,73 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     get().addToast(`Added ${record.phone} to Suppression List`, 'warning');
   },
 
-  removeSuppressionRecord: (id) => {
-    const item = get().suppressionList.find((s) => s.id === id);
+  removeSuppressionRecord: async (idOrPhone) => {
+    const rawTarget = (idOrPhone || '').trim();
+    if (!rawTarget) return;
+
+    const digitsOnly = rawTarget.replace(/\D/g, '');
+    const phoneSuffix = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+
+    // Find the matching suppression item by id OR by normalized phone match
+    const existingItem = get().suppressionList.find((s) => {
+      if (s.id === rawTarget) return true;
+      const sDigits = (s.phone || '').replace(/\D/g, '');
+      const sSuffix = sDigits.length >= 10 ? sDigits.slice(-10) : sDigits;
+      if (phoneSuffix && sSuffix && (sSuffix === phoneSuffix || sDigits.endsWith(phoneSuffix) || digitsOnly.endsWith(sSuffix))) {
+        return true;
+      }
+      return false;
+    });
+
+    const targetPhone = existingItem?.phone || rawTarget;
+    const targetName = existingItem?.name;
+
+    // 1. Optimistically update local store: remove from suppressionList & clear flags from conversations
     set((state) => ({
-      suppressionList: state.suppressionList.filter((s) => s.id !== id),
+      suppressionList: state.suppressionList.filter((s) => {
+        if (s.id === rawTarget) return false;
+        if (existingItem && s.id === existingItem.id) return false;
+        const sDigits = (s.phone || '').replace(/\D/g, '');
+        const sSuffix = sDigits.length >= 10 ? sDigits.slice(-10) : sDigits;
+        if (phoneSuffix && sSuffix && (sSuffix === phoneSuffix || sDigits.endsWith(phoneSuffix) || digitsOnly.endsWith(sSuffix))) {
+          return false;
+        }
+        return true;
+      }),
       conversations: state.conversations.map((c) => {
-        if (item && c.phone_number.replace(/[^0-9]/g, '').endsWith(item.phone.replace(/[^0-9]/g, '').slice(-10))) {
+        const cDigits = (c.phone_number || '').replace(/\D/g, '');
+        const cSuffix = cDigits.length >= 10 ? cDigits.slice(-10) : cDigits;
+        const matchesPhone = Boolean(phoneSuffix && cSuffix && (cSuffix === phoneSuffix || cDigits.endsWith(phoneSuffix) || digitsOnly.endsWith(cSuffix)));
+        const matchesId = String(c.id) === rawTarget || c.contact_name === rawTarget;
+
+        if (matchesPhone || matchesId) {
+          const cleanedTags = (c.tags || []).filter(
+            (t) => !['blocked', 'opted out', 'opt-out', 'unsubscribed'].includes(t.toLowerCase())
+          );
           return {
             ...c,
             is_blocked: false,
             is_opted_out: false,
             suppression_reason: undefined,
             suppression_date: undefined,
+            tags: cleanedTags,
           };
         }
         return c;
       }),
     }));
-    get().addToast(`Re-subscribed ${item?.phone || 'contact'} with consent`, 'success');
+
+    get().addToast(`Consent verified! ${targetName ? `${targetName} (${targetPhone})` : targetPhone} re-subscribed.`, 'success');
+
+    // 2. Persist to backend API
+    try {
+      await apiClient.post('/conversations/threads/resubscribe/', {
+        phone: targetPhone,
+        id: rawTarget,
+      });
+    } catch (e) {
+      console.warn('Backend resubscribe sync notice:', e);
+    }
   },
 
   isPhoneSuppressed: (phone) => {

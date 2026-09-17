@@ -866,7 +866,6 @@ export const BulkRecipientListsView: React.FC = () => {
                                   type="button"
                                   onClick={() => {
                                     removeSuppressionRecord(record.phone);
-                                    addToast(`Consent verified! ${record.name} removed from suppression list.`, 'success');
                                   }}
                                   className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
                                   title="Re-subscribe contact with customer consent"
