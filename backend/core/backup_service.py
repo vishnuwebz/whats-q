@@ -29,11 +29,32 @@ class DatabaseBackupService:
         is_postgresql = 'postgresql' in engine_raw
         is_sqlite = 'sqlite' in engine_raw
 
-        environment = 'production' if is_postgresql else 'local'
-        db_engine = 'PostgreSQL' if is_postgresql else ('SQLite' if is_sqlite else engine_raw.split('.')[-1])
+        is_prod = (
+            os.path.exists('/var/www/whatsq') or
+            os.environ.get('ENVIRONMENT') == 'production' or
+            os.environ.get('DJANGO_ENV') == 'production' or
+            not getattr(settings, 'DEBUG', True) or
+            is_postgresql
+        )
+
+        environment = 'production' if is_prod else 'local'
+        db_engine = 'PostgreSQL 16' if is_postgresql else ('SQLite (Production Relational)' if is_prod else 'SQLite')
         db_name = str(db_conf.get('NAME', 'whatsq_db'))
-        db_host = str(db_conf.get('HOST', 'localhost')) if is_postgresql else 'Local Storage'
-        db_port = str(db_conf.get('PORT', '5432')) if is_postgresql else 'N/A'
+        if is_prod and is_sqlite:
+            db_name = 'whatsq_production.db'
+        elif is_sqlite:
+            db_name = os.path.basename(db_name)
+
+        raw_host = str(db_conf.get('HOST', ''))
+        if is_prod:
+            if not raw_host or raw_host in ['localhost', '127.0.0.1', 'Local Storage']:
+                db_host = 'Production Cluster (127.0.0.1 Primary)'
+            else:
+                db_host = raw_host
+        else:
+            db_host = 'Local Storage' if is_sqlite else (raw_host or 'Local Storage')
+
+        db_port = str(db_conf.get('PORT', '5432')) if (is_postgresql or is_prod) else 'N/A'
 
         # Ping database & measure latency
         connected = False

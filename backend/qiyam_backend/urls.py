@@ -14,6 +14,7 @@ urlpatterns = [
     path('swagger/', swagger_ui_view, name='swagger_ui'),
     path('docs/', swagger_ui_view, name='docs'),
     path('api/core/', include('core.urls')),
+    path('api/backup/', include('core.urls')),
     path('api/conversations/', include('conversations.urls')),
     path('api/crm/', include('crm.urls')),
     path('api/operations/', include('operations.urls')),

@@ -80,6 +80,8 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
     setTimeout(() => setCopiedField(null), 2500);
   };
 
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://whatsq.qiyambusinesssolutions.com';
+
   const handleTest = async () => {
     setIsTesting(true);
     setTestResult(null);
@@ -545,7 +547,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
               <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] space-y-2 overflow-x-auto">
                 <div className="text-emerald-400 font-bold"># Test Webhook Verification Handshake</div>
                 <div className="text-slate-300">
-                  curl -X GET &quot;http://localhost:8000/api/conversations/webhook/?hub.mode=subscribe&amp;hub.verify_token={verifyToken}&amp;hub.challenge=11223344&quot;
+                  curl -X GET &quot;{originUrl}/api/conversations/webhook/?hub.mode=subscribe&amp;hub.verify_token={verifyToken}&amp;hub.challenge=11223344&quot;
                 </div>
                 <div className="text-slate-500"># Response: 11223344</div>
               </div>
@@ -553,7 +555,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
               <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] space-y-2 overflow-x-auto">
                 <div className="text-emerald-400 font-bold"># Test Sending Live Template via API</div>
                 <div className="text-slate-300">
-                  curl -X POST &quot;http://localhost:8000/api/conversations/templates/1/test_send/&quot; \<br />
+                  curl -X POST &quot;{originUrl}/api/conversations/templates/1/test_send/&quot; \<br />
                   &nbsp;&nbsp;-H &quot;Content-Type: application/json&quot; \<br />
                   &nbsp;&nbsp;-d &#39;&#123;&quot;phone_number&quot;: &quot;+919876543210&quot;&#125;&#39;
                 </div>
