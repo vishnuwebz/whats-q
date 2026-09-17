@@ -27,7 +27,6 @@ export const Header: React.FC<HeaderProps> = ({
   const {
     activeTab,
     setActiveTab,
-    setIsSimulatorOpen,
     addToast,
     versionInfo,
     setIsUpdateModalOpen,
@@ -233,15 +232,6 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Export</span>
           </button>
 
-          {/* WhatsApp Simulator */}
-          <button
-            onClick={() => setIsSimulatorOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 whitespace-nowrap"
-            title="Simulate Customer Inbound WhatsApp"
-          >
-            <span>💬 WhatsApp Sim</span>
-          </button>
-
           {/* Help */}
           <button
             onClick={() => setIsHelpOpen(true)}
@@ -379,7 +369,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div>• <strong>Omni Search:</strong> Press <kbd className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">Ctrl + /</kbd> anywhere to search all records.</div>
                   <div>• <strong>Real Export:</strong> Click "Export" to download a CSV file of any page.</div>
                   <div>• <strong>Page Filters:</strong> Click "Filter" to filter by status or priority.</div>
-                  <div>• <strong>Simulate Messages:</strong> Click "💬 WhatsApp Sim" in the top header.</div>
+                  <div>• <strong>Simulate Messages:</strong> Launch WhatsApp Simulator from Conversations or Sidebar.</div>
                   <div>• <strong>Automation Builder:</strong> Navigate to Automation → Workflow Builder.</div>
                 </div>
               </div>
