@@ -19,23 +19,40 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
   onSendTemplate
 }) => {
   const { metaConfig } = useQiyamStore();
-  const approvedTemplates = templates.filter(t => t.meta_status === 'APPROVED' || t.status === 'Active');
+  const approvedTemplates = templates.filter(t => {
+    const metaSt = (t.meta_status || '').toUpperCase();
+    const st = (t.status || '').toLowerCase();
+    return metaSt === 'APPROVED' || st === 'active' || !t.meta_status;
+  });
+  const availableTemplates = approvedTemplates.length > 0 ? approvedTemplates : templates;
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | number>(
-    approvedTemplates[0]?.id || templates[0]?.id || ''
+    availableTemplates[0]?.id || templates[0]?.id || ''
   );
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedTemplate = templates.find(t => String(t.id) === String(selectedTemplateId)) || approvedTemplates[0];
+  useEffect(() => {
+    if (!selectedTemplateId && availableTemplates.length > 0) {
+      setSelectedTemplateId(availableTemplates[0].id);
+    }
+  }, [availableTemplates, selectedTemplateId]);
 
-  const filtered = search.trim()
-    ? approvedTemplates.filter(t =>
-        t.name.toLowerCase().includes(search.toLowerCase()) ||
-        (t.category || '').toLowerCase().includes(search.toLowerCase())
+  const selectedTemplate =
+    templates.find(t => String(t.id) === String(selectedTemplateId)) ||
+    availableTemplates[0] ||
+    templates[0];
+
+  const query = search.trim().toLowerCase();
+  const filtered = query
+    ? availableTemplates.filter(t =>
+        t.name.toLowerCase().includes(query) ||
+        (t.category || '').toLowerCase().includes(query) ||
+        (t.body || t.body_text || '').toLowerCase().includes(query)
       )
-    : approvedTemplates;
+    : availableTemplates;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -53,7 +70,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
       const templateVars = selectedTemplate.body_variables || {};
       const contactName = currentConversation?.contact_name || 'Customer';
       const serviceNeeded = currentConversation?.service_needed || 'AC Repair';
-      const estValue = `â‚¹${currentConversation?.estimated_value || 2800}`;
+      const estValue = `₹${currentConversation?.estimated_value || 2800}`;
 
       Object.keys(templateVars).forEach((k, idx) => {
         if (idx === 0) vars[k] = contactName;

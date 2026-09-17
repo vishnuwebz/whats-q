@@ -100,7 +100,7 @@ export const AutoWorkflowModal: React.FC<AutoWorkflowModalProps> = ({
       {/* Modal Card */}
       <div className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92dvh] animate-in zoom-in-95 duration-150 font-sans">
         {/* Top Header */}
-        <div className="bg-linear-to-r from-[#0B3B2C] via-[#0D4B38] to-[#0B3B2C] text-white p-5 sm:p-6 flex items-center justify-between shrink-0 shadow-md">
+        <div className="bg-[#0B3B2C] bg-gradient-to-r from-[#0B3B2C] via-[#0D4B38] to-[#0B3B2C] text-white p-5 sm:p-6 flex items-center justify-between shrink-0 shadow-md">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shadow-inner">
               <Zap className="w-6 h-6 animate-pulse" />

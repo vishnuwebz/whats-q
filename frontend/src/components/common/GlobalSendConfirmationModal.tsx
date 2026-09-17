@@ -131,7 +131,7 @@ export const GlobalSendConfirmationModal: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-600 to-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
                 {initial}
               </div>
               <div className="min-w-0 flex-1">
@@ -228,7 +228,7 @@ export const GlobalSendConfirmationModal: React.FC = () => {
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-700/20 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-700/25 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

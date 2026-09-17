@@ -405,6 +405,7 @@ export interface KnowledgeArticle {
 }
 
 export interface WhatsAppTemplateButton {
+  id?: string;
   type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE';
   text: string;
   url?: string;

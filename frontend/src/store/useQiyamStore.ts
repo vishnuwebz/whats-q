@@ -40,6 +40,7 @@ import {
   INITIAL_INVOICES,
   INITIAL_ACCOUNTS
 } from './initialDatasets';
+import { INITIAL_TEMPLATES } from './initialTemplates';
 
 const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
 
@@ -1560,7 +1561,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   workflowLogs: [],
   approvals: [],
   knowledgeArticles: getStoredCache('knowledgeArticles', DEFAULT_KNOWLEDGE_ARTICLES),
-  templates: [],
+  templates: getStoredCache('templates', INITIAL_TEMPLATES),
   integrations: INITIAL_INTEGRATIONS,
   branches: INITIAL_BRANCHES,
   metaConfig: null,
@@ -1649,7 +1650,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     }
 
     const conversations = safeVal(0, current.conversations, getStoredConversations(), 'conversations');
-    const templates     = safeVal(1, current.templates, [], 'templates');
+    const templates     = safeVal(1, current.templates, INITIAL_TEMPLATES, 'templates');
     const metaConfig    = (results[2].status === 'fulfilled' && (results[2] as any).value) || current.metaConfig || null;
     const leads         = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
     const deals         = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
@@ -1897,18 +1898,81 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   sendTemplateMessage: async (conversationId, templateId, variables) => {
-    const res = await apiClient.post(`/conversations/threads/${conversationId}/send_template/`, {
-      template_id: templateId,
-      variables,
-    });
-
-    if (res?.success === false || res?.error || res?.status === 'error') {
-      get().addToast(res?.error || 'Template send failed', 'error');
-      return;
+    // 1. Resolve rendered template text immediately for instant display
+    const template = get().templates.find((t) => String(t.id) === String(templateId));
+    let renderedText = template?.body_text || template?.body || 'WhatsApp Template Message';
+    if (variables) {
+      Object.keys(variables).forEach((k) => {
+        renderedText = renderedText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(variables[k] || `{{${k}}}`));
+      });
     }
 
-    await get().refreshConversations();
+    const tempId = Date.now();
+    const nowTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
+
+    const optimisticMsg: WhatsAppMessage = {
+      id: tempId,
+      sender: 'agent',
+      senderName: 'Rahul Mehta (Template)',
+      text: renderedText,
+      timestamp: nowTime,
+      created_at: new Date().toISOString(),
+      status: 'sent',
+    };
+
+    // 2. Instant Zero-Latency UI Update (append to chat immediately, zero lag)
+    set((state) => {
+      const convIndex = state.conversations.findIndex((c) => String(c.id) === String(conversationId));
+      if (convIndex === -1) return {};
+
+      const conv = state.conversations[convIndex];
+      const updatedConv: Conversation = {
+        ...conv,
+        last_contact_date: 'Just now',
+        messages: [...conv.messages, optimisticMsg],
+      };
+
+      const nextConversations = [...state.conversations];
+      nextConversations.splice(convIndex, 1);
+      nextConversations.unshift(updatedConv);
+
+      const updatedTemplates = state.templates.map((t) =>
+        String(t.id) === String(templateId) ? { ...t, usage_count: (t.usage_count || 0) + 1 } : t
+      );
+
+      return {
+        conversations: nextConversations,
+        templates: updatedTemplates,
+      };
+    });
+
     get().addToast('WhatsApp template message dispatched!', 'success');
+
+    // 3. Asynchronous non-blocking background dispatch (no UI freeze or lag)
+    try {
+      const res = await apiClient.post(`/conversations/threads/${conversationId}/send_template/`, {
+        template_id: templateId,
+        variables,
+      });
+
+      if (res && res.id && res.success !== false) {
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (String(c.id) !== String(conversationId)) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === tempId ? { ...m, id: res.id, status: res.status || 'sent', meta_message_id: res.meta_message_id } : m
+              ),
+            };
+          }),
+        }));
+      } else if (res?.success === false || res?.error) {
+        get().addToast(res.error || 'Template send failed via Meta', 'error');
+      }
+    } catch (e) {
+      console.warn('[Store] Background send_template notice:', e);
+    }
   },
 
   saveMetaTemplate: async (templateData) => {

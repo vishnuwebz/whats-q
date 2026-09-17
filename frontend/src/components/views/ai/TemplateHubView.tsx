@@ -593,7 +593,7 @@ export const TemplateHubView: React.FC = () => {
                   setWorkflowTemplateTarget(activeTemplate);
                   setIsAutoWorkflowModalOpen(true);
                 }}
-                className="w-full py-2.5 bg-linear-to-r from-[#0B3B2C] to-[#0D4B38] hover:from-[#072B1F] hover:to-[#0B3B2C] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-95 transition-all cursor-pointer text-xs"
+                className="w-full py-2.5 bg-[#0B3B2C] bg-gradient-to-r from-[#0B3B2C] to-[#0D4B38] hover:from-[#072B1F] hover:to-[#0B3B2C] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-95 transition-all cursor-pointer text-xs"
               >
                 <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                 <span>⚡ Auto-Build Workflow from Template</span>

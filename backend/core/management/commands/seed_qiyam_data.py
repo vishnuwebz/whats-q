@@ -418,6 +418,149 @@ class Command(BaseCommand):
         for l in leads_data:
             Lead.objects.create(**l)
 
+        # 4b. WhatsApp Approved Templates
+        WhatsAppTemplate.objects.all().delete()
+        templates_seed = [
+            {
+                'name': 'service_booking_confirmed',
+                'category': 'Service Appointments',
+                'meta_category': 'UTILITY',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'TEXT',
+                'header_text': 'Booking Confirmed: {{1}}',
+                'header_sample': 'AC Repair',
+                'body': 'Hello {{1}},\nYour appointment for {{2}} is confirmed for {{3}}.\nAssigned Specialist: {{4}} ({{5}}).\n\nReply RESCHEDULE if you need to pick a different date.',
+                'body_text': 'Hello {{1}},\nYour appointment for {{2}} is confirmed for {{3}}.\nAssigned Specialist: {{4}} ({{5}}).\n\nReply RESCHEDULE if you need to pick a different date.',
+                'body_variables': {'1': 'Customer', '2': 'AC Comprehensive Service', '3': 'Tomorrow at 10:30 AM', '4': 'Rahul Mehta', '5': '+91 98471 23456'},
+                'footer_text': 'CoolFix Quick Dispatch • 1800-QIYAM',
+                'buttons': [
+                    {'id': 'btn_confirm', 'type': 'QUICK_REPLY', 'text': 'Confirm Slot'},
+                    {'id': 'btn_reschedule', 'type': 'QUICK_REPLY', 'text': 'Reschedule Date'},
+                    {'id': 'btn_call', 'type': 'PHONE_NUMBER', 'text': 'Call Specialist', 'phone_number': '+919847123456'}
+                ],
+                'usage_count': 142
+            },
+            {
+                'name': 'technician_en_route',
+                'category': 'Operations',
+                'meta_category': 'UTILITY',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'IMAGE',
+                'header_url': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80',
+                'body': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://coolfix.in/track/{{5}}',
+                'body_text': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://coolfix.in/track/{{5}}',
+                'body_variables': {'1': 'Customer', '2': 'Rahul Mehta', '3': '#B4821', '4': '10:30 AM', '5': 'B4821'},
+                'footer_text': 'CoolFix Operations Support',
+                'buttons': [
+                    {'id': 'btn_available', 'type': 'QUICK_REPLY', 'text': 'I am Available'},
+                    {'id': 'btn_delay', 'type': 'QUICK_REPLY', 'text': 'Delay by 30 mins'}
+                ],
+                'usage_count': 98
+            },
+            {
+                'name': 'official_quotation_share',
+                'category': 'Quotations & Sales',
+                'meta_category': 'UTILITY',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'DOCUMENT',
+                'header_url': 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                'body': 'Hello {{1}},\nHere is the official quotation for {{2}}: ₹{{3}}.\n\nSummary:\n• Service: {{2}}\n• Inspection & Diagnostics: Included\n• Total Estimated Price: ₹{{3}}\n\nTo accept and lock this price, tap Approve below.',
+                'body_text': 'Hello {{1}},\nHere is the official quotation for {{2}}: ₹{{3}}.\n\nSummary:\n• Service: {{2}}\n• Inspection & Diagnostics: Included\n• Total Estimated Price: ₹{{3}}\n\nTo accept and lock this price, tap Approve below.',
+                'body_variables': {'1': 'Customer', '2': 'Home Cleaning', '3': '1200'},
+                'footer_text': 'CoolFix Commercial Proposals',
+                'buttons': [
+                    {'id': 'btn_approve_quote', 'type': 'QUICK_REPLY', 'text': 'Approve Quotation'},
+                    {'id': 'btn_revise_quote', 'type': 'QUICK_REPLY', 'text': 'Request Revision'},
+                    {'id': 'btn_sales_call', 'type': 'PHONE_NUMBER', 'text': 'Talk to Sales', 'phone_number': '+919876543210'}
+                ],
+                'usage_count': 76
+            },
+            {
+                'name': 'invoice_payment_reminder',
+                'category': 'Billing & Accounts',
+                'meta_category': 'UTILITY',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'NONE',
+                'body': 'Dear {{1}},\nThis is a friendly reminder that invoice #{{2}} for ₹{{3}} is pending. Due date: {{4}}.\n\nTap below to pay securely via UPI, Card, or Net Banking.',
+                'body_text': 'Dear {{1}},\nThis is a friendly reminder that invoice #{{2}} for ₹{{3}} is pending. Due date: {{4}}.\n\nTap below to pay securely via UPI, Card, or Net Banking.',
+                'body_variables': {'1': 'Customer', '2': 'INV-2024-001', '3': '2800', '4': 'Today'},
+                'footer_text': 'Accounts Dept • CoolFix Services',
+                'buttons': [
+                    {'id': 'btn_pay_now', 'type': 'URL', 'text': 'Pay Now Securely', 'url': 'https://coolfix.in/pay/{{1}}', 'url_sample': 'INV001'},
+                    {'id': 'btn_already_paid', 'type': 'QUICK_REPLY', 'text': 'Already Paid'}
+                ],
+                'usage_count': 63
+            },
+            {
+                'name': 'festival_discount_offer',
+                'category': 'Marketing',
+                'meta_category': 'MARKETING',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'IMAGE',
+                'header_url': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80',
+                'body': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all AC maintenance and home appliance repairs this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
+                'body_text': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all AC maintenance and home appliance repairs this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
+                'body_variables': {'1': 'Customer', '2': 'FESTIVE40'},
+                'footer_text': 'Limited Time Offer • Terms Apply',
+                'buttons': [
+                    {'id': 'btn_claim', 'type': 'QUICK_REPLY', 'text': 'Claim Offer'},
+                    {'id': 'btn_code', 'type': 'COPY_CODE', 'text': 'Copy Code', 'code': 'FESTIVE40'},
+                    {'id': 'btn_stop_promo', 'type': 'QUICK_REPLY', 'text': 'Stop Promotions'}
+                ],
+                'usage_count': 210
+            },
+            {
+                'name': 'customer_satisfaction_survey',
+                'category': 'Customer Support',
+                'meta_category': 'UTILITY',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'NONE',
+                'body': 'Hi {{1}},\nThank you for choosing CoolFix Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
+                'body_text': 'Hi {{1}},\nThank you for choosing CoolFix Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
+                'body_variables': {'1': 'Customer', '2': 'Rahul Mehta'},
+                'footer_text': 'Your feedback helps us serve you better',
+                'buttons': [
+                    {'id': 'btn_rate_5', 'type': 'QUICK_REPLY', 'text': '⭐⭐⭐⭐⭐ Excellent'},
+                    {'id': 'btn_rate_3', 'type': 'QUICK_REPLY', 'text': '⭐⭐⭐ Average'},
+                    {'id': 'btn_rate_1', 'type': 'QUICK_REPLY', 'text': '⭐ Need Help'}
+                ],
+                'usage_count': 88
+            },
+            {
+                'name': 'welcome_onboarding',
+                'category': 'Welcome & Onboarding',
+                'meta_category': 'UTILITY',
+                'status': 'Active',
+                'meta_status': 'APPROVED',
+                'language': 'en_US',
+                'header_type': 'NONE',
+                'body': 'Welcome to CoolFix Services, {{1}}!\nWe provide top-rated HVAC, electrical, plumbing, and appliance care across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
+                'body_text': 'Welcome to CoolFix Services, {{1}}!\nWe provide top-rated HVAC, electrical, plumbing, and appliance care across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
+                'body_variables': {'1': 'Customer'},
+                'footer_text': 'CoolFix Business Solutions',
+                'buttons': [
+                    {'id': 'btn_book_srv', 'type': 'QUICK_REPLY', 'text': 'Book Service'},
+                    {'id': 'btn_pricing', 'type': 'QUICK_REPLY', 'text': 'View Pricing'},
+                    {'id': 'btn_support_call', 'type': 'PHONE_NUMBER', 'text': 'Call Helpline', 'phone_number': '+919876543210'}
+                ],
+                'usage_count': 175
+            }
+        ]
+        for tmpl in templates_seed:
+            WhatsAppTemplate.objects.create(**tmpl)
+
         Deal.objects.all().delete()
         deals_data = [
             {'deal_name': 'AC Installation - Vikram Mehta', 'customer_name': 'Vikram Mehta', 'phone': '+91 90000 11123', 'amount': 12000.0, 'stage': 'proposal_sent', 'probability': 60, 'deal_owner': 'Ramesh Kumar', 'tags': ['AC Service', 'High Value'], 'notes': 'Customer interested in 1.5 ton inverter AC installation. Shared quotation.'},

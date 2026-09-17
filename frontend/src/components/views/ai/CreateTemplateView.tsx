@@ -386,7 +386,7 @@ export const CreateTemplateView: React.FC = () => {
               setValidationError(null);
               setIsAutoWorkflowModalOpen(true);
             }}
-            className="px-4 py-2 bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
+            className="px-4 py-2 bg-emerald-600 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
             title="Auto-build an interactive WhatsApp flowchart based on this template data"
           >
             <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
