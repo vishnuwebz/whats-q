@@ -322,12 +322,51 @@ export const InventoryView: React.FC = () => {
         {/* Interactive Stats / Quick Filter Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {[
-            { label: 'Total SKUs', value: inventory.length, color: 'text-slate-900', statusKey: 'all', sub: 'Click to show all' },
-            { label: 'Stock Units', value: inventory.reduce((s, i) => s + i.stock_units, 0).toLocaleString(), color: 'text-slate-900', statusKey: null, sub: 'Warehouse volume' },
-            { label: 'Total Stock Value', value: `₹${totalValue.toLocaleString()}`, color: 'text-emerald-600', statusKey: null, sub: 'Inventory valuation' },
-            { label: 'Low Stock SKUs', value: lowStockCount, color: 'text-amber-500', statusKey: 'low_stock', sub: 'Click to filter' },
-            { label: 'Out of Stock', value: outOfStockCount, color: 'text-red-500', statusKey: 'out_of_stock', sub: 'Click to filter' },
-          ].map(({ label, value, color, statusKey, sub }) => {
+            {
+              label: 'Total SKUs',
+              value: inventory.length,
+              color: 'text-slate-900',
+              statusKey: 'all',
+              sub: 'Click to show all',
+              activeBorder: 'border-2 border-slate-400 ring-2 ring-slate-400/50',
+              activeBadge: 'bg-slate-600 text-white',
+              activeValColor: 'text-white'
+            },
+            {
+              label: 'Stock Units',
+              value: inventory.reduce((s, i) => s + i.stock_units, 0).toLocaleString(),
+              color: 'text-slate-900',
+              statusKey: null,
+              sub: 'Warehouse volume'
+            },
+            {
+              label: 'Total Stock Value',
+              value: `₹${totalValue.toLocaleString()}`,
+              color: 'text-emerald-600',
+              statusKey: null,
+              sub: 'Inventory valuation'
+            },
+            {
+              label: 'Low Stock SKUs',
+              value: lowStockCount,
+              color: 'text-amber-500',
+              statusKey: 'low_stock',
+              sub: 'Click to filter',
+              activeBorder: 'border-2 border-amber-500 ring-2 ring-amber-500/60',
+              activeBadge: 'bg-amber-500 text-slate-950 font-black',
+              activeValColor: 'text-amber-400'
+            },
+            {
+              label: 'Out of Stock',
+              value: outOfStockCount,
+              color: 'text-red-500',
+              statusKey: 'out_of_stock',
+              sub: 'Click to filter',
+              activeBorder: 'border-2 border-red-500 ring-2 ring-red-500/60',
+              activeBadge: 'bg-red-500 text-white font-bold',
+              activeValColor: 'text-red-400'
+            },
+          ].map(({ label, value, color, statusKey, sub, activeBorder, activeBadge, activeValColor }) => {
             const isCardActive = statusKey && selectedStatus === statusKey;
             return (
               <div
@@ -337,25 +376,25 @@ export const InventoryView: React.FC = () => {
                     setSelectedStatus(selectedStatus === statusKey && statusKey !== 'all' ? 'all' : statusKey);
                   }
                 }}
-                className={`p-3.5 sm:p-4 rounded-2xl border transition-all select-none ${
+                className={`p-3.5 sm:p-4 rounded-2xl transition-all select-none ${
                   statusKey ? 'cursor-pointer hover:shadow-md active:scale-[0.99]' : ''
                 } ${
                   isCardActive
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-emerald-500'
-                    : 'bg-white border-slate-200 shadow-sm'
+                    ? `bg-slate-900 text-white shadow-md ${activeBorder || 'border-2 border-slate-400 ring-2 ring-slate-400/50'}`
+                    : 'bg-white border border-slate-200 shadow-sm'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className={`text-xs font-semibold ${isCardActive ? 'text-slate-300' : 'text-slate-500'}`}>{label}</div>
                   {statusKey && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
-                      isCardActive ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'
+                      isCardActive ? (activeBadge || 'bg-slate-600 text-white') : 'bg-slate-100 text-slate-500'
                     }`}>
                       {statusKey === 'all' ? 'ALL' : 'FILTER'}
                     </span>
                   )}
                 </div>
-                <div className={`text-xl sm:text-2xl font-black mt-1 ${isCardActive ? 'text-white' : color}`}>{value}</div>
+                <div className={`text-xl sm:text-2xl font-black mt-1 ${isCardActive ? (activeValColor || 'text-white') : color}`}>{value}</div>
                 <div className={`text-[10px] mt-0.5 ${isCardActive ? 'text-slate-400' : 'text-slate-400'}`}>{sub}</div>
               </div>
             );
@@ -368,10 +407,22 @@ export const InventoryView: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden md:inline">Category:</span>
-              {categories.map((cat) => (
-                <button key={cat} onClick={() => setSelectedCat(cat)}
-                  className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-all cursor-pointer ${selectedCat === cat ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}`}>{cat}</button>
-              ))}
+              {categories.map((cat) => {
+                const isCatActive = selectedCat === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCat(cat)}
+                    className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-all cursor-pointer select-none ${
+                      isCatActive
+                        ? 'bg-slate-900 text-white border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
             <div className="relative w-full sm:w-auto">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -388,26 +439,61 @@ export const InventoryView: React.FC = () => {
                 <Filter className="w-3 h-3" /> Status:
               </span>
               {[
-                { id: 'all', label: 'All', count: inventory.length },
-                { id: 'in_stock', label: 'In Stock', count: inStockCount, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-                { id: 'low_stock', label: 'Low Stock', count: lowStockCount, color: 'text-amber-700 bg-amber-50 border-amber-200' },
-                { id: 'out_of_stock', label: 'Out of Stock', count: outOfStockCount, color: 'text-red-700 bg-red-50 border-red-200' },
-                { id: 'discontinued', label: 'Discontinued', count: discontinuedCount, color: 'text-slate-600 bg-slate-100 border-slate-200' },
+                {
+                  id: 'all',
+                  label: 'All',
+                  count: inventory.length,
+                  unselected: 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100',
+                  activeBorder: 'border-2 border-slate-400 ring-2 ring-slate-400/30',
+                  activeCount: 'bg-slate-700 text-slate-200',
+                },
+                {
+                  id: 'in_stock',
+                  label: 'In Stock',
+                  count: inStockCount,
+                  unselected: 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100/60',
+                  activeBorder: 'border-2 border-emerald-500 ring-2 ring-emerald-500/40',
+                  activeCount: 'bg-emerald-500 text-white font-bold',
+                },
+                {
+                  id: 'low_stock',
+                  label: 'Low Stock',
+                  count: lowStockCount,
+                  unselected: 'text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100/60',
+                  activeBorder: 'border-2 border-amber-500 ring-2 ring-amber-500/40',
+                  activeCount: 'bg-amber-500 text-slate-950 font-black',
+                },
+                {
+                  id: 'out_of_stock',
+                  label: 'Out of Stock',
+                  count: outOfStockCount,
+                  unselected: 'text-red-700 bg-red-50 border-red-200 hover:bg-red-100/60',
+                  activeBorder: 'border-2 border-red-500 ring-2 ring-red-500/40',
+                  activeCount: 'bg-red-500 text-white font-bold',
+                },
+                {
+                  id: 'discontinued',
+                  label: 'Discontinued',
+                  count: discontinuedCount,
+                  unselected: 'text-slate-600 bg-slate-100 border-slate-200 hover:bg-slate-200/60',
+                  activeBorder: 'border-2 border-slate-400 ring-2 ring-slate-400/40',
+                  activeCount: 'bg-slate-700 text-slate-200 font-bold',
+                },
               ].map((s) => {
                 const isActive = selectedStatus === s.id;
                 return (
                   <button
                     key={s.id}
-                    onClick={() => setSelectedStatus(s.id)}
-                    className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap text-[11px] border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    onClick={() => setSelectedStatus(selectedStatus === s.id && s.id !== 'all' ? 'all' : s.id)}
+                    className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap text-[11px] transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                       isActive
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                        : `${s.color || 'bg-slate-50 text-slate-600 border-slate-200'} hover:opacity-80`
+                        ? `bg-slate-900 text-white shadow-sm ${s.activeBorder}`
+                        : `${s.unselected} border`
                     }`}
                   >
                     <span>{s.label}</span>
                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-700 font-semibold'
+                      isActive ? s.activeCount : 'bg-white text-slate-700 font-semibold'
                     }`}>
                       {s.count}
                     </span>
