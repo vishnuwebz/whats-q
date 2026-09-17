@@ -67,6 +67,7 @@ import { BulkTemplatesView } from './components/views/bulk/BulkTemplatesView';
 import { BulkCampaignHistoryView } from './components/views/bulk/BulkCampaignHistoryView';
 import { BulkRecipientListsView } from './components/views/bulk/BulkRecipientListsView';
 import { BulkScheduledMessagesView } from './components/views/bulk/BulkScheduledMessagesView';
+import { MobileGroupGrabberPortal } from './components/views/bulk/MobileGroupGrabberPortal';
 import { TabType } from './types';
 
 const TAB_TO_PATH: Record<TabType, string> = {
@@ -142,6 +143,22 @@ export const App: React.FC = () => {
     isSidebarCollapsed,
     toggleSidebarCollapse,
   } = useQiyamStore();
+
+  // Check if opened via mobile QR code scan for WhatsApp Group Grabber sync
+  const [mobileGrabberToken, setMobileGrabberToken] = React.useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryToken = params.get('wa_grabber_token') || params.get('wa_sync') || params.get('token');
+      if (queryToken) return queryToken;
+
+      const hash = window.location.hash;
+      if (hash.includes('wa-sync')) {
+        const match = hash.match(/wa-sync(?:=([a-zA-Z0-9_-]+))?/);
+        return match && match[1] ? match[1] : 'qiyam_live_session';
+      }
+    } catch {}
+    return null;
+  });
 
   // 1. Initial URL routing on mount + popstate listener for browser back/forward buttons
   React.useEffect(() => {
@@ -306,6 +323,18 @@ export const App: React.FC = () => {
         return <DashboardView />;
     }
   };
+
+  if (mobileGrabberToken) {
+    return (
+      <MobileGroupGrabberPortal
+        sessionToken={mobileGrabberToken}
+        onExit={() => {
+          setMobileGrabberToken(null);
+          window.history.replaceState(null, '', '/');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden bg-[#F8FAFC]">
