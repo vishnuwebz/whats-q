@@ -13,6 +13,7 @@ import {
 import { SendTemplateModal } from './conversations/SendTemplateModal';
 import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
 import { DeleteConversationModal } from './conversations/DeleteConversationModal';
+import { ManualOptOutModal } from './conversations/ManualOptOutModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { Conversation } from '@/types';
 import { apiClient } from '@/api/client';
@@ -63,6 +64,7 @@ export const ConversationsView: React.FC = () => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+  const [isManualOptOutModalOpen, setIsManualOptOutModalOpen] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -631,22 +633,9 @@ export const ConversationsView: React.FC = () => {
               <span className="text-[10px] text-slate-500">Zero delivery violations</span>
               <button
                 type="button"
-                onClick={() => {
-                  addSuppressionRecord({
-                    id: `supp-manual-${Date.now()}`,
-                    name: currentConv.contact_name,
-                    phone: currentConv.phone_number,
-                    type: 'opt_out_stop',
-                    reason: 'Operator manually marked contact as opted-out upon customer request',
-                    date: new Date().toLocaleDateString('en-GB'),
-                    timestamp: Date.now(),
-                    status: 'Suppressed',
-                    source: 'Operator Customer 360',
-                    canResubscribe: true,
-                  });
-                  addToast(`Added ${currentConv.contact_name} to suppression list.`, 'info');
-                }}
+                onClick={() => setIsManualOptOutModalOpen(true)}
                 className="text-[10px] text-rose-600 hover:text-rose-800 font-bold underline cursor-pointer"
+                title="Review warning and manually enforce opt-out"
               >
                 + Manual Opt-Out
               </button>
@@ -1889,6 +1878,32 @@ export const ConversationsView: React.FC = () => {
           }
         }}
       />
+
+      {/* Manual Opt-Out Confirmation & Warning Modal (Protects against accidental taps) */}
+      {currentConv && (
+        <ManualOptOutModal
+          isOpen={isManualOptOutModalOpen}
+          onClose={() => setIsManualOptOutModalOpen(false)}
+          conversation={currentConv}
+          onConfirmOptOut={(reason, notes) => {
+            const fullReason = notes ? `${reason} (${notes})` : reason;
+            addSuppressionRecord({
+              id: `supp-manual-${Date.now()}`,
+              name: currentConv.contact_name,
+              phone: currentConv.phone_number,
+              type: 'opt_out_stop',
+              reason: fullReason,
+              notes: notes || undefined,
+              date: new Date().toLocaleDateString('en-GB'),
+              timestamp: Date.now(),
+              status: 'Suppressed',
+              source: 'Operator Customer 360 (Manual Enforcement)',
+              canResubscribe: true,
+            });
+            addToast(`Compliance enforced: ${currentConv.contact_name} marked as Opted Out.`, 'warning');
+          }}
+        />
+      )}
     </div>
   );
 };
