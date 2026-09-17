@@ -141,7 +141,8 @@ export const Sidebar: React.FC = () => {
     versionInfo,
     fetchVersionInfo,
     triggerSystemUpdate,
-    simulateGlobalUpdate
+    simulateGlobalUpdate,
+    metaConfig
   } = useQiyamStore();
 
   // Tenant / Organization Switcher state
@@ -1450,7 +1451,7 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => setIsSimulatorOpen(true)}
             className="w-9 h-9 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition border border-emerald-500/30 cursor-pointer"
-            title="WhatsApp Cloud API (+91 98765 43210) - Click to Simulate"
+            title={`Active Outbound Sender: ${metaConfig?.business_phone_display || '+91 98765 43210'} (Click to Simulate)`}
           >
             <MessageSquare className="w-4 h-4" />
           </button>
@@ -1461,8 +1462,13 @@ export const Sidebar: React.FC = () => {
                 <MessageSquare className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="text-[10px] text-slate-400 font-medium">WhatsApp Cloud API</div>
-                <div className="text-[11px] font-semibold text-white">+91 98765 43210</div>
+                <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Outbound Sender Line</span>
+                </div>
+                <div className="text-[11px] font-mono font-bold text-white tracking-wide">
+                  {metaConfig?.business_phone_display || '+91 98765 43210'}
+                </div>
               </div>
             </div>
             <button

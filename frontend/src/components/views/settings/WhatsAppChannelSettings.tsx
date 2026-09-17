@@ -232,7 +232,11 @@ export const WhatsAppChannelSettings: React.FC = () => {
     const primary = updated.find((n) => n.id === id);
     if (primary) {
       setTestSenderNumber(primary.phone);
-      addToast(`Primary line updated to ${primary.phone} (${primary.displayName})`, 'success');
+      saveMetaConfig({
+        business_phone_display: primary.phone,
+        business_name: primary.displayName,
+      });
+      addToast(`Primary outbound line updated to ${primary.phone} (${primary.displayName})`, 'success');
     }
   };
 
@@ -337,12 +341,19 @@ export const WhatsAppChannelSettings: React.FC = () => {
                   OFFICIAL META BSP CONNECTED
                 </span>
               </div>
-              <p className="text-xs text-emerald-100/80 mt-0.5">
-                Primary Line:{' '}
-                <span className="font-mono font-semibold">
-                  {numbers.find((n) => n.isPrimary)?.phone || '+91 98765 43210'}
-                </span>{' '}
-                ({numbers.find((n) => n.isPrimary)?.displayName || 'Qiyam Official Support'})
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="text-xs text-emerald-100/90 font-medium">
+                  Active Outbound Dispatch Line:
+                </span>
+                <span className="font-mono font-extrabold text-white bg-white/15 px-2.5 py-0.5 rounded-lg border border-white/20 shadow-xs text-xs tracking-wide">
+                  {numbers.find((n) => n.isPrimary)?.phone || metaConfig?.business_phone_display || '+91 98765 43210'}
+                </span>
+                <span className="text-[11px] text-emerald-200 font-semibold">
+                  • {numbers.find((n) => n.isPrimary)?.displayName || metaConfig?.business_name || 'Qiyam Official Support'}
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-200/70 mt-1">
+                All 1-on-1 customer chats, reminder dispatchers, and automated workflows send messages from this verified Meta Cloud API number.
               </p>
             </div>
           </div>

@@ -1,6 +1,7 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles, ChevronDown, Check, Search } from 'lucide-react';
 import { WhatsAppTemplateItem, Conversation } from '@/types';
+import { useQiyamStore } from '@/store/useQiyamStore';
 
 interface SendTemplateModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
   currentConversation,
   onSendTemplate
 }) => {
+  const { metaConfig } = useQiyamStore();
   const approvedTemplates = templates.filter(t => t.meta_status === 'APPROVED' || t.status === 'Active');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | number>(
     approvedTemplates[0]?.id || templates[0]?.id || ''
@@ -128,8 +130,32 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
           </button>
         </div>
 
-        {/* â”€â”€ Scrollable Body â”€â”€ */}
+        {/* ── Scrollable Body ── */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
+
+          {/* Active Dispatch Route Strip (Sender -> Recipient) */}
+          <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-xl p-3 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div>
+                <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                  <span>Sending From:</span>
+                  <span className="font-mono text-emerald-800 font-extrabold bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                    {metaConfig?.business_phone_display || '+91 98765 43210'}
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                    Meta Cloud API
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  Delivers to: <strong className="text-slate-800">{currentConversation?.contact_name || 'Customer'}</strong> ({currentConversation?.phone_number || 'Recipient'})
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs shrink-0">
+              Verified Channel
+            </span>
+          </div>
 
           {/* Custom Dropdown */}
           <div ref={dropdownRef} className="relative z-50">

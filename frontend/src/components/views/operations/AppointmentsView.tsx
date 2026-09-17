@@ -7,7 +7,7 @@ import {
   Calendar, Clock, MapPin, User, Search, Filter, Plus,
   CheckCircle2, AlertCircle, MoreVertical, DollarSign, MessageSquare, X,
   Phone, Send, ExternalLink, ShieldCheck, ChevronRight, FileText, Check,
-  CreditCard, Sparkles, ArrowRight, RotateCcw, Copy
+  CreditCard, Sparkles, ArrowRight, RotateCcw, Copy, Radio
 } from 'lucide-react';
 
 export const buildAppointmentReminderMessage = (
@@ -75,6 +75,7 @@ export const AppointmentsView: React.FC = () => {
     targetHighlightId,
     isNewBookingModalOpen,
     setIsNewBookingModalOpen,
+    metaConfig,
   } = useQiyamStore();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -672,9 +673,14 @@ export const AppointmentsView: React.FC = () => {
                     <MessageSquare className="w-4 h-4 text-emerald-600" />
                     <span>WhatsApp Reminder Preview</span>
                   </div>
-                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                    Direct Sync
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200 font-bold">
+                      From: {metaConfig?.business_phone_display || '+91 98765 43210'}
+                    </span>
+                    <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                      Meta Cloud API
+                    </span>
+                  </div>
                 </div>
                 <div className="p-3 bg-white rounded-xl border border-emerald-100 text-[11px] text-slate-700 font-mono whitespace-pre-line shadow-xs leading-relaxed">
 {`🗓️ Appointment Reminder: ${selectedAppointment.service}
@@ -815,6 +821,32 @@ Total Fee: ₹${selectedAppointment.amount} | Advance Paid: ₹${selectedAppoint
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Active WhatsApp Dispatch Route Card (Sender -> Customer) */}
+              <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                    <Radio className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-slate-800">Dispatching From:</span>
+                      <span className="font-mono font-extrabold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                        {metaConfig?.business_phone_display || '+91 98765 43210'}
+                      </span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                        Meta Cloud API
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      Destination Customer: <strong className="text-slate-800">{reminderApt.customer_name}</strong> (<span className="font-mono">{reminderApt.phone}</span>)
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs self-start sm:self-center shrink-0">
+                  Official Business Line
+                </span>
               </div>
 
               {/* Template Selection Chips */}
