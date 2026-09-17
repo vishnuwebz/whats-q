@@ -3,10 +3,12 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   ArrowLeft, Check, AlertCircle, Sparkles, Image, Video, FileText,
   Smartphone, Plus, Trash2, Globe, Phone, ExternalLink,
-  Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw, Paperclip, Mic, UploadCloud, X
+  Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw, Paperclip, Mic, UploadCloud, X,
+  GitBranch, Zap
 } from 'lucide-react';
 import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
+import { AutoWorkflowModal } from './AutoWorkflowModal';
 
 const META_LANGUAGES = [
   { code: 'en_US', label: 'English (US)' },
@@ -64,6 +66,7 @@ export const CreateTemplateView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewMode, setPreviewMode] = useState<'sample' | 'raw'>('sample');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isAutoWorkflowModalOpen, setIsAutoWorkflowModalOpen] = useState(false);
 
   const [mediaInputMode, setMediaInputMode] = useState<'upload' | 'url'>('upload');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
@@ -371,6 +374,25 @@ export const CreateTemplateView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const err = validateTemplate();
+              if (err) {
+                setValidationError(err);
+                addToast(err, 'warning');
+                return;
+              }
+              setValidationError(null);
+              setIsAutoWorkflowModalOpen(true);
+            }}
+            className="px-4 py-2 bg-linear-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
+            title="Auto-build an interactive WhatsApp flowchart based on this template data"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+            <span>⚡ Auto-Build Workflow</span>
+          </button>
+
           <button
             type="button"
             onClick={handleSaveDraft}
@@ -1156,6 +1178,39 @@ export const CreateTemplateView: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Auto Workflow Studio Card */}
+          <div className="w-[340px] mt-4 p-3.5 bg-white border border-emerald-200/90 rounded-2xl shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+                <span>Auto Workflow Builder</span>
+              </span>
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                Data-Driven
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Transform this template into a fully wired interactive WhatsApp chatbot with auto-routing branches.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                const err = validateTemplate();
+                if (err) {
+                  setValidationError(err);
+                  addToast(err, 'warning');
+                  return;
+                }
+                setValidationError(null);
+                setIsAutoWorkflowModalOpen(true);
+              }}
+              className="w-full py-2 px-3 bg-[#0B3B2C] hover:bg-[#072B1F] active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>⚡ Generate Workflow Flowchart</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1209,6 +1264,13 @@ export const CreateTemplateView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Auto Workflow Builder Modal */}
+      <AutoWorkflowModal
+        isOpen={isAutoWorkflowModalOpen}
+        onClose={() => setIsAutoWorkflowModalOpen(false)}
+        template={buildPayload()}
+      />
     </div>
   );
 };

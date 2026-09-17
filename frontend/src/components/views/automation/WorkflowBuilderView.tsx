@@ -11,6 +11,7 @@ import {
   Move, Sliders, DollarSign, RefreshCw, Eye, BookOpen, Info,
   ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe
 } from 'lucide-react';
+import { generateWorkflowFromTemplate } from '@/utils/templateWorkflowGenerator';
 
 // Types for Flow Canvas
 export interface GroupChoiceOption {
@@ -70,6 +71,7 @@ export const WorkflowBuilderView: React.FC = () => {
     activeWorkflowId,
     activeWorkflowTitle,
     activeWorkflowGroups,
+    templates,
   } = useQiyamStore();
 
   // Top Mode Switcher: 'canvas' | 'keyword_rules'
@@ -3292,6 +3294,200 @@ export const WorkflowBuilderView: React.FC = () => {
                 className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs transition cursor-pointer"
               >
                 Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* WORKFLOW TEMPLATES & AUTO-BUILDER MODAL                                   */}
+      {/* ========================================================================= */}
+      {isTemplatesModalOpen && (
+        <div
+          className="fixed inset-0 z-[75] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+          onClick={() => setIsTemplatesModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90dvh] font-sans animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-[#0B3B2C] text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Workflow Templates & Blueprints</h3>
+                  <p className="text-xs text-emerald-200">
+                    Auto-build chatbot flows from your WhatsApp templates or load starter blueprints
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTemplatesModalOpen(false)}
+                className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+              {/* Section 1: WhatsApp Templates Auto-Builder */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                      Auto-Build from WhatsApp Templates ({templates.length})
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTemplatesModalOpen(false);
+                      setActiveTab('template-create');
+                    }}
+                    className="text-emerald-700 hover:text-emerald-800 font-bold text-[11px] flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create New Template</span>
+                  </button>
+                </div>
+
+                {templates.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {templates.map((tmpl) => (
+                      <div
+                        key={tmpl.id}
+                        className="p-3.5 bg-slate-50 hover:bg-emerald-50/40 border border-slate-200 hover:border-emerald-300 rounded-2xl transition flex flex-col justify-between gap-2.5 group"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-slate-800 text-xs truncate">
+                              {tmpl.name}
+                            </span>
+                            <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
+                              {tmpl.meta_category || tmpl.category || 'UTILITY'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                            {tmpl.body_text || tmpl.body || 'No message text available'}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                          <span className="text-[10px] text-slate-400">
+                            {tmpl.buttons?.length || 0} buttons • {Object.keys(tmpl.body_variables || {}).length} variables
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const result = generateWorkflowFromTemplate(tmpl);
+                              setBotTitle(result.title);
+                              setGroups(result.groups);
+                              setIsTemplatesModalOpen(false);
+                              addToast(
+                                `⚡ Auto-generated workflow from "${tmpl.name}" with ${result.groups.length} node groups!`,
+                                'success'
+                              );
+                            }}
+                            className="px-3 py-1.5 bg-[#0B3B2C] group-hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] flex items-center gap-1.5 shadow-xs transition"
+                          >
+                            <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
+                            <span>Auto-Build Flow</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center text-slate-500">
+                    No WhatsApp templates found. Create one in Template Hub first!
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Standard Starter Blueprints */}
+              <div className="pt-3 border-t border-slate-200">
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2.5">
+                  Pre-Built Starter Blueprints
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div
+                    onClick={() => {
+                      handleLoadTemplate('university');
+                      setIsTemplatesModalOpen(false);
+                    }}
+                    className="p-3.5 bg-white border border-slate-200 hover:border-emerald-500 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 text-xs">Admissions & Stripe Flow</span>
+                      <span className="text-[9px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full">Stripe</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Multi-branch academic qualification with course selection and online card checkout.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      handleLoadTemplate('ac_service');
+                      setIsTemplatesModalOpen(false);
+                    }}
+                    className="p-3.5 bg-white border border-slate-200 hover:border-emerald-500 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 text-xs">AC Repair & UPI Booking</span>
+                      <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">UPI QR</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Service booking questionnaire with token advance payment via UPI QR.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      handleLoadTemplate('ecommerce');
+                      setIsTemplatesModalOpen(false);
+                    }}
+                    className="p-3.5 bg-white border border-slate-200 hover:border-emerald-500 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 text-xs">E-Commerce Coupon Claim</span>
+                      <span className="text-[9px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">Marketing</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Promotional discount code dispenser and interactive catalog viewer.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      handleLoadTemplate('blank');
+                      setIsTemplatesModalOpen(false);
+                    }}
+                    className="p-3.5 bg-white border border-dashed border-slate-300 hover:border-slate-500 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-1"
+                  >
+                    <span className="font-bold text-slate-800 text-xs block">Blank Canvas</span>
+                    <p className="text-[11px] text-slate-500">
+                      Start fresh with a single welcome block to design custom automations from scratch.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsTemplatesModalOpen(false)}
+                className="px-4 py-1.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition"
+              >
+                Close
               </button>
             </div>
           </div>
