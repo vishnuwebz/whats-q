@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
   GitBranch, List, Plus, Play, Save, RotateCcw, RotateCw,
-  ZoomIn, ZoomOut, Maximize2, Trash2, Edit3, X, Check,
+  ZoomIn, ZoomOut, Maximize2, Minimize2, Trash2, Edit3, X, Check,
   MessageSquare, FileText, Image, Video, Music, MapPin,
   HelpCircle, CreditCard, Layers, Bot, Zap, Smartphone,
   CheckCircle2, Clock, Calendar, Paperclip, ChevronRight, ChevronDown, ChevronLeft,
@@ -94,6 +94,70 @@ export const WorkflowBuilderView: React.FC = () => {
 
   // Zoom Level
   const [zoom, setZoom] = useState(1);
+
+  // Full Screen Studio Mode State
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      setIsFullscreen(true);
+      try {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch {}
+      addToast('Entered Full Screen Studio mode (Press Esc to exit)', 'info');
+    } else {
+      setIsFullscreen(false);
+      try {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch {}
+      addToast('Exited Full Screen mode', 'info');
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+        try {
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          }
+        } catch {}
+      } else if (
+        (e.key === 'f' || e.key === 'F') &&
+        !isTyping &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+      ) {
+        toggleFullscreen();
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isFullscreen]);
 
   // Bot Title
   const [botTitle, setBotTitle] = useState('Chatbot 1');
@@ -1121,46 +1185,88 @@ export const WorkflowBuilderView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans select-none">
-      <Header
-        title="Workflow Builder"
-        subtitle="Design interactive WhatsApp chatbot flows, visual group canvas, and keyword trigger rules."
-        primaryActionLabel={activeMode === 'canvas' ? '+ Add Group' : '+ Create Rule'}
-        onPrimaryAction={activeMode === 'canvas' ? handleAddGroup : () => setIsNewRuleModalOpen(true)}
-      />
+    <div
+      className={`flex flex-col bg-[#F8FAFC] overflow-hidden font-sans select-none transition-all ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 w-screen h-screen'
+          : 'flex-1 h-full w-full max-w-full'
+      }`}
+    >
+      {!isFullscreen && (
+        <Header
+          title="Workflow Builder"
+          subtitle="Design interactive WhatsApp chatbot flows, visual group canvas, and keyword trigger rules."
+          primaryActionLabel={activeMode === 'canvas' ? '+ Add Group' : '+ Create Rule'}
+          onPrimaryAction={activeMode === 'canvas' ? handleAddGroup : () => setIsNewRuleModalOpen(true)}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)                          */}
       {/* ========================================================================= */}
       <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col md:flex-row gap-2.5 md:gap-0 items-stretch md:items-center justify-between shrink-0 shadow-xs z-20">
-        {/* Two-Tab Segmented Capsule */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none">
-          <button
-            onClick={() => setActiveMode('canvas')}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              activeMode === 'canvas'
-                ? 'bg-[#0B3B2C] text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <GitBranch className="w-4 h-4" />
-            <span>Interactive Flow Canvas</span>
-          </button>
-          <button
-            onClick={() => setActiveMode('keyword_rules')}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              activeMode === 'keyword_rules'
-                ? 'bg-[#0B3B2C] text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <List className="w-4 h-4" />
-            <span>Keyword Trigger Rules</span>
-          </button>
+        {/* Two-Tab Segmented Capsule & Fullscreen Indicator */}
+        <div className="flex items-center gap-3">
+          {isFullscreen && (
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>STUDIO FULL SCREEN</span>
+            </div>
+          )}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none">
+            <button
+              onClick={() => setActiveMode('canvas')}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeMode === 'canvas'
+                  ? 'bg-[#0B3B2C] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <GitBranch className="w-4 h-4" />
+              <span>Interactive Flow Canvas</span>
+            </button>
+            <button
+              onClick={() => setActiveMode('keyword_rules')}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeMode === 'keyword_rules'
+                  ? 'bg-[#0B3B2C] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              <span>Keyword Trigger Rules</span>
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons: Templates & Go To Workflows */}
+        {/* Action Buttons: Full Screen, Templates & Go To Workflows */}
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 justify-end">
+          {/* Full Screen Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0 border ${
+              isFullscreen
+                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 ring-2 ring-amber-400/20'
+                : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
+            }`}
+            title={isFullscreen ? 'Exit Full Screen Studio Mode (Esc)' : 'View in Full Screen Studio Mode (Press F)'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-4 h-4 text-amber-600" />
+                <span>Exit Full Screen</span>
+                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-white border border-amber-300 rounded text-amber-800 shadow-2xs">Esc</kbd>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-4 h-4 text-emerald-600" />
+                <span>Full Screen</span>
+                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 border border-slate-200 rounded text-slate-500">F</kbd>
+              </>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('automation-workflows')}
             className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
@@ -1330,6 +1436,24 @@ export const WorkflowBuilderView: React.FC = () => {
                 </button>
               </div>
 
+              {/* Quick Full Screen Studio Mode Toggle */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                  isFullscreen
+                    ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-transparent'
+                }`}
+                title={isFullscreen ? 'Exit Full Screen Studio (Esc)' : 'Expand to Full Screen Studio (F)'}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-4 h-4 text-amber-700" />
+                ) : (
+                  <Maximize2 className="w-4 h-4 text-slate-600" />
+                )}
+              </button>
+
               {/* Real Save Workflow Button (persists to store and Workflows page) */}
               <button
                 onClick={handleSaveWorkflowToStore}
@@ -1419,11 +1543,29 @@ export const WorkflowBuilderView: React.FC = () => {
               <div className="h-px bg-slate-200 my-0.5" />
               {/* Fit All Nodes View Button */}
               <button
+                type="button"
                 onClick={handleFitView}
                 className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-center transition cursor-pointer"
-                title="Fit All Nodes in Screen"
+                title="Fit All Nodes in View"
               >
-                <Maximize2 className="w-4 h-4" />
+                <Compass className="w-4 h-4" />
+              </button>
+              {/* Full Screen Mode Button */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                  isFullscreen
+                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 ring-1 ring-amber-300'
+                    : 'bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700'
+                }`}
+                title={isFullscreen ? 'Exit Full Screen Studio (Esc)' : 'Full Screen Studio Mode (F)'}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-4 h-4 text-amber-600" />
+                ) : (
+                  <Maximize2 className="w-4 h-4" />
+                )}
               </button>
             </div>
 
@@ -2154,7 +2296,7 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* CONFIGURE ELEMENT MODAL (Matches screenshots media_1789380608034 & 1789380618719) */}
       {/* ========================================================================= */}
       {configModal && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-[70] overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
             onClick={() => setConfigModal(null)}
@@ -2657,7 +2799,7 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* TEMPLATES & DEMO TUTORIAL MODAL                                           */}
       {/* ========================================================================= */}
       {isTemplatesModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-[70] overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsTemplatesModalOpen(false)}
@@ -2788,7 +2930,7 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* TEST BOT INTERACTIVE MODAL (Live Simulator)                               */}
       {/* ========================================================================= */}
       {isTestBotOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-[70] overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsTestBotOpen(false)}
@@ -2890,7 +3032,7 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* CREATE NEW KEYWORD RULE MODAL                                             */}
       {/* ========================================================================= */}
       {isNewRuleModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-[70] overflow-hidden flex items-center justify-center p-3 sm:p-4">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
             onClick={() => setIsNewRuleModalOpen(false)}
@@ -2985,7 +3127,7 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* ========================================================================= */}
       {activeInfoModal && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
           onClick={() => setActiveInfoModal(null)}
         >
           <div
