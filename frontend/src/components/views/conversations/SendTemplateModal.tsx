@@ -18,7 +18,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
   currentConversation,
   onSendTemplate
 }) => {
-  const { metaConfig, requestSendConfirmation } = useQiyamStore();
+  const { metaConfig } = useQiyamStore();
   const approvedTemplates = templates.filter(t => t.meta_status === 'APPROVED' || t.status === 'Active');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | number>(
     approvedTemplates[0]?.id || templates[0]?.id || ''
@@ -79,25 +79,8 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
 
   const handleSend = () => {
     if (!selectedTemplate) return;
-    const renderedMsg = renderPreview();
-    requestSendConfirmation({
-      title: 'Send Template Message?',
-      subtitle: `Confirm delivering approved Meta template "${selectedTemplate.name}" to the customer.`,
-      recipientName: currentConversation?.contact_name || 'Customer',
-      recipientPhone: currentConversation?.phone_number || '',
-      badgeText: (selectedTemplate.category || 'TEMPLATE').toUpperCase(),
-      badgeColor: 'purple',
-      messagePreview: renderedMsg,
-      metadata: [
-        { label: 'Template Name', value: selectedTemplate.name },
-        { label: 'Language', value: selectedTemplate.language || 'en_US' },
-      ],
-      confirmLabel: 'Confirm & Send Template',
-      onConfirm: () => {
-        onSendTemplate(selectedTemplate.id, variables);
-        onClose();
-      },
-    });
+    onSendTemplate(selectedTemplate.id, variables);
+    onClose();
   };
 
   const renderPreview = () => {
