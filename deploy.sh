@@ -111,6 +111,8 @@ DB_USER=whatsq_user
 DB_PASSWORD=whatsq_secure_password_2026
 DB_HOST=localhost
 DB_PORT=5432
+DJANGO_DEBUG=False
+ALLOWED_HOSTS=whatsq.qiyambusinesssolutions.com,localhost,127.0.0.1
 EOF
 
 export DB_ENGINE=postgresql
@@ -119,6 +121,8 @@ export DB_USER=whatsq_user
 export DB_PASSWORD=whatsq_secure_password_2026
 export DB_HOST=localhost
 export DB_PORT=5432
+export DJANGO_DEBUG=False
+export ALLOWED_HOSTS=whatsq.qiyambusinesssolutions.com,localhost,127.0.0.1
 python manage.py migrate --noinput
 
 # Auto-seed check: Guarantee conversations and workspace are NEVER left empty post-deployment

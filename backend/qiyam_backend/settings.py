@@ -18,9 +18,15 @@ if env_file.exists():
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-qiyam-business-os-whatsapp-ecosystem-key-2026')
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+is_prod_db = os.environ.get('DB_ENGINE') == 'postgresql'
+default_debug = 'False' if is_prod_db else 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', default_debug).lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+_allowed = os.environ.get('ALLOWED_HOSTS', '')
+if _allowed:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',

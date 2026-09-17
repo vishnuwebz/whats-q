@@ -320,6 +320,13 @@ class ConversationViewSet(viewsets.ModelViewSet):
         sender = request.data.get('sender', 'agent')
         sender_name = request.data.get('sender_name', 'Rahul Mehta')
 
+        # Suppression Defense (WhatsApp Policy & Quality Score Protection)
+        if (conversation.is_opted_out or conversation.is_blocked) and not request.data.get('force', False):
+            reason = "opted out (STOP)" if conversation.is_opted_out else "blocked"
+            return Response({
+                'error': f"Cannot send message: Contact has {reason} on WhatsApp. Sending to suppressed contacts violates WhatsApp Business Policy. Re-subscribe with customer consent first or provide force=True."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         meta_msg_id = ''
         msg_status = 'delivered'
 
@@ -502,6 +509,14 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def send_template(self, request, pk=None):
         conversation = self.get_object()
+
+        # Suppression Defense (WhatsApp Policy & Quality Score Protection)
+        if (conversation.is_opted_out or conversation.is_blocked) and not request.data.get('force', False):
+            reason = "opted out (STOP)" if conversation.is_opted_out else "blocked"
+            return Response({
+                'error': f"Cannot send template: Contact has {reason} on WhatsApp. Sending to suppressed contacts violates WhatsApp Business Policy. Re-subscribe with customer consent first or provide force=True."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         template_id = request.data.get('template_id')
         variables = request.data.get('variables', {})
 
