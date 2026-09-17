@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export const FollowupsView: React.FC = () => {
-  const { followups, addFollowUp, addToast, setActiveTab, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
+  const { followups, addFollowUp, updateFollowUp, deleteFollowUp, addToast, setActiveTab, openConversationForContact, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
   const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'due_today' | 'scheduled' | 'overdue' | 'completed'>('all');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +28,14 @@ export const FollowupsView: React.FC = () => {
     priority: 'medium' as 'high' | 'medium' | 'low',
     notes: ''
   });
+
+  const counts = {
+    all: followups.length,
+    due_today: followups.filter((f) => f.status === 'due_today').length,
+    scheduled: followups.filter((f) => f.status === 'scheduled').length,
+    overdue: followups.filter((f) => f.status === 'overdue').length,
+    completed: followups.filter((f) => f.status === 'completed').length,
+  };
 
   const filtered = followups.filter((f) => {
     if (activeTabFilter !== 'all' && f.status !== activeTabFilter) return false;
@@ -72,13 +80,19 @@ export const FollowupsView: React.FC = () => {
     });
   };
 
-  const handleAction = (item: FollowUp, action: 'call' | 'whatsapp' | 'complete') => {
+  const handleAction = async (item: FollowUp, action: 'call' | 'whatsapp' | 'complete') => {
     if (action === 'call') {
       addToast(`Calling ${item.customer_name} (${item.phone})...`, 'info');
+      window.open(`tel:${item.phone.replace(/\s+/g, '')}`, '_self');
     } else if (action === 'whatsapp') {
-      addToast(`Opening WhatsApp chat for ${item.customer_name}...`, 'info');
-      setActiveTab('conversations');
+      openConversationForContact({
+        name: item.customer_name,
+        phone: item.phone,
+        service: item.related_to || item.title,
+        initialMessage: `👋 Hello *${item.customer_name}*,\nFollowing up regarding *${item.title}* (${item.related_to || 'Service Inquiry'}). How can our team assist you today?`,
+      });
     } else if (action === 'complete') {
+      await updateFollowUp(item.id, { status: 'completed' });
       addToast(`Follow-up "${item.title}" marked as completed!`, 'success');
     }
   };
@@ -102,7 +116,7 @@ export const FollowupsView: React.FC = () => {
                 activeTabFilter === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              All ({followups.length})
+              All ({counts.all})
             </button>
             <button
               onClick={() => setActiveTabFilter('due_today')}
@@ -110,7 +124,7 @@ export const FollowupsView: React.FC = () => {
                 activeTabFilter === 'due_today' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Due Today (2)
+              Due Today ({counts.due_today})
             </button>
             <button
               onClick={() => setActiveTabFilter('scheduled')}
@@ -118,7 +132,7 @@ export const FollowupsView: React.FC = () => {
                 activeTabFilter === 'scheduled' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Scheduled (1)
+              Scheduled ({counts.scheduled})
             </button>
             <button
               onClick={() => setActiveTabFilter('overdue')}
@@ -126,7 +140,15 @@ export const FollowupsView: React.FC = () => {
                 activeTabFilter === 'overdue' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Overdue (1)
+              Overdue ({counts.overdue})
+            </button>
+            <button
+              onClick={() => setActiveTabFilter('completed')}
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                activeTabFilter === 'completed' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Completed ({counts.completed})
             </button>
           </div>
 
@@ -135,9 +157,19 @@ export const FollowupsView: React.FC = () => {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search follow-ups..."
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none w-52 focus:ring-1 focus:ring-emerald-500"
+                className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none w-52 focus:ring-1 focus:ring-emerald-500 focus:bg-white"
               />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         </div>

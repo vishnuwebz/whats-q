@@ -7,8 +7,59 @@ import {
   Calendar, Clock, MapPin, User, Search, Filter, Plus,
   CheckCircle2, AlertCircle, MoreVertical, DollarSign, MessageSquare, X,
   Phone, Send, ExternalLink, ShieldCheck, ChevronRight, FileText, Check,
-  CreditCard, Sparkles, ArrowRight
+  CreditCard, Sparkles, ArrowRight, RotateCcw, Copy
 } from 'lucide-react';
+
+export const buildAppointmentReminderMessage = (
+  apt: Appointment,
+  templateType: 'standard' | 'quick' | 'urgent' = 'standard'
+): string => {
+  const balance = Math.max(0, (apt.amount || 0) - (apt.advance || 0));
+  const bookingId = apt.apt_id_str || `APT-${apt.id}`;
+
+  if (templateType === 'quick') {
+    return `🗓️ *Appointment Reminder: ${apt.service}*
+
+Hello *${apt.customer_name}*, this is a quick reminder that your service visit is scheduled for *${apt.date_str}* at *${apt.time_str}* with our specialist *${apt.employee || 'Assigned Staff'}*.
+
+📍 *Location:* ${apt.location || 'Kozhikode, Kerala'}
+💰 *Balance Due:* ₹${balance.toLocaleString()}
+
+Please let us know if you need to make any adjustments. Thank you!`;
+  }
+
+  if (templateType === 'urgent') {
+    return `⚠️ *Important Service Visit Notice: ${apt.service}*
+
+Dear *${apt.customer_name}*,
+Our specialist *${apt.employee || 'Assigned Staff'}* is scheduled to arrive on *${apt.date_str}* at *${apt.time_str}* (Booking: ${bookingId}).
+
+📌 *Site & Access Instructions:* Please ensure vehicle parking space and uninterrupted access to the service unit.
+💳 *Payment Summary:* Advance Paid: ₹${(apt.advance || 0).toLocaleString()} | Balance Due on Visit: ₹${balance.toLocaleString()}.
+
+Reply directly to this message for immediate assistance.`;
+  }
+
+  // standard detailed
+  return `🗓️ *Appointment Reminder: ${apt.service}*
+
+Hello *${apt.customer_name}*,
+This is a confirmation reminder for your upcoming service appointment with Qiyam Services:
+
+📋 *Booking ID:* ${bookingId}
+🔧 *Service:* ${apt.service}
+📅 *Date:* ${apt.date_str}
+⏰ *Time:* ${apt.time_str} (${apt.duration || '1h 30m'})
+👨‍🔧 *Technician:* ${apt.employee || 'Assigned Specialist'}
+📍 *Location:* ${apt.location || 'Kozhikode, Kerala'}
+
+💰 *Payment Details:*
+• Total Service Fee: ₹${(apt.amount || 0).toLocaleString()}
+• Advance Paid: ₹${(apt.advance || 0).toLocaleString()}
+• Balance Due: ₹${balance.toLocaleString()}
+
+If you have gate security instructions or need to reschedule, please reply directly to this chat. Thank you!`;
+};
 
 export const AppointmentsView: React.FC = () => {
   const {
@@ -39,9 +90,55 @@ export const AppointmentsView: React.FC = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
 
-  const handleRemindAppointment = async (apt: Appointment) => {
-    addToast(`Dispatching WhatsApp reminder to ${apt.customer_name}...`, 'info');
-    await openConversationForAppointment(apt, { sendReminder: true });
+  // Confirm WhatsApp Reminder Modal State
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderApt, setReminderApt] = useState<Appointment | null>(null);
+  const [reminderMessage, setReminderMessage] = useState('');
+  const [selectedReminderTemplate, setSelectedReminderTemplate] = useState<'standard' | 'quick' | 'urgent'>('standard');
+  const [openChatAfterSend, setOpenChatAfterSend] = useState(true);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+
+  const handleRemindAppointment = (apt: Appointment) => {
+    setReminderApt(apt);
+    setSelectedReminderTemplate('standard');
+    setReminderMessage(buildAppointmentReminderMessage(apt, 'standard'));
+    setOpenChatAfterSend(true);
+    setIsReminderModalOpen(true);
+  };
+
+  const handleSelectTemplate = (template: 'standard' | 'quick' | 'urgent') => {
+    if (!reminderApt) return;
+    setSelectedReminderTemplate(template);
+    setReminderMessage(buildAppointmentReminderMessage(reminderApt, template));
+  };
+
+  const handleInsertSnippet = (snippet: string) => {
+    setReminderMessage((prev) => (prev ? `${prev}\n${snippet}` : snippet));
+  };
+
+  const handleResetReminderMessage = () => {
+    if (!reminderApt) return;
+    setReminderMessage(buildAppointmentReminderMessage(reminderApt, selectedReminderTemplate));
+  };
+
+  const handleConfirmSendReminder = async () => {
+    if (!reminderApt || !reminderMessage.trim()) return;
+    setIsSendingReminder(true);
+    try {
+      addToast(`Dispatched WhatsApp reminder to ${reminderApt.customer_name}`, 'success');
+      await openConversationForAppointment(reminderApt, {
+        sendReminder: true,
+        customMessage: reminderMessage.trim(),
+        openChat: openChatAfterSend,
+      });
+      setIsReminderModalOpen(false);
+      setReminderApt(null);
+    } catch (err) {
+      console.error(err);
+      addToast('Failed to dispatch reminder', 'error');
+    } finally {
+      setIsSendingReminder(false);
+    }
   };
 
   const handleOpenChat = async (apt: Appointment) => {
@@ -118,6 +215,18 @@ export const AppointmentsView: React.FC = () => {
     return true;
   });
 
+  const totalBookings = appointments.length;
+  const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length;
+  const upcomingCount = appointments.filter((a) => a.status === 'upcoming').length;
+  const completedCount = appointments.filter((a) => a.status === 'completed').length;
+  const advanceCollected = appointments.reduce(
+    (acc, a) => acc + (a.payment_status === 'advance_paid' || a.status === 'confirmed' ? (Number(a.advance) || 0) : 0),
+    0
+  );
+  const awaitingAdvanceCount = appointments.filter(
+    (a) => a.payment_status !== 'advance_paid' && a.status !== 'cancelled' && a.status !== 'completed'
+  ).length;
+
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
@@ -132,23 +241,23 @@ export const AppointmentsView: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Total Bookings</div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">31</div>
-            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">↑ 10.3% this week</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{totalBookings}</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">{upcomingCount} upcoming slots</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Confirmed (Advance)</div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">24</div>
-            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">₹21,600 collected</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">{confirmedCount}</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">₹{advanceCollected.toLocaleString()} collected</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Awaiting Advance</div>
-            <div className="text-xl sm:text-2xl font-black text-amber-600 mt-1">5</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-600 mt-1">{awaitingAdvanceCount}</div>
             <div className="text-[10px] sm:text-[11px] text-amber-600 mt-0.5">Reminder sent</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-[11px] sm:text-xs font-semibold text-slate-500">Avg. Duration</div>
-            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">1h 45m</div>
-            <div className="text-[10px] sm:text-[11px] text-purple-600 mt-0.5">Standard slot</div>
+            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">1h 30m</div>
+            <div className="text-[10px] sm:text-[11px] text-purple-600 mt-0.5">{completedCount} completed visits</div>
           </div>
         </div>
 
@@ -163,7 +272,7 @@ export const AppointmentsView: React.FC = () => {
                   filterStatus === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                All
+                All ({totalBookings})
               </button>
               <button
                 onClick={() => setFilterStatus('confirmed')}
@@ -171,7 +280,7 @@ export const AppointmentsView: React.FC = () => {
                   filterStatus === 'confirmed' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                Confirmed
+                Confirmed ({confirmedCount})
               </button>
               <button
                 onClick={() => setFilterStatus('upcoming')}
@@ -179,8 +288,18 @@ export const AppointmentsView: React.FC = () => {
                   filterStatus === 'upcoming' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                Upcoming
+                Upcoming ({upcomingCount})
               </button>
+              {completedCount > 0 && (
+                <button
+                  onClick={() => setFilterStatus('completed')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+                    filterStatus === 'completed' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Completed ({completedCount})
+                </button>
+              )}
             </div>
           </div>
 
@@ -594,7 +713,300 @@ Total Fee: ₹${selectedAppointment.amount} | Advance Paid: ₹${selectedAppoint
                   className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer text-xs flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Send Reminder & Open Chat</span>
+                  <span>Send Reminder</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm WhatsApp Reminder Modal */}
+      {isReminderModalOpen && reminderApt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-slate-900">Confirm WhatsApp Reminder</h3>
+                    <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                      Pre-Send Review
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Verify recipient details, choose a template, and review or edit the message text before dispatching.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsReminderModalOpen(false);
+                  setReminderApt(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+              {/* Recipient & Appointment Snapshot Card */}
+              <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      {reminderApt.customer_name ? reminderApt.customer_name.charAt(0) : 'C'}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                        <span>{reminderApt.customer_name}</span>
+                        <span className="font-mono text-[11px] text-slate-500 font-normal">({reminderApt.phone})</span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 flex items-center gap-2 mt-0.5">
+                        <span className="font-medium text-slate-700">{reminderApt.service}</span>
+                        <span>•</span>
+                        <span className="text-slate-500">{reminderApt.location || 'Kozhikode'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200 shadow-xs">
+                      {reminderApt.apt_id_str || `APT-${reminderApt.id}`}
+                    </span>
+                    <div className="text-[10px] text-slate-500 mt-1 capitalize font-medium">
+                      Status: <span className="text-emerald-700 font-semibold">{reminderApt.status}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 border-t border-slate-200/70 text-slate-700">
+                  <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                    <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-rose-500" /> Slot
+                    </div>
+                    <div className="font-bold text-slate-900 mt-0.5 truncate">{reminderApt.date_str} {reminderApt.time_str}</div>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                    <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                      <User className="w-3 h-3 text-blue-500" /> Specialist
+                    </div>
+                    <div className="font-bold text-slate-900 mt-0.5 truncate">{reminderApt.employee || 'Unassigned'}</div>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                    <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-500" /> Advance Paid
+                    </div>
+                    <div className="font-bold text-emerald-700 mt-0.5">₹{reminderApt.advance || 0}</div>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                    <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                      <CreditCard className="w-3 h-3 text-amber-500" /> Balance Due
+                    </div>
+                    <div className="font-bold text-amber-700 mt-0.5">
+                      ₹{Math.max(0, (reminderApt.amount || 0) - (reminderApt.advance || 0))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Template Selection Chips */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                    Select Message Template
+                  </label>
+                  <span className="text-[10px] text-slate-400">Click to load preset text</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectTemplate('standard')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      selectedReminderTemplate === 'standard'
+                        ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">Standard Detailed</span>
+                      {selectedReminderTemplate === 'standard' && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                      Full breakdown with booking ID, fee & balance
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectTemplate('quick')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      selectedReminderTemplate === 'quick'
+                        ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">Quick Slot Notice</span>
+                      {selectedReminderTemplate === 'quick' && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                      Crisp visit reminder & arrival time
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectTemplate('urgent')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      selectedReminderTemplate === 'urgent'
+                        ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">Urgent Pre-Visit</span>
+                      {selectedReminderTemplate === 'urgent' && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                      Gate access, parking & on-site settlement
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Editable Message Textarea */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Editable Message Body</span>
+                    <span className="text-[10px] font-normal text-slate-500 lowercase">(you can edit this before sending)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetReminderMessage}
+                      className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 hover:underline cursor-pointer"
+                      title="Reset text to default template"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                      {reminderMessage.length} chars
+                    </span>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={8}
+                    value={reminderMessage}
+                    onChange={(e) => setReminderMessage(e.target.value)}
+                    placeholder="Enter or modify WhatsApp message content..."
+                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 leading-relaxed outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all resize-y min-h-[160px]"
+                  />
+                </div>
+
+                {/* Quick Add Snippet Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-slate-400">Quick Insert:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertSnippet('📍 *Parking Note:* Please ensure space is reserved for service van.')}
+                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[10px] font-medium transition-colors cursor-pointer"
+                  >
+                    + Parking Note
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertSnippet('🔑 *Access:* Kindly share gate security code or intercom flat number.')}
+                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[10px] font-medium transition-colors cursor-pointer"
+                  >
+                    + Gate Security
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertSnippet('💳 *Payment:* UPI QR code available with technician or pay online.')}
+                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[10px] font-medium transition-colors cursor-pointer"
+                  >
+                    + UPI Payment Info
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertSnippet(`📞 *Contact Specialist:* Reach ${reminderApt.employee} directly if needed.`)}
+                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[10px] font-medium transition-colors cursor-pointer"
+                  >
+                    + Staff Contact
+                  </button>
+                </div>
+              </div>
+
+              {/* Delivery Options */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={openChatAfterSend}
+                    onChange={(e) => setOpenChatAfterSend(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 accent-emerald-600 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-medium text-slate-700">
+                    Open WhatsApp chat thread immediately after dispatch
+                  </span>
+                </label>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                  <Sparkles className="w-3 h-3 text-emerald-500" />
+                  <span>Instant Optimistic Delivery</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsReminderModalOpen(false);
+                  setReminderApt(null);
+                }}
+                disabled={isSendingReminder}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-200/70 font-semibold rounded-xl transition-colors cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!reminderMessage.trim() || isSendingReminder}
+                  onClick={handleConfirmSendReminder}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSendingReminder ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Dispatching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Confirm & Send WhatsApp Reminder</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

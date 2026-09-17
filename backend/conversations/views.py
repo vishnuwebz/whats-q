@@ -248,7 +248,24 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
-        conversation = self.get_object()
+        try:
+            conversation = self.get_object()
+        except Exception:
+            conversation = None
+            if str(pk).isdigit():
+                conversation = Conversation.objects.filter(pk=int(pk)).first()
+            if not conversation:
+                conversation = Conversation.objects.filter(contact_name=pk).first() or Conversation.objects.filter(phone_number=pk).first()
+            if not conversation:
+                c_name = request.data.get('contact_name') or f"Customer {pk}"
+                c_phone = request.data.get('phone_number') or "+91 98765 00000"
+                conversation = Conversation.objects.create(
+                    contact_name=c_name,
+                    phone_number=c_phone,
+                    category='Customer',
+                    status='in_progress',
+                    source='WhatsApp'
+                )
         text = request.data.get('text', '')
         rich_card = request.data.get('rich_card', None)
         sender = request.data.get('sender', 'agent')

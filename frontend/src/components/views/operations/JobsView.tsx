@@ -198,6 +198,14 @@ export const JobsView: React.FC = () => {
     );
   };
 
+  const scheduledCount = jobs.filter((j) => j.status === 'scheduled').length;
+  const inProgressCount = jobs.filter((j) => j.status === 'in_progress').length;
+  const completedCount = jobs.filter((j) => j.status === 'completed').length;
+  const overdueCount = jobs.filter((j) => j.status === 'overdue').length;
+
+  const onDutyTechs = employees.filter((e) => e.status === 'on_duty' || e.status === 'active').length;
+  const totalTechs = employees.length;
+
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-hidden font-sans">
       <Header
@@ -224,7 +232,7 @@ export const JobsView: React.FC = () => {
               activeStatus === 'scheduled' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            Scheduled (31)
+            Scheduled ({scheduledCount})
           </button>
           <button
             onClick={() => setActiveStatus('in_progress')}
@@ -232,7 +240,7 @@ export const JobsView: React.FC = () => {
               activeStatus === 'in_progress' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            In Progress (28)
+            In Progress ({inProgressCount})
           </button>
           <button
             onClick={() => setActiveStatus('completed')}
@@ -240,7 +248,7 @@ export const JobsView: React.FC = () => {
               activeStatus === 'completed' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            Completed (54)
+            Completed ({completedCount})
           </button>
           <button
             onClick={() => setActiveStatus('overdue')}
@@ -248,12 +256,12 @@ export const JobsView: React.FC = () => {
               activeStatus === 'overdue' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            Overdue (7)
+            Overdue ({overdueCount})
           </button>
         </div>
 
         <div className="text-xs text-slate-500 font-medium">
-          Active Technicians on Duty: <strong className="text-slate-900">18 / 24</strong>
+          Active Technicians on Duty: <strong className="text-slate-900">{onDutyTechs} / {totalTechs}</strong>
         </div>
       </div>
 

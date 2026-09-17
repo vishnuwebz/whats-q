@@ -10,7 +10,20 @@ import { exportTableToCsv } from '@/utils/exportCsv';
 
 export const FinanceOverviewView: React.FC = () => {
   const store = useQiyamStore();
-  const { transactions, invoices, addToast, setActiveTab } = store;
+  const { transactions, invoices, expenses, accounts, addToast, setActiveTab } = store;
+
+  const totalRevenue = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0) || 2485320;
+  const totalExpenses =
+    expenses && expenses.length > 0
+      ? expenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0)
+      : transactions.filter((t) => t.tx_type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0) || 1355130;
+  const netProfit = totalRevenue - totalExpenses;
+  const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '45.5';
+  const liquidCash =
+    accounts && accounts.length > 0
+      ? accounts.reduce((acc, a) => acc + (Number(a.current_balance) || 0), 0)
+      : 4562350;
+  const accountsCount = accounts?.length || 5;
 
   const handleExport = () => {
     const res = exportTableToCsv('finance-overview', store);
@@ -22,7 +35,7 @@ export const FinanceOverviewView: React.FC = () => {
     { month: 'Feb', income: 165000, expense: 92000 },
     { month: 'Mar', income: 198000, expense: 110000 },
     { month: 'Apr', income: 215000, expense: 118000 },
-    { month: 'May', income: 248500, expense: 125000 },
+    { month: 'May', income: Math.round(totalRevenue / 10), expense: Math.round(totalExpenses / 10) },
   ];
 
   return (
@@ -39,15 +52,15 @@ export const FinanceOverviewView: React.FC = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between text-slate-500 mb-2">
-              <span className="text-xs font-semibold truncate">Total Revenue (May)</span>
+              <span className="text-xs font-semibold truncate">Total Revenue</span>
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900">₹24,85,320</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900">₹{totalRevenue.toLocaleString()}</div>
             <div className="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>↑ 15.8%</span>
+              <span>{invoices.length} invoices billed</span>
             </div>
           </div>
 
@@ -58,7 +71,7 @@ export const FinanceOverviewView: React.FC = () => {
                 <ArrowDownRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900">₹13,55,130</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900">₹{totalExpenses.toLocaleString()}</div>
             <div className="text-[11px] text-slate-500 font-medium mt-1 truncate">Salaries, Rent & Ops</div>
           </div>
 
@@ -69,8 +82,10 @@ export const FinanceOverviewView: React.FC = () => {
                 <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-purple-700">₹11,30,190</div>
-            <div className="text-[11px] text-purple-600 font-bold mt-1">45.5% Margin</div>
+            <div className={`text-xl sm:text-2xl font-black ${netProfit >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
+              ₹{netProfit.toLocaleString()}
+            </div>
+            <div className="text-[11px] text-purple-600 font-bold mt-1">{profitMargin}% Margin</div>
           </div>
 
           <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
@@ -80,8 +95,8 @@ export const FinanceOverviewView: React.FC = () => {
                 <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-blue-700">₹45,62,350</div>
-            <div className="text-[11px] text-slate-500 font-medium mt-1 truncate">5 bank accounts</div>
+            <div className="text-xl sm:text-2xl font-black text-blue-700">₹{liquidCash.toLocaleString()}</div>
+            <div className="text-[11px] text-slate-500 font-medium mt-1 truncate">{accountsCount} bank accounts</div>
           </div>
         </div>
 

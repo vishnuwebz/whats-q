@@ -2,9 +2,22 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Bot, Sparkles, Send, RefreshCw, Zap, TrendingUp, Users, ShieldAlert } from 'lucide-react';
+import { queryAIEngine } from '@/utils/aiQueryEngine';
 
 export const AIAssistantView: React.FC = () => {
-  const { addToast } = useQiyamStore();
+  const {
+    conversations,
+    leads,
+    deals,
+    followups,
+    jobs,
+    appointments,
+    employees,
+    invoices,
+    transactions,
+    addToast,
+  } = useQiyamStore();
+
   const [messages, setMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string; time: string }>>([
     {
       sender: 'ai',
@@ -14,6 +27,10 @@ export const AIAssistantView: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+
+  const topTech = [...employees].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0] || employees[0];
+  const overdueInvoices = invoices.filter((i) => i.status === 'overdue');
+  const overdueAmount = overdueInvoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
   const handleSend = (e?: React.FormEvent, promptOverride?: string) => {
     if (e) e.preventDefault();
@@ -25,20 +42,21 @@ export const AIAssistantView: React.FC = () => {
     setIsThinking(true);
 
     setTimeout(() => {
-      let reply = `I've analyzed your data regarding "${query}". Everything is in order across all active WhatsApp inboxes and CRM pipelines.`;
-      const lower = query.toLowerCase();
-
-      if (lower.includes('revenue') || lower.includes('profit')) {
-        reply = "May 2024 Revenue Summary:\n• Total Billed: ₹24,85,320 (↑ 15.8%)\n• Net Profit: ₹11,30,190 (45.5% margin)\n• Outstanding: ₹3,40,320 across 18 accounts.";
-      } else if (lower.includes('lead') || lower.includes('high value')) {
-        reply = "There are 7 high-value leads currently requiring attention. Vikram Mehta (₹12,000 AC Installation) and Pooja Iyer (₹18,000 AMC) are the top candidates.";
-      } else if (lower.includes('schedule') || lower.includes('today')) {
-        reply = "Today you have 15 appointments scheduled. All 18 field technicians are checked in and route RTE-001 is on track.";
-      }
+      const reply = queryAIEngine(query, {
+        conversations,
+        leads,
+        deals,
+        followups,
+        jobs,
+        appointments,
+        employees,
+        invoices,
+        transactions,
+      });
 
       setMessages((prev) => [...prev, { sender: 'ai', text: reply, time: 'Just now' }]);
       setIsThinking(false);
-    }, 600);
+    }, 500);
   };
 
   return (
@@ -72,10 +90,14 @@ export const AIAssistantView: React.FC = () => {
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
                 <span>Top Staff Efficiency</span>
               </span>
-              <span className="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">98% Score</span>
+              <span className="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">
+                {topTech ? `${Math.round((topTech.rating / 5) * 100)}% Score` : '98% Score'}
+              </span>
             </div>
             <p className="text-slate-600 text-[11px] leading-relaxed">
-              Ramesh Kumar completed 23 jobs this week with zero customer escalations and an average rating of 4.9 ⭐.
+              {topTech
+                ? `${topTech.name} completed ${topTech.jobs_completed_month || 18} jobs this month with zero customer escalations and an average rating of ${topTech.rating || 4.9} ⭐.`
+                : 'Staff performance is tracking on schedule across all branches.'}
             </p>
           </div>
 
@@ -88,7 +110,9 @@ export const AIAssistantView: React.FC = () => {
               <span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">Action Needed</span>
             </div>
             <p className="text-slate-600 text-[11px] leading-relaxed">
-              2 enterprise invoices (₹44,500) exceeded 14-day credit terms. Automatic WhatsApp reminders have been queued.
+              {overdueInvoices.length > 0
+                ? `${overdueInvoices.length} invoice(s) (₹${overdueAmount.toLocaleString('en-IN')}) flagged as overdue or pending settlement. Automated WhatsApp reminder sequences are queued.`
+                : 'All customer invoices are currently settled or within standard payment terms.'}
             </p>
           </div>
         </div>

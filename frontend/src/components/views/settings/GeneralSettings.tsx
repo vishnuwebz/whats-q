@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Building2,
@@ -15,10 +15,17 @@ import {
   Shield,
   Eye,
   Archive,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 
 export const GeneralSettings: React.FC = () => {
   const { addToast } = useQiyamStore();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [brandLogo, setBrandLogo] = useState<string>(
+    () => localStorage.getItem('whatsq_brand_logo') || ''
+  );
 
   const [workspaceName, setWorkspaceName] = useState(
     () => localStorage.getItem('whatsq_workspace_name') || 'Qiyam Business OS'
@@ -61,6 +68,36 @@ export const GeneralSettings: React.FC = () => {
     }, 400);
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('File size exceeds 2MB limit. Please choose a smaller image.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setBrandLogo(result);
+      try {
+        localStorage.setItem('whatsq_brand_logo', result);
+        addToast('Brand logo uploaded and applied across workspace!', 'success');
+      } catch (err) {
+        addToast('Storage quota exceeded. Please choose a smaller image.', 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setBrandLogo('');
+    localStorage.removeItem('whatsq_brand_logo');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    addToast('Brand logo reset to default avatar.', 'info');
+  };
+
   return (
     <form onSubmit={handleSavePreferences} className="space-y-6">
       {/* ── 1. Organization & Branding ── */}
@@ -77,8 +114,12 @@ export const GeneralSettings: React.FC = () => {
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           <div className="relative group shrink-0">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-emerald-50">
-              Q
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-emerald-50 overflow-hidden">
+              {brandLogo ? (
+                <img src={brandLogo} alt="Tenant Brand Logo" className="w-full h-full object-cover" />
+              ) : (
+                <span>Q</span>
+              )}
             </div>
           </div>
 
@@ -87,14 +128,32 @@ export const GeneralSettings: React.FC = () => {
             <div className="text-[11px] text-slate-500">
               Displayed on client WhatsApp headers, invoices, and system exports.
             </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleLogoUpload}
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              className="hidden"
+            />
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => addToast('Logo updated to high-res vector format', 'info')}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer flex items-center gap-1.5"
               >
-                Change Avatar
+                <Upload className="w-3 h-3 text-slate-500" />
+                <span>{brandLogo ? 'Change Avatar' : 'Upload Avatar'}</span>
               </button>
+              {brandLogo && (
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-[11px] transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Remove</span>
+                </button>
+              )}
               <span className="text-[10px] text-slate-400">PNG, JPG, SVG up to 2MB</span>
             </div>
           </div>

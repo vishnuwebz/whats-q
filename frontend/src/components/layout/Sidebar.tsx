@@ -478,17 +478,29 @@ export const Sidebar: React.FC = () => {
             onClick={() => handleTabClick('dashboard')}
             title="WhatsQ Dashboard"
           >
-            <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            {!isCollapsed && (
-              <div className="truncate">
-                <div className="font-bold text-white tracking-wide text-base leading-tight">WhatsQ</div>
-                <div className="text-[11px] text-emerald-400 font-medium truncate">Qiyam Business Solutions</div>
-              </div>
-            )}
+            {(() => {
+              const brandLogo = typeof window !== 'undefined' ? localStorage.getItem('whatsq_brand_logo') : null;
+              const workspaceName = typeof window !== 'undefined' ? localStorage.getItem('whatsq_workspace_name') || 'WhatsQ' : 'WhatsQ';
+              return (
+                <>
+                  <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30 overflow-hidden">
+                    {brandLogo ? (
+                      <img src={brandLogo} alt="Tenant Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                      </svg>
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <div className="truncate">
+                      <div className="font-bold text-white tracking-wide text-base leading-tight truncate">{workspaceName}</div>
+                      <div className="text-[11px] text-emerald-400 font-medium truncate">Qiyam Business OS</div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           <div className="flex items-center gap-1">

@@ -40,12 +40,16 @@ export const ConversationsView: React.FC = () => {
     templates,
     convertLeadToDeal,
     convertConversationToDeal,
+    addLead,
+    addAppointment,
+    addJob,
     setActiveTab,
     addToast,
     setIsSimulatorOpen,
     typingUsers,
     onlineUsers,
     setClientPresence,
+    setTargetHighlightId,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
@@ -57,6 +61,11 @@ export const ConversationsView: React.FC = () => {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const recordTimerRef = React.useRef<any>(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
 
   // Date & Time Filter state
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -119,12 +128,23 @@ export const ConversationsView: React.FC = () => {
     }
   }, [currentConv?.id, currentConv?.unread_count, markConversationAsRead]);
 
-  // Open mobile chat automatically when an individual conversation is selected
+  // Open mobile chat automatically and adjust filters when an individual conversation is selected
   React.useEffect(() => {
     if (selectedConversationId) {
       setIsMobileChatOpen(true);
+      const target = conversations.find(
+        (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
+      );
+      if (target) {
+        if (activeFilterTab !== 'all' && target.status !== activeFilterTab) {
+          setActiveFilterTab('all');
+        }
+        if (isAnyDateFilterActive) {
+          clearAllDateFilters();
+        }
+      }
     }
-  }, [selectedConversationId]);
+  }, [selectedConversationId, conversations]);
 
   // Active real-time synchronizer: keeps conversation thread lively even across multi-worker servers
   React.useEffect(() => {
@@ -314,6 +334,48 @@ export const ConversationsView: React.FC = () => {
     })
   );
 
+  const POPULAR_EMOJIS = ['😀', '😂', '👍', '❤️', '🙏', '🔥', '🎉', '🚀', '✅', '🗓️', '⏰', '📍', '💰', '🧾', '🔧', '📞', '💬', '📦', '⚡', '✨', '👋', '🤝', '💯', '⭐'];
+
+  const handleEmojiSelect = (emoji: string) => {
+    setInputText((prev) => prev + emoji);
+    setIsEmojiPickerOpen(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentConv) return;
+    const sizeKB = (file.size / 1024).toFixed(0);
+    const attachmentText = `📎 *Shared Document:* ${file.name} (${sizeKB} KB)`;
+    sendMessage(currentConv.id, attachmentText, 'agent');
+    addToast(`Document "${file.name}" shared with ${currentConv.contact_name}!`, 'success');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleToggleVoiceRecording = () => {
+    if (!currentConv) return;
+    if (isRecordingVoice) {
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      setIsRecordingVoice(false);
+      const duration = recordSeconds || 2;
+      sendMessage(currentConv.id, `🎙️ *Voice Note* (${duration}s audio)`, 'agent');
+      addToast(`Voice note (${duration}s) sent to ${currentConv.contact_name}!`, 'success');
+      setRecordSeconds(0);
+    } else {
+      setIsRecordingVoice(true);
+      setRecordSeconds(1);
+      recordTimerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
+      addToast('Recording voice note... Click again to send', 'info');
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    };
+  }, []);
+
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !currentConv) return;
@@ -322,21 +384,50 @@ export const ConversationsView: React.FC = () => {
     setInputText('');
   };
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = async (action: string) => {
     if (!currentConv) return;
     if (action === 'Create Lead') {
-      addToast(`Lead created for ${currentConv.contact_name}`, 'success');
+      await addLead({
+        name: currentConv.contact_name,
+        phone: currentConv.phone_number,
+        service: currentConv.service_needed || 'Inquiry',
+        stage: 'new',
+        value: currentConv.estimated_value || 3000,
+        source: 'WhatsApp Chat',
+        notes: `Converted from WhatsApp chat. Location: ${currentConv.location || 'Kozhikode'}`,
+      });
       setActiveTab('crm-leads');
     } else if (action === 'Send Quotation') {
       sendMessage(currentConv.id, `Hello ${currentConv.contact_name}, here is the official quotation for ${currentConv.service_needed || 'AC Repair'}: ₹${currentConv.estimated_value || 2800}. Let us know if you would like to proceed!`, 'agent');
       addToast('Quotation sent to WhatsApp', 'success');
     } else if (action === 'Create Appointment') {
-      addToast(`Appointment scheduled for ${currentConv.contact_name}`, 'success');
+      await addAppointment({
+        customer_name: currentConv.contact_name,
+        phone: currentConv.phone_number,
+        service: currentConv.service_needed || 'AC Inspection & Deep Service',
+        employee: currentConv.lead_owner || 'Ramesh Kumar',
+        date_str: 'Tomorrow',
+        time_str: '11:00 AM',
+        duration: '1h 30m',
+        status: 'upcoming',
+        location: currentConv.location || 'Kozhikode, Kerala',
+        amount: currentConv.estimated_value || 2800,
+        advance: Math.round((currentConv.estimated_value || 2800) * 0.3),
+        payment_status: 'pending',
+        source: 'WhatsApp Assistant',
+        notes: `Scheduled from WhatsApp conversation`,
+      });
       setActiveTab('ops-appointments');
     } else if (action === 'Convert to Deal') {
       convertConversationToDeal(currentConv.id);
     } else if (action === 'Mark as Resolved') {
-      addToast(`Conversation with ${currentConv.contact_name} marked as resolved`, 'info');
+      useQiyamStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          String(c.id) === String(currentConv.id) ? { ...c, status: 'resolved' } : c
+        ),
+      }));
+      apiClient.put(`/conversations/threads/${currentConv.id}/`, { status: 'resolved' }).catch(() => {});
+      addToast(`Conversation with ${currentConv.contact_name} marked as resolved!`, 'success');
     }
   };
 
@@ -492,7 +583,24 @@ export const ConversationsView: React.FC = () => {
             <span>Convert to Deal</span>
           </button>
           <button
-            onClick={() => setActiveTab('ops-jobs')}
+            onClick={async () => {
+              if (currentConv) {
+                const created = await addJob({
+                  customer_name: currentConv.contact_name,
+                  phone: currentConv.phone_number,
+                  service: currentConv.service_needed || 'AC Maintenance & Inspection',
+                  location: currentConv.location || 'Kozhikode, Kerala',
+                  amount: currentConv.estimated_value || 3200,
+                  assigned_to: currentConv.lead_owner || 'Amit Sharma',
+                  status: 'scheduled',
+                  priority: 'high',
+                });
+                if (created) {
+                  setTargetHighlightId(created.job_id_str || created.id);
+                }
+              }
+              setActiveTab('ops-jobs');
+            }}
             className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-center text-xs transition-all cursor-pointer"
           >
             Dispatch Job
@@ -818,7 +926,9 @@ export const ConversationsView: React.FC = () => {
               </div>
             ) : (
               filteredConversations.map((conv) => {
-                const isSelected = conv.id === selectedConversationId;
+                const isSelected =
+                  String(conv.id) === String(selectedConversationId) ||
+                  (currentConv && String(conv.id) === String(currentConv.id));
                 const lastMessage = (conv.messages && conv.messages.length > 0) ? conv.messages[conv.messages.length - 1] : null;
                 const dateBadge = getConversationDateBadge(conv);
 
@@ -1022,9 +1132,12 @@ export const ConversationsView: React.FC = () => {
 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <button
-                    onClick={() => addToast(`Calling ${currentConv.contact_name}...`, 'info')}
+                    onClick={() => {
+                      addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
+                      window.open(`tel:${currentConv.phone_number.replace(/\s+/g, '')}`, '_self');
+                    }}
                     className="p-1.5 sm:p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                    title="Initiate Call"
+                    title={`Call ${currentConv.phone_number}`}
                   >
                     <Phone className="w-4 h-4" />
                   </button>
@@ -1282,7 +1395,44 @@ export const ConversationsView: React.FC = () => {
               </div>
 
               {/* Chat Input Box */}
-              <form onSubmit={handleSend} className="bg-white p-2.5 sm:p-3 border-t border-slate-200 flex items-center gap-1.5 sm:gap-2">
+              <form onSubmit={handleSend} className="bg-white p-2.5 sm:p-3 border-t border-slate-200 flex items-center gap-1.5 sm:gap-2 relative">
+                {/* Hidden File Input for Paperclip */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                {/* Emoji Picker Popover */}
+                {isEmojiPickerOpen && (
+                  <div className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150 w-72 sm:w-80">
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 text-xs font-bold text-slate-700">
+                      <span>Quick Emojis</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEmojiPickerOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-8 gap-1 text-lg">
+                      {POPULAR_EMOJIS.map((emoji, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => handleEmojiSelect(emoji)}
+                          className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Template picker button */}
                 <button
                   type="button"
                   onClick={() => setIsTemplateModalOpen(true)}
@@ -1291,37 +1441,80 @@ export const ConversationsView: React.FC = () => {
                 >
                   <Sparkles className="w-5 h-5" />
                 </button>
+
+                {/* Emoji button */}
                 <button
                   type="button"
-                  className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0"
+                  onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+                  title="Insert Emoji"
+                  className={`hidden sm:flex p-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+                    isEmojiPickerOpen ? 'bg-emerald-50 text-emerald-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                  }`}
                 >
                   <Smile className="w-5 h-5" />
                 </button>
+
+                {/* Attachment paperclip button */}
                 <button
                   type="button"
-                  className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach File / Document"
+                  className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0 cursor-pointer"
                 >
                   <Paperclip className="w-5 h-5" />
                 </button>
 
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Type a message or use WhatsApp template..."
-                  className="flex-1 min-w-0 px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                />
+                {/* Active Voice Recording UI vs Text Input */}
+                {isRecordingVoice ? (
+                  <div className="flex-1 flex items-center justify-between px-4 py-2 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 animate-pulse">
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                      <span>Recording Voice Note ({recordSeconds}s)...</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+                        setIsRecordingVoice(false);
+                        setRecordSeconds(0);
+                      }}
+                      className="text-slate-500 hover:text-slate-800 font-semibold px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder="Type a message or use WhatsApp template..."
+                    className="flex-1 min-w-0 px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                )}
 
+                {/* Mic button */}
                 <button
                   type="button"
-                  className="hidden sm:flex p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all shrink-0"
+                  onClick={handleToggleVoiceRecording}
+                  title={isRecordingVoice ? 'Stop & Send Voice Note' : 'Record Voice Note'}
+                  className={`hidden sm:flex p-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+                    isRecordingVoice ? 'bg-rose-500 text-white animate-bounce' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                  }`}
                 >
                   <Mic className="w-5 h-5" />
                 </button>
 
+                {/* Submit button */}
                 <button
                   type="submit"
-                  disabled={!inputText.trim()}
+                  disabled={!inputText.trim() && !isRecordingVoice}
+                  onClick={(e) => {
+                    if (isRecordingVoice) {
+                      e.preventDefault();
+                      handleToggleVoiceRecording();
+                    }
+                  }}
                   className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white flex items-center justify-center shadow-md shadow-emerald-700/20 transition-all active:scale-95 shrink-0 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />

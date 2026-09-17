@@ -34,13 +34,49 @@ export const ScheduleView: React.FC = () => {
     shift_type: 'morning'
   });
 
-  const days = ['Mon, May 27', 'Tue, May 28', 'Wed, May 29', 'Thu, May 30', 'Fri, May 31', 'Sat, Jun 01', 'Sun, Jun 02'];
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [roster, setRoster] = useState<Record<string, 'morning' | 'evening' | 'night' | 'off'>>({});
+
+  const getShiftFor = (empId: string | number, dayIdx: number): 'morning' | 'evening' | 'night' | 'off' => {
+    const key = `${empId}-${weekOffset}-${dayIdx}`;
+    if (roster[key]) return roster[key];
+    if (dayIdx === 6 || (Number(empId) === 4 && dayIdx === 4)) return 'off';
+    return dayIdx % 2 === 0 ? 'morning' : 'evening';
+  };
+
+  const { weekTitle, days } = React.useMemo(() => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const distanceToMon = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + distanceToMon + weekOffset * 7);
+
+    const weekDays: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+      weekDays.push(`${dayName}, ${monthDay}`);
+    }
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const startMonth = monday.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    const endMonth = sunday.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    const title = `${startMonth} – ${endMonth}`;
+
+    return { weekTitle: title, days: weekDays };
+  }, [weekOffset]);
 
   const handleAssignShift = (e: React.FormEvent) => {
     e.preventDefault();
     const emp = employees.find(e => e.id === Number(shiftForm.employee_id)) || employees[0];
     const selectedDay = days[shiftForm.day_idx];
-    addToast(`Shift assigned to ${emp.name} for ${selectedDay} (${shiftForm.shift_type.toUpperCase()})!`, 'success');
+    const shiftType = shiftForm.shift_type as 'morning' | 'evening' | 'night' | 'off';
+    const key = `${shiftForm.employee_id}-${weekOffset}-${shiftForm.day_idx}`;
+    setRoster((prev) => ({ ...prev, [key]: shiftType }));
+    addToast(`Shift assigned to ${emp?.name || 'Employee'} for ${selectedDay} (${shiftType.toUpperCase()})!`, 'success');
     setIsModalOpen(false);
   };
 
@@ -54,12 +90,62 @@ export const ScheduleView: React.FC = () => {
       />
 
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Team Shift KPI Strip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-xs">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Roster Headcount</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{employees.length}</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">Full team scheduled</div>
+          </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">On Duty (Field)</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">
+              {employees.filter((e) => e.status === 'on_duty').length}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">Active shift active</div>
+          </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Active Staff</div>
+            <div className="text-xl sm:text-2xl font-black text-blue-600 mt-1">
+              {employees.filter((e) => e.status === 'active' || e.status === 'on_duty').length}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-blue-600 font-medium mt-0.5">Available for dispatch</div>
+          </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">On Leave / Off</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">
+              {employees.filter((e) => e.status === 'on_leave').length}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-0.5">Rest day rotation</div>
+          </div>
+        </div>
+
         {/* Schedule Controls */}
         <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-3">
-            <button className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="font-bold text-slate-800 text-sm">May 27 – June 02, 2024</span>
-            <button className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"><ChevronRight className="w-4 h-4" /></button>
+            <button
+              onClick={() => setWeekOffset((w) => w - 1)}
+              title="Previous Week"
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-slate-700 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-bold text-slate-800 text-sm min-w-[170px] text-center">{weekTitle}</span>
+            <button
+              onClick={() => setWeekOffset((w) => w + 1)}
+              title="Next Week"
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-slate-700 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                onClick={() => setWeekOffset(0)}
+                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[11px] font-bold transition cursor-pointer"
+              >
+                Current Week
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -104,20 +190,40 @@ export const ScheduleView: React.FC = () => {
                         <div className="text-[10px] text-slate-400">{emp.role}</div>
                       </td>
                       {days.map((_, idx) => {
-                        const isOff = idx === 6 || (emp.id === 4 && idx === 4);
+                        const shiftType = getShiftFor(emp.id, idx);
+                        const isOff = shiftType === 'off';
+                        const label = isOff
+                          ? 'Off'
+                          : shiftType === 'morning'
+                          ? '09:00 - 18:00'
+                          : shiftType === 'evening'
+                          ? '13:00 - 22:00'
+                          : '22:00 - 06:00';
                         return (
                           <td key={idx} className="p-2 text-center">
-                            <div
-                              className={`p-2 rounded-xl text-[10px] font-semibold whitespace-nowrap ${
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShiftForm({
+                                  employee_id: emp.id,
+                                  day_idx: idx,
+                                  shift_type: shiftType,
+                                });
+                                setIsModalOpen(true);
+                              }}
+                              title={`Click to reassign shift for ${emp.name} on ${days[idx]}`}
+                              className={`w-full p-2 rounded-xl text-[10px] font-semibold whitespace-nowrap cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${
                                 isOff
-                                  ? 'bg-slate-100 text-slate-400'
-                                  : idx % 2 === 0
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  ? 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                  : shiftType === 'morning'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                  : shiftType === 'evening'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                                  : 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
                               }`}
                             >
-                              {isOff ? 'Off' : '09:00 - 18:00'}
-                            </div>
+                              {label}
+                            </button>
                           </td>
                         );
                       })}

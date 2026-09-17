@@ -284,6 +284,7 @@ export const App: React.FC = () => {
       case 'ai-knowledgebase':
         return <KnowledgeBaseView />;
       case 'ai-templates':
+        return <AITemplatesView />;
       case 'template-hub':
         return <TemplateHubView />;
       case 'template-create':

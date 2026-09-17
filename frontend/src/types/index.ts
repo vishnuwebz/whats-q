@@ -448,7 +448,7 @@ export interface MetaConfig {
   connection_status: 'connected' | 'disconnected' | 'invalid_token' | 'error';
   business_name: string;
   business_phone_display: string;
-  quality_rating: string;
+  quality_rating?: string;
   last_tested_at?: string;
   auto_reply_enabled?: boolean;
   dual_mode_enabled?: boolean;

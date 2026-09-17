@@ -77,6 +77,16 @@ export const TransactionsView: React.FC = () => {
     });
   };
 
+  const incomeCount = transactions.filter((t) => t.tx_type === 'income').length;
+  const expenseCount = transactions.filter((t) => t.tx_type === 'expense').length;
+  const totalIncome = transactions
+    .filter((t) => t.tx_type === 'income')
+    .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const totalExpense = transactions
+    .filter((t) => t.tx_type === 'expense')
+    .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const netCashFlow = totalIncome - totalExpense;
+
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
@@ -87,6 +97,27 @@ export const TransactionsView: React.FC = () => {
       />
 
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+        {/* KPI Strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Credits (Income)</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">₹{totalIncome.toLocaleString()}</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{incomeCount} incoming transfers</div>
+          </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Debits (Expense)</div>
+            <div className="text-xl sm:text-2xl font-black text-red-600 mt-1">₹{totalExpense.toLocaleString()}</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{expenseCount} vendor payouts</div>
+          </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Net Cash Flow</div>
+            <div className={`text-xl sm:text-2xl font-black mt-1 ${netCashFlow >= 0 ? 'text-blue-700' : 'text-amber-600'}`}>
+              ₹{netCashFlow.toLocaleString()}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{transactions.length} total entries</div>
+          </div>
+        </div>
+
         {/* Filters & Search */}
         <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs font-semibold">
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
@@ -104,7 +135,7 @@ export const TransactionsView: React.FC = () => {
                 filterType === 'income' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Income Credits
+              Income Credits ({incomeCount})
             </button>
             <button
               onClick={() => setFilterType('expense')}
@@ -112,7 +143,7 @@ export const TransactionsView: React.FC = () => {
                 filterType === 'expense' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Expenses
+              Expenses ({expenseCount})
             </button>
           </div>
 

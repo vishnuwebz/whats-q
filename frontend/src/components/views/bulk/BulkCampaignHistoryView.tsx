@@ -73,7 +73,29 @@ export const BulkCampaignHistoryView: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    addToast('Downloading detailed campaign audit report (.csv)...', 'info');
+    const headers = ['Campaign ID', 'Name', 'Template', 'Audience List', 'Status', 'Total Recipients', 'Delivered', 'Read', 'Failed', 'Cost (INR)', 'Sent At'];
+    const rows = filteredCampaigns.map((c) => [
+      c.id,
+      `"${(c.name || '').replace(/"/g, '""')}"`,
+      `"${(c.templateName || '').replace(/"/g, '""')}"`,
+      `"${(c.audienceListName || '').replace(/"/g, '""')}"`,
+      c.status,
+      c.totalRecipients,
+      c.deliveredCount,
+      c.readCount,
+      c.failedCount,
+      c.cost,
+      `"${c.createdAt || c.createdOn || ''}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Campaign_History_Audit_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addToast('Campaign history audit exported as CSV successfully!', 'success');
   };
 
   // Mock recipients for campaign details tab 3

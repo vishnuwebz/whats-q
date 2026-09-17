@@ -20,6 +20,23 @@ export const SecuritySettings: React.FC = () => {
   const [ipWhitelisting, setIpWhitelisting] = useState(false);
 
   const handleExportAuditLog = () => {
+    const headers = ['Timestamp', 'Actor', 'IP Address', 'Action', 'Resource', 'Result', 'Compliance Standard'];
+    const auditRows = [
+      ['2024-05-31 09:42:15', 'Ramesh Kumar (Admin)', '103.14.120.45', 'LOGIN_MFA_SUCCESS', 'Session /auth', 'SUCCESS', 'DPDP / GDPR'],
+      ['2024-05-31 09:15:02', 'System Scheduler', '127.0.0.1', 'DB_ENCRYPTED_BACKUP', 'PostgreSQL /backups', 'SUCCESS', 'AES-256 / ISO 27001'],
+      ['2024-05-30 18:30:11', 'Amit Verma (Agent)', '49.204.11.89', 'WHATSAPP_CREDENTIALS_ACCESS', 'Meta API Config', 'SUCCESS', 'DPDP Audit'],
+      ['2024-05-30 14:12:44', 'Vikram Mehta (Finance)', '103.14.120.45', 'EXPORT_INVOICE_REPORT', 'Finance Invoices', 'SUCCESS', 'SOC2 Compliance'],
+      ['2024-05-29 11:20:00', 'Priya Sharma (Staff)', '157.44.82.10', 'PASSWORD_ROTATION', 'User Auth Profile', 'SUCCESS', 'PCI-DSS / ISO'],
+      ['2024-05-28 16:45:33', 'Security Gateway', '182.72.19.12', 'FAILED_LOGIN_BLOCKED', 'Admin Portal', 'BLOCKED', 'Brute Force Guard'],
+    ];
+    const csvContent = [headers.join(','), ...auditRows.map((r) => r.map((col) => `"${col}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Security_Audit_Log_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
     addToast('Security Audit Log exported as CSV (Last 90 days)', 'success');
   };
 

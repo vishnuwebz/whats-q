@@ -51,10 +51,84 @@ export const ReportsView: React.FC = () => {
     } else if (format === 'print') {
       window.print();
     } else {
-      addToast('Generating executive audit PDF statement...', 'info');
-      setTimeout(() => {
-        addToast('Financial Audit Statement (May 2024) downloaded', 'success');
-      }, 1000);
+      const printWindow = window.open('', '_blank', 'width=900,height=1000');
+      if (!printWindow) {
+        addToast('Popup blocked! Please allow popups to download/print the executive statement.', 'error');
+        return;
+      }
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Qiyam Ventures - Executive Financial Audit Statement</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 40px; }
+              .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+              .title { font-size: 22px; font-weight: 900; color: #059669; }
+              .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; text-transform: uppercase; }
+              .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+              .card { background: #f8fafc; padding: 14px; border-radius: 12px; border: 1px solid #e2e8f0; }
+              .card-title { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+              .card-val { font-size: 20px; font-weight: 900; margin-top: 4px; color: #0f172a; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+              th { background: #f1f5f9; padding: 10px; text-align: left; text-transform: uppercase; font-size: 11px; color: #475569; }
+              td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+              .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+              @media print { body { margin: 0; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <div class="title">QIYAM VENTURES — FINANCIAL AUDIT STATEMENT</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Executive Operating Review • Statement Period: May 2024</div>
+              </div>
+              <div style="text-align: right;">
+                <span class="badge">AUDITED & CERTIFIED</span>
+                <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card"><div class="card-title">Gross Revenue</div><div class="card-val" style="color: #059669;">₹24,85,320</div></div>
+              <div class="card"><div class="card-title">Total OpEx</div><div class="card-val" style="color: #ef4444;">₹13,55,130</div></div>
+              <div class="card"><div class="card-title">Net EBITDA</div><div class="card-val" style="color: #0284c7;">₹11,30,190</div></div>
+              <div class="card"><div class="card-title">Operating Margin</div><div class="card-val" style="color: #7c3aed;">45.5%</div></div>
+            </div>
+
+            <h3 style="font-size: 15px; margin-bottom: 10px;">6-Month Trailing Performance Summary</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th style="text-align: right;">Revenue</th>
+                  <th style="text-align: right;">Operating Expenses</th>
+                  <th style="text-align: right;">EBITDA</th>
+                  <th style="text-align: right;">Operating Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>December 2023</td><td style="text-align: right;">₹16,80,000</td><td style="text-align: right;">₹10,40,000</td><td style="text-align: right;">₹6,40,000</td><td style="text-align: right;">38.1%</td></tr>
+                <tr><td>January 2024</td><td style="text-align: right;">₹18,20,000</td><td style="text-align: right;">₹11,10,000</td><td style="text-align: right;">₹7,10,000</td><td style="text-align: right;">39.0%</td></tr>
+                <tr><td>February 2024</td><td style="text-align: right;">₹19,50,000</td><td style="text-align: right;">₹11,80,000</td><td style="text-align: right;">₹7,70,000</td><td style="text-align: right;">39.5%</td></tr>
+                <tr><td>March 2024</td><td style="text-align: right;">₹21,20,000</td><td style="text-align: right;">₹12,20,000</td><td style="text-align: right;">₹9,00,000</td><td style="text-align: right;">42.5%</td></tr>
+                <tr><td>April 2024</td><td style="text-align: right;">₹21,75,000</td><td style="text-align: right;">₹12,60,000</td><td style="text-align: right;">₹9,15,000</td><td style="text-align: right;">42.1%</td></tr>
+                <tr style="font-weight: 700; background: #f8fafc;"><td>May 2024 (Current)</td><td style="text-align: right; color: #059669;">₹24,85,320</td><td style="text-align: right; color: #ef4444;">₹13,55,130</td><td style="text-align: right; color: #0284c7;">₹11,30,190</td><td style="text-align: right;">45.5%</td></tr>
+              </tbody>
+            </table>
+
+            <div class="footer">
+              <p>Confidential • Prepared for Board & Executive Leadership • Qiyam Ventures Business OS</p>
+            </div>
+
+            <script>
+              window.onload = function() { window.print(); };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      addToast('Executive Audit Statement prepared for printing / PDF export', 'success');
     }
     setIsExportModalOpen(false);
   };

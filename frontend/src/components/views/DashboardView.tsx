@@ -9,19 +9,33 @@ import {
   Compass, Briefcase, Receipt, GitBranch, MessageSquare
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { queryAIEngine, generateExecutiveGreeting } from '@/utils/aiQueryEngine';
 
 export const DashboardView: React.FC = () => {
-  const { setActiveTab, conversations, leads, jobs, appointments, invoices, addToast, setIsSimulatorOpen } = useQiyamStore();
+  const {
+    setActiveTab,
+    conversations,
+    leads,
+    deals,
+    followups,
+    jobs,
+    appointments,
+    employees,
+    invoices,
+    transactions,
+    addToast,
+    setIsSimulatorOpen,
+  } = useQiyamStore();
 
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [isRecentActivityModalOpen, setIsRecentActivityModalOpen] = useState(false);
 
   // AI Copilot local chat state
   const [aiInput, setAiInput] = useState('');
-  const [aiMessages, setAiMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string; time: string }>>([
+  const [aiMessages, setAiMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string; time: string }>>(() => [
     {
       sender: 'ai',
-      text: "Good morning, Rahul! 👋\nHere's a summary of your business:\n• 7 leads need follow-up\n• 3 jobs are overdue\n• 2 payments awaiting reminder\n• You have 15 appointments today",
+      text: generateExecutiveGreeting({ leads, jobs, appointments, invoices, employees }),
       time: 'Just now',
     },
   ]);
@@ -51,15 +65,55 @@ export const DashboardView: React.FC = () => {
     }
   }, [aiMessages.length, isAiThinking]);
 
-  const revenueData = [
-    { day: 'Mon', revenue: 26000 },
-    { day: 'Tue', revenue: 32000 },
-    { day: 'Wed', revenue: 45000 },
-    { day: 'Thu', revenue: 51000 },
-    { day: 'Fri', revenue: 48000 },
-    { day: 'Sat', revenue: 68000 },
-    { day: 'Sun', revenue: 86400 },
-  ];
+  const [revenueTimeframe, setRevenueTimeframe] = useState<'week' | 'month' | 'year'>('week');
+
+  const { chartData, totalLabel, growthLabel } = React.useMemo(() => {
+    if (revenueTimeframe === 'month') {
+      return {
+        chartData: [
+          { day: 'Week 1', revenue: 112000 },
+          { day: 'Week 2', revenue: 145000 },
+          { day: 'Week 3', revenue: 128000 },
+          { day: 'Week 4', revenue: 189000 },
+        ],
+        totalLabel: '₹5,74,000',
+        growthLabel: '↑ 18.4% vs last month',
+      };
+    }
+    if (revenueTimeframe === 'year') {
+      return {
+        chartData: [
+          { day: 'Jan', revenue: 320000 },
+          { day: 'Feb', revenue: 290000 },
+          { day: 'Mar', revenue: 410000 },
+          { day: 'Apr', revenue: 380000 },
+          { day: 'May', revenue: 460000 },
+          { day: 'Jun', revenue: 520000 },
+          { day: 'Jul', revenue: 490000 },
+          { day: 'Aug', revenue: 540000 },
+          { day: 'Sep', revenue: 610000 },
+          { day: 'Oct', revenue: 580000 },
+          { day: 'Nov', revenue: 630000 },
+          { day: 'Dec', revenue: 710000 },
+        ],
+        totalLabel: '₹59,40,000',
+        growthLabel: '↑ 24.2% YoY growth',
+      };
+    }
+    return {
+      chartData: [
+        { day: 'Mon', revenue: 26000 },
+        { day: 'Tue', revenue: 32000 },
+        { day: 'Wed', revenue: 45000 },
+        { day: 'Thu', revenue: 51000 },
+        { day: 'Fri', revenue: 48000 },
+        { day: 'Sat', revenue: 68000 },
+        { day: 'Sun', revenue: 86400 },
+      ],
+      totalLabel: '₹86,400',
+      growthLabel: '↑ 12.6% vs last week',
+    };
+  }, [revenueTimeframe]);
 
   const handleAskAi = (promptText?: string) => {
     const query = promptText || aiInput;
@@ -71,93 +125,142 @@ export const DashboardView: React.FC = () => {
     setIsAiThinking(true);
 
     setTimeout(() => {
-      let reply = '';
-      const lower = query.toLowerCase();
-      if (lower.includes('schedule') || lower.includes('today')) {
-        reply = `Today's schedule has 15 active appointments. 4 high-priority AC installations in Kozhikode and 3 plumbing visits. Technicians Amit Sharma and Ramesh Kumar are dispatched on route RTE-001.`;
-      } else if (lower.includes('payment') || lower.includes('reminder')) {
-        reply = `I have flagged 2 overdue payments totaling ₹19,400 (AC Services: ₹12,500 and Priya Sharma: ₹32,000). Automated WhatsApp reminder links are ready to trigger.`;
-      } else if (lower.includes('job') || lower.includes('overdue')) {
-        reply = `There are 3 jobs flagged as delayed/overdue in Kozhikode & Vadakara. I have notified field managers for priority dispatch.`;
-      } else if (lower.includes('lead') || lower.includes('high value')) {
-        reply = `Top 7 high-value leads are active. Vikram Mehta (₹12,000 AC Installation) and Pooja Iyer (₹18,000 AMC) are currently in proposal review.`;
-      } else {
-        reply = `I analyzed your Qiyam OS real-time data for "${query}". All WhatsApp incoming webhooks, active jobs, and CRM lead pipelines are operating at 98.7% automation efficiency.`;
-      }
+      const reply = queryAIEngine(query, {
+        conversations,
+        leads,
+        deals,
+        followups,
+        jobs,
+        appointments,
+        employees,
+        invoices,
+        transactions,
+      });
 
       setAiMessages((prev) => [...prev, { sender: 'ai', text: reply, time: 'Just now' }]);
       setIsAiThinking(false);
-    }, 700);
+    }, 500);
   };
 
-  const allAlerts = [
-    {
-      id: 'A1',
-      code: 'A',
-      severity: 'high',
-      title: '7 high-value leads need follow-up',
-      subtitle: '2m ago • Lead score > 85 • Pipeline value ₹48,000',
-      actionLabel: 'Review Leads',
-      tabTarget: 'crm-leads' as const,
-      color: 'red',
-      description: 'Top hot leads (Vikram Mehta, Pooja Iyer, Deepak Patel) have been idle for >24h. Suggested action: Trigger 1-click WhatsApp quotation sequence.',
-    },
-    {
-      id: 'B1',
-      code: 'B',
-      severity: 'medium',
-      title: '3 jobs are overdue for dispatch',
-      subtitle: '15m ago • Calicut Zone • Delayed tech arrival',
-      actionLabel: 'Dispatch Jobs',
-      tabTarget: 'ops-jobs' as const,
-      color: 'amber',
-      description: 'Jobs JOB-1024, JOB-1023 are delayed due to high traffic near Beach Road. Re-assign nearest technician Amit Sharma.',
-    },
-    {
-      id: 'B2',
-      code: 'B',
-      severity: 'medium',
-      title: '₹18,400 payments are overdue',
-      subtitle: '32m ago • 2 accounts • Credit period exceeded',
-      actionLabel: 'Send Reminders',
-      tabTarget: 'finance-invoices' as const,
-      color: 'amber',
-      description: 'Invoices INV-2024-0183 (Priya Sharma: ₹32,000) and INV-2024-0182 (Rahul Singh: ₹7,600) have passed their due dates.',
-    },
-    {
-      id: 'D1',
-      code: 'D',
-      severity: 'info',
-      title: "Tomorrow's appointments exceed capacity",
-      subtitle: '1h ago • Suggesting route re-optimization',
-      actionLabel: 'Optimize Route',
-      tabTarget: 'ops-routes' as const,
-      color: 'blue',
-      description: '18 scheduled visits across Kozhikode exceed standard 8h technician shifts. Running AI Route Optimization can balance workloads.',
-    },
-    {
-      id: 'S1',
-      code: 'S',
-      severity: 'info',
-      title: 'Surge in AC Maintenance bookings (+34%)',
-      subtitle: '2h ago • Kozhikode & Koyilandy branch',
-      actionLabel: 'View Analytics',
-      tabTarget: 'analytics' as const,
-      color: 'purple',
-      description: 'High weather temperature triggered 34% increase in WhatsApp inbound inquiries. Stock spare gas kits in Main Warehouse.',
-    },
-    {
-      id: 'P1',
-      code: 'P',
-      severity: 'medium',
-      title: '2 Purchase Approvals Pending',
-      subtitle: '3h ago • Operations & Marketing budget',
-      actionLabel: 'Open Approvals',
-      tabTarget: 'automation-approvals' as const,
-      color: 'amber',
-      description: 'Purchase order APR-1024 (₹25,000) and Marketing budget APR-1022 (₹50,000) are awaiting owner authorization.',
-    },
-  ];
+  const allAlerts = React.useMemo(() => {
+    const hotLeadsCount = leads.filter(
+      (l) => l.stage === 'new' || l.stage === 'contacted' || (l.value && l.value >= 10000)
+    ).length;
+    const leadsPipelineVal = leads.reduce((acc, l) => acc + (Number(l.value) || 0), 0);
+    const overdueJobs = jobs.filter((j) => j.status === 'overdue');
+    const overdueInvoices = invoices.filter((i) => i.status === 'overdue');
+    const overdueInvoicesAmount = overdueInvoices.reduce(
+      (acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)),
+      0
+    );
+
+    return [
+      {
+        id: 'A1',
+        code: 'A',
+        severity: 'high',
+        title: `${hotLeadsCount || 7} high-value leads need follow-up`,
+        subtitle: `Pipeline value ₹${(leadsPipelineVal || 48000).toLocaleString('en-IN')}`,
+        actionLabel: 'Review Leads',
+        tabTarget: 'crm-leads' as const,
+        color: 'red',
+        description:
+          'Top hot leads require follow-up. Suggested action: Trigger 1-click WhatsApp quotation sequence.',
+      },
+      {
+        id: 'B1',
+        code: 'B',
+        severity: 'medium',
+        title: `${overdueJobs.length || 3} jobs are overdue for dispatch`,
+        subtitle: 'Calicut Zone • Delayed tech arrival',
+        actionLabel: 'Dispatch Jobs',
+        tabTarget: 'ops-jobs' as const,
+        color: 'amber',
+        description:
+          overdueJobs.length > 0
+            ? `Jobs ${overdueJobs.map((j) => j.job_id_str).slice(0, 3).join(', ')} require urgent dispatch. Re-assign nearest available technician.`
+            : 'Jobs delayed due to high traffic near Beach Road. Re-assign nearest technician.',
+      },
+      {
+        id: 'B2',
+        code: 'B',
+        severity: 'medium',
+        title: `₹${(overdueInvoicesAmount || 18400).toLocaleString('en-IN')} payments are overdue`,
+        subtitle: `${overdueInvoices.length || 2} accounts • Credit period exceeded`,
+        actionLabel: 'Send Reminders',
+        tabTarget: 'finance-invoices' as const,
+        color: 'amber',
+        description:
+          overdueInvoices.length > 0
+            ? `Invoices ${overdueInvoices.map((i) => `${i.invoice_number} (${i.customer_name})`).slice(0, 2).join(', ')} have passed their due dates.`
+            : 'Multiple invoices have passed their due dates.',
+      },
+      {
+        id: 'D1',
+        code: 'D',
+        severity: 'info',
+        title: "Tomorrow's appointments exceed capacity",
+        subtitle: 'Suggesting route re-optimization',
+        actionLabel: 'Optimize Route',
+        tabTarget: 'ops-routes' as const,
+        color: 'blue',
+        description: `${appointments.length || 18} scheduled visits across Kozhikode exceed standard 8h technician shifts. Running AI Route Optimization can balance workloads.`,
+      },
+      {
+        id: 'S1',
+        code: 'S',
+        severity: 'info',
+        title: 'Surge in AC Maintenance bookings (+34%)',
+        subtitle: 'Kozhikode & Koyilandy branch',
+        actionLabel: 'View Analytics',
+        tabTarget: 'analytics' as const,
+        color: 'purple',
+        description:
+          'High weather temperature triggered 34% increase in WhatsApp inbound inquiries. Stock spare gas kits in Main Warehouse.',
+      },
+      {
+        id: 'P1',
+        code: 'P',
+        severity: 'medium',
+        title: '2 Purchase Approvals Pending',
+        subtitle: '3h ago • Operations & Marketing budget',
+        actionLabel: 'Open Approvals',
+        tabTarget: 'automation-approvals' as const,
+        color: 'amber',
+        description:
+          'Purchase order APR-1024 (₹25,000) and Marketing budget APR-1022 (₹50,000) are awaiting owner authorization.',
+      },
+    ];
+  }, [leads, jobs, invoices, appointments]);
+
+  const kpis = React.useMemo(() => {
+    const totalRev = invoices.reduce((acc, i) => acc + (Number(i.paid_amount) || 0), 0) || 86400;
+    const leadsCount = leads.length;
+    const appointmentsCount = appointments.length;
+    const jobsCompletedCount = jobs.filter((j) => j.status === 'completed').length;
+    const pendingPayments = invoices
+      .filter((i) => i.status === 'sent' || i.status === 'partial_paid' || i.status === 'overdue')
+      .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0) || 19400;
+    const hotLeadsCount = leads.filter((l) => l.stage === 'new' || l.stage === 'contacted').length;
+    const overdueJobsCount = jobs.filter((j) => j.status === 'overdue').length;
+    const overdueInvoices = invoices.filter((i) => i.status === 'overdue');
+    const overdueInvoicesAmount = overdueInvoices.reduce(
+      (acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)),
+      0
+    ) || 18400;
+
+    return {
+      totalRev,
+      leadsCount,
+      appointmentsCount,
+      jobsCompletedCount,
+      pendingPayments,
+      hotLeadsCount,
+      overdueJobsCount,
+      overdueInvoicesCount: overdueInvoices.length || 2,
+      overdueInvoicesAmount,
+    };
+  }, [invoices, leads, appointments, jobs]);
 
   return (
     <div ref={dashboardRootRef} className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto overflow-x-hidden font-sans">
@@ -185,7 +288,7 @@ export const DashboardView: React.FC = () => {
                 <DollarSign className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-xl font-bold text-slate-900">₹86,400</div>
+            <div className="text-xl font-bold text-slate-900">₹{kpis.totalRev.toLocaleString()}</div>
             <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 mt-1">
               <TrendingUp className="w-3 h-3" />
               <span>+12.6% vs last week</span>
@@ -194,8 +297,8 @@ export const DashboardView: React.FC = () => {
 
           {/* New Leads */}
           <div
-            className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer"
             onClick={() => setActiveTab('crm-leads')}
+            className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer"
           >
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-semibold">New Leads</span>
@@ -203,7 +306,7 @@ export const DashboardView: React.FC = () => {
                 <Users className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-xl font-bold text-slate-900">48</div>
+            <div className="text-xl font-bold text-slate-900">{kpis.leadsCount}</div>
             <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 mt-1">
               <TrendingUp className="w-3 h-3" />
               <span>+18.4% vs last week</span>
@@ -221,7 +324,7 @@ export const DashboardView: React.FC = () => {
                 <Calendar className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-xl font-bold text-slate-900">31</div>
+            <div className="text-xl font-bold text-slate-900">{kpis.appointmentsCount}</div>
             <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 mt-1">
               <TrendingUp className="w-3 h-3" />
               <span>+10.3% vs last week</span>
@@ -239,7 +342,7 @@ export const DashboardView: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-xl font-bold text-slate-900">54</div>
+            <div className="text-xl font-bold text-slate-900">{kpis.jobsCompletedCount}</div>
             <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 mt-1">
               <TrendingUp className="w-3 h-3" />
               <span>+14.7% vs last week</span>
@@ -257,7 +360,7 @@ export const DashboardView: React.FC = () => {
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-xl font-bold text-slate-900">₹19,400</div>
+            <div className="text-xl font-bold text-slate-900">₹{kpis.pendingPayments.toLocaleString()}</div>
             <div className="flex items-center gap-1 text-[11px] font-medium text-amber-600 mt-1">
               <TrendingDown className="w-3 h-3" />
               <span>-6.1% vs last week</span>
@@ -318,10 +421,10 @@ export const DashboardView: React.FC = () => {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-slate-800 group-hover:text-red-800 flex items-center justify-between">
-                        <span>7 high-value leads need follow-up</span>
+                        <span>{kpis.hotLeadsCount} leads need follow-up</span>
                         <ArrowRight className="w-3 h-3 text-red-400 group-hover:translate-x-0.5 transition-transform" />
                       </div>
-                      <div className="text-[10px] text-slate-500">2m ago • Lead score &gt; 85 • Click to view</div>
+                      <div className="text-[10px] text-slate-500">Active leads • Click to view</div>
                     </div>
                   </div>
 
@@ -338,10 +441,10 @@ export const DashboardView: React.FC = () => {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-slate-800 group-hover:text-amber-900 flex items-center justify-between">
-                        <span>3 jobs are overdue for dispatch</span>
+                        <span>{kpis.overdueJobsCount} jobs are overdue for dispatch</span>
                         <ArrowRight className="w-3 h-3 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
                       </div>
-                      <div className="text-[10px] text-slate-500">15m ago • Calicut Zone • Click to view</div>
+                      <div className="text-[10px] text-slate-500">Calicut Zone • Click to dispatch</div>
                     </div>
                   </div>
 
@@ -358,10 +461,10 @@ export const DashboardView: React.FC = () => {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-slate-800 group-hover:text-amber-900 flex items-center justify-between">
-                        <span>₹18,400 payments are overdue</span>
+                        <span>₹{kpis.overdueInvoicesAmount.toLocaleString()} overdue payments</span>
                         <ArrowRight className="w-3 h-3 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
                       </div>
-                      <div className="text-[10px] text-slate-500">32m ago • 2 accounts • Click to view</div>
+                      <div className="text-[10px] text-slate-500">{kpis.overdueInvoicesCount} accounts • Click to view</div>
                     </div>
                   </div>
 
@@ -617,22 +720,26 @@ export const DashboardView: React.FC = () => {
                 <div>
                   <div className="text-xs font-semibold text-slate-500">Revenue Overview</div>
                   <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                    <span>₹86,400</span>
+                    <span>{totalLabel}</span>
                     <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      ↑ 12.6% vs last week
+                      {growthLabel}
                     </span>
                   </div>
                 </div>
-                <select className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none">
-                  <option>This Week</option>
-                  <option>This Month</option>
-                  <option>This Year</option>
+                <select
+                  value={revenueTimeframe}
+                  onChange={(e) => setRevenueTimeframe(e.target.value as any)}
+                  className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+                >
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="year">This Year</option>
                 </select>
               </div>
 
               <div className="h-56 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueData}>
+                  <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
@@ -770,11 +877,11 @@ export const DashboardView: React.FC = () => {
                       setAiMessages([
                         {
                           sender: 'ai',
-                          text: "Good morning, Rahul! 👋\nHere's a summary of your business:\n• 7 leads need follow-up\n• 3 jobs are overdue\n• 2 payments awaiting reminder\n• You have 15 appointments today",
+                          text: generateExecutiveGreeting({ leads, jobs, appointments, invoices, employees }),
                           time: 'Just now',
                         },
                       ]);
-                      addToast('AI chat history refreshed', 'info');
+                      addToast('AI chat history refreshed with live operational metrics', 'info');
                     }}
                     className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
                     title="Clear & Refresh"

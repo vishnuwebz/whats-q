@@ -152,13 +152,24 @@ export const EmployeesView: React.FC = () => {
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">On-Time Rate</div>
-            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">96.4%</div>
-            <div className="text-[11px] text-purple-600 mt-0.5">↑ 2.1% this month</div>
+            <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">
+              {employees.length > 0
+                ? (employees.reduce((acc, e) => acc + (Number(e.on_time_percent) || 0), 0) / employees.length).toFixed(1)
+                : '96.0'}%
+            </div>
+            <div className="text-[11px] text-purple-600 mt-0.5">
+              {employees.reduce((acc, e) => acc + (Number(e.jobs_completed_month) || 0), 0)} jobs this month
+            </div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">Avg. Rating</div>
-            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">4.8 ⭐</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Based on 320 reviews</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">
+              {employees.length > 0
+                ? (employees.reduce((acc, e) => acc + (Number(e.rating) || 0), 0) / employees.length).toFixed(1)
+                : '4.8'}{' '}
+              ⭐
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Performance rating</div>
           </div>
         </div>
 

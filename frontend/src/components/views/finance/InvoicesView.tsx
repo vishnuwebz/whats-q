@@ -14,6 +14,7 @@ export const InvoicesView: React.FC = () => {
     addInvoice,
     addToast,
     setActiveTab,
+    openConversationForContact,
     targetHighlightId,
     globalFilter,
     globalDateInterval,
@@ -68,6 +69,117 @@ export const InvoicesView: React.FC = () => {
     });
   };
 
+  const handleDownloadPdf = (inv: Invoice) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    if (!printWindow) {
+      addToast('Popup blocked! Please allow popups to download/print the invoice.', 'error');
+      return;
+    }
+
+    const itemsHtml = (inv.items && inv.items.length > 0 ? inv.items : [
+      { description: 'Professional AC Repair & Maintenance Services', qty: 1, unitPrice: inv.amount, amount: inv.amount }
+    ]).map((item) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 500;">${item.description}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.qty}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">₹${item.unitPrice.toLocaleString()}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹${item.amount.toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    const subtotal = inv.amount;
+    const gst = Math.round(subtotal * 0.18);
+    const balance = Math.max(0, inv.amount - (inv.paid_amount || 0));
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice - ${inv.invoice_number}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 40px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #059669; padding-bottom: 20px; margin-bottom: 24px; }
+            .logo-text { font-size: 24px; font-weight: 900; color: #059669; }
+            .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; text-transform: uppercase; }
+            .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; background: #f8fafc; padding: 16px; border-radius: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 12px; text-transform: uppercase; color: #475569; }
+            .totals { float: right; width: 280px; font-size: 14px; }
+            .totals div { display: flex; justify-content: space-between; padding: 6px 0; }
+            .total-row { border-top: 2px solid #0f172a; font-size: 16px; font-weight: 900; color: #059669; }
+            .footer { margin-top: 60px; clear: both; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+            @media print {
+              body { margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo-text">QIYAM VENTURES</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Official Business Operating System • GSTIN: 32AABCU9603R1ZX</div>
+              <div style="font-size: 12px; color: #64748b;">Beach Road, Kozhikode, Kerala 673032</div>
+            </div>
+            <div style="text-align: right;">
+              <h2 style="margin: 0 0 6px 0; font-size: 20px;">TAX INVOICE</h2>
+              <div style="font-size: 14px; font-weight: 700; font-family: monospace;">${inv.invoice_number}</div>
+              <div style="margin-top: 6px;"><span class="badge">${inv.status.replace('_', ' ')}</span></div>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div>
+              <strong style="font-size: 11px; text-transform: uppercase; color: #64748b;">Billed To:</strong>
+              <div style="font-size: 15px; font-weight: 700; margin-top: 4px;">${inv.customer_name}</div>
+              <div style="font-size: 13px; color: #475569;">${inv.customer_phone}</div>
+              <div style="font-size: 13px; color: #475569;">${inv.customer_email || 'client@qiyamventures.com'}</div>
+            </div>
+            <div style="text-align: right;">
+              <div><strong>Invoice Date:</strong> ${inv.invoice_date || 'May 12, 2024'}</div>
+              <div><strong>Payment Due:</strong> ${inv.due_date}</div>
+              <div><strong>Payment Mode:</strong> ${inv.payment_method}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Unit Rate</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div><span>Subtotal:</span><span>₹${subtotal.toLocaleString()}</span></div>
+            <div><span>GST (18% included):</span><span>₹${gst.toLocaleString()}</span></div>
+            <div><span>Amount Paid:</span><span style="color: #059669;">₹${(inv.paid_amount || 0).toLocaleString()}</span></div>
+            <div><span>Balance Due:</span><span>₹${balance.toLocaleString()}</span></div>
+            <div class="total-row"><span>Total Amount:</span><span>₹${inv.amount.toLocaleString()}</span></div>
+          </div>
+
+          <div class="footer">
+            <p>Thank you for choosing Qiyam Ventures! Generated electronically from Qiyam Business OS.</p>
+            <p>For billing queries, WhatsApp us at +91 98765 43210 or email billing@qiyamventures.com</p>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    addToast(`Tax invoice ${inv.invoice_number} prepared for printing / PDF export`, 'success');
+  };
+
   const effectiveSearch = search || globalFilter.query || '';
 
   const filtered = invoices.filter((inv) => {
@@ -98,6 +210,35 @@ export const InvoicesView: React.FC = () => {
     return true;
   });
 
+  const kpis = React.useMemo(() => {
+    const totalInvoiced = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+    const totalCollected = invoices.reduce((acc, i) => acc + (Number(i.paid_amount) || 0), 0);
+    const totalOutstanding = invoices
+      .filter((i) => i.status === 'sent' || i.status === 'partial_paid' || i.status === 'draft')
+      .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0);
+    const totalOverdue = invoices
+      .filter((i) => i.status === 'overdue')
+      .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0);
+    const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
+    const partialCount = invoices.filter((i) => i.status === 'partial_paid').length;
+    const paidCount = invoices.filter((i) => i.status === 'paid').length;
+    const sentCount = invoices.filter((i) => i.status === 'sent').length;
+    const collectionRate = totalInvoiced > 0 ? ((totalCollected / totalInvoiced) * 100).toFixed(1) : '0';
+
+    return {
+      totalInvoiced,
+      totalCollected,
+      totalOutstanding,
+      totalOverdue,
+      overdueCount,
+      partialCount,
+      paidCount,
+      sentCount,
+      collectionRate,
+      totalCount: invoices.length,
+    };
+  }, [invoices]);
+
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
@@ -111,24 +252,24 @@ export const InvoicesView: React.FC = () => {
         {/* KPI Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-xs">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Invoiced (May)</div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">₹24,85,320</div>
-            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">186 total invoices</div>
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Invoiced</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">₹{kpis.totalInvoiced.toLocaleString()}</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">{kpis.totalCount} total invoices</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Collected Amount</div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">₹21,45,000</div>
-            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">86.3% collection rate</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">₹{kpis.totalCollected.toLocaleString()}</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{kpis.collectionRate}% collection rate</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Outstanding Pending</div>
-            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">₹3,40,320</div>
-            <div className="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-0.5">18 partially paid</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-500 mt-1">₹{kpis.totalOutstanding.toLocaleString()}</div>
+            <div className="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-0.5">{kpis.partialCount} partially paid</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Overdue Invoices</div>
-            <div className="text-xl sm:text-2xl font-black text-red-600 mt-1">₹1,12,400</div>
-            <div className="text-[10px] sm:text-[11px] text-red-600 font-bold mt-0.5">14 overdue accounts</div>
+            <div className="text-xl sm:text-2xl font-black text-red-600 mt-1">₹{kpis.totalOverdue.toLocaleString()}</div>
+            <div className="text-[10px] sm:text-[11px] text-red-600 font-bold mt-0.5">{kpis.overdueCount} overdue accounts</div>
           </div>
         </div>
 
@@ -141,7 +282,7 @@ export const InvoicesView: React.FC = () => {
                 filterStatus === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              All (186)
+              All ({kpis.totalCount})
             </button>
             <button
               onClick={() => setFilterStatus('paid')}
@@ -149,7 +290,7 @@ export const InvoicesView: React.FC = () => {
                 filterStatus === 'paid' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Paid (142)
+              Paid ({kpis.paidCount})
             </button>
             <button
               onClick={() => setFilterStatus('partial_paid')}
@@ -157,7 +298,7 @@ export const InvoicesView: React.FC = () => {
                 filterStatus === 'partial_paid' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Partially Paid (18)
+              Partially Paid ({kpis.partialCount})
             </button>
             <button
               onClick={() => setFilterStatus('overdue')}
@@ -165,7 +306,7 @@ export const InvoicesView: React.FC = () => {
                 filterStatus === 'overdue' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Overdue (14)
+              Overdue ({kpis.overdueCount})
             </button>
             <button
               onClick={() => setFilterStatus('sent')}
@@ -173,7 +314,7 @@ export const InvoicesView: React.FC = () => {
                 filterStatus === 'sent' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Sent (12)
+              Sent ({kpis.sentCount})
             </button>
           </div>
 
@@ -245,8 +386,22 @@ export const InvoicesView: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              addToast(`WhatsApp payment reminder link sent for ${inv.invoice_number}`, 'success');
-                              setActiveTab('conversations');
+                              openConversationForContact({
+                                name: inv.customer_name,
+                                phone: inv.customer_phone,
+                                service: `Invoice ${inv.invoice_number}`,
+                                initialMessage: `📄 *Payment Reminder: Invoice ${inv.invoice_number}*
+
+Hello *${inv.customer_name}*,
+This is a friendly reminder that invoice *${inv.invoice_number}* for *₹${inv.amount.toLocaleString()}* is pending.
+
+📅 *Due Date:* ${inv.due_date}
+💰 *Total Amount:* ₹${inv.amount.toLocaleString()}
+✅ *Paid So Far:* ₹${inv.paid_amount.toLocaleString()}
+💳 *Balance Due:* ₹${Math.max(0, inv.amount - inv.paid_amount).toLocaleString()}
+
+Please reply to this chat or tap here to pay securely via UPI/Cards. Thank you!`,
+                              });
                             }}
                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-semibold text-[11px] flex items-center gap-1 cursor-pointer"
                           >
@@ -347,7 +502,7 @@ export const InvoicesView: React.FC = () => {
 
               <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
                 <button
-                  onClick={() => addToast('PDF invoice downloaded', 'success')}
+                  onClick={() => handleDownloadPdf(selectedInvoice)}
                   className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -355,9 +510,24 @@ export const InvoicesView: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    addToast(`Invoice PDF sent to customer via WhatsApp!`, 'success');
+                    openConversationForContact({
+                      name: selectedInvoice.customer_name,
+                      phone: selectedInvoice.customer_phone,
+                      service: `Invoice ${selectedInvoice.invoice_number}`,
+                      initialMessage: `📄 *Invoice Shared: ${selectedInvoice.invoice_number}*
+
+Hello *${selectedInvoice.customer_name}*,
+Here are the complete details for your invoice *${selectedInvoice.invoice_number}*:
+
+📅 *Due Date:* ${selectedInvoice.due_date}
+💰 *Total Amount:* ₹${selectedInvoice.amount.toLocaleString()}
+✅ *Paid Amount:* ₹${selectedInvoice.paid_amount.toLocaleString()}
+💳 *Balance Due:* ₹${Math.max(0, selectedInvoice.amount - selectedInvoice.paid_amount).toLocaleString()}
+🏦 *Payment Mode:* ${selectedInvoice.payment_method}
+
+Please feel free to ask if you have any questions or require an itemized breakdown.`,
+                    });
                     setSelectedInvoice(null);
-                    setActiveTab('conversations');
                   }}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                 >

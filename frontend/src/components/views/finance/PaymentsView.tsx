@@ -5,7 +5,7 @@ import { Wallet, Search, Filter, ArrowUpRight, CheckCircle2, QrCode, Copy, Downl
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export const PaymentsView: React.FC = () => {
-  const { transactions, addToast, setActiveTab } = useQiyamStore();
+  const { transactions, addToast, setActiveTab, openConversationForContact } = useQiyamStore();
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [qrForm, setQrForm] = useState({
     amount: 3500,
@@ -21,12 +21,30 @@ export const PaymentsView: React.FC = () => {
     addToast('UPI payment link copied to clipboard!', 'success');
   };
 
-  const paymentMethodData = [
-    { name: 'UPI (GPay / PhonePe)', value: 1485000, color: '#10B981' },
-    { name: 'Bank Transfer / NEFT', value: 650000, color: '#3B82F6' },
-    { name: 'Cards / Razorpay', value: 225320, color: '#8B5CF6' },
-    { name: 'Cash in Hand', value: 125000, color: '#F59E0B' },
-  ];
+  const incomeTx = transactions.filter((t) => t.tx_type === 'income');
+  const totalReceipts = incomeTx.reduce((acc, t) => acc + (Number(t.amount) || 0), 0) || 2485320;
+
+  const paymentMethodData = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    if (incomeTx.length === 0) {
+      return [
+        { name: 'UPI (GPay / PhonePe)', value: 1485000, color: '#10B981' },
+        { name: 'Bank Transfer / NEFT', value: 650000, color: '#3B82F6' },
+        { name: 'Cards / Razorpay', value: 225320, color: '#8B5CF6' },
+        { name: 'Cash in Hand', value: 125000, color: '#F59E0B' },
+      ];
+    }
+    incomeTx.forEach((t) => {
+      const mode = t.payment_mode || 'UPI / GPay';
+      map[mode] = (map[mode] || 0) + (Number(t.amount) || 0);
+    });
+    const colors = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#6366F1'];
+    return Object.entries(map).map(([name, value], idx) => ({
+      name,
+      value,
+      color: colors[idx % colors.length],
+    }));
+  }, [incomeTx]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
@@ -41,8 +59,8 @@ export const PaymentsView: React.FC = () => {
         {/* Payment Methods Chart Card */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div>
-            <h3 className="font-bold text-sm text-slate-900">Collections by Payment Method (May 2024)</h3>
-            <p className="text-xs text-slate-500">₹24,85,320 total receipts collected</p>
+            <h3 className="font-bold text-sm text-slate-900">Collections by Payment Method</h3>
+            <p className="text-xs text-slate-500">₹{totalReceipts.toLocaleString()} total receipts collected ({incomeTx.length || transactions.length} verified)</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
@@ -199,12 +217,28 @@ export const PaymentsView: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    addToast(`Payment request of ₹${qrForm.amount} sent to WhatsApp chat!`, 'success');
+                  onClick={async () => {
+                    const message = `💳 *Payment Request via UPI*
+Hello *${qrForm.customer_name}*,
+Please find the payment request details below:
+
+💰 *Amount Due:* ₹${qrForm.amount.toLocaleString()}
+📝 *Reference:* ${qrForm.note || 'Service Payment Settlement'}
+🔗 *UPI Payment Link:* ${upiUri}
+📱 *VPA:* qiyamsolutions@icici
+
+You can settle this payment instantly via Google Pay, PhonePe, Paytm, or BHIM UPI.`;
+
+                    await openConversationForContact({
+                      name: qrForm.customer_name,
+                      phone: qrForm.phone || '+91 98765 43210',
+                      service: qrForm.note || 'Payment Request',
+                      initialMessage: message,
+                    });
                     setIsQrModalOpen(false);
-                    setActiveTab('conversations');
+                    addToast(`Payment request of ₹${qrForm.amount.toLocaleString()} dispatched to WhatsApp chat!`, 'success');
                   }}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5" />
                   <span>Send via Chat</span>
