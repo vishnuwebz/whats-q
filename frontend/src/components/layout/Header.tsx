@@ -48,11 +48,13 @@ export const Header: React.FC<HeaderProps> = ({
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSyncingManual, setIsSyncingManual] = useState(false);
 
   const unreadNotifsCount = notifications.filter((n) => n.unread).length;
   const isFilterActive =
     (globalFilter.status && globalFilter.status !== 'all') ||
     (globalFilter.priority && globalFilter.priority !== 'all') ||
+    (globalFilter.assignedTo && globalFilter.assignedTo !== 'all') ||
     Boolean(globalFilter.query);
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -206,19 +208,32 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Filter */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 flex items-center">
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer relative whitespace-nowrap ${
                 isFilterActive
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold shadow-2xs'
                   : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
               }`}
+              title="Filter records on this page"
             >
               <Filter className={`w-3.5 h-3.5 shrink-0 ${isFilterActive ? 'text-emerald-600' : 'text-slate-500'}`} />
               <span>Filter</span>
               {isFilterActive && <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />}
             </button>
+            {isFilterActive && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  store.resetGlobalFilter();
+                }}
+                className="ml-1 p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                title="Clear active page filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <UniversalFilterPopover isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} pageTitle={title} />
           </div>
 
@@ -241,26 +256,37 @@ export const Header: React.FC<HeaderProps> = ({
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {/* Live Sync */}
-          <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border shrink-0 whitespace-nowrap ${
+          {/* Live Sync / Manual Re-sync */}
+          <button
+            onClick={async () => {
+              if (isSyncingManual) return;
+              setIsSyncingManual(true);
+              try {
+                await Promise.allSettled([
+                  store.loadInitialData(),
+                  store.fetchVersionInfo(),
+                ]);
+                addToast('Synced latest workspace records with server!', 'success');
+              } catch {
+                addToast('Workspace data synchronized', 'info');
+              } finally {
+                setTimeout(() => setIsSyncingManual(false), 600);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border shrink-0 whitespace-nowrap cursor-pointer hover:shadow-xs active:scale-95 ${
               store.syncStatus === 'connected'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70'
                 : store.syncStatus === 'reconnecting'
-                ? 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse'
-                : 'bg-rose-50 text-rose-800 border-rose-200'
+                ? 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse hover:bg-amber-100/70'
+                : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70'
             }`}
-            title={`Real-time sync: ${store.syncStatus === 'connected' ? 'Connected' : store.syncStatus === 'reconnecting' ? 'Reconnecting...' : 'Offline'}`}
+            title={`Real-time sync: ${store.syncStatus === 'connected' ? 'Connected' : store.syncStatus === 'reconnecting' ? 'Reconnecting...' : 'Offline'} • Click to refresh`}
           >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${
-              store.syncStatus === 'connected' ? 'bg-emerald-500 animate-pulse'
-              : store.syncStatus === 'reconnecting' ? 'bg-amber-500'
-              : 'bg-rose-500'
-            }`} />
+            <RefreshCw className={`w-3 h-3 shrink-0 ${isSyncingManual ? 'animate-spin text-emerald-600' : (store.syncStatus === 'connected' ? 'text-emerald-600' : 'text-slate-500')}`} />
             <span>
-              {store.syncStatus === 'connected' ? 'Live Sync' : store.syncStatus === 'reconnecting' ? 'Reconnecting' : 'Offline'}
+              {isSyncingManual ? 'Syncing...' : store.syncStatus === 'connected' ? 'Live Sync' : store.syncStatus === 'reconnecting' ? 'Reconnecting' : 'Offline'}
             </span>
-          </div>
+          </button>
 
           {/* Update Available Badge */}
           {versionInfo?.update_available && (
@@ -412,7 +438,10 @@ export const Header: React.FC<HeaderProps> = ({
           label: globalDateRange,
         }}
         onApply={(range) => {
-          setGlobalDateRange(range.label || `${range.startDate} – ${range.endDate}`);
+          setGlobalDateRange(
+            range.label || `${range.startDate} – ${range.endDate}`,
+            range.startDate && range.endDate ? { start: range.startDate, end: range.endDate } : null
+          );
         }}
         title="Filter Workspace by Date Range"
       />

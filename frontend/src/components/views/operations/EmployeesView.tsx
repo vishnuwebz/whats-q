@@ -18,7 +18,8 @@ export const EmployeesView: React.FC = () => {
     addEmployee,
     updateEmployee,
     addToast,
-    setActiveTab
+    setActiveTab,
+    globalFilter,
   } = useQiyamStore();
 
   const [search, setSearch] = useState('');
@@ -59,16 +60,24 @@ export const EmployeesView: React.FC = () => {
   // Filtered list
   const filtered = employees.filter((e) => {
     if (selectedDept !== 'all' && e.department !== selectedDept) return false;
-    if (statusFilter !== 'all' && e.status !== statusFilter) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      e.name.toLowerCase().includes(q) ||
-      e.role.toLowerCase().includes(q) ||
-      e.department.toLowerCase().includes(q) ||
-      e.employee_id_str.toLowerCase().includes(q) ||
-      e.phone.includes(q)
-    );
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      if (globalFilter.status === 'open' && e.status !== 'on_duty' && e.status !== 'active') return false;
+      if (['on_duty', 'active', 'on_leave', 'inactive'].includes(globalFilter.status) && e.status !== globalFilter.status) return false;
+    } else if (statusFilter !== 'all' && e.status !== statusFilter) {
+      return false;
+    }
+    const q = (search || globalFilter.query || '').toLowerCase();
+    if (q) {
+      return (
+        e.name.toLowerCase().includes(q) ||
+        e.role.toLowerCase().includes(q) ||
+        e.department.toLowerCase().includes(q) ||
+        e.employee_id_str.toLowerCase().includes(q) ||
+        e.phone.includes(q) ||
+        e.email.toLowerCase().includes(q)
+      );
+    }
+    return true;
   });
 
   // Departments list for filter

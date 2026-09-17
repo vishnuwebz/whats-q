@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { FollowUp } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   PhoneCall, MessageSquare, Mail, Calendar, Clock, CheckCircle2,
   AlertCircle, MoreVertical, Plus, User, Search, Filter, X
 } from 'lucide-react';
 
 export const FollowupsView: React.FC = () => {
-  const { followups, addFollowUp, addToast, setActiveTab, globalFilter, targetHighlightId } = useQiyamStore();
+  const { followups, addFollowUp, addToast, setActiveTab, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
   const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'due_today' | 'scheduled' | 'overdue' | 'completed'>('all');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,6 +33,8 @@ export const FollowupsView: React.FC = () => {
     if (activeTabFilter !== 'all' && f.status !== activeTabFilter) return false;
     if (globalFilter.status && globalFilter.status !== 'all' && f.status !== globalFilter.status) return false;
     if (globalFilter.priority && globalFilter.priority !== 'all' && f.priority !== globalFilter.priority) return false;
+    if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && f.assigned_to !== globalFilter.assignedTo) return false;
+    if (!isDateWithinInterval(f.due_date, globalDateInterval)) return false;
     
     const activeSearch = (search || globalFilter.query || '').toLowerCase();
     if (activeSearch) {

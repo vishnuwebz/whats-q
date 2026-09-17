@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Lead, Deal } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Kanban, List, Plus, Search, Filter, Phone, MessageSquare,
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
@@ -44,6 +45,7 @@ export const LeadsView: React.FC = () => {
     addLead,
     openConversationForContact,
     globalFilter,
+    globalDateInterval,
     targetHighlightId,
   } = useQiyamStore();
 
@@ -186,9 +188,19 @@ export const LeadsView: React.FC = () => {
 
   const filteredLeads = leads.filter((l) => {
     if (globalFilter.status && globalFilter.status !== 'all') {
-      if (globalFilter.status === 'open' && l.stage !== 'new' && l.stage !== 'contacted') return false;
-      if (globalFilter.status === 'in_progress' && l.stage !== 'qualified' && l.stage !== 'proposal_sent' && l.stage !== 'negotiation') return false;
-      if (globalFilter.status === 'completed' && l.stage !== 'won') return false;
+      const s = globalFilter.status.toLowerCase();
+      const match =
+        l.stage === s ||
+        (s === 'open' && (l.stage === 'new' || l.stage === 'contacted')) ||
+        (s === 'in_progress' && (l.stage === 'qualified' || l.stage === 'proposal_sent' || l.stage === 'negotiation')) ||
+        (s === 'completed' && l.stage === 'won');
+      if (!match) return false;
+    }
+    if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && l.owner !== globalFilter.assignedTo) {
+      return false;
+    }
+    if (!isDateWithinInterval(l.created_at_str, globalDateInterval)) {
+      return false;
     }
     if (!effectiveSearch) return true;
     const q = effectiveSearch.toLowerCase();

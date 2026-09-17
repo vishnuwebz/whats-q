@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Invoice } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   FileText, Search, Filter, Plus, Download, MessageSquare,
   CheckCircle2, AlertCircle, Clock, Send, Eye, X
@@ -15,6 +16,7 @@ export const InvoicesView: React.FC = () => {
     setActiveTab,
     targetHighlightId,
     globalFilter,
+    globalDateInterval,
   } = useQiyamStore();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -70,13 +72,22 @@ export const InvoicesView: React.FC = () => {
 
   const filtered = invoices.filter((inv) => {
     if (globalFilter.status && globalFilter.status !== 'all') {
-      if (globalFilter.status === 'open' && inv.status !== 'sent') return false;
-      if (globalFilter.status === 'in_progress' && inv.status !== 'partial_paid') return false;
-      if (globalFilter.status === 'completed' && inv.status !== 'paid') return false;
-      if (globalFilter.status === 'overdue' && inv.status !== 'overdue') return false;
+      const s = globalFilter.status.toLowerCase();
+      const match =
+        inv.status === s ||
+        (s === 'open' && (inv.status === 'sent' || inv.status === 'draft')) ||
+        (s === 'in_progress' && inv.status === 'partial_paid') ||
+        (s === 'completed' && inv.status === 'paid') ||
+        (s === 'overdue' && inv.status === 'overdue');
+      if (!match) return false;
     } else if (filterStatus !== 'all' && inv.status !== filterStatus) {
       return false;
     }
+
+    if (!isDateWithinInterval(inv.due_date, globalDateInterval) && !(inv.invoice_date && isDateWithinInterval(inv.invoice_date, globalDateInterval))) {
+      return false;
+    }
+
     if (effectiveSearch) {
       const q = effectiveSearch.toLowerCase();
       return (

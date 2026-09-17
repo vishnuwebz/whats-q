@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Receipt, Search, Filter, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, X } from 'lucide-react';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const TransactionsView: React.FC = () => {
-  const { transactions, addTransaction, addToast, globalFilter, targetHighlightId } = useQiyamStore();
+  const { transactions, addTransaction, addToast, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,7 +26,17 @@ export const TransactionsView: React.FC = () => {
 
   const filtered = transactions.filter((t) => {
     if (filterType !== 'all' && t.tx_type !== filterType) return false;
-    if (globalFilter.status && globalFilter.status !== 'all' && t.status !== globalFilter.status) return false;
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (['income', 'expense', 'transfer'].includes(s)) {
+        if (t.tx_type !== s) return false;
+      } else {
+        if (t.status !== s) return false;
+      }
+    }
+    if (!isDateWithinInterval(t.date_str, globalDateInterval)) {
+      return false;
+    }
     
     const activeSearch = (search || globalFilter.query || '').toLowerCase();
     if (activeSearch) {

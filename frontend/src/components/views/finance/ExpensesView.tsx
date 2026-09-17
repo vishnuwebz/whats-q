@@ -3,9 +3,10 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { CreditCard, Plus, Search, Filter, TrendingDown, DollarSign, X } from 'lucide-react';
 import { Expense } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const ExpensesView: React.FC = () => {
-  const { expenses, addExpense, addToast, globalFilter } = useQiyamStore();
+  const { expenses, addExpense, addToast, globalFilter, globalDateInterval } = useQiyamStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
     date_str: 'Today',
@@ -36,6 +37,15 @@ export const ExpensesView: React.FC = () => {
   };
 
   const filtered = expenses.filter((exp) => {
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (s === 'paid' && exp.status !== 'paid') return false;
+      if (s === 'pending' && exp.status !== 'pending') return false;
+      if (!['paid', 'pending'].includes(s) && exp.status !== s) return false;
+    }
+    if (!isDateWithinInterval(exp.date_str, globalDateInterval)) {
+      return false;
+    }
     if (globalFilter.query) {
       const q = globalFilter.query.toLowerCase();
       return (

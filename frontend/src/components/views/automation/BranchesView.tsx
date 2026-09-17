@@ -174,7 +174,8 @@ export const BranchesView: React.FC = () => {
     deleteBranch,
     addToast,
     setActiveTab,
-    targetHighlightId
+    targetHighlightId,
+    globalFilter,
   } = useQiyamStore();
 
   // Sub-pages triggered by Top Shortcuts
@@ -234,18 +235,19 @@ export const BranchesView: React.FC = () => {
   // Filter & Sort branches
   const filteredBranches = branches
     .filter((b) => {
-      if (statusFilter !== 'all') {
+      const activeStatus = globalFilter.status && globalFilter.status !== 'all' ? globalFilter.status : statusFilter;
+      if (activeStatus !== 'all') {
         const isActive = b.status?.toLowerCase() === 'active';
-        if (statusFilter === 'active' && !isActive) return false;
-        if (statusFilter === 'inactive' && isActive) return false;
+        if (activeStatus.toLowerCase() === 'active' && !isActive) return false;
+        if (activeStatus.toLowerCase() === 'inactive' && isActive) return false;
       }
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
+      const effectiveQ = (searchQuery || globalFilter.query || '').trim().toLowerCase();
+      if (!effectiveQ) return true;
       return (
-        b.name.toLowerCase().includes(q) ||
-        b.code.toLowerCase().includes(q) ||
-        b.city.toLowerCase().includes(q) ||
-        (b.manager_name && b.manager_name.toLowerCase().includes(q))
+        b.name.toLowerCase().includes(effectiveQ) ||
+        b.code.toLowerCase().includes(effectiveQ) ||
+        b.city.toLowerCase().includes(effectiveQ) ||
+        (b.manager_name && b.manager_name.toLowerCase().includes(effectiveQ))
       );
     })
     .sort((a, b) => {

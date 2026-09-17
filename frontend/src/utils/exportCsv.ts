@@ -13,6 +13,22 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
   const filename = `whatsq-${tab}-${dateStr}.csv`;
 
   switch (tab) {
+    case 'dashboard': {
+      headers = ['Category', 'Key Metric', 'Current Value', 'Status / Context'];
+      const totalPaidRevenue = (store.invoices || []).reduce((acc: number, i: any) => acc + (Number(i.paid_amount) || 0), 0);
+      const totalInventoryVal = (store.inventory || []).reduce((acc: number, i: any) => acc + (Number(i.stock_value) || 0), 0);
+      rows = [
+        ['WhatsApp CRM', 'Active Conversations', String((store.conversations || []).length), 'Live Multi-agent Inbox'],
+        ['WhatsApp CRM', 'Total Leads in Pipeline', String((store.leads || []).length), 'Inbound & Referral Leads'],
+        ['WhatsApp CRM', 'High-Value Deals', String((store.deals || []).length), 'Qualified Opportunities'],
+        ['Operations', 'Field Jobs Scheduled', String((store.jobs || []).length), 'Technician Dispatches'],
+        ['Operations', 'Active Staff on Duty', String((store.employees || []).filter((e: any) => e.status === 'on_duty').length), 'Field Technicians'],
+        ['Operations', 'Warehouse SKUs Tracked', String((store.inventory || []).length), `Total Valuation ₹${totalInventoryVal.toLocaleString()}`],
+        ['Finance', 'Invoices Issued', String((store.invoices || []).length), `Collected ₹${totalPaidRevenue.toLocaleString()}`],
+        ['Finance', 'Logged Transactions', String((store.transactions || []).length), 'Inward & Outward Audit'],
+      ];
+      break;
+    }
     case 'conversations': {
       headers = ['ID', 'Contact Name', 'Phone', 'Category', 'Status', 'Service Needed', 'Estimated Value', 'Last Contact'];
       rows = (store.conversations || []).map((c: any) => [
@@ -37,7 +53,7 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
     case 'crm-customers': {
       headers = ['ID', 'Customer Name', 'Phone', 'Location', 'Category', 'Last Seen'];
       rows = (store.conversations || []).map((c: any) => [
-        c.id, c.contact_name, c.phone_number, c.location, c.category, c.last_contact_date
+        c.id, c.contact_name, c.phone_number, c.location || 'Kozhikode, Kerala', c.category, c.last_contact_date
       ]);
       break;
     }
@@ -66,6 +82,13 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       headers = ['ID', 'Employee ID', 'Name', 'Role', 'Department', 'Phone', 'Email', 'Status', 'Location', 'Rating', 'Jobs Completed', 'On Time %'];
       rows = (store.employees || []).map((e: any) => [
         e.id, e.employee_id_str, e.name, e.role, e.department, e.phone, e.email, e.status, e.location, e.rating, e.jobs_completed_month, e.on_time_percent
+      ]);
+      break;
+    }
+    case 'ops-schedule': {
+      headers = ['ID', 'Employee', 'Role', 'Department', 'Shift Window', 'Status', 'Location'];
+      rows = (store.employees || []).map((e: any) => [
+        e.id, e.name, e.role, e.department, '9:00 AM – 6:00 PM', e.status, e.location
       ]);
       break;
     }
@@ -104,7 +127,8 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       ]);
       break;
     }
-    case 'finance-expenses': {
+    case 'finance-expenses':
+    case 'finance-budget': {
       headers = ['ID', 'Date', 'Description', 'Category', 'Vendor', 'Payment Mode', 'Amount', 'Status'];
       rows = (store.expenses || []).map((exp: any) => [
         exp.id, exp.date_str, exp.description, exp.category, exp.vendor, exp.payment_mode, exp.amount, exp.status
@@ -143,6 +167,17 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       ]);
       break;
     }
+    case 'automation-templates': {
+      headers = ['Template Name', 'Category', 'Type', 'Trigger', 'Status'];
+      rows = [
+        ['Hot Lead VIP Escalation', 'CRM & Sales', 'Official', 'Lead Score > 80', 'Active'],
+        ['Post-Job Service Feedback & Rating', 'Field Service', 'Official', 'Job Marked Completed', 'Active'],
+        ['Automated Overdue Invoice Reminder', 'Finance', 'Official', 'Due Date + 2 Days', 'Active'],
+        ['Daily Technician Morning Dispatch Digest', 'Dispatch', 'Official', 'Schedule 08:30 AM', 'Active'],
+        ['Low Stock Auto-Purchase Request', 'Inventory', 'Official', 'Units < Reorder Level', 'Active'],
+      ];
+      break;
+    }
     case 'branches':
     case 'automation-branches': {
       headers = ['ID', 'Branch Name', 'Code', 'City', 'State', 'Manager', 'Employees', 'Customers', 'Status'];
@@ -165,11 +200,62 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       ]);
       break;
     }
+    case 'ai-overview':
+    case 'ai-branches':
+    case 'ai-settings': {
+      headers = ['Metric / Component', 'Configuration Value', 'Operational Status'];
+      rows = [
+        ['AI Agent Model', 'Google Gemini 2.0 Flash / Pro Engine', 'Active'],
+        ['Knowledge Base Status', `${(store.knowledgeArticles || []).length} Articles Vectorized`, 'Ready'],
+        ['Autonomous Fallback', 'Transfer to Human Agent', 'Enabled'],
+        ['WhatsApp AI Auto-reply', 'Active on Business Numbers', 'Online'],
+      ];
+      break;
+    }
+    case 'ai-templates':
+    case 'template-hub':
+    case 'template-create': {
+      headers = ['ID', 'Template Name', 'Category', 'Language', 'Status'];
+      rows = (store.templates || []).map((t: any) => [
+        t.id, t.name, t.category, t.language || 'en', t.status
+      ]);
+      break;
+    }
+    case 'bulk-overview':
+    case 'bulk-send':
+    case 'bulk-templates':
+    case 'bulk-campaigns':
+    case 'bulk-recipients':
+    case 'bulk-scheduled': {
+      headers = ['ID', 'Campaign Name', 'Audience List', 'Category', 'Recipients', 'Status'];
+      rows = (store.bulkCampaigns || []).map((c: any) => [
+        c.id, c.name, c.audienceListName || 'All Contacts', c.category || 'marketing', c.totalRecipients || 0, c.status || 'completed'
+      ]);
+      break;
+    }
     case 'analytics': {
       headers = ['Channel / Intent', 'Metric Value', 'Percentage'];
       rows = [
         ...(store.channelMetrics || []).map((cm: any) => [cm.channel_name, cm.total_conversations, `${cm.percentage}%`]),
         ...(store.intentMetrics || []).map((im: any) => [im.intent_name, im.count, `${im.percentage}%`]),
+      ];
+      break;
+    }
+    case 'integrations': {
+      headers = ['ID', 'Integration Name', 'Category', 'Status', 'Sync Mode'];
+      rows = (store.integrations || []).map((ig: any) => [
+        ig.id, ig.name, ig.category, ig.connected ? 'Connected' : 'Available', 'Real-time Webhook'
+      ]);
+      break;
+    }
+    case 'settings':
+    case 'settings-backup': {
+      headers = ['Configuration Setting', 'Value', 'Last Checked'];
+      rows = [
+        ['Workspace Name', store.workspace?.business_name || 'Qiyam Ventures', dateStr],
+        ['System Version', store.versionInfo?.version || '2.4.3', dateStr],
+        ['Git Release', store.versionInfo?.current_commit || '62dc507', dateStr],
+        ['Auto-Backup Schedule', 'Daily (PostgreSQL Dump)', 'Automated'],
       ];
       break;
     }

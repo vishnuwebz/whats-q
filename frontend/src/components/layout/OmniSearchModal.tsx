@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Search, X, ArrowRight, MessageSquare, User, Briefcase, FileText,
   Users, Package, Zap, ChevronRight, Navigation, LayoutDashboard,
-  Calendar, CheckCircle2, Clock
+  Calendar, CheckCircle2, Clock, Building2, Receipt
 } from 'lucide-react';
 import { TabType } from '@/types';
 
@@ -21,6 +21,12 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
     invoices,
     employees,
     inventory,
+    appointments,
+    tasks,
+    expenses,
+    transactions,
+    branches,
+    followups,
     setActiveTab,
     setTargetHighlightId,
     setSelectedConversationId,
@@ -240,6 +246,136 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
           },
         });
       });
+
+    // Search Appointments, Tasks & Branches
+    if (activeFilter === 'all' || activeFilter === 'ops') {
+      appointments
+        .filter((a) => a.customer_name.toLowerCase().includes(q) || a.phone.includes(q) || a.service.toLowerCase().includes(q) || (a.apt_id_str && a.apt_id_str.toLowerCase().includes(q)))
+        .slice(0, 4)
+        .forEach((a) => {
+          results.push({
+            id: `apt-${a.id}`,
+            title: `${a.apt_id_str || `APT-${a.id}`} — ${a.customer_name}`,
+            subtitle: `${a.service} • ${a.date_str} at ${a.time_str} • ${a.status.toUpperCase()}`,
+            type: 'Appointment',
+            typeBadgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+            tab: 'ops-appointments',
+            icon: <Calendar className="w-4 h-4 text-rose-600" />,
+            onClick: () => {
+              setTargetHighlightId(a.id);
+              setActiveTab('ops-appointments');
+              onClose();
+              addToast(`Viewing appointment ${a.apt_id_str || a.id}`, 'info');
+            },
+          });
+        });
+
+      tasks
+        .filter((t) => t.title.toLowerCase().includes(q) || t.assignee.toLowerCase().includes(q) || t.related_to.toLowerCase().includes(q))
+        .slice(0, 3)
+        .forEach((t) => {
+          results.push({
+            id: `task-${t.id}`,
+            title: t.title,
+            subtitle: `${t.related_to} • ${t.assignee} • ${t.priority.toUpperCase()}`,
+            type: 'Task',
+            typeBadgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+            tab: 'ops-tasks',
+            icon: <CheckCircle2 className="w-4 h-4 text-amber-600" />,
+            onClick: () => {
+              setActiveTab('ops-tasks');
+              onClose();
+              addToast(`Viewing task: ${t.title}`, 'info');
+            },
+          });
+        });
+
+      branches
+        .filter((b) => b.name.toLowerCase().includes(q) || b.city.toLowerCase().includes(q) || b.code.toLowerCase().includes(q))
+        .slice(0, 3)
+        .forEach((b) => {
+          results.push({
+            id: `branch-${b.id}`,
+            title: `${b.name} (${b.code})`,
+            subtitle: `${b.city}, ${b.state} • Manager: ${b.manager_name || 'Rahul Mehta'}`,
+            type: 'Branch',
+            typeBadgeColor: 'bg-sky-50 text-sky-700 border-sky-200',
+            tab: 'branches',
+            icon: <Building2 className="w-4 h-4 text-sky-600" />,
+            onClick: () => {
+              setActiveTab('branches');
+              onClose();
+              addToast(`Navigating to branch ${b.name}`, 'info');
+            },
+          });
+        });
+    }
+
+    // Search CRM Follow-ups
+    if (activeFilter === 'all' || activeFilter === 'crm') {
+      followups
+        .filter((f) => f.title.toLowerCase().includes(q) || f.customer_name.toLowerCase().includes(q) || f.phone.includes(q))
+        .slice(0, 3)
+        .forEach((f) => {
+          results.push({
+            id: `followup-${f.id}`,
+            title: f.title,
+            subtitle: `${f.customer_name} • Due ${f.due_date} • ${f.status.replace('_', ' ').toUpperCase()}`,
+            type: 'Follow-up',
+            typeBadgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            tab: 'crm-followups',
+            icon: <Clock className="w-4 h-4 text-indigo-600" />,
+            onClick: () => {
+              setActiveTab('crm-followups');
+              onClose();
+              addToast(`Viewing follow-up with ${f.customer_name}`, 'info');
+            },
+          });
+        });
+    }
+
+    // Search Expenses & Transactions
+    if (activeFilter === 'all' || activeFilter === 'finance') {
+      expenses
+        .filter((exp) => exp.description.toLowerCase().includes(q) || exp.vendor.toLowerCase().includes(q) || exp.category.toLowerCase().includes(q))
+        .slice(0, 3)
+        .forEach((exp) => {
+          results.push({
+            id: `exp-${exp.id}`,
+            title: exp.description,
+            subtitle: `₹${exp.amount.toLocaleString()} • ${exp.vendor} • ${exp.category}`,
+            type: 'Expense',
+            typeBadgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+            tab: 'finance-expenses',
+            icon: <FileText className="w-4 h-4 text-rose-600" />,
+            onClick: () => {
+              setActiveTab('finance-expenses');
+              onClose();
+              addToast(`Viewing expense: ${exp.description}`, 'info');
+            },
+          });
+        });
+
+      transactions
+        .filter((t) => t.description.toLowerCase().includes(q) || t.party.toLowerCase().includes(q) || t.reference_id.toLowerCase().includes(q))
+        .slice(0, 3)
+        .forEach((t) => {
+          results.push({
+            id: `txn-${t.id}`,
+            title: `${t.reference_id} — ${t.description}`,
+            subtitle: `₹${t.amount.toLocaleString()} • ${t.party} • ${t.tx_type.toUpperCase()}`,
+            type: 'Transaction',
+            typeBadgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            tab: 'finance-transactions',
+            icon: <Receipt className="w-4 h-4 text-emerald-600" />,
+            onClick: () => {
+              setActiveTab('finance-transactions');
+              onClose();
+              addToast(`Viewing transaction ${t.reference_id}`, 'info');
+            },
+          });
+        });
+    }
 
     // Match navigation shortcuts too
     navShortcuts

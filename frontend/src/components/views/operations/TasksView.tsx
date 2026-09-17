@@ -3,9 +3,10 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { CheckSquare, Clock, User, Plus, Tag, Check, X } from 'lucide-react';
 import { Task } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const TasksView: React.FC = () => {
-  const { tasks, toggleTaskChecklist, addTask, addToast, employees, globalFilter } = useQiyamStore();
+  const { tasks, toggleTaskChecklist, addTask, addToast, employees, globalFilter, globalDateInterval } = useQiyamStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
     title: '',
@@ -46,7 +47,21 @@ export const TasksView: React.FC = () => {
   };
 
   const filtered = tasks.filter((t) => {
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (s === 'in_progress' && t.status !== 'in_progress') return false;
+      if (s === 'completed' && t.status !== 'completed') return false;
+      if (s === 'pending' && t.status !== 'pending') return false;
+      if (s === 'overdue' && t.status !== 'overdue') return false;
+      if (!['in_progress', 'completed', 'pending', 'overdue'].includes(s) && t.status !== s) return false;
+    }
     if (globalFilter.priority && globalFilter.priority !== 'all' && t.priority !== globalFilter.priority) {
+      return false;
+    }
+    if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && t.assignee !== globalFilter.assignedTo) {
+      return false;
+    }
+    if (!isDateWithinInterval(t.due_date, globalDateInterval)) {
       return false;
     }
     if (globalFilter.query) {

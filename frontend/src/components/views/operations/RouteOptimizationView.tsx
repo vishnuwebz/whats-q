@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 export const RouteOptimizationView: React.FC = () => {
-  const { routes, addToast, targetHighlightId } = useQiyamStore();
+  const { routes, addToast, targetHighlightId, globalFilter } = useQiyamStore();
   const fallbackRoute = {
     id: 1,
     route_code: 'RTE-001',
@@ -20,13 +20,28 @@ export const RouteOptimizationView: React.FC = () => {
     fuel_cost: 210,
     status: 'in_progress' as const,
     stops: [
-      { id: 1, sequence: 1, customer: 'Amit Verma', address: 'Beach Road, Kozhikode', time: '09:30 AM', status: 'completed' as const },
-      { id: 2, sequence: 2, customer: 'Priya Sharma', address: 'Mavoor Road, Kozhikode', time: '11:15 AM', status: 'in_progress' as const },
-      { id: 3, sequence: 3, customer: 'Rahul Mehta', address: 'Koyilandy, Kerala', time: '02:00 PM', status: 'pending' as const },
+      { id: 1, sequence: 1, customerName: 'Amit Verma', address: 'Beach Road, Kozhikode', time: '09:30 AM', isCompleted: true, timeWindow: '09:00 - 10:00 AM' },
+      { id: 2, sequence: 2, customerName: 'Priya Sharma', address: 'Mavoor Road, Kozhikode', time: '11:15 AM', isPriority: true, isCompleted: false, timeWindow: '11:00 - 12:00 PM' },
+      { id: 3, sequence: 3, customerName: 'Rahul Mehta', address: 'Koyilandy, Kerala', time: '02:00 PM', isCompleted: false, timeWindow: '02:00 - 03:00 PM' },
     ]
   };
   const currentRoute = routes[0] || fallbackRoute;
   const [activeStopId, setActiveStopId] = useState<number>(2);
+
+  const filteredStops = (currentRoute.stops || []).filter((stop: any) => {
+    const cust = stop.customerName || stop.customer || '';
+    const addr = stop.address || '';
+    if (globalFilter.query) {
+      const q = globalFilter.query.toLowerCase();
+      if (!cust.toLowerCase().includes(q) && !addr.toLowerCase().includes(q)) return false;
+    }
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (s === 'completed' && !stop.isCompleted && stop.status !== 'completed') return false;
+      if ((s === 'in_progress' || s === 'pending') && (stop.isCompleted || stop.status === 'completed')) return false;
+    }
+    return true;
+  });
 
   const handleOptimize = () => {
     addToast('AI Route Re-Optimization completed! Saved 4.2 km & ₹140 fuel.', 'success');
@@ -182,12 +197,12 @@ export const RouteOptimizationView: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {currentRoute.stops.map((stop) => (
+            {filteredStops.map((stop: any) => (
               <div
                 key={stop.id}
                 onClick={() => setActiveStopId(stop.id)}
                 className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-1.5 ${
-                  stop.isCompleted
+                  stop.isCompleted || stop.status === 'completed'
                     ? 'bg-emerald-50/40 border-emerald-200'
                     : stop.isPriority
                     ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-400'
@@ -199,7 +214,7 @@ export const RouteOptimizationView: React.FC = () => {
                     <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center">
                       {stop.id}
                     </span>
-                    <span className="font-bold text-slate-900 text-xs">{stop.customerName}</span>
+                    <span className="font-bold text-slate-900 text-xs">{stop.customerName || stop.customer}</span>
                   </div>
 
                   {stop.isCompleted && (

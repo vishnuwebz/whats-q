@@ -4,8 +4,26 @@ import { Header } from '@/components/layout/Header';
 import { Layers, Plus, Wallet, ArrowUpRight, CheckCircle2, X } from 'lucide-react';
 
 export const AccountsView: React.FC = () => {
-  const { accounts, addPaymentAccount, addToast, targetHighlightId } = useQiyamStore();
+  const { accounts, addPaymentAccount, addToast, targetHighlightId, globalFilter } = useQiyamStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const filteredAccounts = accounts.filter((acc) => {
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (s === 'active' && acc.status?.toLowerCase() !== 'active') return false;
+      if (s === 'inactive' && acc.status?.toLowerCase() !== 'inactive') return false;
+    }
+    if (globalFilter.query) {
+      const q = globalFilter.query.toLowerCase();
+      return (
+        acc.name.toLowerCase().includes(q) ||
+        acc.provider.toLowerCase().includes(q) ||
+        acc.account_type.toLowerCase().includes(q) ||
+        (acc.account_number && acc.account_number.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
 
   // New account form state
   const [accForm, setAccForm] = useState({
@@ -52,7 +70,7 @@ export const AccountsView: React.FC = () => {
 
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 text-xs">
-          {accounts.map((acc) => {
+          {filteredAccounts.map((acc) => {
             const isTarget = targetHighlightId === acc.id || targetHighlightId === acc.name;
             return (
               <div

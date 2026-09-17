@@ -33,15 +33,21 @@ export const ApprovalsView: React.FC = () => {
 
   const filtered = approvals.filter((ap) => {
     if (globalFilter.status && globalFilter.status !== 'all') {
-      if (globalFilter.status === 'open' && ap.status !== 'Pending') return false;
-      if (globalFilter.status === 'completed' && ap.status !== 'Approved') return false;
+      const s = globalFilter.status.toLowerCase();
+      if ((s === 'pending' || s === 'open') && ap.status !== 'Pending') return false;
+      if ((s === 'approved' || s === 'completed') && ap.status !== 'Approved') return false;
+      if (s === 'rejected' && ap.status !== 'Rejected') return false;
+    }
+    if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && ap.requested_by !== globalFilter.assignedTo) {
+      return false;
     }
     if (globalFilter.query) {
       const q = globalFilter.query.toLowerCase();
       return (
         ap.title.toLowerCase().includes(q) ||
         ap.request_id_str.toLowerCase().includes(q) ||
-        ap.department.toLowerCase().includes(q)
+        ap.department.toLowerCase().includes(q) ||
+        ap.requested_by.toLowerCase().includes(q)
       );
     }
     return true;

@@ -4,8 +4,30 @@ import { Header } from '@/components/layout/Header';
 import { Calendar, ChevronLeft, ChevronRight, Plus, User, Clock, X } from 'lucide-react';
 
 export const ScheduleView: React.FC = () => {
-  const { employees, addToast, targetHighlightId } = useQiyamStore();
+  const { employees, addToast, targetHighlightId, globalFilter } = useQiyamStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const filteredEmployees = employees.filter((emp) => {
+    if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && emp.name !== globalFilter.assignedTo) {
+      return false;
+    }
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (s === 'active' && emp.status?.toLowerCase() !== 'active') return false;
+      if (s === 'on_duty' && emp.status?.toLowerCase() !== 'on_duty') return false;
+      if (s === 'on_leave' && emp.status?.toLowerCase() !== 'on_leave') return false;
+    }
+    if (globalFilter.query) {
+      const q = globalFilter.query.toLowerCase();
+      return (
+        emp.name.toLowerCase().includes(q) ||
+        emp.role.toLowerCase().includes(q) ||
+        emp.department.toLowerCase().includes(q) ||
+        emp.employee_id_str.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
   const [shiftForm, setShiftForm] = useState({
     employee_id: employees[0]?.id || 1,
     day_idx: 0,
@@ -61,7 +83,7 @@ export const ScheduleView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {employees.map((emp) => {
+                {filteredEmployees.map((emp) => {
                   const isTarget = targetHighlightId === emp.id || targetHighlightId === emp.name;
                   return (
                     <tr

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Appointment } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Calendar, Clock, MapPin, User, Search, Filter, Plus,
   CheckCircle2, AlertCircle, MoreVertical, DollarSign, MessageSquare, X,
@@ -19,6 +20,7 @@ export const AppointmentsView: React.FC = () => {
     addToast,
     setActiveTab,
     globalFilter,
+    globalDateInterval,
     targetHighlightId,
     isNewBookingModalOpen,
     setIsNewBookingModalOpen,
@@ -89,18 +91,28 @@ export const AppointmentsView: React.FC = () => {
   };
 
   const filtered = appointments.filter((a) => {
+    // 1. Date Interval Filtering
+    if (!isDateWithinInterval(a.date_str, globalDateInterval)) return false;
+
+    // 2. Status Filtering (Global & Local)
     if (globalFilter.status && globalFilter.status !== 'all') {
-      if (globalFilter.status === 'open' && a.status !== 'upcoming') return false;
+      if (globalFilter.status === 'open' && a.status !== 'upcoming' && a.status !== 'confirmed') return false;
       if (globalFilter.status === 'completed' && a.status !== 'completed') return false;
+      if (['confirmed', 'upcoming', 'completed', 'cancelled'].includes(globalFilter.status) && a.status !== globalFilter.status) return false;
     } else if (filterStatus !== 'all' && a.status !== filterStatus) {
       return false;
     }
+
+    // 3. Query Keyword Filtering
     if (globalFilter.query) {
       const q = globalFilter.query.toLowerCase();
       return (
+        a.apt_id_str.toLowerCase().includes(q) ||
         a.customer_name.toLowerCase().includes(q) ||
         a.service.toLowerCase().includes(q) ||
-        a.phone.includes(q)
+        a.phone.includes(q) ||
+        a.employee.toLowerCase().includes(q) ||
+        (a.location || '').toLowerCase().includes(q)
       );
     }
     return true;

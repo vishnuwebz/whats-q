@@ -34,7 +34,7 @@ const DEFAULT_ATTENDANCE_RECORDS: (AttendanceRecord & { date: string })[] = [
 
 export const AttendanceView: React.FC = () => {
   const store = useQiyamStore();
-  const { attendance, clockInEmployee, addToast } = store;
+  const { attendance, clockInEmployee, addToast, globalFilter, globalDateInterval } = store;
 
   // Use database attendance if available, otherwise fall back to presentation demo records
   const allRecords = useMemo(() => {
@@ -63,31 +63,38 @@ export const AttendanceView: React.FC = () => {
   const filteredRecords = useMemo(() => {
     return allRecords.filter((rec) => {
       // 1. Status Filter
-      const matchStatus =
-        statusFilter === 'all'
-          ? true
-          : statusFilter === 'absent'
-          ? rec.status === 'absent' || rec.status === 'on_leave'
-          : rec.status === statusFilter;
+      if (globalFilter.status && globalFilter.status !== 'all') {
+        if (['present', 'late', 'absent'].includes(globalFilter.status) && rec.status !== globalFilter.status) return false;
+      } else if (statusFilter !== 'all') {
+        if (statusFilter === 'absent') {
+          if (rec.status !== 'absent' && rec.status !== 'on_leave') return false;
+        } else if (rec.status !== statusFilter) {
+          return false;
+        }
+      }
 
       // 2. Keyword Search Query
-      const q = searchQuery.toLowerCase().trim();
-      const matchQuery =
-        !q ||
-        rec.employee_name.toLowerCase().includes(q) ||
-        rec.department.toLowerCase().includes(q) ||
-        rec.employee_id_str.toLowerCase().includes(q) ||
-        rec.location.toLowerCase().includes(q);
+      const q = (searchQuery || globalFilter.query || '').toLowerCase().trim();
+      if (q) {
+        const match =
+          rec.employee_name.toLowerCase().includes(q) ||
+          rec.department.toLowerCase().includes(q) ||
+          rec.employee_id_str.toLowerCase().includes(q) ||
+          rec.location.toLowerCase().includes(q);
+        if (!match) return false;
+      }
 
       // 3. Date Range Filter
       const recordDate = (rec as any).date || '2024-05-31';
-      const matchDate =
-        (!dateRange.startDate || recordDate >= dateRange.startDate) &&
-        (!dateRange.endDate || recordDate <= dateRange.endDate);
+      if (globalDateInterval) {
+        if (recordDate < globalDateInterval.start || recordDate > globalDateInterval.end) return false;
+      } else if (dateRange.startDate && dateRange.endDate) {
+        if (recordDate < dateRange.startDate || recordDate > dateRange.endDate) return false;
+      }
 
-      return matchStatus && matchQuery && matchDate;
+      return true;
     });
-  }, [allRecords, statusFilter, searchQuery, dateRange]);
+  }, [allRecords, statusFilter, searchQuery, dateRange, globalFilter, globalDateInterval]);
 
   // Dynamic counts within selected date range
   const recordsInDateRange = useMemo(() => {

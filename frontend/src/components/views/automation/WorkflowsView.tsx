@@ -4,7 +4,24 @@ import { Header } from '@/components/layout/Header';
 import { GitBranch, Play, Plus, CheckCircle2, Clock, Zap, ArrowRight } from 'lucide-react';
 
 export const WorkflowsView: React.FC = () => {
-  const { workflows, setActiveTab, setActiveWorkflowId, setActiveWorkflowTitle, setActiveWorkflowGroups } = useQiyamStore();
+  const { workflows, setActiveTab, setActiveWorkflowId, setActiveWorkflowTitle, setActiveWorkflowGroups, globalFilter } = useQiyamStore();
+
+  const filteredWorkflows = workflows.filter((wf) => {
+    if (globalFilter.status && globalFilter.status !== 'all') {
+      const s = globalFilter.status.toLowerCase();
+      if (wf.status?.toLowerCase() !== s) return false;
+    }
+    if (globalFilter.query) {
+      const q = globalFilter.query.toLowerCase();
+      return (
+        wf.name.toLowerCase().includes(q) ||
+        wf.description.toLowerCase().includes(q) ||
+        (wf.business_function && wf.business_function.toLowerCase().includes(q)) ||
+        (wf.trigger_type && wf.trigger_type.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
 
   const handleEditWorkflow = (wf: any) => {
     setActiveWorkflowId(wf.id);
@@ -35,7 +52,7 @@ export const WorkflowsView: React.FC = () => {
 
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
-          {workflows.map((wf) => (
+          {filteredWorkflows.map((wf) => (
             <div
               key={wf.id}
               onClick={() => handleEditWorkflow(wf)}

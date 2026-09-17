@@ -3,9 +3,10 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Briefcase, Plus, Search, DollarSign, ArrowRight, User, Phone, CheckCircle2, X } from 'lucide-react';
 import { Deal } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const DealsView: React.FC = () => {
-  const { deals, addDeal, setActiveTab, addToast, globalFilter, targetHighlightId } = useQiyamStore();
+  const { deals, addDeal, setActiveTab, addToast, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
   const [search, setSearch] = useState('');
   const [isNewDealModalOpen, setIsNewDealModalOpen] = useState(false);
   const [newDealForm, setNewDealForm] = useState({
@@ -48,9 +49,19 @@ export const DealsView: React.FC = () => {
 
   const filteredDeals = deals.filter((d) => {
     if (globalFilter.status && globalFilter.status !== 'all') {
-      if (globalFilter.status === 'open' && d.stage !== 'new' && d.stage !== 'contacted') return false;
-      if (globalFilter.status === 'in_progress' && d.stage !== 'proposal_sent' && d.stage !== 'negotiation') return false;
-      if (globalFilter.status === 'completed' && d.stage !== 'won') return false;
+      const s = globalFilter.status.toLowerCase();
+      const match =
+        d.stage === s ||
+        (s === 'open' && (d.stage === 'new' || d.stage === 'contacted')) ||
+        (s === 'in_progress' && (d.stage === 'proposal_sent' || d.stage === 'negotiation')) ||
+        (s === 'completed' && d.stage === 'won');
+      if (!match) return false;
+    }
+    if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && d.deal_owner !== globalFilter.assignedTo) {
+      return false;
+    }
+    if (!isDateWithinInterval(d.expected_close_date, globalDateInterval)) {
+      return false;
     }
     if (effectiveSearch) {
       const q = effectiveSearch.toLowerCase();

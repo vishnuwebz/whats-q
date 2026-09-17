@@ -371,9 +371,10 @@ interface QiyamState {
   saveWorkflowNodes: (workflowId: string | number, nodes: FlowNode[]) => Promise<void>;
   runWorkflowTest: (workflowId: string | number, inputMessage: string) => Promise<{ steps: string[]; duration: string }>;
   globalDateRange: string;
-  setGlobalDateRange: (range: string) => void;
-  globalFilter: { status?: string; priority?: string; query?: string };
-  setGlobalFilter: (filter: Partial<{ status?: string; priority?: string; query?: string }>) => void;
+  globalDateInterval: { start: string; end: string } | null;
+  setGlobalDateRange: (range: string, interval?: { start: string; end: string } | null) => void;
+  globalFilter: { status?: string; priority?: string; assignedTo?: string; query?: string };
+  setGlobalFilter: (filter: Partial<{ status?: string; priority?: string; assignedTo?: string; query?: string }>) => void;
   resetGlobalFilter: () => void;
 
   targetHighlightId: string | number | null;
@@ -1249,14 +1250,23 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   globalDateRange: 'May 1 – May 31, 2024',
-  setGlobalDateRange: (range) => {
-    set({ globalDateRange: range });
+  globalDateInterval: { start: '2024-05-01', end: '2024-05-31' },
+  setGlobalDateRange: (range, interval) => {
+    let resolvedInterval = interval;
+    if (resolvedInterval === undefined) {
+      if (range.toLowerCase().includes('all')) {
+        resolvedInterval = null;
+      } else {
+        resolvedInterval = get().globalDateInterval;
+      }
+    }
+    set({ globalDateRange: range, globalDateInterval: resolvedInterval });
     get().addToast(`Date range set to ${range}`, 'info');
   },
-  globalFilter: { status: 'all', priority: 'all', query: '' },
+  globalFilter: { status: 'all', priority: 'all', assignedTo: 'all', query: '' },
   setGlobalFilter: (filter) => set((state) => ({ globalFilter: { ...state.globalFilter, ...filter } })),
   resetGlobalFilter: () => {
-    set({ globalFilter: { status: 'all', priority: 'all', query: '' } });
+    set({ globalFilter: { status: 'all', priority: 'all', assignedTo: 'all', query: '' } });
     get().addToast('Filter cleared', 'info');
   },
 

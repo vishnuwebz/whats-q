@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Job } from '@/types';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Briefcase, Search, Filter, Plus, Calendar, Clock, MapPin,
   CheckCircle2, AlertTriangle, User, MoreVertical, X, Phone,
@@ -18,6 +19,7 @@ export const JobsView: React.FC = () => {
     setActiveTab,
     targetHighlightId,
     globalFilter,
+    globalDateInterval,
   } = useQiyamStore();
 
   const [activeStatus, setActiveStatus] = useState<string>('all');
@@ -77,23 +79,34 @@ export const JobsView: React.FC = () => {
   };
 
   const filteredJobs = jobs.filter((j) => {
+    // 1. Date Interval Filtering
+    if (!isDateWithinInterval(j.date_str, globalDateInterval)) return false;
+
+    // 2. Status Filtering (Global & Local)
     if (globalFilter.status && globalFilter.status !== 'all') {
       if (globalFilter.status === 'open' && j.status !== 'scheduled') return false;
       if (globalFilter.status === 'in_progress' && j.status !== 'in_progress') return false;
       if (globalFilter.status === 'completed' && j.status !== 'completed') return false;
       if (globalFilter.status === 'overdue' && j.status !== 'overdue') return false;
+      if (['scheduled', 'in_progress', 'completed', 'cancelled', 'overdue'].includes(globalFilter.status) && j.status !== globalFilter.status) return false;
     } else if (activeStatus !== 'all' && j.status !== activeStatus) {
       return false;
     }
+
+    // 3. Priority Filtering
     if (globalFilter.priority && globalFilter.priority !== 'all' && j.priority !== globalFilter.priority) {
       return false;
     }
+
+    // 4. Keyword Query Filtering
     if (globalFilter.query) {
       const q = globalFilter.query.toLowerCase();
       return (
         j.job_id_str.toLowerCase().includes(q) ||
         j.customer_name.toLowerCase().includes(q) ||
-        j.service.toLowerCase().includes(q)
+        j.phone.includes(q) ||
+        j.service.toLowerCase().includes(q) ||
+        j.assigned_to.toLowerCase().includes(q)
       );
     }
     return true;
