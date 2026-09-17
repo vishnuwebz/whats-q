@@ -49,7 +49,6 @@ export const ConversationsView: React.FC = () => {
     setIsSimulatorOpen,
     typingUsers,
     onlineUsers,
-    setClientPresence,
     setTargetHighlightId,
     metaConfig,
     suppressionList,
@@ -150,28 +149,28 @@ export const ConversationsView: React.FC = () => {
 
   const currentSuppression = getSuppressionStatus(currentConv);
 
-  const toggleCustomerPresence = async () => {
-    if (!currentConv) return;
-    const currentlyOnline = Boolean(
-      onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false
-    );
-    const nextStatus = !currentlyOnline;
-    const nowTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
-    
-    // 1. Optimistic live store update (zero wait, instant lively UI switch)
-    setClientPresence(currentConv.id, nextStatus, nextStatus ? 'Just now' : nowTime);
+  // Real customer WhatsApp presence calculation based on actual activity and backend data
+  const isCustomerReallyOnline = Boolean(
+    currentConv && (
+      typingUsers[currentConv.id] ||
+      (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false)
+    )
+  );
 
-    // 2. Persist to backend and emit SSE event across network
-    try {
-      await apiClient.post(`/conversations/threads/${currentConv.id}/presence/`, {
-        is_online: nextStatus,
-        last_seen: nextStatus ? 'Just now' : nowTime,
-      });
-      addToast(`${currentConv.contact_name || 'Customer'} is now ${nextStatus ? 'Online' : 'Offline'} on WhatsApp`, 'info');
-    } catch (e) {
-      console.warn('Could not update backend presence:', e);
+  const customerRealLastSeen = useMemo(() => {
+    if (!currentConv) return 'Recently';
+    if (isCustomerReallyOnline) return 'Active now';
+    if (onlineUsers[String(currentConv.id)]?.lastSeen) {
+      return onlineUsers[String(currentConv.id)]!.lastSeen;
     }
-  };
+    if (currentConv.last_seen && currentConv.last_seen !== 'Online') {
+      return currentConv.last_seen;
+    }
+    if (currentConv.last_contact_date) {
+      return currentConv.last_contact_date;
+    }
+    return 'Recently';
+  }, [currentConv, isCustomerReallyOnline, onlineUsers]);
 
   // Automatically mark currently active conversation as read
   React.useEffect(() => {
@@ -543,25 +542,23 @@ export const ConversationsView: React.FC = () => {
           </div>
           <p className="text-xs text-slate-500 font-mono">{currentConv.phone_number}</p>
 
-          {/* Live Online / Offline WhatsApp Status Badge */}
-          <button
-            onClick={toggleCustomerPresence}
-            title="Click to toggle Online / Offline status"
-            className="flex items-center justify-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer group"
-          >
-            <span className={`inline-block w-2 h-2 rounded-full transition-colors duration-300 ${
-              (typingUsers[currentConv.id] || (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online))
-                ? 'bg-emerald-500 shadow-xs ring-2 ring-emerald-200'
-                : 'bg-slate-400'
-            }`} />
-            <span className="text-[11px] font-medium text-slate-600 group-hover:text-slate-900">
+          {/* Real Customer WhatsApp Presence Status Badge (Read-only real data) */}
+          <div className="flex items-center justify-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full select-none">
+            <span
+              className={`inline-block w-2 h-2 rounded-full transition-colors duration-300 ${
+                isCustomerReallyOnline
+                  ? 'bg-emerald-500 shadow-xs ring-2 ring-emerald-200'
+                  : 'bg-slate-400'
+              }`}
+            />
+            <span className="text-[11px] font-medium text-slate-600">
               {typingUsers[currentConv.id]
                 ? 'Typing...'
-                : (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online)
+                : isCustomerReallyOnline
                 ? 'Online on WhatsApp'
-                : `Offline (${onlineUsers[String(currentConv.id)]?.lastSeen || currentConv.last_seen || 'Recently'})`}
+                : `Offline • Last seen ${customerRealLastSeen}`}
             </span>
-          </button>
+          </div>
 
           <div className="mt-2 flex items-center justify-center gap-1.5">
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -1268,30 +1265,27 @@ export const ConversationsView: React.FC = () => {
                       </span>
                       <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 hidden xs:inline">• Open</span>
 
-                      {/* Lively WhatsApp Online/Offline Status Indicator Button */}
-                      <button
-                        type="button"
-                        onClick={toggleCustomerPresence}
-                        title="Click to toggle customer Online / Offline status"
-                        className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all duration-300 cursor-pointer ${
-                          (typingUsers[currentConv.id] || (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online))
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                      {/* Real Customer WhatsApp Presence Status Badge (Read-only real data) */}
+                      <div
+                        className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all duration-300 select-none ${
+                          isCustomerReallyOnline
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 text-slate-500 border-slate-200'
                         }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                          (typingUsers[currentConv.id] || (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online))
+                          isCustomerReallyOnline
                             ? 'bg-emerald-500 animate-pulse ring-1 ring-emerald-300'
                             : 'bg-slate-400'
                         }`} />
                         <span>
                           {typingUsers[currentConv.id]
                             ? 'Typing...'
-                            : (onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online)
+                            : isCustomerReallyOnline
                             ? 'Online'
                             : 'Offline'}
                         </span>
-                      </button>
+                      </div>
                     </div>
                     {typingUsers[currentConv.id] ? (
                       <div className="text-[11px] sm:text-xs text-emerald-600 font-bold flex items-center gap-1.5 animate-pulse mt-0.5">
@@ -1307,9 +1301,9 @@ export const ConversationsView: React.FC = () => {
                         <span>{currentConv.phone_number}</span>
                         <span className="hidden sm:inline">•</span>
                         <span className="hidden sm:inline">
-                          {(onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online)
+                          {isCustomerReallyOnline
                             ? <span className="text-emerald-600 font-semibold">Active now</span>
-                            : <span>Last seen {onlineUsers[String(currentConv.id)]?.lastSeen || currentConv.last_seen || 'recently'}</span>}
+                            : <span>Last seen {customerRealLastSeen}</span>}
                         </span>
                         <span className="hidden md:inline">•</span>
                         <span className="hidden md:inline">Assigned to: <strong className="text-slate-700">{currentConv.lead_owner || 'Ramesh Kumar'}</strong></span>
