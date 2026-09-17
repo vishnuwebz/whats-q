@@ -7,6 +7,7 @@ import {
   FileText, Search, Filter, Plus, Download, MessageSquare,
   CheckCircle2, AlertCircle, Clock, Send, Eye, X
 } from 'lucide-react';
+import { ConfirmShareInvoiceModal } from './ConfirmShareInvoiceModal';
 
 export const InvoicesView: React.FC = () => {
   const {
@@ -24,6 +25,54 @@ export const InvoicesView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [confirmInvoice, setConfirmInvoice] = useState<{
+    invoice: Invoice;
+    mode: 'share' | 'reminder';
+  } | null>(null);
+
+  const handleConfirmShare = () => {
+    if (!confirmInvoice) return;
+    const { invoice, mode } = confirmInvoice;
+    const isReminder = mode === 'reminder';
+
+    const message = isReminder
+      ? `📄 *Payment Reminder: Invoice ${invoice.invoice_number}*
+
+Hello *${invoice.customer_name}*,
+This is a friendly reminder that invoice *${invoice.invoice_number}* for *₹${invoice.amount.toLocaleString()}* is pending.
+
+📅 *Due Date:* ${invoice.due_date}
+💰 *Total Amount:* ₹${invoice.amount.toLocaleString()}
+✅ *Paid So Far:* ₹${invoice.paid_amount.toLocaleString()}
+💳 *Balance Due:* ₹${Math.max(0, invoice.amount - invoice.paid_amount).toLocaleString()}
+
+Please reply to this chat or tap here to pay securely via UPI/Cards. Thank you!`
+      : `📄 *Invoice Shared: ${invoice.invoice_number}*
+
+Hello *${invoice.customer_name}*,
+Here are the complete details for your invoice *${invoice.invoice_number}*:
+
+📅 *Due Date:* ${invoice.due_date}
+💰 *Total Amount:* ₹${invoice.amount.toLocaleString()}
+✅ *Paid Amount:* ₹${invoice.paid_amount.toLocaleString()}
+💳 *Balance Due:* ₹${Math.max(0, invoice.amount - invoice.paid_amount).toLocaleString()}
+🏦 *Payment Mode:* ${invoice.payment_method}
+
+Please feel free to ask if you have any questions or require an itemized breakdown.`;
+
+    openConversationForContact({
+      name: invoice.customer_name,
+      phone: invoice.customer_phone,
+      service: `Invoice ${invoice.invoice_number}`,
+      initialMessage: message,
+    });
+
+    if (mode === 'share') {
+      setSelectedInvoice(null);
+    }
+    setConfirmInvoice(null);
+    addToast(isReminder ? 'Payment reminder sent to WhatsApp chat!' : 'Invoice shared to WhatsApp chat!', 'success');
+  };
 
   const [createForm, setCreateForm] = useState({
     invoice_number: `INV-2024-${String(187 + invoices.length).padStart(4, '0')}`,
@@ -386,21 +435,9 @@ export const InvoicesView: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openConversationForContact({
-                                name: inv.customer_name,
-                                phone: inv.customer_phone,
-                                service: `Invoice ${inv.invoice_number}`,
-                                initialMessage: `📄 *Payment Reminder: Invoice ${inv.invoice_number}*
-
-Hello *${inv.customer_name}*,
-This is a friendly reminder that invoice *${inv.invoice_number}* for *₹${inv.amount.toLocaleString()}* is pending.
-
-📅 *Due Date:* ${inv.due_date}
-💰 *Total Amount:* ₹${inv.amount.toLocaleString()}
-✅ *Paid So Far:* ₹${inv.paid_amount.toLocaleString()}
-💳 *Balance Due:* ₹${Math.max(0, inv.amount - inv.paid_amount).toLocaleString()}
-
-Please reply to this chat or tap here to pay securely via UPI/Cards. Thank you!`,
+                              setConfirmInvoice({
+                                invoice: inv,
+                                mode: 'reminder',
                               });
                             }}
                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-semibold text-[11px] flex items-center gap-1 cursor-pointer"
@@ -510,24 +547,10 @@ Please reply to this chat or tap here to pay securely via UPI/Cards. Thank you!`
                 </button>
                 <button
                   onClick={() => {
-                    openConversationForContact({
-                      name: selectedInvoice.customer_name,
-                      phone: selectedInvoice.customer_phone,
-                      service: `Invoice ${selectedInvoice.invoice_number}`,
-                      initialMessage: `📄 *Invoice Shared: ${selectedInvoice.invoice_number}*
-
-Hello *${selectedInvoice.customer_name}*,
-Here are the complete details for your invoice *${selectedInvoice.invoice_number}*:
-
-📅 *Due Date:* ${selectedInvoice.due_date}
-💰 *Total Amount:* ₹${selectedInvoice.amount.toLocaleString()}
-✅ *Paid Amount:* ₹${selectedInvoice.paid_amount.toLocaleString()}
-💳 *Balance Due:* ₹${Math.max(0, selectedInvoice.amount - selectedInvoice.paid_amount).toLocaleString()}
-🏦 *Payment Mode:* ${selectedInvoice.payment_method}
-
-Please feel free to ask if you have any questions or require an itemized breakdown.`,
+                    setConfirmInvoice({
+                      invoice: selectedInvoice,
+                      mode: 'share',
                     });
-                    setSelectedInvoice(null);
                   }}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                 >
@@ -677,6 +700,17 @@ Please feel free to ask if you have any questions or require an itemized breakdo
             </form>
           </div>
         </div>
+      )}
+
+      {/* Confirmation Warning Modal to Prevent Accidental Touches */}
+      {confirmInvoice && (
+        <ConfirmShareInvoiceModal
+          isOpen={!!confirmInvoice}
+          onClose={() => setConfirmInvoice(null)}
+          invoice={confirmInvoice.invoice}
+          mode={confirmInvoice.mode}
+          onConfirm={handleConfirmShare}
+        />
       )}
     </div>
   );
