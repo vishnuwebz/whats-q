@@ -68,6 +68,9 @@ class Conversation(models.Model):
     active_workflow = models.CharField(max_length=150, default='Service Booking Flow')
     is_online = models.BooleanField(default=False)
     last_seen = models.CharField(max_length=100, blank=True, default='Recently')
+    is_blocked = models.BooleanField(default=False)
+    is_opted_out = models.BooleanField(default=False)
+    suppression_reason = models.CharField(max_length=255, blank=True, default='')
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

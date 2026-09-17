@@ -29,6 +29,13 @@ import {
   Layers,
   CheckSquare,
   Square,
+  Ban,
+  AlertOctagon,
+  RotateCcw,
+  FileDown,
+  UserX,
+  ShieldAlert,
+  MessageSquare,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkRecipientList, BulkContact } from '../../../types';
@@ -38,7 +45,125 @@ import { SidebarToggle } from '../../layout/SidebarToggle';
 import { WhatsAppGroupExtractorModal } from './WhatsAppGroupExtractorModal';
 
 export const BulkRecipientListsView: React.FC = () => {
-  const { bulkRecipientLists, createRecipientList, setActiveTab, addToast } = useQiyamStore();
+  const {
+    bulkRecipientLists,
+    createRecipientList,
+    setActiveTab,
+    addToast,
+    suppressionList,
+    addSuppressionRecord,
+    removeSuppressionRecord,
+    setSelectedConversationId,
+    conversations,
+  } = useQiyamStore();
+
+  // View mode tab state
+  const [viewMode, setViewMode] = useState<'lists' | 'suppression'>('lists');
+
+  // Suppression list filters and modal state
+  const [suppressionSearch, setSuppressionSearch] = useState('');
+  const [suppressionFilter, setSuppressionFilter] = useState<'all' | 'blocked' | 'opted_out' | 'button' | 'manual'>('all');
+  const [isAddManualSuppressionOpen, setIsAddManualSuppressionOpen] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+  const [manualType, setManualType] = useState<'opted_out' | 'blocked'>('opted_out');
+  const [manualReason, setManualReason] = useState('');
+
+  // Suppression stats
+  const totalSuppressedCount = suppressionList?.length || 0;
+  const blockedCount = (suppressionList || []).filter((s) => s.type === 'blocked').length;
+  const optedOutCount = (suppressionList || []).filter((s) => s.type === 'opted_out' || s.type === 'opt_out_stop' || s.type === 'opt_out_button').length;
+
+  const filteredSuppressionList = useMemo(() => {
+    return (suppressionList || []).filter((item) => {
+      const isBlocked = item.type === 'blocked';
+      const isOptedOut = item.type === 'opted_out' || item.type === 'opt_out_stop' || item.type === 'opt_out_button';
+      const isButton = item.type === 'opt_out_button' || item.source?.includes('button');
+      const isManual = item.source?.toLowerCase().includes('manual') || item.type === 'manual';
+
+      if (suppressionFilter === 'blocked' && !isBlocked) return false;
+      if (suppressionFilter === 'opted_out' && !isOptedOut) return false;
+      if (suppressionFilter === 'button' && !isButton) return false;
+      if (suppressionFilter === 'manual' && !isManual) return false;
+
+      const q = suppressionSearch.trim().toLowerCase();
+      if (!q) return true;
+
+      return (
+        (item.name || '').toLowerCase().includes(q) ||
+        (item.phone || '').includes(q) ||
+        (item.reason || '').toLowerCase().includes(q) ||
+        (item.campaignName || '').toLowerCase().includes(q) ||
+        (item.notes || '').toLowerCase().includes(q) ||
+        String(item.metaErrorCode || '').includes(q)
+      );
+    });
+  }, [suppressionList, suppressionFilter, suppressionSearch]);
+
+  const handleExportSuppressionCsv = () => {
+    if (!suppressionList || suppressionList.length === 0) {
+      addToast('No suppression records to export.', 'info');
+      return;
+    }
+    const headers = [
+      'Contact Name',
+      'Phone Number',
+      'Suppression Type',
+      'Reason / Trigger',
+      'Meta Error Code',
+      'Originating Campaign',
+      'Date Added',
+      'Source',
+      'Status'
+    ];
+    const rows = suppressionList.map((r) => [
+      `"${(r.name || '').replace(/"/g, '""')}"`,
+      `"${r.phone}"`,
+      `"${r.type === 'blocked' ? 'Blocked (Meta 131051)' : 'Opted Out (STOP)'}"`,
+      `"${(r.reason || '').replace(/"/g, '""')}"`,
+      r.metaErrorCode ? `"${r.metaErrorCode}"` : '""',
+      `"${(r.campaignName || '').replace(/"/g, '""')}"`,
+      `"${r.date} ${r.timestamp || ''}"`,
+      `"${(r.source || '').replace(/"/g, '""')}"`,
+      `"${r.status || 'active'}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `WhatsApp_Suppression_Compliance_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addToast(`Exported ${suppressionList.length} compliance records to CSV!`, 'success');
+  };
+
+  const handleAddManualSuppression = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualPhone.trim()) {
+      addToast('Please enter a valid phone number.', 'warning');
+      return;
+    }
+    addSuppressionRecord({
+      id: `supp-manual-${Date.now()}`,
+      name: manualName.trim() || 'Manual Contact',
+      phone: manualPhone.trim(),
+      type: manualType === 'blocked' ? 'blocked' : 'opt_out_stop',
+      reason: manualReason.trim() || (manualType === 'blocked' ? 'Manual block entered by operator' : 'Manual opt-out entered by operator'),
+      metaErrorCode: manualType === 'blocked' ? '131051' : undefined,
+      date: new Date().toLocaleDateString('en-GB'),
+      timestamp: Date.now(),
+      status: 'Suppressed',
+      notes: manualReason.trim(),
+      canResubscribe: true,
+      source: 'Manual operator entry',
+    });
+    addToast(`Added ${manualPhone} to compliance suppression list!`, 'success');
+    setIsAddManualSuppressionOpen(false);
+    setManualName('');
+    setManualPhone('');
+    setManualReason('');
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedList, setSelectedList] = useState<BulkRecipientList | null>(
@@ -407,10 +532,363 @@ export const BulkRecipientListsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Segmented View Mode Tabs: Lists vs Suppression */}
+      <div className="bg-white border-b border-slate-200/90 px-6 sticky top-[69px] z-10 shadow-2xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setViewMode('lists')}
+              className={`py-3 px-4 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                viewMode === 'lists'
+                  ? 'border-emerald-600 text-emerald-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Audience Lists ({bulkRecipientLists.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode('suppression')}
+              className={`py-3 px-4 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                viewMode === 'suppression'
+                  ? 'border-rose-600 text-rose-700'
+                  : 'border-transparent text-slate-500 hover:text-rose-700'
+              }`}
+            >
+              <Ban className="w-4 h-4 text-rose-600" />
+              <span>Suppression &amp; Opt-Outs</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                totalSuppressedCount > 0
+                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {totalSuppressedCount}
+              </span>
+            </button>
+          </div>
+
+          {viewMode === 'suppression' && (
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportSuppressionCsv}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+              >
+                <FileDown className="w-3.5 h-3.5 text-slate-500" />
+                <span>Export Audit CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddManualSuppressionOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Opt-Out / Block</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto w-full p-6 space-y-5">
-        {/* WhatsApp Group Grabber Showcase Banner */}
-        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-2xl p-5 text-white shadow-md border border-emerald-800/60 flex flex-col md:flex-row items-center justify-between gap-4">
+        {viewMode === 'suppression' ? (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            {/* 4 Metric Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Total Suppressed
+                  </span>
+                  <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                    <Ban className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-slate-900 mt-2">
+                  {totalSuppressedCount}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Exempt from all outbound campaigns
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Blocked (Meta 131051)
+                  </span>
+                  <div className="p-2 rounded-xl bg-red-50 text-red-600">
+                    <UserX className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-red-600 mt-2">
+                  {blockedCount}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Automated delivery failure capture
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Opted Out / STOP
+                  </span>
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+                    <AlertOctagon className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-amber-600 mt-2">
+                  {optedOutCount}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Keyword &amp; Button click opt-outs
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Sender Quality
+                  </span>
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-sm font-black text-emerald-600 mt-2 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>High (Safe Tier)</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  0 spam violations • Meta API compliant
+                </p>
+              </div>
+            </div>
+
+            {/* Compliance Banner */}
+            <div className="bg-gradient-to-r from-rose-900 via-slate-900 to-slate-950 rounded-2xl p-5 text-white shadow-md border border-rose-900/40 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-6 h-6 text-rose-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm sm:text-base text-white">
+                      Automated Meta Compliance &amp; Opt-Out Protection
+                    </h3>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/30 text-rose-300 border border-rose-400/30">
+                      LIVE ENFORCEMENT
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                    When contacts text <strong>STOP</strong>, <strong>UNSUBSCRIBE</strong>, click opt-out buttons, or block your WhatsApp business line (Meta error 131051), our backend automatically records suppression and prevents subsequent promotional sends to preserve your sender rating.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsAddManualSuppressionOpen(true)}
+                  className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Manual Block</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Suppression Search & Filters Toolbar */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto flex-1">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={suppressionSearch}
+                    onChange={(e) => setSuppressionSearch(e.target.value)}
+                    placeholder="Search name, phone, campaign, error code..."
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                  />
+                  {suppressionSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setSuppressionSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <select
+                    value={suppressionFilter}
+                    onChange={(e) => setSuppressionFilter(e.target.value as any)}
+                    className="px-2.5 py-2 text-xs border border-slate-300 rounded-xl bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer"
+                  >
+                    <option value="all">All Suppression Types ({totalSuppressedCount})</option>
+                    <option value="blocked">Blocked Business (Meta 131051) ({blockedCount})</option>
+                    <option value="opted_out">Keyword Opt-Outs (STOP) ({optedOutCount})</option>
+                    <option value="button">Template Button Click</option>
+                    <option value="manual">Manual Operator Entry</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleExportSuppressionCsv}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Suppression Audit Table */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+              {filteredSuppressionList.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800">No Suppressed Contacts Match Filter</h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {suppressionSearch ? 'Try a different search query or clear filters.' : 'All contacts in your audience lists are active and eligible for WhatsApp broadcasts.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <tr>
+                        <th className="p-4">Contact</th>
+                        <th className="p-4">Suppression Type</th>
+                        <th className="p-4">Trigger &amp; Error Code</th>
+                        <th className="p-4">Originating Campaign</th>
+                        <th className="p-4">Date Recorded</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredSuppressionList.map((record) => {
+                        const isBlocked = record.type === 'blocked';
+                        return (
+                          <tr key={record.id} className="hover:bg-slate-50/60 transition">
+                            <td className="p-4">
+                              <div className="font-bold text-slate-900">{record.name}</div>
+                              <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                                {record.phone}
+                              </div>
+                            </td>
+
+                            <td className="p-4">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
+                                  isBlocked
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}
+                              >
+                                {isBlocked ? (
+                                  <UserX className="w-3 h-3 text-rose-600" />
+                                ) : (
+                                  <Ban className="w-3 h-3 text-amber-600" />
+                                )}
+                                <span>{isBlocked ? 'Blocked Business' : 'Opted Out'}</span>
+                              </span>
+                            </td>
+
+                            <td className="p-4 max-w-xs">
+                              <div className="text-slate-800 font-medium leading-snug">
+                                {record.reason}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                {record.metaErrorCode && (
+                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                    Meta Error {record.metaErrorCode}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-slate-400">
+                                  Source: {record.source || 'Webhook'}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="p-4">
+                              {record.campaignName ? (
+                                <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                  {record.campaignName}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">Organic / Direct</span>
+                              )}
+                            </td>
+
+                            <td className="p-4 text-slate-500">
+                              <div className="font-medium text-slate-700">{record.date}</div>
+                              <div className="text-[10px] text-slate-400">{record.timestamp || ''}</div>
+                            </td>
+
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const matchingConv = (conversations || []).find(
+                                      (c) => (c.phone_number || '').replace(/\D/g, '') === (record.phone || '').replace(/\D/g, '')
+                                    );
+                                    if (matchingConv) {
+                                      setSelectedConversationId(matchingConv.id);
+                                    } else {
+                                      setSelectedConversationId(record.phone);
+                                    }
+                                    setActiveTab('conversations');
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                                  title="View WhatsApp thread"
+                                >
+                                  <MessageSquare className="w-3 h-3 text-slate-400" />
+                                  <span>Chat</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    removeSuppressionRecord(record.phone);
+                                    addToast(`Consent verified! ${record.name} removed from suppression list.`, 'success');
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                  title="Re-subscribe contact with customer consent"
+                                >
+                                  <RotateCcw className="w-3 h-3 text-rose-600" />
+                                  <span>Re-subscribe</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {/* WhatsApp Group Grabber Showcase Banner */}
+            <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-2xl p-5 text-white shadow-md border border-emerald-800/60 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
               <QrCode className="w-6 h-6 text-emerald-300" />
@@ -550,6 +1028,8 @@ export const BulkRecipientListsView: React.FC = () => {
           </div>
         </div>
       </div>
+    )}
+  </div>
 
       {/* SLIDEOUT RECIPIENT LIST DRAWER WITH CONTACT SOURCE DONUT CHART */}
       {isDrawerOpen && selectedList && (
@@ -1197,6 +1677,137 @@ export const BulkRecipientListsView: React.FC = () => {
                   {selectedContactIds.size > 0
                     ? `Create List (${selectedContactIds.size} Contacts)`
                     : 'Create List'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Manual Suppression Modal */}
+      {isAddManualSuppressionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-rose-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-100 text-rose-700">
+                  <Ban className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Add Opt-Out / Suppression
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Immediately restrict promotional WhatsApp broadcasts
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddManualSuppressionOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddManualSuppression} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 text-xs mb-1">
+                  Contact Name
+                </label>
+                <input
+                  type="text"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  placeholder="e.g. John Doe or Business Lead"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 text-xs mb-1">
+                  WhatsApp Phone Number <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={manualPhone}
+                  onChange={(e) => setManualPhone(e.target.value)}
+                  placeholder="+91 98765 43210 or +971 50 123 4567"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden text-xs font-mono"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Must include country code. Matches any campaign broadcast.
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 text-xs mb-1.5">
+                  Suppression Category
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setManualType('opted_out')}
+                    className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition cursor-pointer ${
+                      manualType === 'opted_out'
+                        ? 'border-amber-500 bg-amber-50/70 text-amber-900 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <AlertOctagon className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs">Opted Out (STOP)</div>
+                      <div className="text-[10px] text-slate-400 font-normal">Customer requested unsubscribe</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setManualType('blocked')}
+                    className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition cursor-pointer ${
+                      manualType === 'blocked'
+                        ? 'border-rose-500 bg-rose-50/70 text-rose-900 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <UserX className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs">Blocked Number</div>
+                      <div className="text-[10px] text-slate-400 font-normal">Meta Error 131051</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 text-xs mb-1">
+                  Reason / Compliance Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={manualReason}
+                  onChange={(e) => setManualReason(e.target.value)}
+                  placeholder="e.g. Requested opt-out via email or phone support"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden text-xs resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddManualSuppressionOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Ban className="w-4 h-4" />
+                  <span>Add to Suppression List</span>
                 </button>
               </div>
             </form>

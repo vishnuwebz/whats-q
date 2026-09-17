@@ -92,6 +92,10 @@ export interface Conversation {
   is_online?: boolean;
   last_seen?: string;
   updated_at?: string;
+  is_blocked?: boolean;
+  is_opted_out?: boolean;
+  suppression_reason?: string;
+  suppression_date?: string;
 }
 
 export interface Lead {
@@ -664,5 +668,21 @@ export interface WhatsAppGroup {
   isAdmin: boolean;
   createdAt: string;
   members: WhatsAppGroupContact[];
+}
+
+export interface SuppressionRecord {
+  id: string;
+  name: string;
+  phone: string;
+  type: 'blocked' | 'opt_out_stop' | 'opt_out_button' | 'opted_out' | 'manual';
+  reason: string;
+  metaErrorCode?: string | number;
+  campaignName?: string;
+  date: string;
+  timestamp: string | number;
+  status: 'Suppressed' | 'Active' | 'active' | 'suppressed';
+  notes?: string;
+  canResubscribe: boolean;
+  source?: string;
 }
 

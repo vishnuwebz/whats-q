@@ -1076,6 +1076,38 @@ class WhatsAppWebhookView(APIView):
                             meta_message_id=msg_id
                         )
 
+                        # Detect WhatsApp Opt-Out / Unsubscribe keywords & quick reply buttons
+                        clean_upper = text_body.strip().upper()
+                        is_opt_out_word = (
+                            clean_upper in ['STOP', 'UNSUBSCRIBE', 'CANCEL', 'OPTOUT', 'QUIT', 'STOP PROMOTIONS']
+                            or clean_upper.startswith('STOP')
+                            or clean_upper == 'STOP_PROMOTIONS'
+                        )
+                        if is_opt_out_word:
+                            conv.is_opted_out = True
+                            conv.is_blocked = False
+                            conv.suppression_reason = f"Replied '{text_body.strip()}' on WhatsApp"
+                            if 'Opted Out' not in conv.tags:
+                                conv.tags.append('Opted Out')
+                            logger.info(f"[Meta Webhook] Contact {conv.phone_number} opted out via keyword '{text_body.strip()}'")
+                            emit_event('contact.opted_out', {
+                                'conversation_id': conv.id,
+                                'phone': conv.phone_number,
+                                'name': conv.contact_name,
+                                'reason': text_body.strip(),
+                                'date': now_full
+                            })
+                            emit_event('notification.new', {
+                                'id': int(time.time() * 1000),
+                                'title': '🛑 Customer Unsubscribed (STOP)',
+                                'text': f"{conv.contact_name} ({conv.phone_number}) texted '{text_body.strip()}'. Auto-suppressed from broadcasts.",
+                                'time': 'Just now',
+                                'unread': True,
+                                'target': 'bulk-recipients',
+                                'itemId': conv.id,
+                                'itemType': 'conversation'
+                            })
+
                         conv.unread_count += 1
                         conv.last_contact_date = now_full
                         conv.status = 'open'
@@ -1106,7 +1138,10 @@ class WhatsAppWebhookView(APIView):
                             'phone_number': conv.phone_number,
                             'last_message': text_body,
                             'last_contact_date': now_full,
-                            'unread_count': conv.unread_count
+                            'unread_count': conv.unread_count,
+                            'is_opted_out': conv.is_opted_out,
+                            'is_blocked': conv.is_blocked,
+                            'suppression_reason': conv.suppression_reason
                         })
                         emit_event('conversation.typing', {
                             'conversation_id': conv.id,
@@ -1319,6 +1354,37 @@ class WhatsAppWebhookView(APIView):
                                     'message_id': m.id,
                                     'status': new_status
                                 })
+                                # Check for Meta Error 131051 (User blocked business) or 131026
+                                if new_status == 'failed':
+                                    errors = s.get('errors', [])
+                                    for err in errors:
+                                        err_code = str(err.get('code', ''))
+                                        err_title = err.get('title', '') or err.get('message', '')
+                                        if err_code in ['131051', '131026'] or 'block' in err_title.lower():
+                                            c = m.conversation
+                                            c.is_blocked = True
+                                            c.suppression_reason = f"Meta Error {err_code}: {err_title or 'User blocked business number'}"
+                                            if 'Blocked' not in c.tags:
+                                                c.tags.append('Blocked')
+                                            c.save()
+                                            logger.warning(f"[Meta Webhook] Contact {c.phone_number} blocked business line (Error {err_code})")
+                                            emit_event('contact.blocked', {
+                                                'conversation_id': c.id,
+                                                'phone': c.phone_number,
+                                                'name': c.contact_name,
+                                                'code': err_code,
+                                                'reason': c.suppression_reason
+                                            })
+                                            emit_event('notification.new', {
+                                                'id': int(time.time() * 1000),
+                                                'title': '⛔ WhatsApp Number Blocked',
+                                                'text': f"{c.contact_name} ({c.phone_number}) blocked our business line. Auto-suppressed to protect quality score.",
+                                                'time': 'Just now',
+                                                'unread': True,
+                                                'target': 'bulk-recipients',
+                                                'itemId': c.id,
+                                                'itemType': 'conversation'
+                                            })
 
                 # 2. Template Status Updates from Meta (e.g. APPROVED, REJECTED, PAUSED)
                 elif field == 'message_template_status_update':

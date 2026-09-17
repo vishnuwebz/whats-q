@@ -6,7 +6,8 @@ import {
   KnowledgeArticle, WhatsAppTemplateItem, IntegrationItem, BranchItem, FlowNode, WhatsAppMessage,
   MetaConfig,
   BulkCampaign, BulkContact, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
-  MetaWalletInfo, MetaWalletTransaction
+  MetaWalletInfo, MetaWalletTransaction,
+  SuppressionRecord
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -72,6 +73,57 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
       { id: 'm4', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Great! We are available at your location. The charges will be ₹2,800. Shall I book it for you?', timestamp: '10:31 AM', status: 'read' },
       { id: 'm5', sender: 'customer', text: 'Yes, please.', timestamp: '10:32 AM', status: 'delivered' },
       { id: 'm6', sender: 'customer', text: 'Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #APT-1023', timestamp: '10:32 AM', status: 'delivered' }
+    ]
+  },
+  {
+    id: 'conv-c-optout',
+    contact_name: 'Sunil Varma',
+    phone_number: '+91 94000 99887',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    category: 'Customer',
+    unread_count: 0,
+    status: 'resolved',
+    lead_owner: 'Ramesh Kumar',
+    lead_stage: 'Unsubscribed',
+    source: 'WhatsApp',
+    first_contact_date: 'Sep 10, 2026 09:00 AM',
+    last_contact_date: 'Sep 16, 2026 09:30 AM',
+    location: 'Calicut, Kerala',
+    language: 'English',
+    tags: ['Opted Out', 'STOP Received'],
+    notes: 'Customer replied STOP on Sep 16, 2026. Added to suppression list.',
+    is_opted_out: true,
+    suppression_reason: 'Replied "UNSUBSCRIBE" to marketing newsletter',
+    suppression_date: 'Sep 16, 2026, 09:30 AM',
+    messages: [
+      { id: 'm-uns-1', sender: 'agent', senderName: 'Qiyam Campaign', text: 'Exclusive Offer! 20% off comprehensive AC servicing this week only. Reply STOP to opt-out.', timestamp: '09:28 AM', status: 'read' },
+      { id: 'm-uns-2', sender: 'customer', text: 'STOP', timestamp: '09:30 AM', status: 'read' },
+      { id: 'm-uns-3', sender: 'bot', senderName: 'Qiyam Compliance Bot', text: 'You have been unsubscribed and will not receive further promotional messages. Reply START to resubscribe.', timestamp: '09:30 AM', status: 'delivered' }
+    ]
+  },
+  {
+    id: 'conv-c-blocked',
+    contact_name: 'Kareem Mansoor',
+    phone_number: '+971 50 111 2233',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    category: 'Lead',
+    unread_count: 0,
+    status: 'spam',
+    lead_owner: 'Ramesh Kumar',
+    lead_stage: 'Number Blocked',
+    source: 'WhatsApp Cloud API',
+    first_contact_date: 'Sep 11, 2026 10:00 AM',
+    last_contact_date: 'Sep 12, 2026 11:20 AM',
+    location: 'Dubai, UAE',
+    language: 'English',
+    tags: ['Blocked', 'Meta 131051'],
+    notes: 'Meta Cloud API Error 131051: User blocked business phone number.',
+    is_blocked: true,
+    suppression_reason: 'Meta Error 131051: User blocked business phone number',
+    suppression_date: 'Sep 12, 2026, 11:20 AM',
+    messages: [
+      { id: 'm-blk-1', sender: 'agent', senderName: 'Qiyam AMC Team', text: 'Dear Mr. Mansoor, your Chiller AMC renewal is due this month. Click here to review proposal.', timestamp: '11:19 AM', status: 'read' },
+      { id: 'm-blk-2', sender: 'bot', senderName: 'System Warning', text: '⚠️ [Meta Error 131051] Message undeliverable: User has blocked this business phone number. Contact auto-suppressed.', timestamp: '11:20 AM', status: 'delivered' }
     ]
   },
   {
@@ -321,6 +373,11 @@ interface QiyamState {
   bulkRecipientLists: BulkRecipientList[];
   bulkScheduledMessages: BulkScheduledMessage[];
   bulkTemplates: BulkTemplateItem[];
+  suppressionList: SuppressionRecord[];
+
+  addSuppressionRecord: (record: Partial<SuppressionRecord> & { name: string; phone: string; reason: string; type: SuppressionRecord['type'] }) => void;
+  removeSuppressionRecord: (id: string) => void;
+  isPhoneSuppressed: (phone: string) => boolean;
 
   sendBulkMessage: (params: any) => Promise<{ success: boolean; campaignId?: string | number; error?: string }> | any;
   updateMetaWallet: (updates: Partial<MetaWalletInfo>) => void;
@@ -864,6 +921,66 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
       instant_pdf_receipt_whatsapp: true,
       payment_reminder_whatsapp: true,
     },
+  },
+];
+
+export const INITIAL_SUPPRESSION_LIST: SuppressionRecord[] = [
+  {
+    id: 'sup-01',
+    name: 'Inactive Contact (Opted Out)',
+    phone: '+91 80000 00000',
+    type: 'opt_out_stop',
+    reason: 'Replied "STOP" to promotional broadcast',
+    campaignName: 'Summer AC Cleaning 2026',
+    date: 'Sep 10, 2026, 02:45 PM',
+    timestamp: 1789031700000,
+    status: 'Suppressed',
+    canResubscribe: true,
+    source: 'Inbound WhatsApp Keyword (STOP)',
+    notes: 'Customer explicitly texted STOP. Excluded from all automated broadcasts.',
+  },
+  {
+    id: 'sup-02',
+    name: 'Kareem Mansoor',
+    phone: '+971 50 111 2233',
+    type: 'blocked',
+    reason: 'Meta Error 131051: User blocked business phone number',
+    metaErrorCode: '131051',
+    campaignName: 'Chiller AMC Annual Renewal',
+    date: 'Sep 12, 2026, 11:20 AM',
+    timestamp: 1789191000000,
+    status: 'Suppressed',
+    canResubscribe: false,
+    source: 'Meta Cloud API Webhook (Delivery Failed: 131051)',
+    notes: 'Message undeliverable. User blocked business line on WhatsApp. Auto-paused.',
+  },
+  {
+    id: 'sup-03',
+    name: 'Fahad Al-Otaibi',
+    phone: '+966 55 222 3344',
+    type: 'opt_out_button',
+    reason: 'Tapped "Stop Promotions" Quick-Reply Button',
+    campaignName: 'VIP Club Exclusive Offers',
+    date: 'Sep 14, 2026, 04:15 PM',
+    timestamp: 1789367100000,
+    status: 'Suppressed',
+    canResubscribe: true,
+    source: 'Meta Template Quick Reply (STOP_PROMOTIONS)',
+    notes: 'Clicked standard Meta marketing opt-out button.',
+  },
+  {
+    id: 'sup-04',
+    name: 'Sunil Varma',
+    phone: '+91 94000 99887',
+    type: 'opt_out_stop',
+    reason: 'Replied "UNSUBSCRIBE" to newsletter',
+    campaignName: 'HVAC Maintenance Tips Q3',
+    date: 'Sep 16, 2026, 09:30 AM',
+    timestamp: 1789531800000,
+    status: 'Suppressed',
+    canResubscribe: true,
+    source: 'Inbound WhatsApp Keyword (UNSUBSCRIBE)',
+    notes: 'Replied to marketing broadcast requesting removal.',
   },
 ];
 
@@ -1423,6 +1540,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   bulkRecipientLists: initialBulkRecipientLists,
   bulkScheduledMessages: initialBulkScheduledMessages,
   bulkTemplates: initialBulkTemplates,
+  suppressionList: INITIAL_SUPPRESSION_LIST,
 
   loadInitialData: async () => {
     // Use Promise.allSettled so a single endpoint failure doesn't crash the whole app
@@ -2056,6 +2174,91 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       bulkRecipientLists: [newList, ...state.bulkRecipientLists],
     }));
     get().addToast(`Recipient list "${list.name}" created with ${count} contacts`, 'success');
+  },
+
+  addSuppressionRecord: (record) => {
+    const now = new Date();
+    const dateStr = record.date || now.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const newRecord: SuppressionRecord = {
+      id: record.id || `sup-${Date.now()}`,
+      name: record.name,
+      phone: record.phone,
+      type: record.type,
+      reason: record.reason,
+      metaErrorCode: record.metaErrorCode,
+      campaignName: record.campaignName,
+      date: dateStr,
+      timestamp: Date.now(),
+      status: 'Suppressed',
+      canResubscribe: record.canResubscribe ?? (record.type !== 'blocked'),
+      source: record.source || 'Manual Compliance Entry',
+      notes: record.notes,
+    };
+    set((state) => ({
+      suppressionList: [newRecord, ...state.suppressionList.filter((s) => s.phone !== record.phone)],
+      conversations: state.conversations.map((c) => {
+        const cPhone = c.phone_number.replace(/[^0-9]/g, '');
+        const rPhone = record.phone.replace(/[^0-9]/g, '');
+        if (cPhone && rPhone && (cPhone.endsWith(rPhone.slice(-10)) || rPhone.endsWith(cPhone.slice(-10)))) {
+          return {
+            ...c,
+            is_blocked: record.type === 'blocked',
+            is_opted_out: record.type !== 'blocked',
+            suppression_reason: record.reason,
+            suppression_date: dateStr,
+          };
+        }
+        return c;
+      }),
+      notifications: [
+        {
+          id: Date.now(),
+          title: record.type === 'blocked' ? '⛔ Number Blocked by Customer' : '🛑 Customer Unsubscribed / STOP',
+          text: `${record.name} (${record.phone}) added to Suppression List: ${record.reason}`,
+          time: 'Just now',
+          unread: true,
+          target: 'bulk-recipients',
+          itemType: 'conversation',
+        },
+        ...state.notifications,
+      ],
+    }));
+    get().addToast(`Added ${record.phone} to Suppression List`, 'warning');
+  },
+
+  removeSuppressionRecord: (id) => {
+    const item = get().suppressionList.find((s) => s.id === id);
+    set((state) => ({
+      suppressionList: state.suppressionList.filter((s) => s.id !== id),
+      conversations: state.conversations.map((c) => {
+        if (item && c.phone_number.replace(/[^0-9]/g, '').endsWith(item.phone.replace(/[^0-9]/g, '').slice(-10))) {
+          return {
+            ...c,
+            is_blocked: false,
+            is_opted_out: false,
+            suppression_reason: undefined,
+            suppression_date: undefined,
+          };
+        }
+        return c;
+      }),
+    }));
+    get().addToast(`Re-subscribed ${item?.phone || 'contact'} with consent`, 'success');
+  },
+
+  isPhoneSuppressed: (phone) => {
+    const clean = phone.replace(/[^0-9]/g, '');
+    if (!clean) return false;
+    return get().suppressionList.some((s) => {
+      const sClean = s.phone.replace(/[^0-9]/g, '');
+      return sClean && (sClean.endsWith(clean.slice(-10)) || clean.endsWith(sClean.slice(-10)));
+    });
   },
 
   createScheduledMessage: (msg: any) => {

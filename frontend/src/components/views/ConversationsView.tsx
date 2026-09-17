@@ -7,7 +7,7 @@ import {
   Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
-  SlidersHorizontal, Trash2
+  SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
@@ -51,6 +51,10 @@ export const ConversationsView: React.FC = () => {
     setClientPresence,
     setTargetHighlightId,
     metaConfig,
+    suppressionList,
+    removeSuppressionRecord,
+    isPhoneSuppressed,
+    addSuppressionRecord,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
@@ -98,6 +102,50 @@ export const ConversationsView: React.FC = () => {
         (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
       ) || conversations[0]
     : null;
+
+  const getSuppressionStatus = (conv: Conversation | null) => {
+    if (!conv) return null;
+    const isSuppressed = Boolean(
+      conv.is_blocked ||
+      conv.is_opted_out ||
+      isPhoneSuppressed(conv.phone_number)
+    );
+    if (!isSuppressed) return null;
+
+    const normalizedPhone = (conv.phone_number || '').replace(/\D/g, '');
+    const matchedRecord = (suppressionList || []).find(
+      (r) => (r.phone || '').replace(/\D/g, '') === normalizedPhone
+    );
+
+    const isBlocked = Boolean(conv.is_blocked || matchedRecord?.type === 'blocked');
+    const isOptedOut = Boolean(
+      conv.is_opted_out ||
+      matchedRecord?.type === 'opt_out_stop' ||
+      matchedRecord?.type === 'opt_out_button' ||
+      matchedRecord?.type === 'opted_out' ||
+      !isBlocked
+    );
+
+    return {
+      isBlocked,
+      isOptedOut,
+      type: isBlocked ? ('blocked' as const) : ('opted_out' as const),
+      label: isBlocked ? 'Blocked' : 'Opted Out',
+      reason:
+        conv.suppression_reason ||
+        matchedRecord?.reason ||
+        matchedRecord?.notes ||
+        (isBlocked
+          ? 'Customer blocked business line on WhatsApp (Meta Cloud API error 131051)'
+          : 'Customer sent STOP / Unsubscribe opt-out keyword'),
+      date: conv.suppression_date || matchedRecord?.date || 'Recent',
+      metaErrorCode: matchedRecord?.metaErrorCode || (isBlocked ? 131051 : undefined),
+      campaignName: matchedRecord?.campaignName,
+      record: matchedRecord,
+    };
+  };
+
+  const currentSuppression = getSuppressionStatus(currentConv);
 
   const toggleCustomerPresence = async () => {
     if (!currentConv) return;
@@ -501,6 +549,77 @@ export const ConversationsView: React.FC = () => {
               {currentConv.lead_stage || 'New Lead'}
             </span>
           </div>
+        </div>
+
+        {/* WhatsApp Compliance & Suppression Status Card */}
+        <div className={`p-3 rounded-xl border ${
+          currentSuppression
+            ? 'bg-rose-50/90 border-rose-200 text-rose-900'
+            : 'bg-emerald-50/60 border-emerald-200 text-emerald-950'
+        }`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              WhatsApp Compliance
+            </span>
+            {currentSuppression ? (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 flex items-center gap-1">
+                <Ban className="w-2.5 h-2.5" />
+                <span>{currentSuppression.label}</span>
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                <CheckCircle className="w-2.5 h-2.5" />
+                <span>Active &amp; Opted In</span>
+              </span>
+            )}
+          </div>
+          {currentSuppression ? (
+            <div className="space-y-1.5 text-xs mt-1.5">
+              <p className="text-[11px] text-rose-700 leading-snug font-medium">
+                {currentSuppression.reason}
+              </p>
+              <div className="flex items-center justify-between text-[10px] text-rose-500 font-mono pt-1 border-t border-rose-200/60">
+                <span>Date: {currentSuppression.date}</span>
+                {currentSuppression.metaErrorCode && <span>Code: {currentSuppression.metaErrorCode}</span>}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  removeSuppressionRecord(currentConv.phone_number);
+                  addToast(`Consent verified! ${currentConv.contact_name} re-subscribed.`, 'success');
+                }}
+                className="w-full mt-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Re-subscribe with Consent</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between mt-1 text-[11px] text-emerald-700">
+              <span className="text-[10px] text-slate-500">Zero delivery violations</span>
+              <button
+                type="button"
+                onClick={() => {
+                  addSuppressionRecord({
+                    id: `supp-manual-${Date.now()}`,
+                    name: currentConv.contact_name,
+                    phone: currentConv.phone_number,
+                    type: 'opt_out_stop',
+                    reason: 'Operator manually marked contact as opted-out upon customer request',
+                    date: new Date().toLocaleDateString('en-GB'),
+                    timestamp: Date.now(),
+                    status: 'Suppressed',
+                    source: 'Operator Customer 360',
+                    canResubscribe: true,
+                  });
+                  addToast(`Added ${currentConv.contact_name} to suppression list.`, 'info');
+                }}
+                className="text-[10px] text-rose-600 hover:text-rose-800 font-bold underline cursor-pointer"
+              >
+                + Manual Opt-Out
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Lead Information */}
@@ -932,6 +1051,7 @@ export const ConversationsView: React.FC = () => {
                   (currentConv && String(conv.id) === String(currentConv.id));
                 const lastMessage = (conv.messages && conv.messages.length > 0) ? conv.messages[conv.messages.length - 1] : null;
                 const dateBadge = getConversationDateBadge(conv);
+                const convSuppression = getSuppressionStatus(conv);
 
                 return (
                   <div
@@ -948,7 +1068,22 @@ export const ConversationsView: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1.5">
-                        <div className="font-bold text-xs text-slate-900 truncate">{conv.contact_name || 'Customer'}</div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="font-bold text-xs text-slate-900 truncate">{conv.contact_name || 'Customer'}</div>
+                          {convSuppression && (
+                            <span
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold border shrink-0 ${
+                                convSuppression.isBlocked
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
+                              title={convSuppression.reason}
+                            >
+                              <Ban className="w-2.5 h-2.5" />
+                              <span>{convSuppression.label}</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <span
                             className={`text-[9px] font-semibold px-1.5 py-0.2 rounded tracking-tight ${
@@ -1178,6 +1313,66 @@ export const ConversationsView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Suppression / Opt-Out & Blocked Live Compliance Warning Banner */}
+              {currentSuppression && (
+                <div className="bg-rose-50 border-b border-rose-200/90 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 shadow-2xs">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="p-2 rounded-xl bg-rose-100 text-rose-700 mt-0.5 shrink-0">
+                      <Ban className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs sm:text-sm text-rose-950">
+                          {currentSuppression.isBlocked
+                            ? 'Customer Blocked Business Number'
+                            : 'Customer Opted Out (Unsubscribed)'}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 uppercase tracking-wider">
+                          Compliance Enforced
+                        </span>
+                        {currentSuppression.metaErrorCode && (
+                          <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-white text-rose-800 border border-rose-200">
+                            Meta Error {currentSuppression.metaErrorCode}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-rose-700 mt-0.5 leading-relaxed font-medium">
+                        {currentSuppression.reason}
+                      </p>
+                      <div className="text-[10px] text-rose-600/80 font-mono mt-0.5">
+                        Enforced on {currentSuppression.date} • Promotional broadcasts and automated marketing templates are suspended.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (currentConv) {
+                          removeSuppressionRecord(currentConv.phone_number);
+                          addToast(`Consent re-recorded for ${currentConv.contact_name}. Customer re-subscribed!`, 'success');
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                      title="Clear suppression with explicit customer opt-in consent"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Re-subscribe with Consent</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('bulk-recipients')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                      title="Open Compliance & Suppression List Hub"
+                    >
+                      <span>Suppression Hub</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Chat Messages Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {messageGroups.length === 0 ? (
@@ -1367,11 +1562,29 @@ export const ConversationsView: React.FC = () => {
               <div className="px-5 py-2 bg-white border-t border-slate-200/60 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
                 <span className="text-[11px] font-semibold text-slate-400 shrink-0">Quick Actions:</span>
                 <button
-                  onClick={() => setIsTemplateModalOpen(true)}
-                  className="px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold whitespace-nowrap text-[11px] flex items-center gap-1 shadow-sm cursor-pointer"
+                  onClick={() => {
+                    if (currentSuppression) {
+                      addToast(
+                        `Broadcast templates are restricted for ${currentSuppression.label.toLowerCase()} contacts. Re-subscribe with consent first.`,
+                        'warning'
+                      );
+                      return;
+                    }
+                    setIsTemplateModalOpen(true);
+                  }}
+                  className={`px-2.5 py-1 rounded-full border font-bold whitespace-nowrap text-[11px] flex items-center gap-1 shadow-xs transition-all cursor-pointer ${
+                    currentSuppression
+                      ? 'bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-700'
+                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                  }`}
+                  title={currentSuppression ? `Promotional templates restricted: ${currentSuppression.label}` : 'Use WhatsApp Template'}
                 >
-                  <Sparkles className="w-3 h-3 text-emerald-600" />
-                  <span>Use WhatsApp Template</span>
+                  {currentSuppression ? (
+                    <Ban className="w-3 h-3 text-rose-600" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                  )}
+                  <span>{currentSuppression ? `Template Restricted (${currentSuppression.label})` : 'Use WhatsApp Template'}</span>
                 </button>
                 <button
                   onClick={() => handleQuickAction('Create Lead')}
@@ -1425,6 +1638,30 @@ export const ConversationsView: React.FC = () => {
                   <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
+
+              {/* Caution strip when suppressed */}
+              {currentSuppression && (
+                <div className="px-4 py-1.5 bg-amber-50/90 border-t border-amber-200 flex items-center justify-between text-[11px] text-amber-900">
+                  <div className="flex items-center gap-1.5">
+                    <AlertOctagon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>
+                      <strong>Compliance Notice:</strong> This contact is <strong>{currentSuppression.label}</strong>. Only respond to direct customer-initiated service queries.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currentConv) {
+                        removeSuppressionRecord(currentConv.phone_number);
+                        addToast(`Consent re-recorded for ${currentConv.contact_name}. Customer re-subscribed.`, 'success');
+                      }
+                    }}
+                    className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline shrink-0 ml-2 cursor-pointer"
+                  >
+                    Re-subscribe Contact
+                  </button>
+                </div>
+              )}
 
               {/* Chat Input Box */}
               <form onSubmit={handleSend} className="bg-white p-2.5 sm:p-3 border-t border-slate-200 flex items-center gap-1.5 sm:gap-2 relative">
