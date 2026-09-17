@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   ArrowLeft, Check, AlertCircle, Sparkles, Image, Video, FileText,
   Smartphone, Plus, Trash2, Globe, Phone, ExternalLink,
-  Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw
+  Copy, Smile, Info, Send, CheckCheck, Save, RefreshCw, Paperclip, Mic
 } from 'lucide-react';
 import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
@@ -819,7 +819,7 @@ export const CreateTemplateView: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: STICKY LIVE SMARTPHONE PREVIEW */}
-        <div className="w-[440px] bg-slate-100 p-6 flex flex-col items-center justify-center border-l border-slate-200 shrink-0 select-none overflow-hidden">
+        <div className="w-[440px] bg-slate-100 p-6 flex flex-col items-center justify-start border-l border-slate-200 shrink-0 select-none overflow-y-auto">
           <div className="w-full flex items-center justify-between mb-3 text-xs">
             <span className="font-bold text-slate-700 flex items-center gap-1.5">
               <Smartphone className="w-4 h-4 text-slate-500" />
@@ -848,7 +848,7 @@ export const CreateTemplateView: React.FC = () => {
           </div>
 
           {/* Smartphone Frame */}
-          <div className="w-[330px] h-[600px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20">
+          <div className="w-[340px] h-[640px] max-h-[calc(100vh-140px)] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20">
             {/* Notch */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-black rounded-full z-30 flex items-center justify-center">
               <div className="w-2.5 h-2.5 rounded-full bg-slate-900 ml-auto mr-2" />
@@ -873,13 +873,13 @@ export const CreateTemplateView: React.FC = () => {
 
               {/* Chat Bubble Area */}
               <div
-                className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col justify-end"
+                className="flex-1 p-3 pb-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-400/50 scrollbar-track-transparent space-y-2 flex flex-col justify-start"
                 style={{
                   backgroundImage: `radial-gradient(#CBD5E1 1px, transparent 1px)`,
                   backgroundSize: '16px 16px',
                 }}
               >
-                <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-slate-200/60 overflow-hidden max-w-[280px]">
+                <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-slate-200/60 overflow-hidden w-full max-w-[290px]">
                   {/* Header */}
                   {headerType === 'TEXT' && headerText && (
                     <div className="p-3 pb-1 font-bold text-xs text-slate-900">
@@ -934,7 +934,7 @@ export const CreateTemplateView: React.FC = () => {
                         <button
                           key={i}
                           type="button"
-                          className="w-full py-2 px-3 text-[11px] font-bold text-[#00a884] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5"
+                          className="w-full py-2.5 px-3 text-[11px] font-bold text-[#00a884] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 shrink-0"
                         >
                           {b.type === 'URL' && <ExternalLink className="w-3 h-3 text-[#00a884]" />}
                           {b.type === 'PHONE_NUMBER' && <Phone className="w-3 h-3 text-[#00a884]" />}
@@ -944,6 +944,18 @@ export const CreateTemplateView: React.FC = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* WhatsApp Mini Bottom Bar / Chat Input Simulation */}
+              <div className="p-2 bg-[#F0F2F5] border-t border-slate-200 flex items-center gap-1.5 shrink-0 z-10">
+                <div className="flex-1 bg-white rounded-full px-3 py-1.5 flex items-center gap-2 border border-slate-200/70 shadow-2xs">
+                  <Smile className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="text-[10px] text-slate-400 truncate">Message</span>
+                  <Paperclip className="w-3.5 h-3.5 text-slate-400 ml-auto shrink-0" />
+                </div>
+                <div className="w-7 h-7 rounded-full bg-[#00a884] flex items-center justify-center text-white shrink-0 shadow-xs">
+                  <Mic className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
