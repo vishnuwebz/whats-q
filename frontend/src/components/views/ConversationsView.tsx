@@ -7,13 +7,15 @@ import {
   Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
-  SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle
+  SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
+  Zap, Play, Pause, GitBranch
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
 import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
 import { DeleteConversationModal } from './conversations/DeleteConversationModal';
 import { ManualOptOutModal } from './conversations/ManualOptOutModal';
+import { ChatWorkflowModal } from './conversations/ChatWorkflowModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { Conversation } from '@/types';
 import { apiClient } from '@/api/client';
@@ -57,6 +59,12 @@ export const ConversationsView: React.FC = () => {
     addSuppressionRecord,
     setSuppressionSearchQuery,
     requestSendConfirmation,
+    workflows,
+    setActiveWorkflowId,
+    setActiveWorkflowTitle,
+    setActiveWorkflowGroups,
+    toggleConversationWorkflow,
+    simulateInboundWhatsApp,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
@@ -68,6 +76,8 @@ export const ConversationsView: React.FC = () => {
   const [isManualOptOutModalOpen, setIsManualOptOutModalOpen] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
+  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [testSimulateInput, setTestSimulateInput] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const recordTimerRef = React.useRef<any>(null);
@@ -105,6 +115,29 @@ export const ConversationsView: React.FC = () => {
         (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
       ) || conversations[0]
     : null;
+
+  const handleOpenWorkflowBuilder = (wfName: string = 'Service Booking Flow') => {
+    const matchedWf = (workflows || []).find(
+      (w) => w.name.toLowerCase() === wfName.toLowerCase() || String(w.id) === '4'
+    ) || (workflows && workflows.length > 0 ? workflows[0] : null);
+
+    if (matchedWf) {
+      setActiveWorkflowId(matchedWf.id);
+      setActiveWorkflowTitle(matchedWf.name);
+      if (matchedWf.nodes && Array.isArray(matchedWf.nodes) && matchedWf.nodes.length > 0) {
+        setActiveWorkflowGroups(matchedWf.nodes);
+      } else {
+        setActiveWorkflowGroups(null);
+      }
+    } else {
+      setActiveWorkflowId(4);
+      setActiveWorkflowTitle('Service Booking Flow');
+      setActiveWorkflowGroups(null);
+    }
+    setIsWorkflowModalOpen(false);
+    setActiveTab('automation-builder');
+    addToast(`Loaded ${wfName} in Visual Workflow Builder`, 'info');
+  };
 
   const getSuppressionStatus = (conv: Conversation | null) => {
     if (!conv) return null;
@@ -719,14 +752,83 @@ export const ConversationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Active Workflow Card */}
-        <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-purple-700 uppercase">Active Workflow</span>
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+        {/* Active Workflow Interactive Control Card */}
+        <div className="p-3.5 bg-gradient-to-br from-purple-50/90 to-indigo-50/70 rounded-xl border border-purple-200/90 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${currentConv.active_workflow === 'Paused' ? 'bg-amber-500' : 'bg-purple-600 animate-pulse'}`} />
+              <span className="text-[10px] font-bold text-purple-950 uppercase tracking-wider">
+                Active Workflow
+              </span>
+            </div>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+              currentConv.active_workflow === 'Paused'
+                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                : 'bg-purple-100 text-purple-800 border-purple-300'
+            }`}>
+              {currentConv.active_workflow === 'Paused' ? 'Paused' : 'Running'}
+            </span>
           </div>
-          <div className="font-bold text-xs text-purple-900">{currentConv.active_workflow || 'Service Booking Flow'}</div>
-          <div className="text-[10px] text-purple-600 mt-1">Step 4/6: Appointment Booked</div>
+
+          <div>
+            <div className="font-bold text-xs text-purple-950 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+              <span className="truncate">{currentConv.active_workflow || 'Service Booking Flow'}</span>
+            </div>
+            <p className="text-[10px] text-purple-800/80 mt-0.5 leading-snug">
+              {currentConv.active_workflow === 'Paused'
+                ? 'AI Bot auto-reply is currently paused. Live agent has full manual control.'
+                : 'Automated 4-option WhatsApp router & CRM appointment engine.'}
+            </p>
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-purple-200/60">
+            <button
+              type="button"
+              onClick={() => {
+                const isPaused = currentConv.active_workflow === 'Paused';
+                toggleConversationWorkflow(currentConv.id, !isPaused, 'Service Booking Flow');
+              }}
+              className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                currentConv.active_workflow === 'Paused'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                  : 'bg-white hover:bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+              }`}
+            >
+              {currentConv.active_workflow === 'Paused' ? (
+                <>
+                  <Play className="w-2.5 h-2.5" />
+                  <span>Resume Bot</span>
+                </>
+              ) : (
+                <>
+                  <Pause className="w-2.5 h-2.5" />
+                  <span>Pause Bot</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                handleOpenWorkflowBuilder(currentConv.active_workflow || 'Service Booking Flow');
+              }}
+              className="py-1 px-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-bold shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>Edit Flow</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsWorkflowModalOpen(true)}
+            className="w-full py-0.5 text-center text-[10px] font-semibold text-purple-700 hover:text-purple-950 underline cursor-pointer flex items-center justify-center gap-1"
+          >
+            <span>Inspect Rules &amp; Decision Paths</span>
+            <ChevronRight className="w-2.5 h-2.5" />
+          </button>
         </div>
 
         {/* Tags */}
@@ -1338,6 +1440,21 @@ export const ConversationsView: React.FC = () => {
                   >
                     <Phone className="w-4 h-4" />
                   </button>
+
+                  {/* Active Automation Workflow Trigger & Inspector Button */}
+                  <button
+                    onClick={() => setIsWorkflowModalOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs group"
+                    title="Control & Inspect Active Chatbot Workflow"
+                  >
+                    <Zap className={`w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform fill-purple-200 ${currentConv.active_workflow === 'Paused' ? 'opacity-50' : 'animate-pulse'}`} />
+                    <span className="hidden lg:inline text-purple-600 font-medium">Flow:</span>
+                    <span className="font-bold truncate max-w-[100px] sm:max-w-[130px]">
+                      {currentConv.active_workflow || 'Service Booking Flow'}
+                    </span>
+                    <ExternalLink className="w-3 h-3 text-purple-500 shrink-0" />
+                  </button>
+
                   <button
                     onClick={() => handleQuickAction('Send Quotation')}
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold transition-all cursor-pointer"
@@ -1937,6 +2054,16 @@ export const ConversationsView: React.FC = () => {
             });
             addToast(`Compliance enforced: ${currentConv.contact_name} marked as Opted Out.`, 'warning');
           }}
+        />
+      )}
+
+      {/* Active Workflow Inspector & Controller Modal */}
+      {currentConv && (
+        <ChatWorkflowModal
+          isOpen={isWorkflowModalOpen}
+          onClose={() => setIsWorkflowModalOpen(false)}
+          conversation={currentConv}
+          onOpenWorkflowBuilder={handleOpenWorkflowBuilder}
         />
       )}
     </div>

@@ -342,6 +342,7 @@ interface QiyamState {
   setSelectedConversationId: (id: string | number) => void;
   markConversationAsRead: (id: string | number) => Promise<void>;
   markAllConversationsAsRead: () => Promise<void>;
+  toggleConversationWorkflow: (conversationId: string | number, isPaused: boolean, workflowName?: string) => Promise<void>;
   deleteConversation: (id: string | number) => Promise<boolean>;
   isSimulatorOpen: boolean;
   setIsSimulatorOpen: (open: boolean) => void;
@@ -1411,6 +1412,29 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       await qiyamApi.markAllConversationsRead();
     } catch (e) {
       console.warn('Failed to mark all conversations read on backend:', e);
+    }
+  },
+
+  toggleConversationWorkflow: async (conversationId, isPaused, workflowName = 'Service Booking Flow') => {
+    const nextWf = isPaused ? 'Paused' : (workflowName || 'Service Booking Flow');
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        String(c.id) === String(conversationId) ? { ...c, active_workflow: nextWf } : c
+      ),
+    }));
+    try {
+      await apiClient.post(`/conversations/threads/${conversationId}/toggle_workflow/`, {
+        is_paused: isPaused,
+        workflow_name: workflowName
+      });
+      get().addToast(
+        isPaused
+          ? 'AI Bot auto-reply paused for this conversation'
+          : `AI Bot active with workflow: ${nextWf}`,
+        'info'
+      );
+    } catch (e) {
+      console.warn('Failed to toggle conversation workflow on backend:', e);
     }
   },
 

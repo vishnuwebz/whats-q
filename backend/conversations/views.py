@@ -61,6 +61,216 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = '__all__'
 
+# --- Automated Workflow Engine ---
+
+def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking_id, slot_time, technician_name, tech_phone, est_price, est_val_num):
+    """
+    Evaluates customer inbound message against the active workflow decision tree.
+    Properly matches numeric choices ('1', '1️⃣', '2', '2️⃣', '3', '3️⃣', '4', '4️⃣', 'option 1'...),
+    keywords, slot rescheduling follow-ups, agent handover, and booking confirmations.
+    """
+    lower_text = text_body.strip().lower()
+    clean_choice = re.sub(r'[^a-zA-Z0-9]', '', lower_text)
+
+    # Option 1: Reschedule Booking
+    is_option_1 = (
+        clean_choice in ['1', 'one'] or
+        '1️⃣' in text_body or
+        'option 1' in lower_text or
+        'opt 1' in lower_text or
+        any(w in lower_text for w in ['reschedule', 're-schedule', 'change date', 'change time', 'postpone', 'new slot', 'different date', 'different time'])
+    )
+
+    # Slot Reschedule Follow-up (Customer replied with specific date/time after choosing reschedule)
+    is_reschedule_slot = (
+        not is_option_1 and
+        (
+            any(day in lower_text for day in ['tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'today']) or
+            any(tw in lower_text for tw in ['am', 'pm', 'morning', 'afternoon', 'evening', 'noon'])
+        ) and
+        any(ch.isdigit() for ch in lower_text) and
+        (conv.lead_stage in ['Reschedule Requested', 'Slot Selection'] or conv.status == 'in_progress')
+    )
+
+    # Option 2: Track Technician Status & ETA
+    is_option_2 = (
+        clean_choice in ['2', 'two'] or
+        '2️⃣' in text_body or
+        'option 2' in lower_text or
+        'opt 2' in lower_text or
+        any(w in lower_text for w in ['track', 'technician', 'where', 'status', 'eta', 'arrived', 'reach', 'live location', 'map', 'coming'])
+    )
+
+    # Option 3: View Quotation & Pricing
+    is_option_3 = (
+        clean_choice in ['3', 'three'] or
+        '3️⃣' in text_body or
+        'option 3' in lower_text or
+        'opt 3' in lower_text or
+        any(w in lower_text for w in ['price', 'cost', 'rate', 'quote', 'charges', 'quotation', 'amount', 'pricing', 'estimate', 'fee', 'bill'])
+    )
+
+    # Option 4: Speak with an Agent / Human Handover
+    is_option_4 = (
+        clean_choice in ['4', 'four'] or
+        '4️⃣' in text_body or
+        'option 4' in lower_text or
+        'opt 4' in lower_text or
+        any(w in lower_text for w in ['agent', 'human', 'speak', 'call', 'contact', 'support', 'representative', 'operator', 'person', 'help', 'talk', 'someone'])
+    )
+
+    # Booking Confirmation
+    is_confirm = any(w in lower_text for w in ['confirm', 'confirmed', 'yes', 'approve', 'proceed', 'book'])
+
+    reply_text = ''
+    rich_card = None
+    step_name = 'Inbound Received'
+
+    if is_reschedule_slot:
+        reply_text = (
+            f"✅ *Appointment Slot Updated!*\n\n"
+            f"Hi {cust_name}, your *{service_name}* (Booking {booking_id}) has been updated to your requested slot: *{text_body.strip()}*.\n\n"
+            f"Specialist *{technician_name}* ({tech_phone}) has been notified and will arrive promptly."
+        )
+        rich_card = {
+            'type': 'booking',
+            'title': 'Slot Rescheduled',
+            'date': text_body.strip(),
+            'service': service_name,
+            'amount': est_val_num,
+            'bookingId': booking_id,
+            'actionText': 'View Booking'
+        }
+        conv.status = 'open'
+        conv.lead_stage = 'Slot Confirmed'
+        step_name = 'Slot Updated'
+
+    elif is_option_1:
+        reply_text = (
+            f"📅 *Reschedule Your Appointment*\n\n"
+            f"Hi {cust_name}, your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
+            f"Please reply with your preferred new date and time (e.g., *\"Thursday 2:00 PM\"*), or choose one of our upcoming open slots:\n"
+            f"1️⃣ Tomorrow 02:00 PM\n"
+            f"2️⃣ Friday 10:30 AM\n"
+            f"3️⃣ Saturday 11:00 AM\n\n"
+            f"Our team will immediately confirm the new slot for you!"
+        )
+        rich_card = {
+            'type': 'reschedule',
+            'title': 'Reschedule Requested',
+            'currentSlot': slot_time,
+            'service': service_name,
+            'bookingId': booking_id,
+            'actionText': 'Select New Slot'
+        }
+        conv.status = 'in_progress'
+        conv.lead_stage = 'Reschedule Requested'
+        step_name = 'Option 1: Reschedule'
+
+    elif is_option_2:
+        reply_text = (
+            f"📍 *Live Technician Status*\n\n"
+            f"Hi {cust_name}, your assigned service specialist is *{technician_name}* ({tech_phone}).\n\n"
+            f"• Service: *{service_name}* (Booking {booking_id})\n"
+            f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
+            f"• Estimated Arrival: *15-20 minutes*\n\n"
+            f"Track technician live on map:\n"
+            f"https://coolfix.in/track/{booking_id.replace('#', '')}"
+        )
+        rich_card = {
+            'type': 'tracking',
+            'title': 'Technician En Route',
+            'technician': technician_name,
+            'phone': tech_phone,
+            'service': service_name,
+            'bookingId': booking_id,
+            'eta': '15-20 mins',
+            'actionText': 'Track Live Map'
+        }
+        step_name = 'Option 2: Track Specialist'
+
+    elif is_option_4:
+        reply_text = (
+            f"👨‍💼 *Connecting with Support Specialist*\n\n"
+            f"Hi {cust_name}, our senior operations specialist *{technician_name}* has been assigned to your chat and will assist you directly.\n\n"
+            f"Priority Helpline: *{tech_phone}* / 1800-QIYAM-FIX."
+        )
+        rich_card = {
+            'type': 'agent_handover',
+            'title': 'Agent Assigned',
+            'agent': technician_name,
+            'phone': tech_phone,
+            'status': 'Connected',
+            'actionText': 'Direct Chat Active'
+        }
+        conv.status = 'in_progress'
+        conv.lead_stage = 'Agent Assigned'
+        step_name = 'Option 4: Agent Handover'
+
+    elif is_option_3:
+        reply_text = (
+            f"💰 *Service Quotation & Pricing*\n\n"
+            f"Hi {cust_name}, here is the official estimate for *{service_name}*:\n"
+            f"• Inspection & Diagnostics: ₹800\n"
+            f"• Labour & Service: ₹2,000\n"
+            f"• *Total Estimated Amount: {est_price}*\n\n"
+            f"To approve and reserve your technician slot, reply *CONFIRM*!"
+        )
+        step_name = 'Option 3: Quotation & Pricing'
+
+    elif is_confirm:
+        reply_text = (
+            f"✅ *Booking Confirmed!*\n\n"
+            f"Thank you {cust_name}! Your booking {booking_id} for *{service_name}* on *{slot_time}* is confirmed.\n\n"
+            f"Specialist *{technician_name}* will arrive at your premises on time."
+        )
+        rich_card = {
+            'type': 'booking',
+            'title': 'Booking Confirmed',
+            'date': slot_time,
+            'service': service_name,
+            'amount': est_val_num,
+            'bookingId': booking_id,
+            'actionText': 'View Details'
+        }
+        conv.status = 'open'
+        conv.lead_stage = 'Confirmed'
+        step_name = 'Booking Confirmed'
+
+    else:
+        reply_text = (
+            f"👋 *Welcome to CoolFix Services, {cust_name}!* \n\n"
+            f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
+            f"1️⃣ Reschedule booking\n"
+            f"2️⃣ Track technician status\n"
+            f"3️⃣ View quotation & pricing\n"
+            f"4️⃣ Speak with an agent\n\n"
+            f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+        )
+        step_name = 'Welcome Menu'
+
+    # Increment runs count and log automation execution
+    try:
+        from automation.models import Workflow, AutomationLog
+        w = Workflow.objects.filter(name__icontains='Booking').first() or Workflow.objects.first()
+        if w:
+            w.runs_this_month = (w.runs_this_month or 0) + 1
+            w.save(update_fields=['runs_this_month'])
+        AutomationLog.objects.create(
+            time_str=datetime.datetime.now().strftime('%b %d, %Y %I:%M:%S %p'),
+            workflow_action=step_name,
+            branch=conv.location or 'Kozhikode Head Office',
+            status='success',
+            log_level='Info',
+            message=f"Workflow step '{step_name}' executed for {conv.contact_name} ({conv.phone_number}).",
+            triggered_by='WhatsApp Inbound',
+            duration='0.38s'
+        )
+    except Exception as log_err:
+        logger.warning(f"[Automation Log] Failed to log workflow execution: {log_err}")
+
+    return reply_text, rich_card, step_name
+
 # --- ViewSets ---
 
 class MetaConfigViewSet(viewsets.ViewSet):
@@ -314,6 +524,36 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return Response({
             'success': True,
             'message': 'Suppression record cleared.'
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def toggle_workflow(self, request, pk=None):
+        try:
+            conv = self.get_object()
+        except Exception:
+            conv = Conversation.objects.filter(pk=pk).first()
+            if not conv and str(pk).isdigit():
+                conv = Conversation.objects.filter(pk=int(pk)).first()
+
+        if not conv:
+            return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        is_paused = request.data.get('is_paused')
+        workflow_name = request.data.get('workflow_name', 'Service Booking Flow')
+        if is_paused is not None:
+            conv.active_workflow = 'Paused' if is_paused else (workflow_name or 'Service Booking Flow')
+        elif 'workflow_name' in request.data:
+            conv.active_workflow = workflow_name
+
+        conv.save()
+        emit_event('conversation.updated', {
+            'id': conv.id,
+            'active_workflow': conv.active_workflow
+        })
+        return Response({
+            'success': True,
+            'active_workflow': conv.active_workflow,
+            'conversation': ConversationSerializer(conv).data
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
@@ -1409,7 +1649,7 @@ class WhatsAppWebhookView(APIView):
                         # -------------------------------------------------------------
                         # Automated Contextual Response Engine (100% Automated CRM Flow)
                         # -------------------------------------------------------------
-                        if config and config.auto_reply_enabled:
+                        if config and config.auto_reply_enabled and getattr(conv, 'active_workflow', '') != 'Paused':
                             # 1. Query CRM / Operational Context for this Customer
                             last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
                             apt = None
@@ -1439,95 +1679,19 @@ class WhatsAppWebhookView(APIView):
                             est_val_num = int(conv.estimated_value) if conv.estimated_value else (int(apt.amount) if apt else 2800)
                             est_price = f"₹{est_val_num:,}"
 
-                            # 2. Intent Classification & Context Injection
-                            lower_text = text_body.strip().lower()
-                            reply_text = ''
-                            rich_card = None
-
-                            if any(w in lower_text for w in ['reschedule', 're-schedule', 'change date', 'change time', 'postpone']):
-                                reply_text = (
-                                    f"📅 *Reschedule Your Appointment*\n\n"
-                                    f"Hi {cust_name}, your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
-                                    f"Please reply with your preferred new date and time (e.g., *\"Thursday 2:00 PM\"*), or choose one of our upcoming open slots:\n"
-                                    f"1️⃣ Tomorrow 02:00 PM\n"
-                                    f"2️⃣ Friday 10:30 AM\n"
-                                    f"3️⃣ Saturday 11:00 AM\n\n"
-                                    f"Our team will immediately confirm the new slot for you!"
-                                )
-                                rich_card = {
-                                    'type': 'reschedule',
-                                    'title': 'Reschedule Requested',
-                                    'currentSlot': slot_time,
-                                    'service': service_name,
-                                    'bookingId': booking_id,
-                                    'actionText': 'Select New Slot'
-                                }
-                                conv.status = 'in_progress'
-
-                            elif any(w in lower_text for w in ['track', 'technician', 'where', 'status', 'arrived', 'reach']):
-                                reply_text = (
-                                    f"📍 *Live Technician Status*\n\n"
-                                    f"Hi {cust_name}, your assigned service specialist is *{technician_name}* ({tech_phone}).\n\n"
-                                    f"• Service: *{service_name}* (Booking {booking_id})\n"
-                                    f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
-                                    f"• Estimated Arrival: *15-20 minutes*\n\n"
-                                    f"Track technician live on map:\n"
-                                    f"https://coolfix.in/track/{booking_id.replace('#', '')}"
-                                )
-                                rich_card = {
-                                    'type': 'tracking',
-                                    'title': 'Technician En Route',
-                                    'technician': technician_name,
-                                    'phone': tech_phone,
-                                    'service': service_name,
-                                    'bookingId': booking_id,
-                                    'eta': '15-20 mins',
-                                    'actionText': 'Track Live Map'
-                                }
-
-                            elif any(w in lower_text for w in ['call', 'contact', 'number', 'phone']):
-                                reply_text = (
-                                    f"📞 *Technician Direct Contact*\n\n"
-                                    f"Hi {cust_name}, you can reach your technician *{technician_name}* directly at *{tech_phone}*.\n\n"
-                                    f"Our Central Operations Helpline is also available at 1800-QIYAM-FIX for any urgent escalations."
-                                )
-
-                            elif any(w in lower_text for w in ['price', 'cost', 'rate', 'quote', 'charges', 'quotation', 'amount']):
-                                reply_text = (
-                                    f"💰 *Service Quotation & Pricing*\n\n"
-                                    f"Hi {cust_name}, here is the official estimate for *{service_name}*:\n"
-                                    f"• Inspection & Diagnostics: ₹800\n"
-                                    f"• Labour & Service: ₹2,000\n"
-                                    f"• *Total Estimated Amount: {est_price}*\n\n"
-                                    f"To approve and reserve your technician slot, reply *CONFIRM*!"
-                                )
-
-                            elif any(w in lower_text for w in ['confirm', 'confirmed', 'yes', 'approve', 'proceed', 'book']):
-                                reply_text = (
-                                    f"✅ *Booking Confirmed!*\n\n"
-                                    f"Thank you {cust_name}! Your booking {booking_id} for *{service_name}* on *{slot_time}* is confirmed.\n\n"
-                                    f"Specialist *{technician_name}* will arrive at your premises on time."
-                                )
-                                rich_card = {
-                                    'type': 'booking',
-                                    'title': 'Booking Confirmed',
-                                    'date': slot_time,
-                                    'service': service_name,
-                                    'amount': est_val_num,
-                                    'bookingId': booking_id,
-                                    'actionText': 'View Details'
-                                }
-
-                            else:
-                                reply_text = (
-                                    f"👋 *Welcome to CoolFix Services, {cust_name}!* \n\n"
-                                    f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
-                                    f"1️⃣ Reschedule booking\n"
-                                    f"2️⃣ Track technician status\n"
-                                    f"3️⃣ View quotation & pricing\n"
-                                    f"4️⃣ Speak with an agent\n\n"
-                                    f"Reply with what you need and our team will assist you immediately!"
-                                )
+                            # 2. Intent Classification & Context Injection via Automated Workflow Engine
+                            reply_text, rich_card, step_name = evaluate_workflow_response(
+                                text_body=text_body,
+                                conv=conv,
+                                cust_name=cust_name,
+                                service_name=service_name,
+                                booking_id=booking_id,
+                                slot_time=slot_time,
+                                technician_name=technician_name,
+                                tech_phone=tech_phone,
+                                est_price=est_price,
+                                est_val_num=est_val_num
+                            )
 
                             # 3. Dispatch to WhatsApp via Meta Cloud API
                             meta_bot_msg_id = ''
@@ -1707,30 +1871,40 @@ class SimulateWhatsAppMessageView(APIView):
             sender__in=['agent', 'bot']
         ).exclude(status='read').update(status='read')
 
-        # AI Bot automatic intent & contextual reply
-        bot_reply = None
-        rich_card = None
-        lower = text.lower()
-        if 'ac' in lower or 'service' in lower or 'repair' in lower:
-            reply_text = "Sure! I can help you with that. Please share your location so I can check service availability."
-            if 'koyilandy' in lower or 'street' in lower or 'park' in lower or 'location' in lower or 'yes' in lower:
-                reply_text = "Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #B4821"
-                rich_card = {
-                    'type': 'booking',
-                    'title': 'Booking Confirmed',
-                    'date': 'May 13, 2024 (Mon)',
-                    'time': '10:00 AM - 12:00 PM',
-                    'service': 'AC Repair',
-                    'amount': 2800,
-                    'bookingId': '#B4821',
-                    'actionText': 'View Details'
-                }
-            elif 'price' in lower or 'charge' in lower or 'cost' in lower:
-                reply_text = "Great! We are available at your location. The charges will be ₹2,800. Shall I book it for you?"
-        elif 'quotation' in lower or 'quote' in lower:
-            reply_text = "Hello! Our team has prepared your quotation for AC Maintenance. Total estimate is ₹2,800. Would you like us to proceed?"
-        else:
-            reply_text = f"Hello {contact_name}! Thank you for contacting CoolFix Services. Our team is reviewing your message and will assist you immediately."
+        # AI Bot automatic intent & contextual reply via Workflow Engine
+        last_10 = phone[-10:] if len(phone) >= 10 else phone
+        apt = None
+        job = None
+        if Appointment:
+            apt = Appointment.objects.filter(phone__icontains=last_10).order_by('-id').first()
+            if not apt and contact_name:
+                apt = Appointment.objects.filter(customer_name__icontains=contact_name).order_by('-id').first()
+        if Job:
+            job = Job.objects.filter(phone__icontains=last_10).order_by('-id').first()
+            if not job and contact_name:
+                job = Job.objects.filter(customer_name__icontains=contact_name).order_by('-id').first()
+
+        cust_name = contact_name if contact_name and contact_name != 'WhatsApp Customer' else 'Valued Customer'
+        service_name = conv.service_needed or (apt.service if apt else (job.service if job else 'AC Repair & Service'))
+        booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '#B4821')
+        technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Ramesh Kumar'))
+        tech_phone = '+91 98471 23456'
+        slot_time = f"{apt.date_str} at {apt.time_str}" if apt else "Tomorrow at 10:30 AM"
+        est_val_num = int(conv.estimated_value) if conv.estimated_value else (int(apt.amount) if apt else 2800)
+        est_price = f"₹{est_val_num:,}"
+
+        reply_text, rich_card, step_name = evaluate_workflow_response(
+            text_body=text,
+            conv=conv,
+            cust_name=cust_name,
+            service_name=service_name,
+            booking_id=booking_id,
+            slot_time=slot_time,
+            technician_name=technician_name,
+            tech_phone=tech_phone,
+            est_price=est_price,
+            est_val_num=est_val_num
+        )
 
         bot_msg = Message.objects.create(
             conversation=conv,

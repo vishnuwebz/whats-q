@@ -266,3 +266,91 @@ class MetaServiceTests(TestCase):
 
         invalid3, _ = MetaWhatsAppService.validate_template_name("") # Empty
         self.assertFalse(invalid3)
+
+
+class ChatbotWorkflowEngineTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.config = MetaWhatsAppConfig.objects.create(
+            phone_number_id="100012345678901",
+            waba_id="200012345678901",
+            access_token="EAAtesttokenforqiyambusinessossuite2026validfortestingpurposes",
+            verify_token="test_secret_token_2026",
+            app_secret="",
+            connection_status="connected",
+            auto_reply_enabled=True
+        )
+        self.conv = Conversation.objects.create(
+            contact_name="Rahul Verma",
+            phone_number="+91 98470 12345",
+            status="open",
+            active_workflow="Service Booking Flow",
+            service_needed="AC Repair"
+        )
+
+    def test_inbound_option_1_triggers_reschedule(self):
+        """Typing '1' or 'reschedule' triggers Reschedule appointment flow, not repeated menu"""
+        resp = self.client.post('/api/conversations/simulate/', {
+            'phone': '+91 98470 12345',
+            'name': 'Rahul Verma',
+            'text': '1'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bot_reply = resp.data.get('bot_reply', {})
+        self.assertIn("Reschedule", bot_reply.get('text', ''))
+        self.assertIsNotNone(bot_reply.get('rich_card'))
+        self.assertEqual(bot_reply.get('rich_card', {}).get('type'), 'reschedule')
+
+    def test_inbound_option_2_triggers_technician_tracking(self):
+        """Typing '2' triggers Live Technician Status and ETA tracking"""
+        resp = self.client.post('/api/conversations/simulate/', {
+            'phone': '+91 98470 12345',
+            'name': 'Rahul Verma',
+            'text': '2'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bot_reply = resp.data.get('bot_reply', {})
+        self.assertIn("Live Technician Status", bot_reply.get('text', ''))
+        self.assertEqual(bot_reply.get('rich_card', {}).get('type'), 'tracking')
+
+    def test_inbound_option_3_triggers_quotation(self):
+        """Typing '3' triggers Quotation & Pricing flow"""
+        resp = self.client.post('/api/conversations/simulate/', {
+            'phone': '+91 98470 12345',
+            'name': 'Rahul Verma',
+            'text': '3'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bot_reply = resp.data.get('bot_reply', {})
+        self.assertIn("Quotation & Pricing", bot_reply.get('text', ''))
+
+    def test_inbound_option_4_triggers_agent_handover(self):
+        """Typing '4' triggers agent handover and connects specialist"""
+        resp = self.client.post('/api/conversations/simulate/', {
+            'phone': '+91 98470 12345',
+            'name': 'Rahul Verma',
+            'text': '4'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bot_reply = resp.data.get('bot_reply', {})
+        self.assertIn("Connecting with Support Specialist", bot_reply.get('text', ''))
+        self.assertEqual(bot_reply.get('rich_card', {}).get('type'), 'agent_handover')
+
+    def test_toggle_workflow_pause_and_resume(self):
+        """Toggling workflow to paused stops auto-reply for that conversation"""
+        resp = self.client.post(f'/api/conversations/threads/{self.conv.id}/toggle_workflow/', {
+            'is_paused': True
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.conv.refresh_from_db()
+        self.assertEqual(self.conv.active_workflow, 'Paused')
+
+        # Resume
+        resp = self.client.post(f'/api/conversations/threads/{self.conv.id}/toggle_workflow/', {
+            'is_paused': False,
+            'workflow_name': 'Service Booking Flow'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.conv.refresh_from_db()
+        self.assertEqual(self.conv.active_workflow, 'Service Booking Flow')
+
