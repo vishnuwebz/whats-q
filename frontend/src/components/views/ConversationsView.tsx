@@ -30,6 +30,7 @@ import {
   getConversationDateBadge,
   parseAnyDate,
 } from '@/utils/chatRecency';
+import { normalizeToFlowGroups, SERVICE_BOOKING_FLOW_GROUPS } from '@/utils/serviceBookingFlow';
 
 export const ConversationsView: React.FC = () => {
   const {
@@ -118,25 +119,20 @@ export const ConversationsView: React.FC = () => {
 
   const handleOpenWorkflowBuilder = (wfName: string = 'Service Booking Flow') => {
     const matchedWf = (workflows || []).find(
-      (w) => w.name.toLowerCase() === wfName.toLowerCase() || String(w.id) === '4'
+      (w) => w.name.toLowerCase() === wfName.toLowerCase() || String(w.id) === '5' || String(w.id) === '4'
     ) || (workflows && workflows.length > 0 ? workflows[0] : null);
 
-    if (matchedWf) {
-      setActiveWorkflowId(matchedWf.id);
-      setActiveWorkflowTitle(matchedWf.name);
-      if (matchedWf.nodes && Array.isArray(matchedWf.nodes) && matchedWf.nodes.length > 0) {
-        setActiveWorkflowGroups(matchedWf.nodes);
-      } else {
-        setActiveWorkflowGroups(null);
-      }
-    } else {
-      setActiveWorkflowId(4);
-      setActiveWorkflowTitle('Service Booking Flow');
-      setActiveWorkflowGroups(null);
-    }
+    const activeTitle = matchedWf?.name || wfName || 'Service Booking Flow';
+    setActiveWorkflowId(matchedWf?.id || 5);
+    setActiveWorkflowTitle(activeTitle);
+
+    // Normalize to guaranteed-safe FlowGroup[] format with .items
+    const safeGroups = normalizeToFlowGroups(matchedWf?.nodes, activeTitle);
+    setActiveWorkflowGroups(safeGroups);
+
     setIsWorkflowModalOpen(false);
     setActiveTab('automation-builder');
-    addToast(`Loaded ${wfName} in Visual Workflow Builder`, 'info');
+    addToast(`Loaded "${activeTitle}" in Visual Workflow Builder`, 'info');
   };
 
   const getSuppressionStatus = (conv: Conversation | null) => {

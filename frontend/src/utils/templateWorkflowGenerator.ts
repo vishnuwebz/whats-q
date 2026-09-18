@@ -146,7 +146,7 @@ export function generateWorkflowFromTemplate(
   // Format body text for initial message
   let formattedBody = template.body_text || template.body || 'Welcome! How can we help you today?';
   // If variables are present, ensure sample replacement preview
-  if (template.body_variables) {
+  if (template.body_variables && typeof template.body_variables === 'object') {
     Object.entries(template.body_variables).forEach(([k, val]) => {
       formattedBody = formattedBody.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), `{${val || k}}`);
     });

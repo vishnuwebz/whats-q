@@ -12,6 +12,7 @@ import {
   ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe
 } from 'lucide-react';
 import { generateWorkflowFromTemplate } from '@/utils/templateWorkflowGenerator';
+import { SERVICE_BOOKING_FLOW_GROUPS, normalizeToFlowGroups } from '@/utils/serviceBookingFlow';
 
 // Types for Flow Canvas
 export interface GroupChoiceOption {
@@ -410,9 +411,8 @@ export const WorkflowBuilderView: React.FC = () => {
     if (activeWorkflowTitle) {
       setBotTitle(activeWorkflowTitle);
     }
-    if (activeWorkflowGroups && Array.isArray(activeWorkflowGroups) && activeWorkflowGroups.length > 0) {
-      setGroups(activeWorkflowGroups);
-    }
+    const safeGroups = normalizeToFlowGroups(activeWorkflowGroups, activeWorkflowTitle || 'Service Booking Flow');
+    setGroups(safeGroups);
   }, [activeWorkflowTitle, activeWorkflowGroups]);
 
   // Initial Keyword Rules
@@ -709,7 +709,7 @@ export const WorkflowBuilderView: React.FC = () => {
     }
 
     const updated = groups.map((g) =>
-      g.id === targetGroup.id ? { ...g, items: [...g.items, newItem] } : g
+      g.id === targetGroup.id ? { ...g, items: [...(g.items || []), newItem] } : g
     );
     setGroups(updated);
     addToast(`Added "${blockTitle}" block to ${targetGroup.title}`, 'success');
@@ -736,7 +736,7 @@ export const WorkflowBuilderView: React.FC = () => {
         if (g.id !== groupId) return g;
         return {
           ...g,
-          items: g.items.map((it) => (it.id === itemId ? draftItem : it)),
+          items: (g.items || []).map((it) => (it.id === itemId ? draftItem : it)),
         };
       })
     );
@@ -815,8 +815,12 @@ export const WorkflowBuilderView: React.FC = () => {
   };
 
   // Apply Pre-built Template Flow
-  const handleLoadTemplate = (templateType: 'university' | 'ac_service' | 'ecommerce' | 'blank') => {
-    if (templateType === 'blank') {
+  const handleLoadTemplate = (templateType: 'university' | 'ac_service' | 'ecommerce' | 'blank' | 'service_booking') => {
+    if (templateType === 'service_booking') {
+      setGroups(SERVICE_BOOKING_FLOW_GROUPS);
+      setBotTitle('Service Booking Flow');
+      addToast('Official Service Booking flow loaded with 7 interactive node groups!', 'success');
+    } else if (templateType === 'blank') {
       setGroups([
         {
           id: 'group-1',
@@ -1046,10 +1050,10 @@ export const WorkflowBuilderView: React.FC = () => {
   const renderDynamicConnections = () => {
     const paths: React.ReactElement[] = [];
 
-    groups.forEach((sourceGrp) => {
-      sourceGrp.items.forEach((item, itemIdx) => {
+    (groups || []).forEach((sourceGrp) => {
+      (sourceGrp?.items || []).forEach((item, itemIdx) => {
         // Choice options routing
-        if (item.type === 'choice' && item.options) {
+        if (item.type === 'choice' && Array.isArray(item.options)) {
           item.options.forEach((opt, optIdx) => {
             if (!opt.targetGroup) return;
             const targetGrp = groups.find(
@@ -1643,7 +1647,7 @@ export const WorkflowBuilderView: React.FC = () => {
 
                     {/* Card Items */}
                     <div className="p-3.5 space-y-3 text-xs flex-1">
-                      {grp.items.map((item) => (
+                      {(grp.items || []).map((item) => (
                         <div
                           key={item.id}
                           onClick={() => handleOpenConfigModal(grp, item)}
@@ -3416,6 +3420,25 @@ export const WorkflowBuilderView: React.FC = () => {
                   Pre-Built Starter Blueprints
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div
+                    onClick={() => {
+                      handleLoadTemplate('service_booking');
+                      setIsTemplatesModalOpen(false);
+                    }}
+                    className="p-3.5 bg-emerald-50/50 border border-emerald-300 hover:border-emerald-600 rounded-2xl cursor-pointer hover:shadow-sm transition space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                        <span>Service Booking Flow (WhatsQ Official)</span>
+                      </span>
+                      <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">Active</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      Official 7-group interactive flow: Inbound Welcome, Rescheduling, Technician Live ETA, Official Quotation, Agent Handover, Confirmation & Advance Payment.
+                    </p>
+                  </div>
+
                   <div
                     onClick={() => {
                       handleLoadTemplate('university');

@@ -387,6 +387,37 @@ export interface FlowNode {
   position: { x: number; y: number };
 }
 
+export interface GroupChoiceOption {
+  label: string;
+  targetGroup?: string;
+}
+
+export interface GroupItem {
+  id: string;
+  type: 'message' | 'choice' | 'collect' | 'jump' | 'payment';
+  content?: string;
+  question?: string;
+  options?: GroupChoiceOption[];
+  varName?: string;
+  targetGroup?: string;
+  provider?: 'STRIPE' | 'RAZORPAY' | 'PAYPAL' | 'UPI';
+  currency?: string;
+  amount?: number;
+  quantity?: number;
+  successTarget?: string;
+  failedTarget?: string;
+  footer?: string;
+  buttonLabel?: string;
+}
+
+export interface FlowGroup {
+  id: string;
+  title: string;
+  x: number;
+  y: number;
+  items: GroupItem[];
+}
+
 export interface Workflow {
   id: string | number;
   name: string;
