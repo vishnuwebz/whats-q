@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { IntegrationItem } from '@/types';
 import { INTEGRATION_GUIDES } from './integrationGuides';
+import { IntegrationIcon } from '@/components/common/IntegrationIcon';
 
 interface IntegrationConfigModalProps {
   isOpen: boolean;
@@ -110,8 +111,8 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         {/* ── Top Header Banner ── */}
         <div className="px-5 sm:px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white flex items-center justify-center font-bold text-base shadow-md shrink-0">
-              {integration.name[0]}
+            <div className="w-11 h-11 rounded-xl overflow-hidden shadow-xs border border-slate-200/90 bg-white p-1.5 flex items-center justify-center shrink-0">
+              <IntegrationIcon slug={integration.icon_slug} name={integration.name} className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2">

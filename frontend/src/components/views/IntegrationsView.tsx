@@ -8,6 +8,7 @@ import {
 import { MetaConfigModal } from './ai/MetaConfigModal';
 import { IntegrationConfigModal } from './integrations/IntegrationConfigModal';
 import { IntegrationItem } from '@/types';
+import { IntegrationIcon } from '@/components/common/IntegrationIcon';
 
 const CATEGORIES = ['All', 'Communication', 'Productivity', 'CRM', 'Accounting & Finance', 'Payments', 'E-Commerce'] as const;
 
@@ -48,18 +49,6 @@ export const IntegrationsView: React.FC = () => {
     }
   };
 
-  const getBrandColors = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.includes('whatsapp')) return { bg: 'bg-emerald-500/15', text: 'text-emerald-700', border: 'border-emerald-200' };
-    if (n.includes('google')) return { bg: 'bg-blue-500/15', text: 'text-blue-700', border: 'border-blue-200' };
-    if (n.includes('slack')) return { bg: 'bg-purple-500/15', text: 'text-purple-700', border: 'border-purple-200' };
-    if (n.includes('zoho')) return { bg: 'bg-red-500/15', text: 'text-red-700', border: 'border-red-200' };
-    if (n.includes('quickbooks')) return { bg: 'bg-green-500/15', text: 'text-green-700', border: 'border-green-200' };
-    if (n.includes('shopify')) return { bg: 'bg-teal-500/15', text: 'text-teal-700', border: 'border-teal-200' };
-    if (n.includes('razorpay')) return { bg: 'bg-indigo-500/15', text: 'text-indigo-700', border: 'border-indigo-200' };
-    if (n.includes('woocommerce')) return { bg: 'bg-purple-600/15', text: 'text-purple-700', border: 'border-purple-200' };
-    return { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200' };
-  };
 
   const connectedCount = integrations.filter((i) => i.status === 'connected').length;
 
@@ -131,7 +120,6 @@ export const IntegrationsView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 text-xs">
           {filteredIntegrations.map((app) => {
             const isConnected = app.status === 'connected';
-            const colors = getBrandColors(app.name);
 
             return (
               <div
@@ -140,8 +128,8 @@ export const IntegrationsView: React.FC = () => {
               >
                 <div>
                   <div className="flex items-start justify-between">
-                    <div className={`w-11 h-11 rounded-2xl ${colors.bg} ${colors.text} border ${colors.border} flex items-center justify-center font-bold text-base shadow-xs`}>
-                      {app.name[0]}
+                    <div className="w-12 h-12 rounded-2xl border border-slate-200/90 bg-white p-1.5 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 group-hover:shadow-sm transition-all">
+                      <IntegrationIcon slug={app.icon_slug} name={app.name} className="w-full h-full object-contain" />
                     </div>
                     <span
                       className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${

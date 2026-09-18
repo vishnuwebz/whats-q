@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { MetaConfig } from '@/types';
 import { apiClient } from '@/api/client';
+import { WhatsAppIcon } from '@/components/common/IntegrationIcon';
 
 interface MetaConfigModalProps {
   isOpen: boolean;
@@ -147,8 +148,8 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
         {/* Top Header */}
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 shrink-0">
-              <Globe className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 flex items-center justify-center">
+              <WhatsAppIcon className="w-full h-full" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
