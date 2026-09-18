@@ -258,6 +258,23 @@ function persistCache<T>(key: string, data: T[]) {
   } catch {}
 }
 
+function getStoredQuotationsCache(): Quotation[] {
+  if (typeof window === 'undefined') return INITIAL_QUOTATIONS;
+  try {
+    const raw = localStorage.getItem('whatsq_quotations_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const map = new Map<string, Quotation>();
+        INITIAL_QUOTATIONS.forEach((q) => map.set(q.quotation_number || String(q.id), q));
+        parsed.forEach((q: Quotation) => map.set(q.quotation_number || String(q.id), q));
+        return Array.from(map.values());
+      }
+    }
+  } catch {}
+  return INITIAL_QUOTATIONS;
+}
+
 interface Toast {
   id: string;
   type: 'success' | 'info' | 'warning' | 'error';
@@ -1610,7 +1627,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   inventory: getStoredCache('inventory', INITIAL_INVENTORY),
   transactions: getStoredCache('transactions', INITIAL_TRANSACTIONS),
   invoices: getStoredCache('invoices', INITIAL_INVOICES),
-  quotations: getStoredCache('quotations', INITIAL_QUOTATIONS),
+  quotations: getStoredQuotationsCache(),
   expenses: [],
   accounts: getStoredCache('accounts', INITIAL_ACCOUNTS),
   workflows: [],
@@ -1735,7 +1752,13 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const channelMetrics = safeVal(25, current.channelMetrics, [], 'channelMetrics');
     const intentMetrics  = safeVal(26, current.intentMetrics, [], 'intentMetrics');
     const dailyMetrics   = safeVal(27, current.dailyMetrics, [], 'dailyMetrics');
-    const quotations     = safeVal(28, current.quotations, INITIAL_QUOTATIONS, 'quotations');
+    const rawQuotations = safeVal(28, current.quotations, INITIAL_QUOTATIONS, 'quotations');
+    const quoMap = new Map<string, Quotation>();
+    INITIAL_QUOTATIONS.forEach((q) => quoMap.set(q.quotation_number || String(q.id), q));
+    (rawQuotations || []).forEach((q) => quoMap.set(q.quotation_number || String(q.id), q));
+    (current.quotations || []).forEach((q) => quoMap.set(q.quotation_number || String(q.id), q));
+    const quotations = Array.from(quoMap.values());
+    persistCache('quotations', quotations);
 
     // If all calls rejected, mark backend offline, but preserve current data
     const allRejected = results.every((r) => r.status === 'rejected');
@@ -3282,20 +3305,30 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     try {
       const res = await apiClient.post('/finance/quotations/', item);
       const created = (res?.id && res.success !== false) ? (res as Quotation) : item;
-      set((state) => ({ quotations: [created, ...state.quotations] }));
+      set((state) => {
+        const nextQuos = [created, ...state.quotations.filter((q) => String(q.id) !== String(created.id))];
+        persistCache('quotations', nextQuos);
+        return { quotations: nextQuos };
+      });
       get().addToast(`Quotation "${created.quotation_number}" created!`, 'success');
       return created;
     } catch {
-      set((state) => ({ quotations: [item, ...state.quotations] }));
+      set((state) => {
+        const nextQuos = [item, ...state.quotations.filter((q) => String(q.id) !== String(item.id))];
+        persistCache('quotations', nextQuos);
+        return { quotations: nextQuos };
+      });
       get().addToast(`Quotation "${item.quotation_number}" created`, 'success');
       return item;
     }
   },
 
   updateQuotation: async (id, updates) => {
-    set((state) => ({
-      quotations: state.quotations.map((q) => (String(q.id) === String(id) ? { ...q, ...updates } : q))
-    }));
+    set((state) => {
+      const nextQuos = state.quotations.map((q) => (String(q.id) === String(id) ? { ...q, ...updates } : q));
+      persistCache('quotations', nextQuos);
+      return { quotations: nextQuos };
+    });
     try {
       await apiClient.patch(`/finance/quotations/${id}/`, updates);
     } catch {}
@@ -3305,9 +3338,11 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   deleteQuotation: async (id) => {
-    set((state) => ({
-      quotations: state.quotations.filter((q) => String(q.id) !== String(id))
-    }));
+    set((state) => {
+      const nextQuos = state.quotations.filter((q) => String(q.id) !== String(id));
+      persistCache('quotations', nextQuos);
+      return { quotations: nextQuos };
+    });
     try {
       await apiClient.delete(`/finance/quotations/${id}/`);
     } catch {}
@@ -3347,12 +3382,18 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     } catch {}
 
     const updatedQuo: Quotation = { ...quo, status: 'converted', converted_invoice_id: invNum };
-    set((state) => ({
-      invoices: [newInvoice, ...state.invoices],
-      quotations: state.quotations.map((q) =>
+    set((state) => {
+      const nextInvoices = [newInvoice, ...state.invoices];
+      const nextQuos = state.quotations.map((q) =>
         String(q.id) === String(quotationId) ? updatedQuo : q
-      ),
-    }));
+      );
+      persistCache('invoices', nextInvoices);
+      persistCache('quotations', nextQuos);
+      return {
+        invoices: nextInvoices,
+        quotations: nextQuos,
+      };
+    });
 
     get().addToast(`Quotation ${quo.quotation_number} converted to Invoice ${invNum}!`, 'success');
     return { quotation: updatedQuo, invoice: newInvoice };

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Quotation, QuotationItem } from '@/types';
-import { isDateWithinInterval } from '@/utils/dateFilter';
+import { INITIAL_QUOTATIONS } from '@/store/initialDatasets';
 import {
   FileCheck, Search, Plus, Download, MessageSquare,
   Clock, ArrowRight, Eye, X, Trash2, Calendar,
@@ -23,7 +23,6 @@ export const QuotationsView: React.FC = () => {
     openConversationForContact,
     targetHighlightId,
     globalFilter,
-    globalDateInterval,
   } = useQiyamStore();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -272,42 +271,41 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
   };
 
   // Filtered Quotations List
-  const effectiveSearch = search || globalFilter.query || '';
+  const effectiveSearch = (search || globalFilter.query || '').trim().toLowerCase();
 
   const filtered = useMemo(() => {
     return quotations.filter((quo) => {
-      if (globalFilter.status && globalFilter.status !== 'all') {
+      // 1. Status Filter: Tab selection takes primary precedence
+      if (filterStatus !== 'all') {
+        if (quo.status !== filterStatus) return false;
+      } else if (globalFilter.status && globalFilter.status !== 'all') {
         const s = globalFilter.status.toLowerCase();
-        if (s === 'open' && (quo.status === 'draft' || quo.status === 'sent' || quo.status === 'viewed')) return true;
-        if (s === 'completed' && (quo.status === 'converted' || quo.status === 'accepted')) return true;
-        if (quo.status !== s) return false;
-      } else if (filterStatus !== 'all' && quo.status !== filterStatus) {
-        return false;
+        if (s === 'open') {
+          if (quo.status !== 'draft' && quo.status !== 'sent' && quo.status !== 'viewed') return false;
+        } else if (s === 'completed') {
+          if (quo.status !== 'converted' && quo.status !== 'accepted') return false;
+        } else if (quo.status !== s) {
+          return false;
+        }
       }
 
-      if (
-        !isDateWithinInterval(quo.valid_until, globalDateInterval) &&
-        !(quo.quotation_date && isDateWithinInterval(quo.quotation_date, globalDateInterval))
-      ) {
-        return false;
-      }
-
+      // 2. Search filter
       if (effectiveSearch) {
-        const q = effectiveSearch.toLowerCase();
         const matchesBasic =
-          quo.quotation_number.toLowerCase().includes(q) ||
-          quo.customer_name.toLowerCase().includes(q) ||
-          quo.customer_phone.includes(q) ||
-          (quo.customer_email && quo.customer_email.toLowerCase().includes(q));
+          (quo.quotation_number && quo.quotation_number.toLowerCase().includes(effectiveSearch)) ||
+          (quo.customer_name && quo.customer_name.toLowerCase().includes(effectiveSearch)) ||
+          (quo.customer_phone && quo.customer_phone.includes(effectiveSearch)) ||
+          (quo.customer_email && quo.customer_email.toLowerCase().includes(effectiveSearch)) ||
+          (quo.customer_gstin && quo.customer_gstin.toLowerCase().includes(effectiveSearch));
         const matchesItems = quo.items?.some((item) =>
-          item.description.toLowerCase().includes(q)
+          item.description && item.description.toLowerCase().includes(effectiveSearch)
         );
-        return matchesBasic || matchesItems;
+        if (!matchesBasic && !matchesItems) return false;
       }
 
       return true;
     });
-  }, [quotations, filterStatus, effectiveSearch, globalFilter, globalDateInterval]);
+  }, [quotations, filterStatus, effectiveSearch, globalFilter.status]);
 
   // KPI Metrics Calculation
   const kpis = useMemo(() => {
@@ -340,13 +338,19 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
     };
   }, [quotations]);
 
+  // Helper for dynamic validity date
+  const getDefaultValidUntil = () => {
+    const d = new Date(Date.now() + 15 * 86400000);
+    return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+  };
+
   // Create Form State
   const [formNumber, setFormNumber] = useState(`QUO-2024-${String(43 + quotations.length).padStart(4, '0')}`);
   const [formCustomerName, setFormCustomerName] = useState('');
   const [formCustomerPhone, setFormCustomerPhone] = useState('+91 ');
   const [formCustomerEmail, setFormCustomerEmail] = useState('');
   const [formCustomerGstin, setFormCustomerGstin] = useState('');
-  const [formValidUntil, setFormValidUntil] = useState('June 30, 2024');
+  const [formValidUntil, setFormValidUntil] = useState(getDefaultValidUntil());
   const [formTerms, setFormTerms] = useState('Payment: 50% advance upon confirmation, 50% on job completion. Valid for 30 days.');
   const [formNotes, setFormNotes] = useState('');
 
@@ -499,7 +503,7 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
     setFormCustomerPhone('+91 ');
     setFormCustomerEmail('');
     setFormCustomerGstin('');
-    setFormValidUntil('June 30, 2024');
+    setFormValidUntil(getDefaultValidUntil());
     setFormTerms('Payment: 50% advance upon confirmation, 50% on job completion. Valid for 30 days.');
     setFormNotes('');
     setFormGstRate(18);
@@ -718,8 +722,46 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-slate-400">
                       <FileCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                      <p className="font-semibold text-sm text-slate-600">No quotations found</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Create your first quotation or adjust filter terms</p>
+                      <p className="font-semibold text-sm text-slate-700">No quotations found</p>
+                      <p className="text-xs text-slate-400 mt-0.5 mb-3">
+                        {filterStatus !== 'all'
+                          ? `No quotations matching filter "${filterStatus}".`
+                          : search
+                          ? `No quotations matching search "${search}".`
+                          : 'Create your first commercial quotation to get started.'}
+                      </p>
+                      <div className="flex items-center justify-center gap-2">
+                        {filterStatus !== 'all' && (
+                          <button
+                            type="button"
+                            onClick={() => setFilterStatus('all')}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                          >
+                            View All Quotations ({quotations.length})
+                          </button>
+                        )}
+                        {search && (
+                          <button
+                            type="button"
+                            onClick={() => setSearch('')}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                          >
+                            Clear Search
+                          </button>
+                        )}
+                        {quotations.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              INITIAL_QUOTATIONS.forEach((q) => addQuotation(q));
+                              addToast('Loaded starter quotations', 'success');
+                            }}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition-colors cursor-pointer shadow-sm"
+                          >
+                            Load Starter Quotations
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (

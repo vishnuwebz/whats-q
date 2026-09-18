@@ -233,7 +233,9 @@ Please feel free to ask if you have any questions or require an itemized breakdo
   const effectiveSearch = search || globalFilter.query || '';
 
   const filtered = invoices.filter((inv) => {
-    if (globalFilter.status && globalFilter.status !== 'all') {
+    if (filterStatus !== 'all') {
+      if (inv.status !== filterStatus) return false;
+    } else if (globalFilter.status && globalFilter.status !== 'all') {
       const s = globalFilter.status.toLowerCase();
       const match =
         inv.status === s ||
@@ -242,12 +244,6 @@ Please feel free to ask if you have any questions or require an itemized breakdo
         (s === 'completed' && inv.status === 'paid') ||
         (s === 'overdue' && inv.status === 'overdue');
       if (!match) return false;
-    } else if (filterStatus !== 'all' && inv.status !== filterStatus) {
-      return false;
-    }
-
-    if (!isDateWithinInterval(inv.due_date, globalDateInterval) && !(inv.invoice_date && isDateWithinInterval(inv.invoice_date, globalDateInterval))) {
-      return false;
     }
 
     if (effectiveSearch) {
