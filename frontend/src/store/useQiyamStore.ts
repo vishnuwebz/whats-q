@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import {
   TabType, Conversation, Lead, Deal, FollowUp, Job, Appointment,
   Employee, AttendanceRecord, Task, Route, InventoryItem, Transaction,
-  Invoice, Expense, PaymentAccount, Workflow, AutomationLog, Approval,
+  Invoice, Quotation, Expense, PaymentAccount, Workflow, AutomationLog, Approval,
   KnowledgeArticle, WhatsAppTemplateItem, IntegrationItem, BranchItem, FlowNode, WhatsAppMessage,
   MetaConfig,
   BulkCampaign, BulkContact, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
@@ -38,6 +38,7 @@ import {
   INITIAL_ATTENDANCE,
   INITIAL_TRANSACTIONS,
   INITIAL_INVOICES,
+  INITIAL_QUOTATIONS,
   INITIAL_ACCOUNTS
 } from './initialDatasets';
 import { INITIAL_TEMPLATES } from './initialTemplates';
@@ -373,6 +374,7 @@ interface QiyamState {
   inventory: InventoryItem[];
   transactions: Transaction[];
   invoices: Invoice[];
+  quotations: Quotation[];
   expenses: Expense[];
   accounts: PaymentAccount[];
   workflows: Workflow[];
@@ -514,6 +516,10 @@ interface QiyamState {
   deleteKnowledgeArticle: (id: string | number) => Promise<boolean>;
   voteHelpfulArticle: (id: string | number) => void;
   addPaymentAccount: (acc: Partial<PaymentAccount>) => Promise<PaymentAccount>;
+  addQuotation: (quo: Partial<Quotation>) => Promise<Quotation>;
+  updateQuotation: (id: string | number, updates: Partial<Quotation>) => Promise<Quotation>;
+  deleteQuotation: (id: string | number) => Promise<void>;
+  convertQuotationToInvoice: (id: string | number) => Promise<{ quotation: Quotation; invoice: Invoice }>;
 
   activeWorkflowId: string | number | null;
   setActiveWorkflowId: (id: string | number | null) => void;
@@ -1604,6 +1610,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   inventory: getStoredCache('inventory', INITIAL_INVENTORY),
   transactions: getStoredCache('transactions', INITIAL_TRANSACTIONS),
   invoices: getStoredCache('invoices', INITIAL_INVOICES),
+  quotations: getStoredCache('quotations', INITIAL_QUOTATIONS),
   expenses: [],
   accounts: getStoredCache('accounts', INITIAL_ACCOUNTS),
   workflows: [],
@@ -1659,6 +1666,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       qiyamApi.fetchChannelMetrics(),     // 25
       qiyamApi.fetchIntentMetrics(),      // 26
       qiyamApi.fetchDailyMetrics(),       // 27
+      qiyamApi.fetchQuotations(),         // 28
     ]);
 
     const current = get();
@@ -1727,6 +1735,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const channelMetrics = safeVal(25, current.channelMetrics, [], 'channelMetrics');
     const intentMetrics  = safeVal(26, current.intentMetrics, [], 'intentMetrics');
     const dailyMetrics   = safeVal(27, current.dailyMetrics, [], 'dailyMetrics');
+    const quotations     = safeVal(28, current.quotations, INITIAL_QUOTATIONS, 'quotations');
 
     // If all calls rejected, mark backend offline, but preserve current data
     const allRejected = results.every((r) => r.status === 'rejected');
@@ -1776,6 +1785,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       inventory,
       transactions,
       invoices,
+      quotations,
       expenses,
       accounts,
       workflows,
@@ -1960,6 +1970,9 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const tempId = Date.now();
     const nowTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
 
+    const targetConv = get().conversations.find((c) => String(c.id) === String(conversationId));
+    const activeWf = targetConv?.active_workflow || 'Service Booking Flow';
+
     const optimisticMsg: WhatsAppMessage = {
       id: tempId,
       sender: 'agent',
@@ -1968,6 +1981,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       timestamp: nowTime,
       created_at: new Date().toISOString(),
       status: 'sent',
+      isTemplate: true,
+      workflowName: activeWf,
     };
 
     // 2. Instant Zero-Latency UI Update (append to chat immediately, zero lag)
@@ -3240,6 +3255,107 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       get().addToast(`Invoice "${item.invoice_number}" created`, 'success');
       return item;
     }
+  },
+
+  addQuotation: async (newQuo) => {
+    const nextId = get().quotations.length + 1;
+    const quoNum = newQuo.quotation_number || `QUO-2024-${String(42 + nextId).padStart(4, '0')}`;
+    const item: Quotation = {
+      id: nextId,
+      quotation_number: quoNum,
+      customer_name: newQuo.customer_name || 'Customer Name',
+      customer_email: newQuo.customer_email || 'customer@gmail.com',
+      customer_phone: newQuo.customer_phone || '+91 98765 43210',
+      quotation_date: newQuo.quotation_date || 'May 31, 2024',
+      valid_until: newQuo.valid_until || 'June 15, 2024',
+      amount: Number(newQuo.amount) || 0,
+      subtotal: Number(newQuo.subtotal) || Number(newQuo.amount) || 0,
+      tax_amount: Number(newQuo.tax_amount) || 0,
+      discount_amount: Number(newQuo.discount_amount) || 0,
+      status: newQuo.status || 'draft',
+      converted_invoice_id: newQuo.converted_invoice_id || '',
+      terms: newQuo.terms || 'Validity: 15 days. 50% advance payment required upon acceptance.',
+      notes: newQuo.notes || '',
+      items: newQuo.items || [],
+      ...newQuo,
+    };
+    try {
+      const res = await apiClient.post('/finance/quotations/', item);
+      const created = (res?.id && res.success !== false) ? (res as Quotation) : item;
+      set((state) => ({ quotations: [created, ...state.quotations] }));
+      get().addToast(`Quotation "${created.quotation_number}" created!`, 'success');
+      return created;
+    } catch {
+      set((state) => ({ quotations: [item, ...state.quotations] }));
+      get().addToast(`Quotation "${item.quotation_number}" created`, 'success');
+      return item;
+    }
+  },
+
+  updateQuotation: async (id, updates) => {
+    set((state) => ({
+      quotations: state.quotations.map((q) => (String(q.id) === String(id) ? { ...q, ...updates } : q))
+    }));
+    try {
+      await apiClient.patch(`/finance/quotations/${id}/`, updates);
+    } catch {}
+    const updated = get().quotations.find((q) => String(q.id) === String(id))!;
+    get().addToast(`Quotation updated!`, 'success');
+    return updated;
+  },
+
+  deleteQuotation: async (id) => {
+    set((state) => ({
+      quotations: state.quotations.filter((q) => String(q.id) !== String(id))
+    }));
+    try {
+      await apiClient.delete(`/finance/quotations/${id}/`);
+    } catch {}
+    get().addToast('Quotation deleted', 'info');
+  },
+
+  convertQuotationToInvoice: async (quotationId) => {
+    const quo = get().quotations.find((q) => String(q.id) === String(quotationId));
+    if (!quo) throw new Error('Quotation not found');
+
+    const nextId = get().invoices.length + 1;
+    const invNum = `INV-2024-${String(187 + nextId).padStart(4, '0')}`;
+    const newInvoice: Invoice = {
+      id: nextId,
+      invoice_number: invNum,
+      customer_name: quo.customer_name,
+      customer_email: quo.customer_email || 'customer@gmail.com',
+      customer_phone: quo.customer_phone || '+91 98765 43210',
+      invoice_date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      due_date: new Date(Date.now() + 14 * 86400000).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      amount: quo.amount,
+      status: 'sent',
+      paid_amount: 0,
+      payment_method: 'UPI (GPay)',
+      items: (quo.items && quo.items.length > 0)
+        ? quo.items.map((it) => ({
+            description: it.description,
+            qty: it.qty,
+            unitPrice: it.unitPrice,
+            amount: it.amount,
+          }))
+        : [{ description: `Services as per Quotation ${quo.quotation_number}`, qty: 1, unitPrice: quo.amount, amount: quo.amount }],
+    };
+
+    try {
+      await apiClient.post(`/finance/quotations/${quotationId}/convert-to-invoice/`, { invoice_number: invNum });
+    } catch {}
+
+    const updatedQuo: Quotation = { ...quo, status: 'converted', converted_invoice_id: invNum };
+    set((state) => ({
+      invoices: [newInvoice, ...state.invoices],
+      quotations: state.quotations.map((q) =>
+        String(q.id) === String(quotationId) ? updatedQuo : q
+      ),
+    }));
+
+    get().addToast(`Quotation ${quo.quotation_number} converted to Invoice ${invNum}!`, 'success');
+    return { quotation: updatedQuo, invoice: newInvoice };
   },
 
   addAppointment: async (newApt) => {

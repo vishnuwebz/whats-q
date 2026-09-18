@@ -149,13 +149,28 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Title + Subtitle — always fully visible, no truncation */}
-          <div>
+          {/* Title + Animated Auto-Scrolling Subtext to save space */}
+          <div className="min-w-0 max-w-[190px] xs:max-w-[240px] sm:max-w-[300px] md:max-w-[360px] lg:max-w-[440px]">
             <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight whitespace-nowrap">
               {title}
             </h1>
             {subtitle && (
-              <p className="text-[11px] text-slate-500 mt-0.5 whitespace-nowrap">{subtitle}</p>
+              <div
+                className="relative overflow-hidden w-full h-4 text-[11px] text-slate-500 mt-0.5 [mask-image:linear-gradient(to_right,transparent,black_10px,black_calc(100%-12px),transparent)] select-none cursor-default"
+                title={subtitle}
+              >
+                <div
+                  className="animate-subtext-scroll inline-flex items-center text-slate-500"
+                  style={{
+                    animationDuration: `${Math.max(16, subtitle.length * 0.28)}s`,
+                  }}
+                >
+                  <span className="pr-6">{subtitle}</span>
+                  <span className="pr-6 text-emerald-500 font-bold opacity-60">•</span>
+                  <span className="pr-6">{subtitle}</span>
+                  <span className="pr-6 text-emerald-500 font-bold opacity-60">•</span>
+                </div>
+              </div>
             )}
           </div>
 

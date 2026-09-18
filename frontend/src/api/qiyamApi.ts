@@ -16,6 +16,7 @@ import type {
   Lead,
   MetaConfig,
   PaymentAccount,
+  Quotation,
   Route,
   Task,
   Transaction,
@@ -174,6 +175,10 @@ export const qiyamApi = {
 
   async fetchInvoices(): Promise<Invoice[]> {
     return list<Invoice>('/finance/invoices/');
+  },
+
+  async fetchQuotations(): Promise<Quotation[]> {
+    return list<Quotation>('/finance/quotations/');
   },
 
   async fetchExpenses(): Promise<Expense[]> {

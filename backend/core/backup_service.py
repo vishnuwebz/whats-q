@@ -135,8 +135,9 @@ class DatabaseBackupService:
             pass
 
         try:
-            from finance.models import Invoice, Transaction, Expense, PaymentAccount
+            from finance.models import Invoice, Transaction, Expense, PaymentAccount, Quotation
             counts['invoices'] = Invoice.objects.count()
+            counts['quotations'] = Quotation.objects.count()
             counts['transactions'] = Transaction.objects.count()
             counts['expenses'] = Expense.objects.count()
             counts['accounts'] = PaymentAccount.objects.count()

@@ -469,9 +469,17 @@ export const BulkSendMessageView: React.FC = () => {
                   META CLOUD API
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Broadcast marketing campaigns, transactional alerts, and customer notifications at scale
-              </p>
+              <div
+                className="relative overflow-hidden w-full max-w-[220px] xs:max-w-[280px] sm:max-w-[360px] md:max-w-[440px] h-4 text-xs text-slate-500 mt-0.5 [mask-image:linear-gradient(to_right,transparent,black_8px,black_calc(100%-10px),transparent)] select-none cursor-default"
+                title="Broadcast marketing campaigns, transactional alerts, and customer notifications at scale"
+              >
+                <div className="animate-subtext-scroll inline-flex items-center text-slate-500">
+                  <span className="pr-6">Broadcast marketing campaigns, transactional alerts, and customer notifications at scale</span>
+                  <span className="pr-6 text-emerald-500 font-bold opacity-60">•</span>
+                  <span className="pr-6">Broadcast marketing campaigns, transactional alerts, and customer notifications at scale</span>
+                  <span className="pr-6 text-emerald-500 font-bold opacity-60">•</span>
+                </div>
+              </div>
             </div>
           </div>
 

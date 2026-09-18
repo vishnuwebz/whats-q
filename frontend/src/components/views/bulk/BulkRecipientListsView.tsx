@@ -510,15 +510,39 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                  Recipient Lists & Segments
+                  {viewMode === 'suppression' ? 'Blocked Contacts & Opt-Outs' : 'Recipient Lists & Segments'}
                 </h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  AUDIENCE MANAGER
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  viewMode === 'suppression'
+                    ? 'bg-rose-100 text-rose-800 border-rose-200'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                }`}>
+                  {viewMode === 'suppression' ? 'BLOCKED CONTACTS & COMPLIANCE' : 'AUDIENCE MANAGER'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Manage audience segments, imported contact sheets, and dynamic broadcast groups
-              </p>
+              <div
+                className="relative overflow-hidden w-full max-w-[220px] xs:max-w-[280px] sm:max-w-[360px] md:max-w-[440px] h-4 text-xs text-slate-500 mt-0.5 [mask-image:linear-gradient(to_right,transparent,black_8px,black_calc(100%-10px),transparent)] select-none cursor-default"
+                title={
+                  viewMode === 'suppression'
+                    ? 'Prevent unwanted messages to unsubscribed or blocked contacts and protect your WhatsApp sender quality.'
+                    : 'Manage audience segments, imported contact sheets, and dynamic broadcast groups'
+                }
+              >
+                <div className="animate-subtext-scroll inline-flex items-center text-slate-500">
+                  <span className="pr-6">
+                    {viewMode === 'suppression'
+                      ? 'Prevent unwanted messages to unsubscribed or blocked contacts and protect your WhatsApp sender quality.'
+                      : 'Manage audience segments, imported contact sheets, and dynamic broadcast groups'}
+                  </span>
+                  <span className="pr-6 text-emerald-500 font-bold opacity-60">•</span>
+                  <span className="pr-6">
+                    {viewMode === 'suppression'
+                      ? 'Prevent unwanted messages to unsubscribed or blocked contacts and protect your WhatsApp sender quality.'
+                      : 'Manage audience segments, imported contact sheets, and dynamic broadcast groups'}
+                  </span>
+                  <span className="pr-6 text-emerald-500 font-bold opacity-60">•</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -588,7 +612,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               }`}
             >
               <Ban className="w-4 h-4 text-rose-600" />
-              <span>Suppression &amp; Opt-Outs</span>
+              <span>Blocked Contacts &amp; Opt-Outs</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 totalSuppressedCount > 0
                   ? 'bg-rose-100 text-rose-800 border border-rose-200'

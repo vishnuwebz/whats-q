@@ -8,7 +8,7 @@ import {
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
-  Zap, Play, Pause, GitBranch
+  Zap, Play, Pause, GitBranch, Edit3
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
@@ -1593,6 +1593,30 @@ export const ConversationsView: React.FC = () => {
                         const isDelivered = !isCustomer && !isRead && msg.status === 'delivered';
                         const tooltipStr = formatFullMessageTooltip(msg, currentConv);
 
+                        const isQuotation = 
+                          msg.text.includes('Official Price Quotation') || 
+                          msg.text.includes('Price Quotation') || 
+                          msg.text.toLowerCase().includes('quotation') ||
+                          msg.richCard?.type === 'quotation';
+
+                        const isTemplateMessage = !isCustomer && (
+                          isBot ||
+                          Boolean(msg.isTemplate) ||
+                          Boolean(msg.senderName?.toLowerCase().includes('template')) ||
+                          isQuotation ||
+                          Boolean(msg.richCard) ||
+                          msg.text.includes('📋') ||
+                          msg.text.includes('Valid Until:') ||
+                          msg.text.toLowerCase().includes('booking confirmation') ||
+                          msg.text.toLowerCase().includes('service booking') ||
+                          msg.text.toLowerCase().includes('appointment scheduled') ||
+                          msg.text.toLowerCase().includes('official invoice') ||
+                          msg.text.includes('{{') ||
+                          (msg.text.includes('\n') && (msg.text.includes('*') || msg.text.includes('₹') || msg.text.includes(':')))
+                        );
+
+                        const messageWorkflowName = msg.workflowName || currentConv.active_workflow || 'Service Booking Flow';
+
                         return (
                           <div
                             key={msg.id}
@@ -1608,13 +1632,83 @@ export const ConversationsView: React.FC = () => {
                                   : 'bg-emerald-600 text-white rounded-tr-sm'
                               }`}
                             >
-                              {isBot && (
+                              {/* Service Workflow Option Bar above message template on green chat */}
+                              {isTemplateMessage && (
+                                <div className="mb-2.5 pb-2 border-b border-emerald-400/25">
+                                  <div className="flex items-center justify-between gap-2">
+                                    {/* Workflow Badge & Inspector Trigger */}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsWorkflowModalOpen(true);
+                                      }}
+                                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-400/30 text-emerald-100 hover:text-white transition-all cursor-pointer text-left group min-w-0 shadow-2xs"
+                                      title="Click to inspect active workflow triggers, simulation & settings"
+                                    >
+                                      <Zap
+                                        className={`w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0 group-hover:scale-110 transition-transform ${
+                                          messageWorkflowName === 'Paused' ? 'opacity-50' : 'animate-pulse'
+                                        }`}
+                                      />
+                                      <span className="text-[10px] text-emerald-200/90 font-medium">Flow:</span>
+                                      <span className="text-[11px] font-bold text-white truncate max-w-[120px] sm:max-w-[170px]">
+                                        {messageWorkflowName}
+                                      </span>
+                                      {messageWorkflowName === 'Paused' && (
+                                        <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 border border-amber-400/30">
+                                          Paused
+                                        </span>
+                                      )}
+                                      <ExternalLink className="w-2.5 h-2.5 text-emerald-300/70 group-hover:text-white shrink-0 ml-0.5" />
+                                    </button>
+
+                                    {/* Action Buttons: Edit Flow & Badges */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {isQuotation && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveTab('finance-quotations');
+                                          }}
+                                          className="hidden xs:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 border border-emerald-400/25 text-[9px] font-semibold cursor-pointer transition-colors"
+                                          title="View and manage quotations in Finance"
+                                        >
+                                          <FileText className="w-2.5 h-2.5" />
+                                          <span>Quotation</span>
+                                        </button>
+                                      )}
+                                      {isBot && !isQuotation && (
+                                        <span className="hidden xs:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/25 text-[9px] font-semibold">
+                                          <Bot className="w-2.5 h-2.5" />
+                                          <span>Bot AI</span>
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenWorkflowBuilder(messageWorkflowName);
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-900 active:scale-95 font-bold text-[10px] shadow-xs transition-all cursor-pointer"
+                                        title="Open in Visual Workflow Builder to edit steps, triggers & node logic"
+                                      >
+                                        <Edit3 className="w-3 h-3 text-emerald-700" />
+                                        <span>Edit Flow</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {isBot && !isTemplateMessage && (
                                 <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200 mb-1">
                                   <Bot className="w-3 h-3" />
                                   <span>Qiyam AI Assistant</span>
                                 </div>
                               )}
-                              <div>{msg.text}</div>
+                              <div className="whitespace-pre-wrap break-words">{msg.text}</div>
 
                               {/* Rich Confirmation Card */}
                               {msg.richCard && msg.richCard.type === 'booking' && (

@@ -25,6 +25,7 @@ export type TabType =
   | 'finance-overview'
   | 'finance-transactions'
   | 'finance-invoices'
+  | 'finance-quotations'
   | 'finance-expenses'
   | 'finance-payments'
   | 'finance-accounts'
@@ -57,6 +58,8 @@ export interface WhatsAppMessage {
   timestamp: string;
   created_at?: string;
   status: 'sent' | 'delivered' | 'read' | 'pending';
+  isTemplate?: boolean;
+  workflowName?: string;
   reactions?: { emoji: string; from: 'customer' | 'agent' | 'bot' | 'system' }[];
   richCard?: {
     type: 'booking' | 'payment' | 'quotation';
@@ -320,6 +323,34 @@ export interface Invoice {
     unitPrice: number;
     amount: number;
   }[];
+}
+
+export interface QuotationItem {
+  description: string;
+  qty: number;
+  unitPrice: number;
+  taxRate?: number;
+  discount?: number;
+  amount: number;
+}
+
+export interface Quotation {
+  id: string | number;
+  quotation_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  quotation_date: string;
+  valid_until: string;
+  amount: number;
+  subtotal?: number;
+  tax_amount?: number;
+  discount_amount?: number;
+  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired' | 'converted';
+  converted_invoice_id?: string;
+  terms?: string;
+  notes?: string;
+  items?: QuotationItem[];
 }
 
 export interface Expense {

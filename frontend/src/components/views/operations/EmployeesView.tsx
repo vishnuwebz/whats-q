@@ -19,6 +19,7 @@ export const EmployeesView: React.FC = () => {
     updateEmployee,
     addToast,
     setActiveTab,
+    openConversationForContact,
     globalFilter,
   } = useQiyamStore();
 
@@ -431,15 +432,22 @@ export const EmployeesView: React.FC = () => {
 
               {/* Quick Communication & Duty Action Bar */}
               <div className="grid grid-cols-3 gap-2.5 mt-5">
-                <a
-                  href={`https://wa.me/${activeEmployee.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(activeEmployee.name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold shadow transition"
+                <button
+                  onClick={() => {
+                    openConversationForContact({
+                      name: activeEmployee.name,
+                      phone: activeEmployee.phone,
+                      service: `Staff: ${activeEmployee.role} (${activeEmployee.department})`,
+                      skipConfirmation: true,
+                    });
+                    setSelectedEmployeeId(null);
+                  }}
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold shadow transition cursor-pointer"
+                  title="Open direct WhatsApp chat with employee"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>WhatsApp</span>
-                </a>
+                </button>
 
                 <a
                   href={`tel:${activeEmployee.phone}`}

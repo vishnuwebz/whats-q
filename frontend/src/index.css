@@ -39,3 +39,25 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* Header Auto-scrolling Subtext Marquee */
+@keyframes headerSubtitleScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-subtext-scroll {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: headerSubtitleScroll 25s linear infinite;
+  will-change: transform;
+}
+
+.animate-subtext-scroll:hover {
+  animation-play-state: paused;
+}
+

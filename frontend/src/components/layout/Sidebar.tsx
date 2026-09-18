@@ -10,7 +10,7 @@ import {
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
   User, Shield, LogOut, ArrowRight, ExternalLink, Send,
-  RefreshCw, Search, Database, Globe, Ban
+  RefreshCw, Search, Database, Globe, Ban, FileCheck
 } from 'lucide-react';
 
 interface SidebarMenuItem {
@@ -30,7 +30,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'bulk-templates', title: 'Message Templates', category: 'Messenger', icon: BookOpen, keywords: 'meta templates approved quick replies' },
   { tab: 'bulk-campaigns', title: 'Campaign History', category: 'Messenger', icon: Layers, keywords: 'broadcast analytics sent delivered open rates' },
   { tab: 'bulk-recipients', title: 'Recipient Lists', category: 'Messenger', icon: Users, keywords: 'contacts audience segments groups tags' },
-  { tab: 'bulk-suppression', title: 'Suppression & Compliance', category: 'Messenger', icon: Ban, keywords: 'opt-out blocked stop unsubscribe dnd suppression compliance blacklisted hub' },
+  { tab: 'bulk-suppression', title: 'Blocked Contacts & Opt-outs', category: 'Messenger', icon: Ban, keywords: 'blocked contacts opt-out stop unsubscribe dnd suppression compliance blacklisted hub' },
   { tab: 'bulk-scheduled', title: 'Scheduled Messages', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar' },
   { tab: 'crm-leads', title: 'Leads', category: 'CRM', icon: Users, keywords: 'prospects pipeline inquiries conversion funnel' },
   { tab: 'crm-customers', title: 'Customers', category: 'CRM', icon: UserCheck, keywords: 'clients directory accounts profiles' },
@@ -49,6 +49,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'finance-overview', title: 'Finance Overview', category: 'Finance', icon: DollarSign, keywords: 'revenue profit cash flow ledger balance' },
   { tab: 'finance-transactions', title: 'Transactions', category: 'Finance', icon: Receipt, keywords: 'payments bank entries debits credits log' },
   { tab: 'finance-invoices', title: 'Invoices', category: 'Finance', icon: FileText, keywords: 'billing tax gst statements pdf receivables' },
+  { tab: 'finance-quotations', title: 'Quotations', category: 'Finance', icon: FileCheck, keywords: 'quotations estimates quotes proposals pricing convert invoice' },
   { tab: 'finance-expenses', title: 'Expenses', category: 'Finance', icon: CreditCard, keywords: 'bills receipts disbursements spending' },
   { tab: 'finance-payments', title: 'Payments', category: 'Finance', icon: Wallet, keywords: 'collections payout gateway settlement' },
   { tab: 'finance-accounts', title: 'Chart of Accounts', category: 'Finance', icon: Layers, keywords: 'banking general ledger assets liabilities' },
@@ -104,6 +105,7 @@ export const getTabAccordionSection = (tab: string): AccordionSection => {
     'finance-overview',
     'finance-transactions',
     'finance-invoices',
+    'finance-quotations',
     'finance-expenses',
     'finance-payments',
     'finance-accounts',
@@ -429,7 +431,7 @@ export const Sidebar: React.FC = () => {
   ].includes(activeTab);
   const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
   const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab);
-  const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
+  const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-quotations', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
@@ -815,7 +817,7 @@ export const Sidebar: React.FC = () => {
                       <span>Recipient Lists</span>
                     </button>
 
-                    {/* Suppression & Compliance Hub */}
+                    {/* Blocked Contacts & Opt-outs */}
                     <button
                       data-tab="bulk-suppression"
                       onClick={() => handleTabClick('bulk-suppression')}
@@ -827,7 +829,7 @@ export const Sidebar: React.FC = () => {
                     >
                       <div className="flex items-center gap-2.5">
                         <Ban className={`w-4 h-4 shrink-0 ${isActive('bulk-suppression') ? 'text-white' : 'text-slate-400'}`} />
-                        <span>Suppression &amp; Opt-outs</span>
+                        <span>Blocked Contacts &amp; Opt-outs</span>
                       </div>
                       {suppressionList && suppressionList.length > 0 && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
@@ -1165,6 +1167,16 @@ export const Sidebar: React.FC = () => {
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>Invoices</span>
+                  </button>
+                  <button
+                    data-tab="finance-quotations"
+                    onClick={() => handleTabClick('finance-quotations')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                      isActive('finance-quotations') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                    }`}
+                  >
+                    <FileCheck className="w-3.5 h-3.5" />
+                    <span>Quotations</span>
                   </button>
                   <button
                     data-tab="finance-expenses"

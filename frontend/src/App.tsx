@@ -35,6 +35,7 @@ import { InventoryView } from './components/views/operations/InventoryView';
 import { FinanceOverviewView } from './components/views/finance/FinanceOverviewView';
 import { TransactionsView } from './components/views/finance/TransactionsView';
 import { InvoicesView } from './components/views/finance/InvoicesView';
+import { QuotationsView } from './components/views/finance/QuotationsView';
 import { ExpensesView } from './components/views/finance/ExpensesView';
 import { PaymentsView } from './components/views/finance/PaymentsView';
 import { AccountsView } from './components/views/finance/AccountsView';
@@ -97,6 +98,7 @@ const TAB_TO_PATH: Record<TabType, string> = {
   'finance-overview': '/finance/overview',
   'finance-transactions': '/finance/transactions',
   'finance-invoices': '/finance/invoices',
+  'finance-quotations': '/finance/quotations',
   'finance-expenses': '/finance/expenses',
   'finance-budget': '/finance/budget',
   'finance-payments': '/finance/payments',
@@ -277,6 +279,8 @@ export const App: React.FC = () => {
         return <TransactionsView />;
       case 'finance-invoices':
         return <InvoicesView />;
+      case 'finance-quotations':
+        return <QuotationsView />;
       case 'finance-expenses':
       case 'finance-budget':
         return <ExpensesView />;
