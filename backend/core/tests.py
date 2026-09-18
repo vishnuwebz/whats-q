@@ -61,3 +61,99 @@ class SecurityMiddlewareTests(TestCase):
         self.assertEqual(resp['X-XSS-Protection'], '1; mode=block')
         self.assertEqual(resp['Referrer-Policy'], 'strict-origin-when-cross-origin')
 
+
+class WooCommerceIntegrationTests(TestCase):
+    def setUp(self):
+        from core.models import Integration
+        self.integration = Integration.objects.create(
+            name='WooCommerce',
+            category='E-Commerce',
+            config={
+                'store_url': 'https://coolfix-store.com',
+                'consumer_key': 'ck_testkey123456789',
+                'consumer_secret': 'cs_testsecret123456789',
+                'webhook_secret': 'wc_secret_hash_2026',
+            }
+        )
+
+    def test_woocommerce_test_connection_success(self):
+        """Valid store URL, ck_, and cs_ keys succeed in connection handshake"""
+        from rest_framework.test import APIClient
+        client = APIClient()
+        resp = client.post(f'/api/core/integrations/{self.integration.id}/test-connection/', {
+            'config': {
+                'store_url': 'https://coolfix-store.com',
+                'consumer_key': 'ck_1234567890abcdef',
+                'consumer_secret': 'cs_1234567890abcdef',
+            }
+        }, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data['success'])
+        self.assertIn('authenticated successfully', resp.data['message'])
+
+    def test_woocommerce_test_connection_invalid_keys(self):
+        """Invalid consumer key prefix fails with 400"""
+        from rest_framework.test import APIClient
+        client = APIClient()
+        resp = client.post(f'/api/core/integrations/{self.integration.id}/test-connection/', {
+            'config': {
+                'store_url': 'https://coolfix-store.com',
+                'consumer_key': 'invalid_prefix_key',
+                'consumer_secret': 'cs_12345',
+            }
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.data['success'])
+        self.assertIn('Consumer Key should start with "ck_"', resp.data['message'])
+
+    def test_woocommerce_webhook_order_dispatch(self):
+        """Incoming order webhook creates customer, conversation, and confirmation message"""
+        import hmac
+        import hashlib
+        import base64
+        import json
+        from rest_framework.test import APIClient
+        from conversations.models import Conversation, Message
+
+        client = APIClient()
+        payload = {
+            'id': 9821,
+            'status': 'processing',
+            'total': '3450.00',
+            'currency': 'INR',
+            'billing': {
+                'first_name': 'Zayan',
+                'last_name': 'Malik',
+                'phone': '+919846099887',
+                'email': 'zayan@coolfix-store.com',
+                'address_1': 'Beach Road, Calicut'
+            },
+            'line_items': [
+                {'name': 'Inverter AC Sensor Board', 'quantity': 1, 'price': '3450.00'}
+            ]
+        }
+        body_bytes = json.dumps(payload).encode('utf-8')
+        secret = 'wc_secret_hash_2026'
+        signature = base64.b64encode(hmac.new(secret.encode('utf-8'), body_bytes, hashlib.sha256).digest()).decode('utf-8')
+
+        resp = client.post(
+            '/api/core/integrations/woocommerce/webhook/',
+            data=body_bytes,
+            content_type='application/json',
+            HTTP_X_WC_WEBHOOK_SIGNATURE=signature
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data['success'])
+        self.assertEqual(resp.data['order_id'], 9821)
+
+        conv = Conversation.objects.filter(phone_number='+919846099887').first()
+        self.assertIsNotNone(conv)
+        self.assertEqual(conv.contact_name, 'Zayan Malik')
+        self.assertEqual(conv.source, 'WooCommerce')
+
+        msg = Message.objects.filter(conversation=conv).first()
+        self.assertIsNotNone(msg)
+        self.assertIn('Order Confirmed!', msg.text)
+        self.assertIn('9821', msg.text)
+
+

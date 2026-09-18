@@ -5,7 +5,8 @@ from .views import (
     SystemVersionView, SystemUpdateView, SystemUpdateBroadcastView,
     EventStreamView, EventSyncView,
     BackupStatusView, BackupExportView, BackupImportView,
-    AutoBackupTriggerView, BackupSnapshotsView
+    AutoBackupTriggerView, BackupSnapshotsView,
+    WooCommerceWebhookView
 )
 
 router = DefaultRouter()
@@ -26,5 +27,6 @@ urlpatterns = [
     path('backup/import/', BackupImportView.as_view(), name='backup_import'),
     path('backup/auto-backup/', AutoBackupTriggerView.as_view(), name='backup_auto'),
     path('backup/snapshots/', BackupSnapshotsView.as_view(), name='backup_snapshots'),
+    path('integrations/woocommerce/webhook/', WooCommerceWebhookView.as_view(), name='woocommerce_webhook'),
     path('', include(router.urls)),
 ]

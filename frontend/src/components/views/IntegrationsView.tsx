@@ -57,6 +57,7 @@ export const IntegrationsView: React.FC = () => {
     if (n.includes('quickbooks')) return { bg: 'bg-green-500/15', text: 'text-green-700', border: 'border-green-200' };
     if (n.includes('shopify')) return { bg: 'bg-teal-500/15', text: 'text-teal-700', border: 'border-teal-200' };
     if (n.includes('razorpay')) return { bg: 'bg-indigo-500/15', text: 'text-indigo-700', border: 'border-indigo-200' };
+    if (n.includes('woocommerce')) return { bg: 'bg-purple-600/15', text: 'text-purple-700', border: 'border-purple-200' };
     return { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200' };
   };
 

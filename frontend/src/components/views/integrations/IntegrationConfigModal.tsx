@@ -43,6 +43,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
     if (name.includes('quickbooks')) return 'quickbooks';
     if (name.includes('shopify')) return 'shopify';
     if (name.includes('razorpay')) return 'razorpay';
+    if (name.includes('woocommerce')) return 'woocommerce';
     return 'google';
   }, [integration]);
 
@@ -639,6 +640,124 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* 7. WOOCOMMERCE */}
+              {guideKey === 'woocommerce' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Store URL (WordPress Site URL)
+                    </label>
+                    <input
+                      type="url"
+                      value={formConfig.store_url || ''}
+                      onChange={(e) => handleFieldChange('store_url', e.target.value)}
+                      placeholder="https://yourstore.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-mono text-xs text-slate-800 bg-white"
+                    />
+                    <p className="text-[10.5px] text-slate-400 mt-1">Include https://. Example: https://coolfix-store.com</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Consumer Key (ck_...)
+                    </label>
+                    <input
+                      type="text"
+                      value={formConfig.consumer_key || ''}
+                      onChange={(e) => handleFieldChange('consumer_key', e.target.value)}
+                      placeholder="ck_9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-mono text-xs text-slate-800 bg-white"
+                    />
+                    <p className="text-[10.5px] text-slate-400 mt-1">Generated in WooCommerce &gt; Settings &gt; Advanced &gt; REST API</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Consumer Secret (cs_...)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showSecrets.consumer_secret ? 'text' : 'password'}
+                        value={formConfig.consumer_secret || ''}
+                        onChange={(e) => handleFieldChange('consumer_secret', e.target.value)}
+                        placeholder="••••••••••••••••••••••••"
+                        className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-mono text-xs text-slate-800 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowSecret('consumer_secret')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showSecrets.consumer_secret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        API Version
+                      </label>
+                      <select
+                        value={formConfig.api_version || 'wc/v3'}
+                        onChange={(e) => handleFieldChange('api_version', e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-xs text-slate-800 bg-white font-medium"
+                      >
+                        <option value="wc/v3">WooCommerce REST API v3 (Recommended)</option>
+                        <option value="wc/v2">WooCommerce REST API v2</option>
+                        <option value="wc/v1">WooCommerce REST API v1</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Webhook Secret (HMAC-SHA256)
+                      </label>
+                      <input
+                        type="text"
+                        value={formConfig.webhook_secret || ''}
+                        onChange={(e) => handleFieldChange('webhook_secret', e.target.value)}
+                        placeholder="wc_whsec_qiyam_2026"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-mono text-xs text-slate-800 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
+                    <div>
+                      <div className="text-xs font-semibold text-purple-900">Verify SSL Certificate</div>
+                      <div className="text-[10.5px] text-purple-700">Recommended for live WooCommerce production stores with valid SSL.</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formConfig.verify_ssl ?? true)}
+                      onChange={(e) => handleFieldChange('verify_ssl', e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Copyable Webhook Helper */}
+                  <div className="p-3 bg-slate-900 rounded-xl text-white space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">
+                        WooCommerce Webhook Delivery URL
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(`${callbackDomain}/api/core/integrations/woocommerce/webhook/`, 'wc-webhook-quick')}
+                        className="px-2 py-0.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-medium flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedField === 'wc-webhook-quick' ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
+                        <span>{copiedField === 'wc-webhook-quick' ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                    <div className="font-mono text-[11px] text-purple-200 select-all truncate">
+                      {callbackDomain}/api/core/integrations/woocommerce/webhook/
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1029,6 +1148,72 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                           checked={Boolean(formConfig.instant_pdf_receipt_whatsapp ?? true)}
                           onChange={(e) => handleFieldChange('instant_pdf_receipt_whatsapp', e.target.checked)}
                           className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* WooCommerce Automations */}
+                  {guideKey === 'woocommerce' && (
+                    <>
+                      <div className="p-4 flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Instant WhatsApp Order Confirmation</div>
+                          <div className="text-[11px] text-slate-500">Dispatches an automated WhatsApp order receipt card with line items and order ID upon checkout.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formConfig.order_confirmation_whatsapp ?? true)}
+                          onChange={(e) => handleFieldChange('order_confirmation_whatsapp', e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <div className="p-4 flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Live Order Status Tracking Updates</div>
+                          <div className="text-[11px] text-slate-500">Notifies customer when order status changes to Processing, Completed, or Dispatched.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formConfig.order_status_tracking ?? true)}
+                          onChange={(e) => handleFieldChange('order_status_tracking', e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <div className="p-4 flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Abandoned Checkout Recovery Reminders</div>
+                          <div className="text-[11px] text-slate-500">Sends high-converting WhatsApp recovery message with direct checkout link for pending/failed payments.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formConfig.abandoned_cart_recovery ?? true)}
+                          onChange={(e) => handleFieldChange('abandoned_cart_recovery', e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <div className="p-4 flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Auto-Sync Customer to CRM Leads</div>
+                          <div className="text-[11px] text-slate-500">Automatically creates or updates WhatsQ CRM customer profile, shipping address, and order history.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formConfig.auto_sync_customer_lead ?? true)}
+                          onChange={(e) => handleFieldChange('auto_sync_customer_lead', e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <div className="p-4 flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Low Stock &amp; Inventory Alerts to Staff</div>
+                          <div className="text-[11px] text-slate-500">Dispatches an internal alert to operations channel when product inventory drops below threshold.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formConfig.low_stock_staff_alert ?? false)}
+                          onChange={(e) => handleFieldChange('low_stock_staff_alert', e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
                         />
                       </div>
                     </>

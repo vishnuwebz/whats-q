@@ -314,6 +314,28 @@ class Command(BaseCommand):
                     'payment_reminder_whatsapp': True,
                 }
             },
+            {
+                'name': 'WooCommerce',
+                'category': 'E-Commerce',
+                'description': 'WordPress WooCommerce store order alerts, status tracking, cart recovery and catalog sync',
+                'status': 'partially_connected',
+                'connected_on': 'May 12, 2024',
+                'automations_enabled': 3,
+                'icon_slug': 'woocommerce',
+                'config': {
+                    'store_url': 'https://coolfix-store.com',
+                    'consumer_key': 'ck_9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b',
+                    'consumer_secret': 'cs_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
+                    'webhook_secret': 'wc_whsec_qiyam_2026',
+                    'api_version': 'wc/v3',
+                    'verify_ssl': True,
+                    'order_confirmation_whatsapp': True,
+                    'order_status_tracking': True,
+                    'abandoned_cart_recovery': True,
+                    'auto_sync_customer_lead': True,
+                    'low_stock_staff_alert': False,
+                }
+            },
         ]
         for i in integrations_data:
             Integration.objects.create(**i)

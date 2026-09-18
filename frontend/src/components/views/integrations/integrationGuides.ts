@@ -442,4 +442,82 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
       },
     ],
   },
+  woocommerce: {
+    id: 'woocommerce',
+    name: 'WooCommerce',
+    portalName: 'WordPress Admin & WooCommerce',
+    portalUrl: 'https://woocommerce.com',
+    badge: 'REST API v3 & Webhooks',
+    overview:
+      'Connect your WordPress WooCommerce store to WhatsQ to automate order confirmation notifications on WhatsApp, dispatch live shipment tracking updates, recover abandoned checkouts, and synchronize customer orders directly into CRM Leads.',
+    prerequisites: [
+      'A WordPress website with the WooCommerce plugin activated (version 3.5+)',
+      'Administrator privileges on WordPress Admin dashboard',
+      'Pretty Permalinks enabled in WordPress (Settings > Permalinks - anything other than Plain)',
+      'HTTPS / SSL enabled on your domain (required by WooCommerce for REST API authentication)',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Verify WordPress Permalinks',
+        description:
+          'In your WordPress admin dashboard, navigate to Settings > Permalinks. Ensure permalinks are set to "Post name" or any custom structure. WooCommerce REST API does not function when set to "Plain" (?p=123).',
+        directLink: { label: 'WooCommerce Documentation', url: 'https://woocommerce.com/document/woocommerce-rest-api/' },
+        tip: 'If you just changed permalinks, click "Save Changes" to flush your site rewrite rules.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Navigate to WooCommerce REST API Settings',
+        description:
+          'From the WordPress admin sidebar, go to WooCommerce > Settings > click the "Advanced" tab at the top > click "REST API".',
+        directLink: { label: 'WooCommerce Settings', url: 'https://woocommerce.com' },
+      },
+      {
+        stepNumber: 3,
+        title: 'Generate API Keys (Consumer Key & Consumer Secret)',
+        description:
+          'Click the "Add key" or "Create an API Key" button. Enter Description: "WhatsQ WhatsApp Automation". Set User to your Administrator user. Set Permissions to "Read/Write". Click "Generate API key".',
+        tip: 'Important: Copy the Consumer Key (ck_...) and Consumer Secret (cs_...) immediately! WooCommerce permanently masks the secret once you leave or refresh the page.',
+      },
+      {
+        stepNumber: 4,
+        title: 'Create Order Notification Webhooks',
+        description:
+          'In WooCommerce > Settings > Advanced > click the "Webhooks" sub-tab > click "Add webhook". Set Name to "WhatsQ Order Confirmation", Status to "Active", Topic to "Order created". In Delivery URL, paste the WhatsQ Webhook URL below.',
+        codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/core/integrations/woocommerce/webhook/',
+      },
+      {
+        stepNumber: 5,
+        title: 'Set Webhook Secret & Test Connection in WhatsQ',
+        description:
+          'In the Webhook "Secret" field, enter a secure secret string (e.g. wc_whsec_qiyam_2026). Set API Version to "WP REST API Integration v3". Click "Save webhook". Then paste your Store URL, Consumer Key, Consumer Secret, and Webhook Secret in WhatsQ and click "Test Connection".',
+      },
+    ],
+    scopes: [
+      { name: 'orders.read_write', description: 'Read order details and update order metadata / status notes', level: 'Required' },
+      { name: 'customers.read', description: 'Access customer shipping phone, name, and email for WhatsApp messaging', level: 'Required' },
+      { name: 'products.read', description: 'Access item titles, images, and inventory levels for stock alerts', level: 'Recommended' },
+      { name: 'webhooks.read_write', description: 'Manage and test real-time event webhooks for orders and cart events', level: 'Optional' },
+    ],
+    webhookInfo: {
+      endpointPath: '/api/core/integrations/woocommerce/webhook/',
+      events: ['order.created', 'order.updated', 'customer.created', 'order.deleted'],
+      secretName: 'Webhook Secret',
+      instructions: 'WooCommerce signs every webhook payload with HMAC-SHA256 in the X-WC-Webhook-Signature HTTP header.',
+    },
+    troubleshooting: [
+      {
+        issue: 'Error: woocommerce_rest_cannot_view (401 Unauthorized)',
+        solution: 'Ensure the Consumer Key and Consumer Secret are entered accurately without extra spaces, and that the API key was granted "Read/Write" permissions in WooCommerce.',
+      },
+      {
+        issue: 'Error: Cannot route request / 404 on Webhook URL',
+        solution: 'Make sure your WordPress site has Permalinks configured (Settings > Permalinks > Post name) and your server allows inbound POST requests from your store domain.',
+      },
+      {
+        issue: 'Webhook Signature verification mismatch',
+        solution: 'Verify that the Webhook Secret string in WooCommerce Settings > Advanced > Webhooks exactly matches the secret entered in WhatsQ.',
+      },
+    ],
+  },
 };
