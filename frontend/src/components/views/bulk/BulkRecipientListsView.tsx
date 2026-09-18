@@ -503,7 +503,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
       {/* Header Bar */}
-      <div className="bg-white border-b border-slate-200/90 px-6 py-4 sticky top-0 z-10">
+      <div className="bg-white border-b border-slate-200/90 px-6 py-4 sticky top-0 z-20">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <SidebarToggle />

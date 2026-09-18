@@ -63,15 +63,23 @@ export const QuotationsView: React.FC = () => {
       `${idx + 1}. *${it.description}* (Qty: ${it.qty}) - ₹${it.amount.toLocaleString()}`
     ).join('\n');
 
+    const taxRate = quotation.tax_rate !== undefined ? quotation.tax_rate : 18;
+    const isExempt = quotation.tax_type === 'exempt' || taxRate === 0;
+    const taxLabel = isExempt
+      ? 'Tax Exempt (0% GST)'
+      : quotation.tax_type === 'inter_state'
+      ? `IGST (${taxRate}%)`
+      : `GST (${taxRate}%)`;
+
     const message = `📋 *Official Price Quotation: ${quotation.quotation_number}*
 
 Hello *${quotation.customer_name}*,
-Thank you for choosing *Qiyam Ventures*. Here is your official service estimate:
+Thank you for choosing *Qiyam Ventures*. Here is your official commercial proposal:
 
 ${itemsSummary || `1. *Service Package* - ₹${quotation.amount.toLocaleString()}`}
 
-💰 *Subtotal:* ₹${(quotation.subtotal || quotation.amount).toLocaleString()}
-📊 *GST / Tax:* ₹${(quotation.tax_amount || 0).toLocaleString()}
+💰 *Subtotal (Excl. Tax):* ₹${(quotation.subtotal || quotation.amount).toLocaleString()}
+${quotation.discount_amount ? `🏷️ *Discount:* -₹${quotation.discount_amount.toLocaleString()}\n` : ''}📊 *${taxLabel}:* ₹${(quotation.tax_amount || 0).toLocaleString()}
 💎 *Total Quoted Amount:* ₹${quotation.amount.toLocaleString()}
 📅 *Valid Until:* ${quotation.valid_until}
 
@@ -150,8 +158,13 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
     `).join('');
 
     const subtotal = quo.subtotal || quo.amount;
-    const tax = quo.tax_amount || Math.round(subtotal * 0.18);
+    const taxRate = quo.tax_rate !== undefined ? quo.tax_rate : 18;
+    const tax = quo.tax_amount !== undefined ? quo.tax_amount : Math.round(subtotal * (taxRate / 100));
     const total = quo.amount;
+    const isExempt = quo.tax_type === 'exempt' || taxRate === 0;
+    const isIntra = quo.tax_type !== 'inter_state' && !isExempt;
+    const cgst = isIntra ? Math.round((tax / 2) * 100) / 100 : 0;
+    const sgst = isIntra ? tax - cgst : 0;
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -197,10 +210,12 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
               <div style="font-size: 16px; font-weight: 800; margin-top: 4px; color: #0f172a;">${quo.customer_name}</div>
               <div style="font-size: 13px; color: #475569; margin-top: 2px;">📞 ${quo.customer_phone}</div>
               <div style="font-size: 13px; color: #475569;">✉️ ${quo.customer_email || 'customer@qiyamventures.com'}</div>
+              ${quo.customer_gstin ? `<div style="font-size: 12px; color: #059669; font-weight: 700; margin-top: 2px; font-family: monospace;">GSTIN: ${quo.customer_gstin}</div>` : ''}
             </div>
             <div style="text-align: right;">
               <div><strong>Quotation Date:</strong> ${quo.quotation_date}</div>
               <div><strong>Validity Period:</strong> <span style="color: #dc2626; font-weight: 700;">${quo.valid_until}</span></div>
+              <div><strong>Tax Type:</strong> ${isExempt ? 'Tax Exempt' : isIntra ? 'Intra-State (CGST+SGST)' : 'Inter-State (IGST)'}</div>
               <div><strong>Payment Currency:</strong> INR (₹)</div>
             </div>
           </div>
@@ -222,9 +237,14 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
           </table>
 
           <div class="totals">
-            <div><span>Subtotal (Excl. Tax):</span><span>₹${subtotal.toLocaleString()}</span></div>
-            <div><span>GST (18% Estimated):</span><span>₹${tax.toLocaleString()}</span></div>
+            <div><span>Gross Subtotal:</span><span>₹${subtotal.toLocaleString()}</span></div>
             ${quo.discount_amount ? `<div><span>Discount:</span><span style="color: #059669;">-₹${quo.discount_amount.toLocaleString()}</span></div>` : ''}
+            ${isExempt ? `<div><span>GST (0% Exempt):</span><span>₹0</span></div>` : isIntra ? `
+              <div><span>CGST (${(taxRate / 2).toFixed(1)}%):</span><span>₹${cgst.toLocaleString()}</span></div>
+              <div><span>SGST (${(taxRate / 2).toFixed(1)}%):</span><span>₹${sgst.toLocaleString()}</span></div>
+            ` : `
+              <div><span>IGST (${taxRate}%):</span><span>₹${tax.toLocaleString()}</span></div>
+            `}
             <div class="total-row"><span>Total Quoted Value:</span><span>₹${total.toLocaleString()}</span></div>
           </div>
 
@@ -325,9 +345,19 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
   const [formCustomerName, setFormCustomerName] = useState('');
   const [formCustomerPhone, setFormCustomerPhone] = useState('+91 ');
   const [formCustomerEmail, setFormCustomerEmail] = useState('');
+  const [formCustomerGstin, setFormCustomerGstin] = useState('');
   const [formValidUntil, setFormValidUntil] = useState('June 30, 2024');
   const [formTerms, setFormTerms] = useState('Payment: 50% advance upon confirmation, 50% on job completion. Valid for 30 days.');
   const [formNotes, setFormNotes] = useState('');
+
+  // GST & Tax Configuration State
+  const [formGstRate, setFormGstRate] = useState<number>(18);
+  const [formGstType, setFormGstType] = useState<'intra_state' | 'inter_state' | 'exempt'>('intra_state');
+  const [formIsCustomTax, setFormIsCustomTax] = useState(false);
+  const [formCustomTaxAmount, setFormCustomTaxAmount] = useState<string>('');
+  const [formDiscountType, setFormDiscountType] = useState<'flat' | 'percent'>('flat');
+  const [formDiscountValue, setFormDiscountValue] = useState<string>('0');
+
   const [formItems, setFormItems] = useState<QuotationItem[]>([
     {
       description: 'Daikin Inverter Split AC Complete Servicing & Coil Wash',
@@ -353,7 +383,7 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
         description: 'Commercial AC Inspection & Refrigerant Top-up',
         qty: 1,
         unitPrice: 1500,
-        taxRate: 18,
+        taxRate: formGstRate,
         discount: 0,
         amount: 1500,
       }
@@ -381,10 +411,33 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
     }));
   };
 
-  // Auto calculate form totals
+  // Auto calculate form totals with dynamic GST and discount
   const formSubtotal = formItems.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
-  const formTax = Math.round(formSubtotal * 0.18);
-  const formTotal = formSubtotal + formTax;
+
+  const formDiscountAmount = useMemo(() => {
+    const val = parseFloat(formDiscountValue) || 0;
+    if (val <= 0) return 0;
+    if (formDiscountType === 'percent') {
+      return Math.round(formSubtotal * (val / 100));
+    }
+    return Math.min(formSubtotal, val);
+  }, [formSubtotal, formDiscountType, formDiscountValue]);
+
+  const formTaxableAmount = Math.max(0, formSubtotal - formDiscountAmount);
+
+  const formTax = useMemo(() => {
+    if (formGstType === 'exempt' || formGstRate === 0) return 0;
+    if (formIsCustomTax && formCustomTaxAmount !== '') {
+      return Math.max(0, parseFloat(formCustomTaxAmount) || 0);
+    }
+    return Math.round(formTaxableAmount * (formGstRate / 100));
+  }, [formTaxableAmount, formGstRate, formGstType, formIsCustomTax, formCustomTaxAmount]);
+
+  const formTotal = formTaxableAmount + formTax;
+
+  const cgstAmount = formGstType === 'intra_state' ? Math.round((formTax / 2) * 100) / 100 : 0;
+  const sgstAmount = formGstType === 'intra_state' ? formTax - cgstAmount : 0;
+  const igstAmount = formGstType === 'inter_state' ? formTax : 0;
 
   const handleSaveQuotation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,10 +453,14 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
         customer_name: formCustomerName,
         customer_phone: formCustomerPhone,
         customer_email: formCustomerEmail,
+        customer_gstin: formCustomerGstin.trim(),
         valid_until: formValidUntil,
         amount: formTotal,
         subtotal: formSubtotal,
+        tax_rate: formGstType === 'exempt' ? 0 : formGstRate,
+        tax_type: formGstType,
         tax_amount: formTax,
+        discount_amount: formDiscountAmount,
         terms: formTerms,
         notes: formNotes,
         items: formItems,
@@ -415,12 +472,15 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
         customer_name: formCustomerName,
         customer_phone: formCustomerPhone,
         customer_email: formCustomerEmail,
+        customer_gstin: formCustomerGstin.trim(),
         quotation_date: nowFormatted,
         valid_until: formValidUntil,
         amount: formTotal,
         subtotal: formSubtotal,
+        tax_rate: formGstType === 'exempt' ? 0 : formGstRate,
+        tax_type: formGstType,
         tax_amount: formTax,
-        discount_amount: 0,
+        discount_amount: formDiscountAmount,
         status: 'draft',
         terms: formTerms,
         notes: formNotes,
@@ -438,9 +498,16 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
     setFormCustomerName('');
     setFormCustomerPhone('+91 ');
     setFormCustomerEmail('');
+    setFormCustomerGstin('');
     setFormValidUntil('June 30, 2024');
     setFormTerms('Payment: 50% advance upon confirmation, 50% on job completion. Valid for 30 days.');
     setFormNotes('');
+    setFormGstRate(18);
+    setFormGstType('intra_state');
+    setFormIsCustomTax(false);
+    setFormCustomTaxAmount('');
+    setFormDiscountType('flat');
+    setFormDiscountValue('0');
     setFormItems([
       {
         description: 'Daikin Inverter Split AC Complete Servicing & Coil Wash',
@@ -460,15 +527,23 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
     setFormCustomerName(quo.customer_name);
     setFormCustomerPhone(quo.customer_phone);
     setFormCustomerEmail(quo.customer_email || '');
+    setFormCustomerGstin(quo.customer_gstin || '');
     setFormValidUntil(quo.valid_until);
     setFormTerms(quo.terms || '');
     setFormNotes(quo.notes || '');
+    const initialTaxRate = quo.tax_rate !== undefined ? quo.tax_rate : 18;
+    setFormGstRate(initialTaxRate);
+    setFormGstType(quo.tax_type || (initialTaxRate === 0 ? 'exempt' : 'intra_state'));
+    setFormIsCustomTax(false);
+    setFormCustomTaxAmount(quo.tax_amount ? String(quo.tax_amount) : '');
+    setFormDiscountType('flat');
+    setFormDiscountValue(quo.discount_amount ? String(quo.discount_amount) : '0');
     setFormItems(quo.items && quo.items.length > 0 ? quo.items : [
       {
         description: 'Service Package',
         qty: 1,
         unitPrice: quo.amount,
-        taxRate: 18,
+        taxRate: initialTaxRate,
         discount: 0,
         amount: quo.amount,
       }
@@ -784,6 +859,11 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                   {selectedQuotation.customer_email && (
                     <div className="text-slate-500">{selectedQuotation.customer_email}</div>
                   )}
+                  {selectedQuotation.customer_gstin && (
+                    <div className="text-emerald-700 font-mono text-[10.5px] font-bold mt-0.5">
+                      GSTIN: {selectedQuotation.customer_gstin}
+                    </div>
+                  )}
                 </div>
                 <div className="sm:text-right space-y-1">
                   <div>
@@ -793,6 +873,16 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                   <div>
                     <span className="text-slate-400 font-medium">Valid Until:</span>{' '}
                     <span className="font-bold text-rose-600">{selectedQuotation.valid_until}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium">Tax Mode:</span>{' '}
+                    <span className="font-semibold text-slate-700">
+                      {selectedQuotation.tax_type === 'exempt' || selectedQuotation.tax_rate === 0
+                        ? 'Tax Exempt'
+                        : selectedQuotation.tax_type === 'inter_state'
+                        ? 'Inter-State (IGST)'
+                        : 'Intra-State (CGST+SGST)'}
+                    </span>
                   </div>
                   {selectedQuotation.converted_invoice_id && (
                     <div>
@@ -834,18 +924,42 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
 
               {/* Totals Summary */}
               <div className="flex justify-end">
-                <div className="w-64 space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="w-72 space-y-1.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                   <div className="flex justify-between text-slate-600">
-                    <span>Subtotal:</span>
-                    <span className="font-mono">₹{(selectedQuotation.subtotal || selectedQuotation.amount).toLocaleString()}</span>
+                    <span>Gross Subtotal:</span>
+                    <span className="font-mono font-semibold">₹{(selectedQuotation.subtotal || selectedQuotation.amount).toLocaleString()}</span>
                   </div>
+                  {selectedQuotation.discount_amount ? (
+                    <div className="flex justify-between text-emerald-700">
+                      <span>Discount Applied:</span>
+                      <span className="font-mono font-semibold">-₹{selectedQuotation.discount_amount.toLocaleString()}</span>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between text-slate-600">
-                    <span>Tax / GST:</span>
-                    <span className="font-mono">₹{(selectedQuotation.tax_amount || 0).toLocaleString()}</span>
+                    <span>
+                      {selectedQuotation.tax_type === 'exempt' || selectedQuotation.tax_rate === 0
+                        ? 'GST (0% Exempt):'
+                        : selectedQuotation.tax_type === 'inter_state'
+                        ? `IGST (${selectedQuotation.tax_rate ?? 18}%):`
+                        : `GST (${selectedQuotation.tax_rate ?? 18}%):`}
+                    </span>
+                    <span className="font-mono font-semibold">₹{(selectedQuotation.tax_amount || 0).toLocaleString()}</span>
                   </div>
-                  <div className="border-t border-slate-200 pt-1.5 flex justify-between font-bold text-slate-900 text-sm">
-                    <span>Total Amount:</span>
-                    <span className="text-emerald-700 font-mono">₹{selectedQuotation.amount.toLocaleString()}</span>
+                  {selectedQuotation.tax_type === 'intra_state' && (selectedQuotation.tax_amount || 0) > 0 && (
+                    <div className="pl-2 border-l-2 border-emerald-300 text-[10.5px] text-slate-500 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>CGST ({((selectedQuotation.tax_rate ?? 18) / 2).toFixed(1)}%):</span>
+                        <span className="font-mono">₹{(Math.round(((selectedQuotation.tax_amount || 0) / 2) * 100) / 100).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>SGST ({((selectedQuotation.tax_rate ?? 18) / 2).toFixed(1)}%):</span>
+                        <span className="font-mono">₹{((selectedQuotation.tax_amount || 0) - (Math.round(((selectedQuotation.tax_amount || 0) / 2) * 100) / 100)).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-900 text-sm">
+                    <span>Total Quoted Amount:</span>
+                    <span className="text-emerald-700 font-mono font-extrabold">₹{selectedQuotation.amount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -980,6 +1094,18 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Customer GSTIN (Optional)</label>
+                    <input
+                      type="text"
+                      value={formCustomerGstin}
+                      onChange={(e) => setFormCustomerGstin(e.target.value.toUpperCase())}
+                      placeholder="e.g. 32AAAAA0000A1Z5"
+                      maxLength={15}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono uppercase text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Validity Period with Quick Presets */}
@@ -1091,19 +1217,213 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                   </div>
                 </div>
 
-                {/* Subtotals Box */}
-                <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-1">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal:</span>
-                    <span className="font-mono font-semibold">₹{formSubtotal.toLocaleString()}</span>
+                {/* GST, Tax Rates & Financial Adjustments Box */}
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                    <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Percent className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>GST, Tax Rate &amp; Discounts</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Commercial Tax Engine
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>GST (18% Estimated):</span>
-                    <span className="font-mono font-semibold">₹{formTax.toLocaleString()}</span>
+
+                  {/* Subtotal row */}
+                  <div className="flex justify-between text-slate-700 text-xs">
+                    <span className="font-medium">Gross Subtotal (Excl. Tax):</span>
+                    <span className="font-mono font-bold">₹{formSubtotal.toLocaleString()}</span>
                   </div>
-                  <div className="border-t border-emerald-200/60 pt-1 flex justify-between font-bold text-slate-900 text-sm">
-                    <span>Total Estimate:</span>
-                    <span className="text-emerald-700 font-mono font-black">₹{formTotal.toLocaleString()}</span>
+
+                  {/* Discount controls */}
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-slate-700">Special Discount (Optional)</label>
+                      <div className="flex items-center gap-1 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setFormDiscountType('flat')}
+                          className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
+                            formDiscountType === 'flat'
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Flat (₹)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormDiscountType('percent')}
+                          className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
+                            formDiscountType === 'percent'
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Percentage (%)
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={formDiscountValue}
+                        onChange={(e) => setFormDiscountValue(e.target.value)}
+                        placeholder="0"
+                        className="w-32 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <span className="text-[11px] text-emerald-700 font-mono font-semibold">
+                        {formDiscountAmount > 0 ? `- ₹${formDiscountAmount.toLocaleString()}` : 'No discount applied'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Taxable base if discount applied */}
+                  {formDiscountAmount > 0 && (
+                    <div className="flex justify-between text-slate-700 text-xs px-1">
+                      <span className="font-medium text-slate-600">Taxable Net Subtotal:</span>
+                      <span className="font-mono font-bold">₹{formTaxableAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {/* GST Slabs & Tax Mode */}
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <label className="text-[11px] font-semibold text-slate-700">GST / Tax Slab Rate</label>
+                      {/* Quick Presets */}
+                      <div className="flex items-center gap-1 text-[10.5px]">
+                        {[0, 5, 12, 18, 28].map((rate) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => {
+                              setFormGstRate(rate);
+                              if (rate === 0) setFormGstType('exempt');
+                              else if (formGstType === 'exempt') setFormGstType('intra_state');
+                              setFormIsCustomTax(false);
+                            }}
+                            className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
+                              formGstRate === rate && !formIsCustomTax
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {rate === 0 ? '0% Exempt' : `${rate}%`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tax Type / Split Selector */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 font-medium">Tax Mode:</span>
+                        <select
+                          value={formGstType}
+                          onChange={(e) => {
+                            const val = e.target.value as 'intra_state' | 'inter_state' | 'exempt';
+                            setFormGstType(val);
+                            if (val === 'exempt') setFormGstRate(0);
+                            else if (formGstRate === 0) setFormGstRate(18);
+                          }}
+                          className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-700 outline-none text-xs"
+                        >
+                          <option value="intra_state">Intra-State (CGST + SGST)</option>
+                          <option value="inter_state">Inter-State (IGST)</option>
+                          <option value="exempt">Tax Exempt / Zero-Rated</option>
+                        </select>
+                      </div>
+
+                      {/* Custom % rate input */}
+                      {formGstType !== 'exempt' && (
+                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                          <span className="text-slate-500 font-medium">Custom Rate:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={formGstRate}
+                            onChange={(e) => {
+                              setFormGstRate(parseFloat(e.target.value) || 0);
+                              setFormIsCustomTax(false);
+                            }}
+                            className="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 text-center outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                          <span className="text-slate-400 font-bold">%</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tax Breakdown Rows */}
+                    <div className="pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-600">
+                      {formGstType === 'exempt' || formGstRate === 0 ? (
+                        <div className="flex justify-between text-slate-500 italic">
+                          <span>Tax Status:</span>
+                          <span>Zero-rated / Exempt from GST</span>
+                        </div>
+                      ) : formGstType === 'intra_state' ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span>CGST ({(formGstRate / 2).toFixed(1)}%):</span>
+                            <span className="font-mono font-semibold">₹{cgstAmount.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>SGST ({(formGstRate / 2).toFixed(1)}%):</span>
+                            <span className="font-mono font-semibold">₹{sgstAmount.toLocaleString()}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span>IGST ({formGstRate}%):</span>
+                          <span className="font-mono font-semibold">₹{igstAmount.toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      {/* Manual Tax Amount Override */}
+                      <div className="pt-1 flex items-center justify-between text-[10.5px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!formIsCustomTax) {
+                              setFormCustomTaxAmount(String(formTax));
+                            }
+                            setFormIsCustomTax(!formIsCustomTax);
+                          }}
+                          className="text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer underline flex items-center gap-1"
+                        >
+                          {formIsCustomTax ? '✓ Revert to Auto-Calculate Tax' : '✏️ Override Exact Tax Amount (₹)'}
+                        </button>
+                        {formIsCustomTax && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-500">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formCustomTaxAmount}
+                              onChange={(e) => setFormCustomTaxAmount(e.target.value)}
+                              placeholder="Tax ₹"
+                              className="w-24 px-2 py-0.5 bg-amber-50 border border-amber-300 rounded-lg text-xs font-mono font-bold text-amber-900 outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total Estimate summary card */}
+                  <div className="p-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl border border-emerald-200/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-extrabold text-slate-800 block">Total Quoted Estimate:</span>
+                      <span className="text-[10px] text-slate-500">
+                        Includes {formGstType === 'exempt' || formGstRate === 0 ? '0% GST' : `${formGstRate}% GST (${formGstType === 'intra_state' ? 'CGST+SGST' : 'IGST'})`}
+                        {formDiscountAmount > 0 ? ` • Less ₹${formDiscountAmount.toLocaleString()} discount` : ''}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg font-black text-emerald-800 font-mono">₹{formTotal.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
 

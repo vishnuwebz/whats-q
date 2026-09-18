@@ -340,10 +340,13 @@ export interface Quotation {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
+  customer_gstin?: string;
   quotation_date: string;
   valid_until: string;
   amount: number;
   subtotal?: number;
+  tax_rate?: number;
+  tax_type?: 'intra_state' | 'inter_state' | 'exempt';
   tax_amount?: number;
   discount_amount?: number;
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired' | 'converted';

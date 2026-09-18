@@ -194,19 +194,15 @@ export const WorkflowBuilderView: React.FC = () => {
 
   // Test Bot Modal State
   const [isTestBotOpen, setIsTestBotOpen] = useState(false);
-  const [testMessages, setTestMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; options?: string[]; isPayment?: boolean }>>([
-    {
-      sender: 'bot',
-      text: 'Hi Rahul! Greetings from ARC Admissions. Our smart chatbot will guide you through the process.',
-    },
-    {
-      sender: 'bot',
-      text: 'Is Rahul your correct name?',
-      options: ['Yes', 'No', 'Default'],
-    }
-  ]);
+  const [testMessages, setTestMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; options?: string[]; isPayment?: boolean }>>([]);
   const [userChatInput, setUserChatInput] = useState('');
   const [currentStep, setCurrentStep] = useState<string>('group-1');
+  const [simulatedVars, setSimulatedVars] = useState<Record<string, string>>({
+    name: 'Ramesh Kumar',
+    customer: 'Malabar Gold HQ',
+    service: 'Inverter AC Servicing & Coil Wash',
+    quote_no: 'QUO-2024-0037',
+  });
 
   // Create New Rule Modal
   const [isNewRuleModalOpen, setIsNewRuleModalOpen] = useState(false);
@@ -974,61 +970,186 @@ export const WorkflowBuilderView: React.FC = () => {
     setIsTemplatesModalOpen(false);
   };
 
-  // Interactive Test Bot Handlers
+  // Helper to replace workflow variables in bot text
+  const replaceSimulatedVars = (rawText: string, vars: Record<string, string>) => {
+    if (!rawText) return '';
+    let result = rawText;
+    Object.keys(vars).forEach((key) => {
+      result = result.split(`{${key}}`).join(vars[key]);
+      result = result.split(`{STAT_${key.toUpperCase()}}`).join(vars[key]);
+    });
+    // Fallback common variables
+    result = result.replace(/{STAT_NAME}|{name}/gi, vars.name || 'Rahul');
+    result = result.replace(/{customer}|{customer_name}/gi, vars.customer || 'Customer');
+    return result;
+  };
+
+  // Extract messages from any group for the test bot
+  const getMessagesFromGroup = (
+    grp: FlowGroup,
+    vars: Record<string, string>
+  ): Array<{ sender: 'bot'; text: string; options?: string[]; isPayment?: boolean }> => {
+    const msgs: Array<{ sender: 'bot'; text: string; options?: string[]; isPayment?: boolean }> = [];
+    if (!grp || !grp.items) return msgs;
+
+    grp.items.forEach((item) => {
+      if (item.type === 'message' && item.content) {
+        msgs.push({
+          sender: 'bot',
+          text: replaceSimulatedVars(item.content, vars),
+        });
+      } else if (item.type === 'choice') {
+        const questionText = replaceSimulatedVars(
+          item.question || item.content || 'Please choose an option:',
+          vars
+        );
+        const optionsList = (item.options || []).map((o) => o.label);
+        msgs.push({
+          sender: 'bot',
+          text: questionText,
+          options: optionsList.length > 0 ? optionsList : undefined,
+        });
+      } else if (item.type === 'payment') {
+        const paymentText = replaceSimulatedVars(
+          item.content || `Checkout Token: ₹${item.amount || 199} via ${item.provider || 'UPI'}`,
+          vars
+        );
+        msgs.push({
+          sender: 'bot',
+          text: paymentText,
+          isPayment: true,
+          options: [
+            `Pay ₹${item.amount || 199} via ${item.provider || 'UPI'}`,
+            'Cancel'
+          ],
+        });
+      }
+    });
+
+    return msgs;
+  };
+
+  // Launch or reset test bot simulator for the currently loaded workflow
+  const handleOpenTestBot = () => {
+    const initialVars = {
+      name: 'Ramesh Kumar',
+      customer: 'Malabar Gold HQ',
+      service: 'Inverter AC Maintenance',
+      quote_no: 'QUO-2024-0037',
+    };
+    setSimulatedVars(initialVars);
+
+    const startGroup = groups[0];
+    if (startGroup) {
+      setCurrentStep(startGroup.id);
+      const initialMsgs = getMessagesFromGroup(startGroup, initialVars);
+      setTestMessages(
+        initialMsgs.length > 0
+          ? initialMsgs
+          : [{ sender: 'bot', text: `Testing workflow: "${botTitle}". Hello! How can we assist you today?` }]
+      );
+    } else {
+      setTestMessages([
+        { sender: 'bot', text: `Flow "${botTitle}" has no groups yet. Add groups in the canvas to test.` }
+      ]);
+    }
+    setIsTestBotOpen(true);
+  };
+
+  // Interactive Test Bot Handlers - Dynamically branches based on active flow groups
   const handleOptionClick = (opt: string) => {
     const nextMessages = [
       ...testMessages,
       { sender: 'user' as const, text: opt },
     ];
-    const optLower = opt.toLowerCase();
+    const optLower = opt.toLowerCase().trim();
 
-    if (optLower === 'yes') {
+    // 1. Find current active group
+    const currentGroup = groups.find((g) => g.id === currentStep) || groups[0];
+    let nextTargetId: string | undefined = undefined;
+
+    // Look for matched option in current group
+    if (currentGroup && currentGroup.items) {
+      for (const item of currentGroup.items) {
+        if (item.type === 'choice' && Array.isArray(item.options)) {
+          const matched = item.options.find(
+            (o) =>
+              o.label.toLowerCase().trim() === optLower ||
+              optLower.includes(o.label.toLowerCase().trim()) ||
+              o.label.toLowerCase().trim().includes(optLower)
+          );
+          if (matched && matched.targetGroup) {
+            nextTargetId = matched.targetGroup;
+            break;
+          }
+        }
+        if (item.type === 'payment') {
+          if (optLower.includes('pay') || optLower.includes('upi') || optLower.includes('stripe')) {
+            if (item.successTarget) {
+              nextTargetId = item.successTarget;
+              break;
+            }
+          } else if (optLower.includes('cancel')) {
+            if (item.failedTarget) {
+              nextTargetId = item.failedTarget;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. If not found in current group, search across all groups by title or clean label
+    if (!nextTargetId) {
+      const matchedGroup = groups.find(
+        (g) =>
+          g.title.toLowerCase().includes(optLower) ||
+          optLower.includes(g.title.toLowerCase().replace(/group\s*#?\d+\s*-?\s*/i, '').trim())
+      );
+      if (matchedGroup) {
+        nextTargetId = matchedGroup.id;
+      }
+    }
+
+    // 3. If target found, load that group's messages
+    if (nextTargetId) {
+      const targetGroup = groups.find(
+        (g) => g.id === nextTargetId || g.title.toLowerCase() === nextTargetId?.toLowerCase()
+      );
+      if (targetGroup) {
+        setCurrentStep(targetGroup.id);
+        const groupMsgs = getMessagesFromGroup(targetGroup, simulatedVars);
+        if (groupMsgs.length > 0) {
+          nextMessages.push(...groupMsgs);
+        } else {
+          nextMessages.push({
+            sender: 'bot',
+            text: `Navigated to ${targetGroup.title}.`,
+          });
+        }
+        setTestMessages(nextMessages);
+        return;
+      }
+    }
+
+    // 4. Fallback for payment simulation or confirmation
+    if (optLower.includes('pay') || optLower.includes('upi') || optLower.includes('stripe')) {
       nextMessages.push({
         sender: 'bot',
-        text: 'What is the purpose of your travel ?',
-        options: ['Study abroad', 'Work abroad', 'Migrate', 'Default']
+        text: '✅ Payment confirmation received! Your appointment is verified and recorded.',
       });
-      setCurrentStep('group-3');
-    } else if (optLower === 'no') {
-      nextMessages.push({
-        sender: 'bot',
-        text: 'What is your good name ?'
-      });
-      setCurrentStep('group-2');
-    } else if (optLower === 'study abroad') {
-      nextMessages.push({
-        sender: 'bot',
-        text: 'Field of study: Select your preferred field from the list below:',
-        options: ['Computer Science', 'Business Studies', 'Medical Studies', 'Law & Order']
-      });
-      setCurrentStep('group-7');
-    } else if (['computer science', 'business studies', 'medical studies', 'law & order'].includes(optLower)) {
-      nextMessages.push({
-        sender: 'bot',
-        text: `Great choice! "${opt}" program requires an application fee of $49 USD. Please proceed with Stripe Checkout below:`,
-        isPayment: true,
-        options: ['Pay $49 USD via Stripe', 'Cancel Payment']
-      });
-      setCurrentStep('group-8');
-    } else if (optLower.includes('pay $49') || optLower.includes('stripe')) {
-      nextMessages.push({
-        sender: 'bot',
-        text: '🎉 Payment of $49 confirmed via Stripe! Your application ID is #UQ-2026. A counselor will review your application.'
-      });
-      setCurrentStep('group-9');
     } else if (optLower.includes('cancel')) {
       nextMessages.push({
         sender: 'bot',
-        text: '⚠️ Payment was not completed or was cancelled. Please try again to reserve your slot.',
-        options: ['Pay $49 USD via Stripe']
+        text: 'Action cancelled. How else can we assist you?',
       });
-      setCurrentStep('group-10');
     } else {
       nextMessages.push({
         sender: 'bot',
-        text: `Thank you! Your selection "${opt}" has been recorded. Our counselor will connect shortly.`,
+        text: `Thank you! Your selection "${opt}" has been recorded. Processing your request...`,
       });
     }
+
     setTestMessages(nextMessages);
   };
 
@@ -1037,13 +1158,73 @@ export const WorkflowBuilderView: React.FC = () => {
     if (!userChatInput.trim()) return;
     const txt = userChatInput.trim();
     setUserChatInput('');
-    const next = [...testMessages, { sender: 'user' as const, text: txt }];
-    if (currentStep === 'group-2') {
-      next.push({ sender: 'bot' as const, text: `Okay ${txt}! What is your age ?` });
-    } else {
-      next.push({ sender: 'bot' as const, text: `Got it: "${txt}". Checking your requirements...` });
+
+    const nextMessages = [
+      ...testMessages,
+      { sender: 'user' as const, text: txt },
+    ];
+    const txtLower = txt.toLowerCase();
+
+    // Check if input matches any option in current group
+    const currentGroup = groups.find((g) => g.id === currentStep) || groups[0];
+    let matchedOptionLabel: string | null = null;
+
+    if (currentGroup && currentGroup.items) {
+      for (const item of currentGroup.items) {
+        if (item.type === 'choice' && Array.isArray(item.options)) {
+          // Check by number index (e.g. typing "1", "2", "3")
+          const byIndex = parseInt(txt, 10);
+          if (!isNaN(byIndex) && byIndex >= 1 && byIndex <= item.options.length) {
+            matchedOptionLabel = item.options[byIndex - 1].label;
+            break;
+          }
+          const matched = item.options.find(
+            (o) =>
+              o.label.toLowerCase().includes(txtLower) ||
+              txtLower.includes(o.label.toLowerCase())
+          );
+          if (matched) {
+            matchedOptionLabel = matched.label;
+            break;
+          }
+        }
+        if (item.type === 'collect') {
+          const varKey = item.varName || 'input';
+          setSimulatedVars((prev) => ({ ...prev, [varKey]: txt }));
+          nextMessages.push({
+            sender: 'bot',
+            text: `Noted: "${txt}". Recorded ${varKey}.`,
+          });
+          setTestMessages(nextMessages);
+          return;
+        }
+      }
     }
-    setTestMessages(next);
+
+    if (matchedOptionLabel) {
+      handleOptionClick(matchedOptionLabel);
+      return;
+    }
+
+    // Check keyword rules
+    const matchedRule = keywordRules.find((r) =>
+      r.keywords.some((k) => txtLower.includes(k.toLowerCase().trim()))
+    );
+    if (matchedRule) {
+      nextMessages.push({
+        sender: 'bot',
+        text: replaceSimulatedVars(matchedRule.reply, simulatedVars),
+      });
+      setTestMessages(nextMessages);
+      return;
+    }
+
+    // General fallback acknowledgment
+    nextMessages.push({
+      sender: 'bot',
+      text: `Got it: "${txt}". Our automated flow "${botTitle}" is processing your message.`,
+    });
+    setTestMessages(nextMessages);
   };
 
   // Helper function to dynamically calculate Bézier curve coordinates between nodes
@@ -1402,7 +1583,7 @@ export const WorkflowBuilderView: React.FC = () => {
             {/* Right Group: Test Bot Button, Autosave, Undo/Redo, Real Save */}
             <div className="flex items-center justify-between lg:justify-end gap-2 sm:gap-4 overflow-x-auto scrollbar-none py-0.5">
               <button
-                onClick={() => setIsTestBotOpen(true)}
+                onClick={handleOpenTestBot}
                 className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold transition shadow-xs cursor-pointer active:scale-95 text-xs whitespace-nowrap shrink-0"
               >
                 <Play className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
@@ -2954,12 +3135,23 @@ export const WorkflowBuilderView: React.FC = () => {
                   <div className="text-[11px] text-emerald-300">Live Simulator (Testing {botTitle})</div>
                 </div>
               </div>
-              <button
-                onClick={() => setIsTestBotOpen(false)}
-                className="p-1 rounded-lg text-emerald-200 hover:text-white cursor-pointer shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleOpenTestBot}
+                  title="Restart flow from beginning"
+                  className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-emerald-800/60 transition cursor-pointer flex items-center gap-1 text-[11px] font-medium"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Restart</span>
+                </button>
+                <button
+                  onClick={() => setIsTestBotOpen(false)}
+                  className="p-1 rounded-lg text-emerald-200 hover:text-white cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Chat Body */}
@@ -2982,7 +3174,7 @@ export const WorkflowBuilderView: React.FC = () => {
                         : 'bg-white text-slate-900 rounded-bl-none'
                     }`}
                   >
-                    <div>{msg.text}</div>
+                    <div className="whitespace-pre-wrap">{msg.text}</div>
                     {msg.isPayment && (
                       <div className="mt-2 p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
