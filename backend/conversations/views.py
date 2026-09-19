@@ -2003,9 +2003,14 @@ class InspectGroupInviteView(APIView):
 
         match = re.search(r'chat\.whatsapp\.com/(?:invite/)?([a-zA-Z0-9_\-]+)', url)
         if not match:
-            return Response({'success': False, 'error': 'Invalid WhatsApp invite link format. Expected https://chat.whatsapp.com/...'}, status=status.HTTP_400_BAD_REQUEST)
+            code_match = re.search(r'\b([a-zA-Z0-9_\-]{20,26})\b', url)
+            if code_match:
+                invite_code = code_match.group(1).strip()
+            else:
+                return Response({'success': False, 'error': 'Invalid WhatsApp invite link format. Expected https://chat.whatsapp.com/...'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            invite_code = match.group(1).split('?')[0].split('&')[0].strip()
 
-        invite_code = match.group(1).strip()
         target_url = f"https://chat.whatsapp.com/invite/{invite_code}"
 
         try:

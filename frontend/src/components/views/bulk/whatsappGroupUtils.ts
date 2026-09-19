@@ -40,6 +40,42 @@ export const formatStandardE164 = (raw: string): string => {
 };
 
 /**
+ * Automatically cleans and sanitizes any WhatsApp Group Invite text/link.
+ * Strips preceding phrases ("Follow this link to join my WhatsApp group:"),
+ * query parameters ("?s=sw&p=a&mlu=4&ilr=4"), trailing whitespace/punctuation,
+ * and always returns the canonical official link: "https://chat.whatsapp.com/<inviteCode>".
+ *
+ * Examples:
+ * - "Follow this link to join my WhatsApp group: https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg?s=sw&p=a&mlu=4&ilr=4"
+ *   => "https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg"
+ * - "chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg?s=sw"
+ *   => "https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg"
+ * - "ErRNkAqE9lh4v0nZ6OnCxg"
+ *   => "https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg"
+ */
+export const sanitizeWhatsAppGroupLink = (raw: string): string => {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+
+  // 1. Look for chat.whatsapp.com/(invite/)?<code...>
+  const match = trimmed.match(/(?:https?:\/\/)?chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9_\-]+)/i);
+  if (match && match[1]) {
+    const codePart = match[1].split(/[?&#\s]/)[0].replace(/[^a-zA-Z0-9_\-]/g, '');
+    if (codePart.length >= 8) {
+      return `https://chat.whatsapp.com/${codePart}`;
+    }
+  }
+
+  // 2. Look for standalone 20-26 char invite code (e.g. ErRNkAqE9lh4v0nZ6OnCxg)
+  const codeOnlyMatch = trimmed.match(/^[a-zA-Z0-9_\-]{20,26}$/);
+  if (codeOnlyMatch) {
+    return `https://chat.whatsapp.com/${codeOnlyMatch[0]}`;
+  }
+
+  return trimmed;
+};
+
+/**
  * Parses raw text containing telephone numbers and contact names
  */
 export const parseRawTextToContacts = (rawText: string, defaultNamePrefix = 'Member'): WhatsAppGroupContact[] => {
@@ -252,7 +288,7 @@ export const parseGroupInviteLink = (
   groupMeta?: string | { title?: string; avatar?: string; description?: string; participantCount?: number },
   initialMembers: WhatsAppGroupContact[] = []
 ): WhatsAppGroup => {
-  const cleanUrl = inviteUrl.trim();
+  const cleanUrl = sanitizeWhatsAppGroupLink(inviteUrl);
   const inviteCodeMatch = cleanUrl.match(/chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9_-]+)/i);
   const inviteCode = inviteCodeMatch ? inviteCodeMatch[1] : 'GRP_' + Date.now().toString(36).toUpperCase();
 

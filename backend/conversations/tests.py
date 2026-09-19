@@ -354,3 +354,18 @@ class ChatbotWorkflowEngineTests(TestCase):
         self.conv.refresh_from_db()
         self.assertEqual(self.conv.active_workflow, 'Service Booking Flow')
 
+
+class InspectGroupInviteLinkTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_inspect_raw_user_share_text(self):
+        """Passing 'Follow this link to join my WhatsApp group: https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg?s=sw&p=a&mlu=4&ilr=4' strips extraneous text and query params"""
+        raw_text = "Follow this link to join my WhatsApp group: https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg?s=sw&p=a&mlu=4&ilr=4"
+        resp = self.client.get(f'/api/conversations/inspect-group-invite/?url={raw_text}')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.json()
+        self.assertTrue(data.get('success'))
+        self.assertEqual(data.get('code'), 'ErRNkAqE9lh4v0nZ6OnCxg')
+        self.assertEqual(data.get('url'), 'https://chat.whatsapp.com/ErRNkAqE9lh4v0nZ6OnCxg')
+

@@ -16,7 +16,7 @@ import {
   Phone,
   Zap
 } from 'lucide-react';
-import { parseWhatsAppChatExport, parseGroupInviteLink, parseRawTextToContacts } from './whatsappGroupUtils';
+import { parseWhatsAppChatExport, parseGroupInviteLink, parseRawTextToContacts, sanitizeWhatsAppGroupLink } from './whatsappGroupUtils';
 import { initialMockWhatsAppGroups } from './whatsappGroupData';
 import { WhatsAppGroup } from '../../../types';
 
@@ -153,8 +153,10 @@ export const MobileGroupGrabberPortal: React.FC<MobileGroupGrabberPortalProps> =
 
   // 1. Handle Link Fetch
   const handleFetchFromLink = () => {
-    if (!groupLink.trim()) return;
-    const group = parseGroupInviteLink(groupLink, groupNameInput);
+    const clean = sanitizeWhatsAppGroupLink(groupLink);
+    if (!clean) return;
+    setGroupLink(clean);
+    const group = parseGroupInviteLink(clean, groupNameInput);
     handlePushGroupToDesktop(group);
   };
 
@@ -337,7 +339,12 @@ export const MobileGroupGrabberPortal: React.FC<MobileGroupGrabberPortalProps> =
                   <input
                     type="url"
                     value={groupLink}
-                    onChange={(e) => setGroupLink(e.target.value)}
+                    onChange={(e) => setGroupLink(sanitizeWhatsAppGroupLink(e.target.value))}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData('text');
+                      setGroupLink(sanitizeWhatsAppGroupLink(pasted));
+                    }}
                     placeholder="https://chat.whatsapp.com/ABC123xyz..."
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder:text-slate-600 focus:outline-emerald-500 font-mono"
                   />

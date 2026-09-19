@@ -42,6 +42,7 @@ import {
   parseRawTextToContacts,
   parseWhatsAppChatExport,
   parseGroupInviteLink,
+  sanitizeWhatsAppGroupLink,
   WHATSAPP_WEB_GRABBER_SCRIPT
 } from './whatsappGroupUtils';
 
@@ -295,11 +296,12 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   // Direct Group Link Inspector (Fetches Authentic OpenGraph Metadata via Meta)
   // -------------------------------------------------------------------------
   const handleInspectInviteLink = async () => {
-    if (!inviteLinkInput.trim()) {
+    const cleanUrl = sanitizeWhatsAppGroupLink(inviteLinkInput);
+    if (!cleanUrl) {
       addToast('Please enter a WhatsApp group invite link', 'error');
       return;
     }
-    const cleanUrl = inviteLinkInput.trim();
+    setInviteLinkInput(cleanUrl);
     setIsInspectingLink(true);
     setInspectedGroupMeta(null);
     try {
@@ -625,18 +627,20 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
   // 1. Fetch via Group Invite Link
   const handleExecuteFetchLink = async () => {
-    if (!inputGroupLink.trim()) {
+    const cleanUrl = sanitizeWhatsAppGroupLink(inputGroupLink);
+    if (!cleanUrl) {
       addToast('Please enter a valid WhatsApp Group invite link', 'error');
       return;
     }
+    setInputGroupLink(cleanUrl);
     setIsProcessingFetch(true);
     try {
-      const res = await fetch(`/api/conversations/inspect-group-invite/?url=${encodeURIComponent(inputGroupLink.trim())}`);
+      const res = await fetch(`/api/conversations/inspect-group-invite/?url=${encodeURIComponent(cleanUrl)}`);
       const data = await res.json();
       const metaTitle = data.success && data.group?.title ? data.group.title : '';
       const metaDesc = data.success && data.group?.description ? data.group.description : '';
       const metaAvatar = data.success && data.group?.avatar ? data.group.avatar : '';
-      const newGroup = parseGroupInviteLink(inputGroupLink, inputGroupName || metaTitle);
+      const newGroup = parseGroupInviteLink(cleanUrl, inputGroupName || metaTitle);
       if (metaDesc) newGroup.description = metaDesc;
       if (metaAvatar) newGroup.avatar = metaAvatar;
       setGroups((prev) => [newGroup, ...prev.filter((g) => g.id !== newGroup.id)]);
@@ -910,7 +914,12 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                       <input
                         type="url"
                         value={inviteLinkInput}
-                        onChange={(e) => setInviteLinkInput(e.target.value)}
+                        onChange={(e) => setInviteLinkInput(sanitizeWhatsAppGroupLink(e.target.value))}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasted = e.clipboardData.getData('text');
+                          setInviteLinkInput(sanitizeWhatsAppGroupLink(pasted));
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleInspectInviteLink();
                         }}
@@ -1575,7 +1584,12 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                         <input
                           type="url"
                           value={inputGroupLink}
-                          onChange={(e) => setInputGroupLink(e.target.value)}
+                          onChange={(e) => setInputGroupLink(sanitizeWhatsAppGroupLink(e.target.value))}
+                          onPaste={(e) => {
+                            e.preventDefault();
+                            const pasted = e.clipboardData.getData('text');
+                            setInputGroupLink(sanitizeWhatsAppGroupLink(pasted));
+                          }}
                           placeholder="https://chat.whatsapp.com/ABC123xyz..."
                           className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
                         />
