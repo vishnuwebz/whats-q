@@ -40,6 +40,7 @@ import {
   INITIAL_TRANSACTIONS,
   INITIAL_INVOICES,
   INITIAL_QUOTATIONS,
+  INITIAL_EXPENSES,
   INITIAL_ACCOUNTS,
   INITIAL_TASKS
 } from './initialDatasets';
@@ -275,6 +276,23 @@ function getStoredQuotationsCache(): Quotation[] {
     }
   } catch {}
   return INITIAL_QUOTATIONS;
+}
+
+function getStoredExpensesCache(): Expense[] {
+  if (typeof window === 'undefined') return INITIAL_EXPENSES;
+  try {
+    const raw = localStorage.getItem('whatsq_expenses_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const map = new Map<string, Expense>();
+        INITIAL_EXPENSES.forEach((e) => map.set(String(e.id), e));
+        parsed.forEach((e: Expense) => map.set(String(e.id), e));
+        return Array.from(map.values());
+      }
+    }
+  } catch {}
+  return INITIAL_EXPENSES;
 }
 
 interface Toast {
@@ -517,6 +535,8 @@ interface QiyamState {
   ) => Promise<string | number>;
   addCustomer: (cust: Record<string, unknown>) => Promise<Record<string, unknown>>;
   addExpense: (exp: Partial<Expense>) => Promise<Expense>;
+  updateExpense: (id: string | number, updates: Partial<Expense>) => Promise<Expense | null>;
+  deleteExpense: (id: string | number) => Promise<boolean>;
   addTask: (task: Partial<Task>) => Promise<Task>;
   updateTask: (taskId: string | number, updates: Partial<Task>) => Promise<Task | null>;
   deleteTask: (taskId: string | number) => Promise<boolean>;
@@ -1640,7 +1660,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   transactions: getStoredCache('transactions', INITIAL_TRANSACTIONS),
   invoices: getStoredCache('invoices', INITIAL_INVOICES),
   quotations: getStoredQuotationsCache(),
-  expenses: [],
+  expenses: getStoredExpensesCache(),
   accounts: getStoredCache('accounts', INITIAL_ACCOUNTS),
   workflows: [],
   workflowLogs: [],
@@ -1752,7 +1772,14 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const inventory     = safeVal(13, current.inventory, INITIAL_INVENTORY, 'inventory');
     const transactions  = safeVal(14, current.transactions, INITIAL_TRANSACTIONS, 'transactions');
     const invoices      = safeVal(15, current.invoices, INITIAL_INVOICES, 'invoices');
-    const expenses      = safeVal(16, current.expenses, [], 'expenses');
+    const rawExpenses   = safeVal(16, current.expenses, INITIAL_EXPENSES, 'expenses');
+    const expMap = new Map<string, Expense>();
+    INITIAL_EXPENSES.forEach((e) => expMap.set(String(e.id), e));
+    (rawExpenses || []).forEach((e) => expMap.set(String(e.id), e));
+    (current.expenses || []).forEach((e) => expMap.set(String(e.id), e));
+    const expenses = Array.from(expMap.values());
+    persistCache('expenses', expenses);
+
     const accounts      = safeVal(17, current.accounts, INITIAL_ACCOUNTS, 'accounts');
     const workflows     = safeVal(18, current.workflows, [], 'workflows');
     const workflowLogs  = safeVal(19, current.workflowLogs, [], 'workflowLogs');
@@ -3764,29 +3791,79 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   addExpense: async (exp) => {
-    const nextId = get().expenses.length + 1;
+    const nextId = get().expenses.length > 0
+      ? Math.max(...get().expenses.map((e) => (typeof e.id === 'number' ? e.id : parseInt(String(e.id).replace(/\D/g, '') || '0'))), 0) + 1
+      : 1;
+    const todayFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
     const item: Expense = {
       id: nextId,
-      date_str: exp.date_str || 'Today',
-      description: exp.description || 'Office Supplies',
+      date_str: exp.date_str || todayFormatted,
+      description: exp.description || 'Operational Expense',
       category: exp.category || 'Operations',
       vendor: exp.vendor || 'General Vendor',
       amount: Number(exp.amount) || 1200,
       payment_mode: exp.payment_mode || 'UPI',
-      project: exp.project || 'General Office',
+      project: exp.project || 'General Operations',
       status: exp.status || 'paid',
+      reference_no: exp.reference_no || `EXP-2024-${String(100 + nextId).padStart(4, '0')}`,
+      notes: exp.notes || '',
       ...exp,
     };
     try {
       const res = await apiClient.post('/finance/expenses/', item);
-      const created = (res?.id && res.success !== false) ? (res as Expense) : item;
-      set((state) => ({ expenses: [created, ...state.expenses] }));
-      get().addToast(`Expense "₹${created.amount}" recorded`, 'success');
+      const created = (res?.id && (res as any).success !== false) ? (res as Expense) : item;
+      const updatedList = [created, ...get().expenses.filter(e => e.id !== created.id)];
+      set({ expenses: updatedList });
+      persistCache('expenses', updatedList);
+      get().addToast(`Expense "₹${created.amount.toLocaleString()}" recorded`, 'success');
       return created;
     } catch {
-      set((state) => ({ expenses: [item, ...state.expenses] }));
-      get().addToast(`Expense "₹${item.amount}" recorded`, 'success');
+      const updatedList = [item, ...get().expenses.filter(e => e.id !== item.id)];
+      set({ expenses: updatedList });
+      persistCache('expenses', updatedList);
+      get().addToast(`Expense "₹${item.amount.toLocaleString()}" recorded`, 'success');
       return item;
+    }
+  },
+
+  updateExpense: async (id, updates) => {
+    const expense = get().expenses.find((e) => String(e.id) === String(id));
+    if (!expense) return null;
+    const updated: Expense = { ...expense, ...updates };
+    const updatedList = get().expenses.map((e) => (String(e.id) === String(id) ? updated : e));
+    set({ expenses: updatedList });
+    persistCache('expenses', updatedList);
+    try {
+      const res = await apiClient.put(`/finance/expenses/${id}/`, updated);
+      if (res?.id && (res as any).success !== false) {
+        const finalExp = res as Expense;
+        const finalList = get().expenses.map((e) => (String(e.id) === String(id) ? finalExp : e));
+        set({ expenses: finalList });
+        persistCache('expenses', finalList);
+        get().addToast(`Expense "${finalExp.description}" updated`, 'success');
+        return finalExp;
+      }
+      get().addToast(`Expense "${updated.description}" updated`, 'success');
+      return updated;
+    } catch {
+      get().addToast(`Expense "${updated.description}" updated`, 'success');
+      return updated;
+    }
+  },
+
+  deleteExpense: async (id) => {
+    const expense = get().expenses.find((e) => String(e.id) === String(id));
+    const desc = expense?.description || 'Expense';
+    const updatedList = get().expenses.filter((e) => String(e.id) !== String(id));
+    set({ expenses: updatedList });
+    persistCache('expenses', updatedList);
+    try {
+      await apiClient.delete(`/finance/expenses/${id}/`);
+      get().addToast(`Expense "${desc}" deleted`, 'info');
+      return true;
+    } catch {
+      get().addToast(`Expense "${desc}" deleted`, 'info');
+      return true;
     }
   },
 

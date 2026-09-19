@@ -366,6 +366,9 @@ export interface Expense {
   payment_mode: string;
   project: string;
   status: 'paid' | 'pending';
+  receipt_url?: string;
+  reference_no?: string;
+  notes?: string;
 }
 
 export interface PaymentAccount {

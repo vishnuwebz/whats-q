@@ -831,6 +831,24 @@ class Command(BaseCommand):
         for acc in accounts_data:
             PaymentAccount.objects.create(**acc)
 
+        Expense.objects.all().delete()
+        expenses_data = [
+            {'date_str': 'May 31, 2024', 'description': 'Head Office Rent - May 2024', 'category': 'Rent & Utilities', 'vendor': 'Calicut Cyberpark Leasing', 'amount': 55000.0, 'payment_mode': 'Bank Transfer', 'project': 'Corporate HQ', 'status': 'paid'},
+            {'date_str': 'May 30, 2024', 'description': 'Field Technicians Monthly Payroll', 'category': 'Salaries & Wages', 'vendor': 'Internal Payroll', 'amount': 265000.0, 'payment_mode': 'Bank Transfer', 'project': 'Service Operations', 'status': 'paid'},
+            {'date_str': 'May 29, 2024', 'description': 'Copper Pipe Restock (1/2" & 3/8" 50m coils)', 'category': 'Spare Parts & Inventory', 'vendor': 'Calicut Spares Mart', 'amount': 38500.0, 'payment_mode': 'UPI', 'project': 'AC Field Operations', 'status': 'paid'},
+            {'date_str': 'May 28, 2024', 'description': 'Customer Support & Operations Team Stipends', 'category': 'Salaries & Wages', 'vendor': 'Internal Payroll', 'amount': 75000.0, 'payment_mode': 'Bank Transfer', 'project': 'Support Desk', 'status': 'paid'},
+            {'date_str': 'May 27, 2024', 'description': 'Daikin Inverter PCBs & Manifold Gauges', 'category': 'Spare Parts & Inventory', 'vendor': 'CoolTech Tools India', 'amount': 26800.0, 'payment_mode': 'Bank Transfer', 'project': 'Field Warehouse', 'status': 'paid'},
+            {'date_str': 'May 26, 2024', 'description': 'Service Vans Fleet Fuel & Fastag Recharges', 'category': 'Fuel & Travel', 'vendor': 'Indian Oil Corporation', 'amount': 18400.0, 'payment_mode': 'Corporate Debit Card', 'project': 'Logistics & Dispatch', 'status': 'paid'},
+            {'date_str': 'May 25, 2024', 'description': 'WhatsApp Cloud API & Meta Conversational Ads', 'category': 'Marketing & WhatsApp Ads', 'vendor': 'Meta Platforms Ireland', 'amount': 24200.0, 'payment_mode': 'Corporate Debit Card', 'project': 'Lead Generation', 'status': 'paid'},
+            {'date_str': 'May 24, 2024', 'description': 'Office High-Speed Fiber & Dedicated IP Lease', 'category': 'Rent & Utilities', 'vendor': 'Airtel Enterprise', 'amount': 8500.0, 'payment_mode': 'UPI', 'project': 'IT Infrastructure', 'status': 'paid'},
+            {'date_str': 'May 22, 2024', 'description': 'Technician Safety Harness & Tool Bags (10 Sets)', 'category': 'Operations', 'vendor': 'SafeGrip Industrial Gear', 'amount': 16500.0, 'payment_mode': 'UPI', 'project': 'Field Operations', 'status': 'pending'},
+            {'date_str': 'May 20, 2024', 'description': 'Antibacterial Duct Cleaning Chemicals (50L)', 'category': 'Spare Parts & Inventory', 'vendor': 'ChemClean Solutions', 'amount': 9800.0, 'payment_mode': 'Corporate Debit Card', 'project': 'Commercial Sanitization', 'status': 'paid'},
+            {'date_str': 'May 18, 2024', 'description': 'Branch Office Electricity & Utility Bill', 'category': 'Rent & Utilities', 'vendor': 'KSEB Kerala State Electricity Board', 'amount': 14200.0, 'payment_mode': 'Bank Transfer', 'project': 'Kochi Branch', 'status': 'paid'},
+            {'date_str': 'May 15, 2024', 'description': 'Zoho One & AWS Cloud Hosting Subscriptions', 'category': 'Operations', 'vendor': 'Zoho Corporation', 'amount': 12600.0, 'payment_mode': 'Corporate Debit Card', 'project': 'IT Infrastructure', 'status': 'pending'}
+        ]
+        for exp in expenses_data:
+            Expense.objects.create(**exp)
+
         # 9. Automation Workflows & Logs
         Workflow.objects.all().delete()
         Workflow.objects.create(
