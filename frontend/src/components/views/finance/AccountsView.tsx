@@ -1,11 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Layers, Plus, Wallet, ArrowUpRight, CheckCircle2, X } from 'lucide-react';
+import { Layers, Plus, Wallet, ArrowUpRight, CheckCircle2, X, Building2 } from 'lucide-react';
+
+const PREDEFINED_PROVIDERS = [
+  'HDFC Bank',
+  'ICICI Bank',
+  'Axis Bank',
+  'State Bank of India',
+  'Kotak Mahindra Bank',
+  'Federal Bank',
+  'Bank of Baroda',
+  'Punjab National Bank',
+  'Canara Bank',
+  'Union Bank of India',
+  'IndusInd Bank',
+  'Yes Bank',
+  'Razorpay',
+  'Stripe',
+  'PayPal',
+  'Cash Vault / Drawer',
+];
 
 export const AccountsView: React.FC = () => {
   const { accounts, addPaymentAccount, addToast, targetHighlightId, globalFilter } = useQiyamStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customProviders, setCustomProviders] = useState<string[]>([]);
+  const [isCustomProvider, setIsCustomProvider] = useState(false);
+  const [customProviderInput, setCustomProviderInput] = useState('');
+
+  // Dynamically merge predefined list with existing account providers and newly added custom providers
+  const allProviders = useMemo(() => {
+    const existing = accounts.map((a) => a.provider).filter(Boolean);
+    const combined = [...PREDEFINED_PROVIDERS, ...existing, ...customProviders];
+    return Array.from(new Set(combined));
+  }, [accounts, customProviders]);
 
   const filteredAccounts = accounts.filter((acc) => {
     if (globalFilter.status && globalFilter.status !== 'all') {
@@ -35,25 +64,42 @@ export const AccountsView: React.FC = () => {
     status: 'Active' as 'Active' | 'Inactive'
   });
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsCustomProvider(false);
+    setCustomProviderInput('');
+  };
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accForm.name) {
+    if (!accForm.name.trim()) {
       addToast('Please enter an account name', 'error');
       return;
     }
 
+    const resolvedProvider = isCustomProvider ? customProviderInput.trim() : accForm.provider;
+    if (!resolvedProvider) {
+      addToast('Please select or specify a provider name', 'error');
+      return;
+    }
+
+    if (isCustomProvider && !customProviders.includes(resolvedProvider)) {
+      setCustomProviders((prev) => [...prev, resolvedProvider]);
+    }
+
     addPaymentAccount({
       ...accForm,
-      current_balance: Number(accForm.current_balance)
+      provider: resolvedProvider,
+      current_balance: Number(accForm.current_balance) || 0,
     });
 
     addToast(`Account "${accForm.name}" linked successfully!`, 'success');
-    setIsModalOpen(false);
+    handleCloseModal();
     setAccForm({
       name: '',
       account_number: '',
       account_type: 'Current Account',
-      provider: 'Axis Bank',
+      provider: resolvedProvider,
       current_balance: 100000,
       status: 'Active'
     });
@@ -129,7 +175,7 @@ export const AccountsView: React.FC = () => {
                 <p className="text-xs text-slate-500">Connect corporate current account or gateway wallet.</p>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -161,28 +207,99 @@ export const AccountsView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Provider</label>
-                  <select
-                    value={accForm.provider}
-                    onChange={(e) => setAccForm({ ...accForm, provider: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
-                  >
-                    <option value="HDFC Bank">HDFC Bank</option>
-                    <option value="ICICI Bank">ICICI Bank</option>
-                    <option value="Axis Bank">Axis Bank</option>
-                    <option value="State Bank of India">State Bank of India</option>
-                    <option value="Razorpay">Razorpay</option>
-                    <option value="Stripe">Stripe</option>
-                  </select>
+                <div className={isCustomProvider ? 'col-span-1 sm:col-span-2' : ''}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700 block">Provider *</label>
+                    {!isCustomProvider ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomProvider(true);
+                          setCustomProviderInput('');
+                        }}
+                        className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        title="Add bank or provider not in dropdown"
+                      >
+                        <Plus className="w-3 h-3" /> Not mentioned?
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomProvider(false);
+                          setAccForm((prev) => ({ ...prev, provider: allProviders[0] || 'Axis Bank' }));
+                        }}
+                        className="text-[10px] font-semibold text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
+                      >
+                        ← Choose predefined
+                      </button>
+                    )}
+                  </div>
+
+                  {!isCustomProvider ? (
+                    <select
+                      value={accForm.provider}
+                      onChange={(e) => {
+                        if (e.target.value === '__NOT_MENTIONED__') {
+                          setIsCustomProvider(true);
+                          setCustomProviderInput('');
+                        } else {
+                          setAccForm({ ...accForm, provider: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800 font-medium cursor-pointer"
+                    >
+                      <optgroup label="Predefined & Active Providers">
+                        {allProviders.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Not Mentioned in List?">
+                        <option value="__NOT_MENTIONED__">
+                          ➕ Other / Not Mentioned (Add Custom)...
+                        </option>
+                      </optgroup>
+                    </select>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          autoFocus
+                          placeholder="Type bank or provider name (e.g. Federal Bank, Cash Drawer, PayPal)"
+                          value={customProviderInput}
+                          onChange={(e) => {
+                            setCustomProviderInput(e.target.value);
+                            setAccForm((prev) => ({ ...prev, provider: e.target.value }));
+                          }}
+                          className="w-full pl-8 pr-3 py-2 bg-emerald-50/50 border border-emerald-400 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm sm:text-xs text-slate-900 font-medium"
+                        />
+                        <Building2 className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400">
+                        <span>New provider will be saved and linked to this account</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomProvider(false);
+                            setAccForm((prev) => ({ ...prev, provider: allProviders[0] || 'Axis Bank' }));
+                          }}
+                          className="text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                        >
+                          Cancel custom
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
+                <div className={isCustomProvider ? 'col-span-1 sm:col-span-2' : ''}>
                   <label className="font-semibold text-slate-700 block mb-1">Account Type</label>
                   <select
                     value={accForm.account_type}
                     onChange={(e) => setAccForm({ ...accForm, account_type: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800 font-medium cursor-pointer"
                   >
                     <option value="Current Account">Current Account</option>
                     <option value="Savings Account">Savings Account</option>
@@ -206,7 +323,7 @@ export const AccountsView: React.FC = () => {
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
                 >
                   Cancel
