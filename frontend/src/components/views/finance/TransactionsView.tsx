@@ -102,11 +102,14 @@ export const TransactionsView: React.FC = () => {
 
   const incomeCount = transactions.filter((t) => t.tx_type === 'income').length;
   const expenseCount = transactions.filter((t) => t.tx_type === 'expense').length;
+  const transferCount = transactions.filter((t) => t.tx_type === 'transfer').length;
+  const refundCount = transactions.filter((t) => t.tx_type === 'refund').length;
+
   const totalIncome = transactions
     .filter((t) => t.tx_type === 'income')
     .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
   const totalExpense = transactions
-    .filter((t) => t.tx_type === 'expense')
+    .filter((t) => t.tx_type === 'expense' || t.tx_type === 'refund')
     .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
   const netCashFlow = totalIncome - totalExpense;
 
@@ -130,24 +133,29 @@ export const TransactionsView: React.FC = () => {
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Debits (Expense)</div>
             <div className="text-xl sm:text-2xl font-black text-red-600 mt-1">₹{totalExpense.toLocaleString()}</div>
-            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{expenseCount} vendor payouts</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">
+              {expenseCount} vendor payouts{refundCount > 0 ? ` • ${refundCount} refunds` : ''}
+            </div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Net Cash Flow</div>
             <div className={`text-xl sm:text-2xl font-black mt-1 ${netCashFlow >= 0 ? 'text-blue-700' : 'text-amber-600'}`}>
               ₹{netCashFlow.toLocaleString()}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{transactions.length} total entries</div>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">
+              {transactions.length} total entries{transferCount > 0 ? ` (${transferCount} transfers)` : ''}
+            </div>
           </div>
         </div>
 
         {/* Filters & Search */}
-        <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs font-semibold">
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+        <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 text-xs font-semibold">
+          {/* Transaction Type Filter Tabs */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
             <button
               onClick={() => setFilterType('all')}
               className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
-                filterType === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                filterType === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
               All Transactions ({transactions.length})
@@ -155,7 +163,7 @@ export const TransactionsView: React.FC = () => {
             <button
               onClick={() => setFilterType('income')}
               className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
-                filterType === 'income' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                filterType === 'income' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
               Income Credits ({incomeCount})
@@ -163,14 +171,47 @@ export const TransactionsView: React.FC = () => {
             <button
               onClick={() => setFilterType('expense')}
               className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
-                filterType === 'expense' ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                filterType === 'expense' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
               Expenses ({expenseCount})
             </button>
+            <button
+              onClick={() => setFilterType('transfer')}
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
+                filterType === 'transfer' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Transfers ({transferCount})
+            </button>
+            <button
+              onClick={() => setFilterType('refund')}
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
+                filterType === 'refund' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Refunds ({refundCount})
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Right Side Dropdown Filters & Search */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            {/* Transaction Type Filter Dropdown */}
+            <div className="relative">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none focus:ring-1 focus:ring-emerald-500 font-medium cursor-pointer"
+                title="Filter by Transaction Type"
+              >
+                <option value="all">All Types ({transactions.length})</option>
+                <option value="income">Income (Credit) ({incomeCount})</option>
+                <option value="expense">Expense (Debit) ({expenseCount})</option>
+                <option value="transfer">Account Transfer ({transferCount})</option>
+                <option value="refund">Customer Refund ({refundCount})</option>
+              </select>
+            </div>
+
             {/* Dynamic Account Filter Dropdown */}
             <select
               value={accountFilter}
@@ -184,6 +225,7 @@ export const TransactionsView: React.FC = () => {
               ))}
             </select>
 
+            {/* Search Input */}
             <div className="relative w-full sm:w-auto">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
@@ -207,7 +249,7 @@ export const TransactionsView: React.FC = () => {
                 <th className="py-3 px-4">Reference ID</th>
                 <th className="py-3 px-4">Description</th>
                 <th className="py-3 px-4">Party / Customer</th>
-                <th className="py-3 px-4">Category</th>
+                <th className="py-3 px-4">Category & Type</th>
                 <th className="py-3 px-4">Account / Method</th>
                 <th className="py-3 px-4 text-right">Amount</th>
                 <th className="py-3 px-4 text-right">Status</th>
@@ -216,6 +258,9 @@ export const TransactionsView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filtered.map((t) => {
                 const isIncome = t.tx_type === 'income';
+                const isExpense = t.tx_type === 'expense';
+                const isTransfer = t.tx_type === 'transfer';
+                const isRefund = t.tx_type === 'refund';
                 const isTarget = targetHighlightId === t.id || targetHighlightId === t.reference_id;
 
                 return (
@@ -239,17 +284,48 @@ export const TransactionsView: React.FC = () => {
                     <td className="py-3.5 px-4 font-bold text-slate-900">{t.description}</td>
                     <td className="py-3.5 px-4 text-slate-600">{t.party}</td>
                     <td className="py-3.5 px-4">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                        {t.category}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                          {t.category}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md uppercase tracking-wider ${
+                            isIncome
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : isExpense
+                              ? 'bg-red-50 text-red-700 border border-red-200'
+                              : isTransfer
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : 'bg-purple-50 text-purple-700 border border-purple-200'
+                          }`}
+                        >
+                          {isIncome
+                            ? 'Income'
+                            : isExpense
+                            ? 'Expense'
+                            : isTransfer
+                            ? 'Transfer'
+                            : 'Refund'}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">
                       <div>{t.account}</div>
                       <div className="text-[10px] text-slate-400 font-semibold">{t.payment_mode}</div>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <span className={`font-black text-sm ${isIncome ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {isIncome ? '+' : '-'} ₹{t.amount.toLocaleString()}
+                      <span
+                        className={`font-black text-sm ${
+                          isIncome
+                            ? 'text-emerald-600'
+                            : isExpense
+                            ? 'text-red-600'
+                            : isTransfer
+                            ? 'text-blue-600'
+                            : 'text-purple-600'
+                        }`}
+                      >
+                        {isIncome ? '+' : isTransfer ? '↔' : '-'} ₹{t.amount.toLocaleString()}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
@@ -260,6 +336,26 @@ export const TransactionsView: React.FC = () => {
                   </tr>
                 );
               })}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <Receipt className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600">No transactions match the selected filters</p>
+                    <p className="text-xs text-slate-400 mt-1">Try switching transaction type, account, or clearing search query.</p>
+                    <button
+                      onClick={() => {
+                        setFilterType('all');
+                        setAccountFilter('all');
+                        setSearch('');
+                      }}
+                      className="mt-3 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer transition"
+                    >
+                      Clear All Filters
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

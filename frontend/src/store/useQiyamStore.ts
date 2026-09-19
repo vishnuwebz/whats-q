@@ -3962,7 +3962,12 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         (a) => a.name.toLowerCase() === (item.account || '').toLowerCase()
       );
       if (matchAccount) {
-        const delta = item.tx_type === 'income' ? item.amount : (item.tx_type === 'expense' ? -item.amount : 0);
+        const delta =
+          item.tx_type === 'income'
+            ? item.amount
+            : item.tx_type === 'expense' || item.tx_type === 'refund'
+            ? -item.amount
+            : 0;
         if (delta !== 0) {
           const updatedAccounts = get().accounts.map((a) =>
             a.id === matchAccount.id

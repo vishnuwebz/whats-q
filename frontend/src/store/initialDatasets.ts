@@ -212,6 +212,8 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: 3, date_str: 'May 29, 2024', tx_type: 'income', description: 'Digital Marketing Project', category: 'Marketing', party: 'Digital Ads', account: 'HDFC Bank - 1234', amount: 18750.0, payment_mode: 'UPI', reference_id: 'INV-2024-0518', status: 'completed' },
   { id: 4, date_str: 'May 28, 2024', tx_type: 'expense', description: 'Office Rent - May', category: 'Rent & Utilities', party: 'Landlord', account: 'Axis Bank - 9012', amount: 55000.0, payment_mode: 'NEFT', reference_id: 'EXP-2024-0308', status: 'completed' },
   { id: 5, date_str: 'May 27, 2024', tx_type: 'income', description: 'Website Development', category: 'Web Services', party: 'Rahul Singh', account: 'HDFC Bank - 1234', amount: 75000.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2024-0512', status: 'completed' },
+  { id: 6, date_str: 'May 26, 2024', tx_type: 'transfer', description: 'Branch Petty Cash Float Transfer', category: 'Account Transfer', party: 'Calicut Cyberpark Vault', account: 'HDFC Bank - 1234', amount: 15000.0, payment_mode: 'IMPS', reference_id: 'TRF-2024-0044', status: 'completed' },
+  { id: 7, date_str: 'May 25, 2024', tx_type: 'refund', description: 'Customer Security Deposit Refund', category: 'Customer Refund', party: 'Priya Sharma', account: 'ICICI Bank - 5678', amount: 2500.0, payment_mode: 'UPI', reference_id: 'RFD-2024-0019', status: 'completed' },
 ];
 
 export const INITIAL_INVOICES: Invoice[] = [
