@@ -9,7 +9,8 @@ import {
   CheckCircle2, Clock, Calendar, Paperclip, ChevronRight, ChevronDown, ChevronLeft,
   ExternalLink, Sparkles, AlertCircle, ArrowRight, CornerDownRight,
   Move, Sliders, DollarSign, RefreshCw, Eye, BookOpen, Info,
-  ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe
+  ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe,
+  Upload, Link2
 } from 'lucide-react';
 import { generateWorkflowFromTemplate } from '@/utils/templateWorkflowGenerator';
 import { SERVICE_BOOKING_FLOW_GROUPS, normalizeToFlowGroups } from '@/utils/serviceBookingFlow';
@@ -37,6 +38,15 @@ export interface GroupItem {
   failedTarget?: string;
   footer?: string;
   buttonLabel?: string;
+  // Media element fields
+  mediaType?: 'text' | 'image' | 'video' | 'audio' | 'document' | 'location';
+  mediaUrl?: string;
+  mediaCaption?: string;
+  mediaFileName?: string;
+  mediaFileSize?: string;
+  latitude?: number;
+  longitude?: number;
+  locationName?: string;
 }
 
 export interface FlowGroup {
@@ -184,6 +194,49 @@ export const WorkflowBuilderView: React.FC = () => {
     draftItem: GroupItem;
     groupTitle: string;
   } | null>(null);
+  const [mediaSourceTab, setMediaSourceTab] = useState<'upload' | 'url'>('upload');
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Quick One-Click Media Presets
+  const MEDIA_PRESETS = [
+    {
+      name: 'AC Inspection Photo',
+      type: 'image' as const,
+      url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+      caption: '📷 Multi-point diagnostic check & service inspection overview',
+      fileName: 'ac-inspection.jpg',
+    },
+    {
+      name: 'Offer Banner',
+      type: 'image' as const,
+      url: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
+      caption: '🖼️ Festive Discount Banner - 20% Off Annual AMC',
+      fileName: 'discount-banner.jpg',
+    },
+    {
+      name: 'Service Catalog PDF',
+      type: 'document' as const,
+      url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      caption: '📄 2026 Commercial AC Service & Maintenance Catalog',
+      fileName: 'Qiyam-Service-Catalog-2026.pdf',
+      fileSize: '1.8 MB',
+    },
+    {
+      name: 'Walkthrough Video MP4',
+      type: 'video' as const,
+      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      caption: '🎥 Demonstration of On-site Technician Diagnostic Routine',
+      fileName: 'walkthrough.mp4',
+    },
+    {
+      name: 'Support Voice Note MP3',
+      type: 'audio' as const,
+      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      caption: '🎙️ Welcome Voice Note from Qiyam Support Lead',
+      fileName: 'welcome-voice-note.mp3',
+      fileSize: '350 KB',
+    },
+  ];
 
   // Create Workflow / Template Tutorial Modal State
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
@@ -194,7 +247,17 @@ export const WorkflowBuilderView: React.FC = () => {
 
   // Test Bot Modal State
   const [isTestBotOpen, setIsTestBotOpen] = useState(false);
-  const [testMessages, setTestMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; options?: string[]; isPayment?: boolean }>>([]);
+  const [testMessages, setTestMessages] = useState<
+    Array<{
+      sender: 'bot' | 'user';
+      text: string;
+      options?: string[];
+      isPayment?: boolean;
+      mediaUrl?: string;
+      mediaType?: string;
+      mediaFileName?: string;
+    }>
+  >([]);
   const [userChatInput, setUserChatInput] = useState('');
   const [currentStep, setCurrentStep] = useState<string>('group-1');
   const [simulatedVars, setSimulatedVars] = useState<Record<string, string>>({
@@ -743,20 +806,89 @@ export const WorkflowBuilderView: React.FC = () => {
       };
     }
     // MESSAGES
-    const messagePreviews: Record<string, string> = {
-      Image: '📷 [Image: Select or upload image in configuration]',
-      Video: '🎥 [Video: Service Walkthrough MP4]',
-      YouTube: '▶️ [YouTube Video: https://youtu.be/example]',
-      Media: '🖼️ [Media File: Rich media payload]',
-      File: '📄 [Document: PDF brochure or spec sheet]',
-      Audio: '🎙️ [Audio: Voice Note attachment]',
-      Location: '📍 [Location Pin: Office / Branch location coordinates]',
-      Text: 'New message block content. Click to configure message text.',
-    };
+    if (blockTitle === 'Image') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'image',
+        mediaUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+        mediaCaption: 'AC Maintenance & Inspection Service Overview',
+        mediaFileName: 'service-inspection.jpg',
+        content: '📷 AC Maintenance & Inspection Service Overview',
+      };
+    }
+    if (blockTitle === 'Video') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'video',
+        mediaUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        mediaCaption: 'Demonstration of technician on-site workflow',
+        mediaFileName: 'workflow-walkthrough.mp4',
+        content: '🎥 Service Walkthrough Video',
+      };
+    }
+    if (blockTitle === 'YouTube') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'video',
+        mediaUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        mediaCaption: 'Watch our service introduction video on YouTube',
+        content: '▶️ YouTube Video: https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      };
+    }
+    if (blockTitle === 'Media') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'image',
+        mediaUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
+        mediaCaption: 'Special Festive Discount Banner (Save 20% on Annual AMC)',
+        mediaFileName: 'promo-banner.jpg',
+        content: '🖼️ Festive Discount Banner (Save 20% on Annual AMC)',
+      };
+    }
+    if (blockTitle === 'File') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'document',
+        mediaUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        mediaFileName: 'Qiyam-Commercial-AC-Catalog.pdf',
+        mediaFileSize: '1.4 MB',
+        mediaCaption: 'Download our comprehensive 2026 Commercial Service Catalog',
+        content: '📄 Document: Qiyam-Commercial-AC-Catalog.pdf (1.4 MB)',
+      };
+    }
+    if (blockTitle === 'Audio') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'audio',
+        mediaUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+        mediaFileName: 'welcome-voice-note.mp3',
+        mediaFileSize: '420 KB',
+        mediaCaption: 'Welcome voice note from client support manager',
+        content: '🎙️ Voice Note: welcome-voice-note.mp3',
+      };
+    }
+    if (blockTitle === 'Location') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        mediaType: 'location',
+        locationName: 'Qiyam Headquarters, Cyberpark Calicut',
+        latitude: 11.2858,
+        longitude: 75.8768,
+        content: '📍 Location: Qiyam Headquarters, Cyberpark Calicut (11.2858° N, 75.8768° E)',
+      };
+    }
     return {
       id: `item-${ts}`,
       type: 'message',
-      content: messagePreviews[blockTitle] || `${blockTitle} block content. Click to configure.`,
+      mediaType: 'text',
+      content: 'New message block content. Click to configure message text.',
     };
   };
 
@@ -818,13 +950,83 @@ export const WorkflowBuilderView: React.FC = () => {
     );
   };
 
+  // Upload Media File from User's Device
+  const handleMediaFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !configModal) return;
+
+    let detectedType: 'image' | 'video' | 'audio' | 'document' = 'document';
+    if (file.type.startsWith('image/')) detectedType = 'image';
+    else if (file.type.startsWith('video/')) detectedType = 'video';
+    else if (file.type.startsWith('audio/')) detectedType = 'audio';
+    else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) detectedType = 'document';
+
+    const sizeFormatted =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const cleanName = file.name.replace(/\.[^/.]+$/, '');
+      setConfigModal((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          draftItem: {
+            ...prev.draftItem,
+            mediaType: detectedType,
+            mediaUrl: dataUrl,
+            mediaFileName: file.name,
+            mediaFileSize: sizeFormatted,
+            mediaCaption: prev.draftItem.mediaCaption || cleanName,
+            content:
+              prev.draftItem.content && !prev.draftItem.content.includes('[Media File')
+                ? prev.draftItem.content
+                : cleanName,
+          }
+        };
+      });
+      addToast(`Attached "${file.name}" (${sizeFormatted})`, 'success');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   // Open Configure Element Modal for any item
   const handleOpenConfigModal = (group: FlowGroup, item: GroupItem) => {
+    const draft: GroupItem = JSON.parse(JSON.stringify(item));
+
+    // Automatically infer mediaType if it was not explicitly saved
+    if (draft.type === 'message' && !draft.mediaType) {
+      const c = draft.content || '';
+      if (c.includes('[Media File') || c.includes('[Image') || c.startsWith('📷') || c.startsWith('🖼️')) {
+        draft.mediaType = 'image';
+      } else if (c.includes('[Video') || c.includes('YouTube') || c.startsWith('🎥') || c.startsWith('▶️')) {
+        draft.mediaType = 'video';
+      } else if (c.includes('[Audio') || c.includes('Voice Note') || c.startsWith('🎙️')) {
+        draft.mediaType = 'audio';
+      } else if (c.includes('[Document') || c.includes('PDF') || c.startsWith('📄')) {
+        draft.mediaType = 'document';
+      } else if (c.includes('[Location') || c.startsWith('📍')) {
+        draft.mediaType = 'location';
+      } else {
+        draft.mediaType = 'text';
+      }
+    }
+
+    if (draft.mediaUrl?.startsWith('data:')) {
+      setMediaSourceTab('upload');
+    } else {
+      setMediaSourceTab('url');
+    }
+
     setConfigModal({
       isOpen: true,
       groupId: group.id,
       itemId: item.id,
-      draftItem: JSON.parse(JSON.stringify(item)),
+      draftItem: draft,
       groupTitle: group.title,
     });
   };
@@ -834,12 +1036,19 @@ export const WorkflowBuilderView: React.FC = () => {
     if (!configModal) return;
     const { groupId, itemId, draftItem } = configModal;
 
+    const finalItem: GroupItem = { ...draftItem };
+    if (finalItem.type === 'message' && finalItem.mediaType && finalItem.mediaType !== 'text') {
+      if (finalItem.mediaCaption) {
+        finalItem.content = finalItem.mediaCaption;
+      }
+    }
+
     setGroups((prev) =>
       prev.map((g) => {
         if (g.id !== groupId) return g;
         return {
           ...g,
-          items: (g.items || []).map((it) => (it.id === itemId ? draftItem : it)),
+          items: (g.items || []).map((it) => (it.id === itemId ? finalItem : it)),
         };
       })
     );
@@ -1095,15 +1304,34 @@ export const WorkflowBuilderView: React.FC = () => {
   const getMessagesFromGroup = (
     grp: FlowGroup,
     vars: Record<string, string>
-  ): Array<{ sender: 'bot'; text: string; options?: string[]; isPayment?: boolean }> => {
-    const msgs: Array<{ sender: 'bot'; text: string; options?: string[]; isPayment?: boolean }> = [];
+  ): Array<{
+    sender: 'bot';
+    text: string;
+    options?: string[];
+    isPayment?: boolean;
+    mediaUrl?: string;
+    mediaType?: string;
+    mediaFileName?: string;
+  }> => {
+    const msgs: Array<{
+      sender: 'bot';
+      text: string;
+      options?: string[];
+      isPayment?: boolean;
+      mediaUrl?: string;
+      mediaType?: string;
+      mediaFileName?: string;
+    }> = [];
     if (!grp || !grp.items) return msgs;
 
     grp.items.forEach((item) => {
-      if (item.type === 'message' && item.content) {
+      if (item.type === 'message' && (item.content || item.mediaCaption || item.mediaUrl)) {
         msgs.push({
           sender: 'bot',
-          text: replaceSimulatedVars(item.content, vars),
+          text: replaceSimulatedVars(item.mediaCaption || item.content || '', vars),
+          mediaUrl: item.mediaUrl,
+          mediaType: item.mediaType,
+          mediaFileName: item.mediaFileName,
         });
       } else if (item.type === 'choice') {
         const questionText = replaceSimulatedVars(
@@ -2081,15 +2309,101 @@ export const WorkflowBuilderView: React.FC = () => {
                               </button>
                             </div>
 
-                            {/* Message Item */}
+                            {/* Message / Media Item */}
                             {item.type === 'message' && (
-                              <div className="bg-[#EAFBF3] border border-emerald-200/80 p-2.5 rounded-xl text-slate-800 space-y-1 hover:border-emerald-400 transition">
-                                <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[10px]">
-                                  <MessageSquare className="w-3 h-3" />
-                                  <span>Message</span>
+                              <div className="bg-[#EAFBF3] border border-emerald-200/80 p-2.5 rounded-xl text-slate-800 space-y-1.5 hover:border-emerald-400 transition">
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
+                                    {item.mediaType === 'image' ? (
+                                      <>
+                                        <Image className="w-3 h-3 text-emerald-600" />
+                                        <span>Image / Media</span>
+                                      </>
+                                    ) : item.mediaType === 'video' ? (
+                                      <>
+                                        <Video className="w-3 h-3 text-sky-600" />
+                                        <span>Video Attachment</span>
+                                      </>
+                                    ) : item.mediaType === 'audio' ? (
+                                      <>
+                                        <Music className="w-3 h-3 text-purple-600" />
+                                        <span>Voice Note</span>
+                                      </>
+                                    ) : item.mediaType === 'document' ? (
+                                      <>
+                                        <FileText className="w-3 h-3 text-amber-600" />
+                                        <span>Document / File</span>
+                                      </>
+                                    ) : item.mediaType === 'location' ? (
+                                      <>
+                                        <MapPin className="w-3 h-3 text-rose-600" />
+                                        <span>Location Pin</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <MessageSquare className="w-3 h-3 text-emerald-600" />
+                                        <span>Message</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  {item.mediaUrl && (
+                                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-mono px-1.5 py-0.2 rounded border border-emerald-300">
+                                      Attached
+                                    </span>
+                                  )}
                                 </div>
+
+                                {/* Media Thumbnail on Card */}
+                                {item.mediaType === 'image' && item.mediaUrl && (
+                                  <div className="rounded-lg overflow-hidden border border-emerald-200/60 bg-white max-h-28">
+                                    <img
+                                      src={item.mediaUrl}
+                                      alt={item.mediaFileName || 'Media Preview'}
+                                      className="w-full h-20 object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
+                                {item.mediaType === 'video' && (
+                                  <div className="flex items-center gap-1.5 p-1.5 bg-sky-50 border border-sky-200 rounded-lg text-[10px] text-sky-900">
+                                    <Video className="w-3 h-3 text-sky-600 shrink-0" />
+                                    <span className="truncate font-mono">{item.mediaFileName || item.mediaUrl || 'Video file'}</span>
+                                  </div>
+                                )}
+
+                                {item.mediaType === 'document' && (
+                                  <div className="flex items-center justify-between p-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[10px] text-amber-900">
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <FileText className="w-3 h-3 text-amber-700 shrink-0" />
+                                      <span className="truncate font-semibold">{item.mediaFileName || 'Document.pdf'}</span>
+                                    </div>
+                                    {item.mediaFileSize && (
+                                      <span className="text-[9px] font-mono text-amber-700 shrink-0 bg-amber-100/70 px-1 py-0.2 rounded">
+                                        {item.mediaFileSize}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                {item.mediaType === 'audio' && (
+                                  <div className="flex items-center gap-1.5 p-1.5 bg-purple-50 border border-purple-200 rounded-lg text-[10px] text-purple-900">
+                                    <Music className="w-3 h-3 text-purple-600 shrink-0" />
+                                    <span className="truncate font-mono">{item.mediaFileName || 'Voice-note.mp3'}</span>
+                                  </div>
+                                )}
+
+                                {item.mediaType === 'location' && (
+                                  <div className="flex items-center gap-1.5 p-1.5 bg-rose-50 border border-rose-200 rounded-lg text-[10px] text-rose-900">
+                                    <MapPin className="w-3 h-3 text-rose-600 shrink-0" />
+                                    <span className="truncate font-semibold">{item.locationName || 'Branch Location'}</span>
+                                  </div>
+                                )}
+
                                 <div className="text-[11px] leading-relaxed text-slate-700 font-medium">
-                                  {item.content}
+                                  {item.mediaCaption || item.content}
                                 </div>
                               </div>
                             )}
@@ -3105,25 +3419,435 @@ export const WorkflowBuilderView: React.FC = () => {
               )}
 
               {/* ------------------------------------------------------------- */}
-              {/* MESSAGE ELEMENT CONFIG                                        */}
+              {/* MESSAGE / MEDIA ELEMENT CONFIG                                */}
               {/* ------------------------------------------------------------- */}
               {configModal.draftItem.type === 'message' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Media Format / Type Selector */}
                   <div>
-                    <label className="block text-slate-700 font-semibold mb-1">Message Content *</label>
+                    <label className="block text-slate-700 font-semibold mb-1.5">
+                      Message Format & Media Type
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                      {[
+                        { type: 'text', label: 'Text Only', icon: MessageSquare },
+                        { type: 'image', label: 'Image', icon: Image },
+                        { type: 'video', label: 'Video', icon: Video },
+                        { type: 'audio', label: 'Audio', icon: Music },
+                        { type: 'document', label: 'Document', icon: FileText },
+                        { type: 'location', label: 'Location', icon: MapPin },
+                      ].map((m) => {
+                        const Icon = m.icon;
+                        const isSelected =
+                          (configModal.draftItem.mediaType || 'text') === m.type;
+                        return (
+                          <button
+                            key={m.type}
+                            type="button"
+                            onClick={() => {
+                              setConfigModal({
+                                ...configModal,
+                                draftItem: {
+                                  ...configModal.draftItem,
+                                  mediaType: m.type as any,
+                                  mediaCaption:
+                                    configModal.draftItem.mediaCaption ||
+                                    (m.type !== 'text' ? configModal.draftItem.content : ''),
+                                }
+                              });
+                            }}
+                            className={`flex flex-col items-center justify-center p-2 rounded-xl border text-[10px] font-semibold transition cursor-pointer gap-1 ${
+                              isSelected
+                                ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-400/20'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                            }`}
+                          >
+                            <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <span className="truncate">{m.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* MEDIA FILE UPLOAD & URL CONTROLS */}
+                  {configModal.draftItem.mediaType &&
+                    ['image', 'video', 'audio', 'document'].includes(
+                      configModal.draftItem.mediaType
+                    ) && (
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                        {/* Source Mode Switcher: Upload File vs Web URL */}
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                          <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                            <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Media Source & File Attachment</span>
+                          </span>
+                          <div className="flex items-center bg-white p-0.5 rounded-lg border border-slate-200 text-[10px] font-semibold">
+                            <button
+                              type="button"
+                              onClick={() => setMediaSourceTab('upload')}
+                              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                                mediaSourceTab === 'upload'
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Upload File</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMediaSourceTab('url')}
+                              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                                mediaSourceTab === 'url'
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <Link2 className="w-3 h-3" />
+                              <span>Media URL</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* TAB 1: UPLOAD FILE */}
+                        {mediaSourceTab === 'upload' && (
+                          <div className="space-y-2.5">
+                            <input
+                              type="file"
+                              ref={mediaFileInputRef}
+                              onChange={handleMediaFileUpload}
+                              accept={
+                                configModal.draftItem.mediaType === 'image'
+                                  ? 'image/*'
+                                  : configModal.draftItem.mediaType === 'video'
+                                  ? 'video/*'
+                                  : configModal.draftItem.mediaType === 'audio'
+                                  ? 'audio/*'
+                                  : '.pdf,.doc,.docx,.xlsx,.ppt,.txt,application/pdf'
+                              }
+                              className="hidden"
+                            />
+
+                            <div
+                              onClick={() => mediaFileInputRef.current?.click()}
+                              className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-4 bg-white text-center cursor-pointer transition hover:bg-emerald-50/20 group"
+                            >
+                              <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 mx-auto mb-1.5 flex items-center justify-center group-hover:scale-110 transition">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                              <p className="font-bold text-slate-800 text-xs">
+                                Click to browse or drag & drop {configModal.draftItem.mediaType}
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Supports {configModal.draftItem.mediaType === 'image' ? 'JPG, PNG, WEBP, GIF' : configModal.draftItem.mediaType === 'video' ? 'MP4, WebM (Max 25MB)' : configModal.draftItem.mediaType === 'audio' ? 'MP3, OGG, WAV' : 'PDF, DOC, XLSX (Max 20MB)'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TAB 2: MEDIA WEB URL */}
+                        {mediaSourceTab === 'url' && (
+                          <div className="space-y-2">
+                            <div>
+                              <label className="block text-slate-700 font-semibold text-[11px] mb-1">
+                                Media File Direct URL *
+                              </label>
+                              <div className="relative">
+                                <Link2 className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="url"
+                                  placeholder="https://example.com/assets/media.jpg (or mp4, pdf, mp3)"
+                                  value={configModal.draftItem.mediaUrl || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setConfigModal({
+                                      ...configModal,
+                                      draftItem: {
+                                        ...configModal.draftItem,
+                                        mediaUrl: val,
+                                        mediaFileName: val.split('/').pop() || 'media_asset',
+                                      }
+                                    });
+                                  }}
+                                  className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-slate-800 font-mono"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Preset Samples */}
+                            <div>
+                              <span className="text-[10px] font-semibold text-slate-500 block mb-1">
+                                Or pick a fast sample preset:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {MEDIA_PRESETS.filter(
+                                  (p) => p.type === configModal.draftItem.mediaType
+                                ).map((preset) => (
+                                  <button
+                                    key={preset.name}
+                                    type="button"
+                                    onClick={() => {
+                                      setConfigModal({
+                                        ...configModal,
+                                        draftItem: {
+                                          ...configModal.draftItem,
+                                          mediaUrl: preset.url,
+                                          mediaCaption: preset.caption,
+                                          mediaFileName: preset.fileName,
+                                          mediaFileSize: preset.fileSize || 'Sample Asset',
+                                          content: preset.caption,
+                                        }
+                                      });
+                                      addToast(`Loaded preset "${preset.name}"`, 'success');
+                                    }}
+                                    className="px-2 py-0.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-800 rounded-md text-[10px] transition cursor-pointer"
+                                  >
+                                    + {preset.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* LIVE MEDIA PREVIEW & DETAILS */}
+                        {configModal.draftItem.mediaUrl ? (
+                          <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Attached Media Preview</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfigModal({
+                                    ...configModal,
+                                    draftItem: {
+                                      ...configModal.draftItem,
+                                      mediaUrl: undefined,
+                                      mediaFileName: undefined,
+                                      mediaFileSize: undefined,
+                                    }
+                                  });
+                                  addToast('Removed media attachment', 'info');
+                                }}
+                                className="text-red-500 hover:text-red-700 text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Remove Media</span>
+                              </button>
+                            </div>
+
+                            {/* Image Preview */}
+                            {configModal.draftItem.mediaType === 'image' && (
+                              <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-white max-h-48 flex items-center justify-center">
+                                <img
+                                  src={configModal.draftItem.mediaUrl}
+                                  alt="Media Attachment Preview"
+                                  className="w-full max-h-44 object-contain"
+                                />
+                              </div>
+                            )}
+
+                            {/* Video Preview */}
+                            {configModal.draftItem.mediaType === 'video' && (
+                              <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-950 max-h-48">
+                                <video
+                                  src={configModal.draftItem.mediaUrl}
+                                  controls
+                                  className="w-full max-h-44"
+                                />
+                              </div>
+                            )}
+
+                            {/* Audio Preview */}
+                            {configModal.draftItem.mediaType === 'audio' && (
+                              <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                                <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-2">
+                                  <Music className="w-3.5 h-3.5 text-purple-600" />
+                                  <span>{configModal.draftItem.mediaFileName || 'Audio Track'}</span>
+                                </div>
+                                <audio
+                                  src={configModal.draftItem.mediaUrl}
+                                  controls
+                                  className="w-full h-8"
+                                />
+                              </div>
+                            )}
+
+                            {/* Document Preview */}
+                            {configModal.draftItem.mediaType === 'document' && (
+                              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+                                <div className="flex items-center gap-2.5 truncate">
+                                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                                    <FileText className="w-4 h-4" />
+                                  </div>
+                                  <div className="truncate">
+                                    <p className="font-bold text-slate-800 text-xs truncate">
+                                      {configModal.draftItem.mediaFileName || 'Document.pdf'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {configModal.draftItem.mediaFileSize || 'PDF Document'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <a
+                                  href={configModal.draftItem.mediaUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-lg text-[10px] font-semibold flex items-center gap-1 shrink-0 transition"
+                                >
+                                  <span>Open File</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+
+                  {/* LOCATION PIN CONFIG */}
+                  {configModal.draftItem.mediaType === 'location' && (
+                    <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-2xl space-y-3">
+                      <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
+                        <MapPin className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>WhatsApp Location Coordinates Pin</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 font-semibold text-[11px] mb-1">
+                          Location / Branch Name *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Qiyam Business Center, Cyberpark"
+                          value={configModal.draftItem.locationName || ''}
+                          onChange={(e) =>
+                            setConfigModal({
+                              ...configModal,
+                              draftItem: {
+                                ...configModal.draftItem,
+                                locationName: e.target.value,
+                                content: `📍 Location: ${e.target.value}`,
+                              }
+                            })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-slate-700 font-semibold text-[11px] mb-1">
+                            Latitude
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={configModal.draftItem.latitude ?? 11.2858}
+                            onChange={(e) =>
+                              setConfigModal({
+                                ...configModal,
+                                draftItem: {
+                                  ...configModal.draftItem,
+                                  latitude: parseFloat(e.target.value),
+                                }
+                              })
+                            }
+                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-700 font-semibold text-[11px] mb-1">
+                            Longitude
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={configModal.draftItem.longitude ?? 75.8768}
+                            onChange={(e) =>
+                              setConfigModal({
+                                ...configModal,
+                                draftItem: {
+                                  ...configModal.draftItem,
+                                  longitude: parseFloat(e.target.value),
+                                }
+                              })
+                            }
+                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfigModal({
+                              ...configModal,
+                              draftItem: {
+                                ...configModal.draftItem,
+                                locationName: 'Qiyam Headquarters, Calicut',
+                                latitude: 11.2858,
+                                longitude: 75.8768,
+                                content: '📍 Location: Qiyam Headquarters, Cyberpark Calicut (11.2858° N, 75.8768° E)',
+                              }
+                            });
+                            addToast('Loaded Calicut Cyberpark HQ coordinates', 'success');
+                          }}
+                          className="text-rose-700 hover:text-rose-900 font-semibold cursor-pointer underline"
+                        >
+                          Use HQ Location Preset
+                        </button>
+                        <a
+                          href={`https://www.google.com/maps?q=${configModal.draftItem.latitude || 11.2858},${configModal.draftItem.longitude || 75.8768}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-rose-700 hover:text-rose-900 font-semibold flex items-center gap-1"
+                        >
+                          <span>Preview on Google Maps</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Message Content / Caption Textarea */}
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      {configModal.draftItem.mediaType &&
+                      configModal.draftItem.mediaType !== 'text'
+                        ? 'Caption / Accompanying Message *'
+                        : 'Message Content *'}
+                    </label>
                     <textarea
-                      rows={4}
-                      value={configModal.draftItem.content || ''}
-                      onChange={(e) =>
+                      rows={3}
+                      value={
+                        configModal.draftItem.mediaCaption !== undefined &&
+                        configModal.draftItem.mediaType !== 'text'
+                          ? configModal.draftItem.mediaCaption
+                          : configModal.draftItem.content || ''
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setConfigModal({
                           ...configModal,
-                          draftItem: { ...configModal.draftItem, content: e.target.value }
-                        })
-                      }
+                          draftItem: {
+                            ...configModal.draftItem,
+                            content: val,
+                            mediaCaption: val,
+                          }
+                        });
+                      }}
                       placeholder="Hi {name}! Welcome to WhatsQ..."
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed text-xs"
                     />
                   </div>
+
+                  {/* Insert Variable Buttons */}
                   <div className="flex flex-wrap gap-1.5">
                     <span className="text-[11px] text-slate-400 font-medium">Insert Variable:</span>
                     {['{name}', '{email}', '{phone}', '{field_of_study}', '{amount}'].map((v) => (
@@ -3131,13 +3855,18 @@ export const WorkflowBuilderView: React.FC = () => {
                         key={v}
                         type="button"
                         onClick={() => {
-                          const cur = configModal.draftItem.content || '';
+                          const cur = configModal.draftItem.mediaCaption || configModal.draftItem.content || '';
+                          const next = cur + ' ' + v;
                           setConfigModal({
                             ...configModal,
-                            draftItem: { ...configModal.draftItem, content: cur + ' ' + v }
+                            draftItem: {
+                              ...configModal.draftItem,
+                              content: next,
+                              mediaCaption: next,
+                            }
                           });
                         }}
-                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded border border-slate-200 text-[10px] font-mono transition"
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded border border-slate-200 text-[10px] font-mono transition cursor-pointer"
                       >
                         {v}
                       </button>
@@ -3411,6 +4140,31 @@ export const WorkflowBuilderView: React.FC = () => {
                         : 'bg-white text-slate-900 rounded-bl-none'
                     }`}
                   >
+                    {msg.mediaUrl && (
+                      <div className="mb-2 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                        {msg.mediaType === 'image' ? (
+                          <img
+                            src={msg.mediaUrl}
+                            alt="media attachment"
+                            className="w-full max-h-48 object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : msg.mediaType === 'video' ? (
+                          <video src={msg.mediaUrl} controls className="w-full max-h-48" />
+                        ) : msg.mediaType === 'audio' ? (
+                          <audio src={msg.mediaUrl} controls className="w-full h-8 p-1" />
+                        ) : (
+                          <div className="p-2.5 bg-amber-50 flex items-center gap-2 text-amber-900">
+                            <FileText className="w-4 h-4 text-amber-700 shrink-0" />
+                            <span className="font-semibold text-[11px] truncate">
+                              {msg.mediaFileName || 'Document.pdf'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="whitespace-pre-wrap">{msg.text}</div>
                     {msg.isPayment && (
                       <div className="mt-2 p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2">
