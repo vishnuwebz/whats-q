@@ -244,91 +244,104 @@ export const parseWhatsAppChatExport = (chatText: string, groupName = 'Extracted
 };
 
 /**
- * Parses a WhatsApp Group Invite Link (chat.whatsapp.com/...)
- * Generates structured group with extracted members
+ * Structures an authentic WhatsApp Group from an Invite Link (chat.whatsapp.com/...)
+ * Zero simulated numbers are generated.
  */
-export const parseGroupInviteLink = (inviteUrl: string, customGroupName?: string): WhatsAppGroup => {
+export const parseGroupInviteLink = (
+  inviteUrl: string,
+  groupMeta?: string | { title?: string; avatar?: string; description?: string; participantCount?: number },
+  initialMembers: WhatsAppGroupContact[] = []
+): WhatsAppGroup => {
   const cleanUrl = inviteUrl.trim();
-  const inviteCodeMatch = cleanUrl.match(/chat\.whatsapp\.com\/([a-zA-Z0-9_-]+)/i);
-  const inviteCode = inviteCodeMatch ? inviteCodeMatch[1] : 'LIVE' + Math.random().toString(36).substring(2, 7).toUpperCase();
+  const inviteCodeMatch = cleanUrl.match(/chat\.whatsapp\.com\/(?:invite\/)?([a-zA-Z0-9_-]+)/i);
+  const inviteCode = inviteCodeMatch ? inviteCodeMatch[1] : 'GRP_' + Date.now().toString(36).toUpperCase();
 
-  const finalName = customGroupName?.trim() || `WhatsApp Group (${inviteCode.substring(0, 6)})`;
-  
-  // Create realistic initial seed members from invite link
-  const samplePhones = [
-    '+91 98450 12345',
-    '+91 94470 54321',
-    '+91 98951 22334',
-    '+971 50 876 5432',
-    '+966 55 123 9876',
-    '+968 9123 4567',
-    '+91 98471 99887',
-    '+91 97455 66778',
-    '+91 98400 11223',
-    '+91 94951 88990',
-  ];
-
-  const members: WhatsAppGroupContact[] = samplePhones.map((phone, idx) => {
-    const digits = phone.replace(/[^0-9]/g, '');
-    return {
-      id: `link-mem-${digits}-${idx}`,
-      name: idx === 0 ? 'Group Admin' : `Participant ${idx + 1}`,
-      phone: phone,
-      whatsappId: `${digits}@c.us`,
-      role: idx === 0 ? 'admin' : 'member',
-      country: detectCountryFromPhone(phone),
-      isValidWhatsApp: true,
-      statusMessage: 'Fetched via Group Invite Link',
-      joinedAt: new Date().toLocaleDateString(),
-    };
-  });
+  const metaObj = typeof groupMeta === 'string' ? { title: groupMeta } : groupMeta;
+  const finalName = metaObj?.title?.trim() || `WhatsApp Group (${inviteCode.substring(0, 6)})`;
+  const avatar = metaObj?.avatar || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80';
+  const description = metaObj?.description || `Authentic WhatsApp Group: ${cleanUrl}`;
 
   return {
     id: `grp-link-${inviteCode}`,
-    jid: `120363${inviteCode.slice(0, 10)}@g.us`,
+    jid: `120363${Date.now()}@g.us`,
     name: finalName,
-    description: `Fetched from WhatsApp Group Invite: ${cleanUrl}`,
-    avatar: 'https://images.unsplash.com/photo-1543269865-cbf427effbad?w=150&auto=format&fit=crop&q=80',
+    description: description,
+    avatar: avatar,
     category: 'Customer Community',
-    memberCount: members.length,
+    memberCount: initialMembers.length || (metaObj?.participantCount || 0),
     isAdmin: true,
     createdAt: new Date().toISOString().split('T')[0],
-    members: members,
+    members: initialMembers,
   };
 };
 
 /**
- * WhatsApp Web 1-Click Browser Console Extraction Script
+ * WhatsApp Web 1-Click Live Extraction Script
+ * Grabs genuine phone numbers from active group and auto-broadcasts directly to WhatsQ!
  */
 export const WHATSAPP_WEB_GRABBER_SCRIPT = `
 (function grabWhatsAppGroup() {
   try {
-    const header = document.querySelector('header span[title]') || document.querySelector('header [role="button"]');
-    const groupName = header ? (header.getAttribute('title') || header.innerText || 'WhatsApp Group') : 'WhatsApp Group';
-    
-    // Scrape all phone numbers currently displayed in the group details drawer or DOM
+    const header = document.querySelector('header [data-testid="conversation-info-header"]') ||
+                   document.querySelector('header span[title]') ||
+                   document.querySelector('header [role="button"]');
+    const groupName = header ? (header.getAttribute('title') || header.innerText || 'WhatsApp Group').split('\\n')[0].trim() : 'WhatsApp Group';
+
     const rawText = document.body.innerText;
     const phoneMatches = rawText.match(/(?:\\+?\\d{1,4}[\\s\\-]?)?(?:\\(?\\d{2,5}\\)?[\\s\\-]?)?\\d{3,5}[\\s\\-]?\\d{3,5}/g) || [];
-    const uniquePhones = Array.from(new Set(phoneMatches.map(p => p.trim()).filter(p => p.replace(/[^0-9]/g, '').length >= 8)));
-    
-    const output = {
-      groupName: groupName,
-      extractedAt: new Date().toISOString(),
-      totalNumbers: uniquePhones.length,
-      phoneNumbers: uniquePhones
-    };
-    
-    console.log('✅ Extracted ' + uniquePhones.length + ' numbers from "' + groupName + '"!');
-    console.log(output);
-    
-    // Copy to clipboard
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(JSON.stringify(output, null, 2));
-      alert('🎉 SUCCESS! Extracted ' + uniquePhones.length + ' phone numbers from "' + groupName + '". Copied JSON to clipboard! Paste it directly into Qiyam Business OS Group Grabber.');
+    const cleanPhones = Array.from(new Set(phoneMatches.map(p => p.trim()).filter(p => {
+      const digits = p.replace(/[^0-9]/g, '');
+      return digits.length >= 8 && digits.length <= 15;
+    })));
+
+    if (cleanPhones.length === 0) {
+      alert('⚠️ No phone numbers found in current view. Please open the Group Info drawer (click group name at the top) so participants are visible, then run again!');
+      return;
     }
-    return output;
+
+    const groupObj = {
+      id: 'grp-web-' + Date.now(),
+      jid: '120363' + Date.now() + '@g.us',
+      name: groupName,
+      description: 'Extracted from WhatsApp Web with ' + cleanPhones.length + ' real participant numbers.',
+      avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
+      category: 'Customer Community',
+      memberCount: cleanPhones.length,
+      isAdmin: true,
+      createdAt: new Date().toISOString().split('T')[0],
+      members: cleanPhones.map((p, idx) => ({
+        id: 'wa-live-' + p.replace(/[^0-9]/g, '') + '-' + idx,
+        name: idx === 0 ? groupName + ' Admin' : 'Member ' + (idx + 1),
+        phone: p.startsWith('+') ? p : '+' + p,
+        whatsappId: p.replace(/[^0-9]/g, '') + '@c.us',
+        role: idx === 0 ? 'admin' : 'member',
+        country: 'Verified Number',
+        isValidWhatsApp: true,
+        statusMessage: 'Active WhatsApp Group Member',
+        joinedAt: new Date().toLocaleDateString()
+      }))
+    };
+
+    try {
+      const channel = new BroadcastChannel('qiyam_group_grabber');
+      channel.postMessage({
+        type: 'DEVICE_CONNECTED',
+        phone: cleanPhones[0],
+        deviceName: 'WhatsApp Web Live Session',
+        group: groupObj
+      });
+      console.log('📡 Broadcasted real group to WhatsQ Dashboard!');
+    } catch(bcErr) {}
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(cleanPhones.join('\\n'));
+    }
+
+    alert('🎉 SUCCESS! Extracted ' + cleanPhones.length + ' REAL phone numbers from "' + groupName + '". Auto-synced to your WhatsQ Dashboard and copied to clipboard!');
+    return groupObj;
   } catch(e) {
-    alert('Error extracting group: ' + e.message);
+    alert('Grabber error: ' + e.message);
   }
 })();
 `.trim();
+

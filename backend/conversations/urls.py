@@ -6,7 +6,8 @@ from .views import (
     WhatsAppTemplateViewSet,
     MetaConfigViewSet,
     WhatsAppWebhookView,
-    SimulateWhatsAppMessageView
+    SimulateWhatsAppMessageView,
+    InspectGroupInviteView
 )
 from .grabber_views import GroupGrabberSessionView
 
@@ -20,5 +21,6 @@ urlpatterns = [
     path('webhook/', WhatsAppWebhookView.as_view(), name='whatsapp_webhook'),
     path('simulate/', SimulateWhatsAppMessageView.as_view(), name='whatsapp_simulate'),
     path('grabber-session/', GroupGrabberSessionView.as_view(), name='whatsapp_grabber_session'),
+    path('inspect-group-invite/', InspectGroupInviteView.as_view(), name='inspect_group_invite'),
     path('', include(router.urls)),
 ]
