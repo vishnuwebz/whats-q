@@ -171,8 +171,15 @@ export const getEffectiveItemImage = (item: Partial<InventoryItem>): string => {
   return '';
 };
 
-// ─── Blank form ───────────────────────────────────────────────────────────────
-const blankForm = (): Partial<InventoryItem> & { image_url: string } => ({
+// ─── Form State ───────────────────────────────────────────────────────────────
+export type InventoryFormState = Omit<Partial<InventoryItem>, 'stock_units' | 'stock_value' | 'reorder_level'> & {
+  image_url: string;
+  stock_units?: number | string;
+  stock_value?: number | string;
+  reorder_level?: number | string;
+};
+
+const blankForm = (): InventoryFormState => ({
   name: '', sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`, category: 'Grocery',
   stock_units: 50, stock_value: 15000, location: 'Aisle 2, Rack A',
   reorder_level: 20, reorder_qty: 50, supplier: 'Metro Cash & Carry',
@@ -187,6 +194,250 @@ const statusUrgencyWeights: Record<string, number> = {
   discontinued: 4,
 };
 
+// ─── Inventory Form Fields (Stable component outside InventoryView to prevent unmounting & scroll jumping) ──
+interface InventoryFormFieldsProps {
+  form: InventoryFormState;
+  setForm: React.Dispatch<React.SetStateAction<InventoryFormState>>;
+  addToast: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
+}
+
+const InventoryFormFields: React.FC<InventoryFormFieldsProps> = ({ form, setForm, addToast }) => {
+  const isZeroUnits = form.stock_units === 0 || form.stock_units === '0';
+
+  return (
+    <div className="space-y-4 text-xs">
+      <div>
+        <label className="font-semibold text-slate-700 block mb-2 flex items-center gap-1.5">
+          <Camera className="w-3.5 h-3.5 text-emerald-600" /> Product Image <span className="text-slate-400 font-normal">(optional)</span>
+        </label>
+        <ImageZone value={form.image_url || ''} onChange={(url) => setForm((prev) => ({ ...prev, image_url: url }))} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="col-span-1 sm:col-span-2">
+          <label className="font-semibold text-slate-700 block mb-1">Item Name *</label>
+          <input
+            required
+            placeholder="e.g. Basmati Rice 5kg"
+            value={form.name || ''}
+            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800"
+          />
+        </div>
+        {(['sku', 'location', 'supplier'] as const).map((k) => (
+          <div key={k} className={k === 'supplier' ? 'col-span-1 sm:col-span-2' : ''}>
+            <label className="font-semibold text-slate-700 block mb-1 capitalize">{k.replace('_', ' ')}</label>
+            <input
+              value={(form[k] as string) || ''}
+              onChange={(e) => setForm((prev) => ({ ...prev, [k]: e.target.value }))}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800"
+            />
+          </div>
+        ))}
+        <div>
+          <label className="font-semibold text-slate-700 block mb-1">Category</label>
+          <select
+            value={form.category || 'Grocery'}
+            onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800"
+          >
+            {['Grocery', 'Dairy', 'Personal Care', 'Hardware', 'Appliances', 'Electronics', 'Clothing'].map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Stock Units input with stepper buttons & automatic out_of_stock handling */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-semibold text-slate-700 block">Stock Units *</label>
+            {isZeroUnits && (
+              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                0 units = Out of Stock
+              </span>
+            )}
+          </div>
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                const cur = Number(form.stock_units) || 0;
+                const next = Math.max(0, cur - 1);
+                setForm((prev) => ({
+                  ...prev,
+                  stock_units: next,
+                  ...(next === 0
+                    ? { stock_value: 0, status: 'out_of_stock' }
+                    : (prev.status === 'out_of_stock' ? { status: 'in_stock' } : {})),
+                }));
+              }}
+              className="absolute left-1 z-10 w-7 h-7 rounded-lg bg-slate-200/80 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold flex items-center justify-center text-sm transition-colors cursor-pointer select-none"
+              title="Decrease stock units"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min="0"
+              required
+              value={form.stock_units === undefined ? '' : form.stock_units}
+              onChange={(e) => {
+                const rawVal = e.target.value;
+                if (rawVal === '') {
+                  // Keep empty string during typing without snapping to 0
+                  setForm((prev) => ({ ...prev, stock_units: '' }));
+                  return;
+                }
+                const units = Math.max(0, parseInt(rawVal, 10) || 0);
+                if (units === 0) {
+                  setForm((prev) => ({
+                    ...prev,
+                    stock_units: 0,
+                    stock_value: 0,
+                    status: 'out_of_stock',
+                  }));
+                } else {
+                  setForm((prev) => ({
+                    ...prev,
+                    stock_units: units,
+                    status: prev.status === 'out_of_stock'
+                      ? (units <= (Number(prev.reorder_level) || 20) ? 'low_stock' : 'in_stock')
+                      : prev.status,
+                  }));
+                }
+              }}
+              onBlur={() => {
+                // If user leaves the field empty, default to 0 and out_of_stock
+                if (form.stock_units === '' || form.stock_units === undefined) {
+                  setForm((prev) => ({
+                    ...prev,
+                    stock_units: 0,
+                    stock_value: 0,
+                    status: 'out_of_stock',
+                  }));
+                }
+              }}
+              placeholder="0"
+              className={`w-full text-center px-9 py-2 border rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs font-semibold ${
+                isZeroUnits
+                  ? 'bg-red-50/70 border-red-300 text-red-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                const cur = Number(form.stock_units) || 0;
+                const next = cur + 1;
+                setForm((prev) => ({
+                  ...prev,
+                  stock_units: next,
+                  status: prev.status === 'out_of_stock'
+                    ? (next <= (Number(prev.reorder_level) || 20) ? 'low_stock' : 'in_stock')
+                    : prev.status,
+                }));
+              }}
+              className="absolute right-1 z-10 w-7 h-7 rounded-lg bg-slate-200/80 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold flex items-center justify-center text-sm transition-colors cursor-pointer select-none"
+              title="Increase stock units"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Stock Status - Auto out_of_stock when 0 units, manual configuration when > 0 */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-semibold text-slate-700 block">Stock Status</label>
+            {isZeroUnits ? (
+              <span className="text-[9px] font-bold text-red-600">⚡ Auto Out of Stock</span>
+            ) : (
+              <span className="text-[9px] font-medium text-emerald-600">✓ Manual Configuration</span>
+            )}
+          </div>
+          <select
+            value={isZeroUnits ? 'out_of_stock' : (form.status || 'in_stock')}
+            onChange={(e) => {
+              const newStatus = e.target.value as InventoryItem['status'];
+              if (isZeroUnits && (newStatus === 'in_stock' || newStatus === 'low_stock')) {
+                addToast('Cannot mark In Stock when quantity is 0 units. Set stock units > 0 first.', 'warning');
+                return;
+              }
+              setForm((prev) => ({ ...prev, status: newStatus }));
+            }}
+            className={`w-full px-3 py-2 border rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs font-semibold ${
+              isZeroUnits
+                ? 'bg-red-50 border-red-300 text-red-700'
+                : 'bg-slate-50 border-slate-200 text-slate-800'
+            }`}
+          >
+            {isZeroUnits ? (
+              <>
+                <option value="out_of_stock">Out of Stock (Auto - 0 Units)</option>
+                <option value="discontinued">Discontinued (0 Units)</option>
+              </>
+            ) : (
+              <>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="discontinued">Discontinued</option>
+              </>
+            )}
+          </select>
+        </div>
+
+        {/* Stock Value */}
+        <div>
+          <label className="font-semibold text-slate-700 block mb-1">Stock Value (₹)</label>
+          <input
+            type="number"
+            min="0"
+            value={form.stock_value === undefined ? '' : form.stock_value}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({
+                ...prev,
+                stock_value: val === '' ? '' : Math.max(0, Number(val) || 0),
+              }));
+            }}
+            onBlur={() => {
+              if (form.stock_value === '' || form.stock_value === undefined) {
+                setForm((prev) => ({ ...prev, stock_value: 0 }));
+              }
+            }}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800 font-semibold"
+          />
+        </div>
+
+        {/* Reorder Level */}
+        <div>
+          <label className="font-semibold text-slate-700 block mb-1">Reorder Level</label>
+          <input
+            type="number"
+            min="0"
+            value={form.reorder_level === undefined ? '' : form.reorder_level}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({
+                ...prev,
+                reorder_level: val === '' ? '' : Math.max(0, Number(val) || 0),
+              }));
+            }}
+            onBlur={() => {
+              if (form.reorder_level === '' || form.reorder_level === undefined) {
+                setForm((prev) => ({ ...prev, reorder_level: 20 }));
+              }
+            }}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main View ────────────────────────────────────────────────────────────────
 export const InventoryView: React.FC = () => {
   const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, addToast, globalFilter, targetHighlightId } = useQiyamStore();
@@ -198,7 +449,7 @@ export const InventoryView: React.FC = () => {
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [lightboxItem, setLightboxItem] = useState<{ src: string; name: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<InventoryItem | null>(null);
-  const [form, setForm] = useState<Partial<InventoryItem> & { image_url: string }>(blankForm());
+  const [form, setForm] = useState<InventoryFormState>(blankForm());
 
   const categories = ['All', 'Grocery', 'Dairy', 'Personal Care', 'Hardware', 'Appliances'];
 
@@ -253,12 +504,13 @@ export const InventoryView: React.FC = () => {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) { addToast('Enter item name', 'error'); return; }
-    const units = form.stock_units !== undefined ? Number(form.stock_units) : 0;
+    const units = form.stock_units !== undefined && form.stock_units !== '' ? Number(form.stock_units) : 0;
     const isZero = units === 0;
     addInventoryItem({
       ...form,
       stock_units: units,
-      stock_value: isZero ? 0 : (form.stock_value || 0),
+      stock_value: isZero ? 0 : (Number(form.stock_value) || 0),
+      reorder_level: Number(form.reorder_level) || 20,
       status: isZero ? 'out_of_stock' : (form.status || 'in_stock'),
     });
     setIsAddOpen(false); setForm(blankForm());
@@ -266,162 +518,18 @@ export const InventoryView: React.FC = () => {
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editItem) return;
-    const units = form.stock_units !== undefined ? Number(form.stock_units) : 0;
+    const units = form.stock_units !== undefined && form.stock_units !== '' ? Number(form.stock_units) : 0;
     const isZero = units === 0;
     updateInventoryItem(editItem.id, {
       ...form,
       stock_units: units,
-      stock_value: isZero ? 0 : (form.stock_value || 0),
+      stock_value: isZero ? 0 : (Number(form.stock_value) || 0),
+      reorder_level: Number(form.reorder_level) || 20,
       status: isZero ? 'out_of_stock' : (form.status || 'in_stock'),
     });
     setEditItem(null);
   };
   const handleDelete = (item: InventoryItem) => { deleteInventoryItem(item.id); setDeleteConfirm(null); };
-
-  const FormBody = () => (
-    <div className="space-y-4 pt-4 text-xs">
-      <div>
-        <label className="font-semibold text-slate-700 block mb-2 flex items-center gap-1.5">
-          <Camera className="w-3.5 h-3.5 text-emerald-600" /> Product Image <span className="text-slate-400 font-normal">(optional)</span>
-        </label>
-        <ImageZone value={form.image_url || ''} onChange={(url) => setForm({ ...form, image_url: url })} />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="col-span-1 sm:col-span-2">
-          <label className="font-semibold text-slate-700 block mb-1">Item Name *</label>
-          <input required placeholder="e.g. Basmati Rice 5kg" value={form.name || ''}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800" />
-        </div>
-        {(['sku', 'location', 'supplier'] as const).map((k) => (
-          <div key={k} className={k === 'supplier' ? 'col-span-1 sm:col-span-2' : ''}>
-            <label className="font-semibold text-slate-700 block mb-1 capitalize">{k.replace('_', ' ')}</label>
-            <input value={(form[k] as string) || ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800" />
-          </div>
-        ))}
-        <div>
-          <label className="font-semibold text-slate-700 block mb-1">Category</label>
-          <select value={form.category || 'Grocery'} onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800">
-            {['Grocery','Dairy','Personal Care','Hardware','Appliances','Electronics','Clothing'].map((c) => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-
-        {/* Stock Units input with automatic out_of_stock handling */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-semibold text-slate-700 block">Stock Units *</label>
-            {form.stock_units === 0 && (
-              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200 animate-pulse">
-                0 units = Out of Stock
-              </span>
-            )}
-          </div>
-          <input
-            type="number"
-            min="0"
-            required
-            value={(form.stock_units as number) ?? 0}
-            onChange={(e) => {
-              const rawVal = e.target.value;
-              const units = rawVal === '' ? 0 : Math.max(0, parseInt(rawVal, 10) || 0);
-              if (units === 0) {
-                // If stock is 0, automatically change status to out_of_stock and valuation to 0
-                setForm((prev) => ({
-                  ...prev,
-                  stock_units: 0,
-                  stock_value: 0,
-                  status: 'out_of_stock',
-                }));
-              } else {
-                // When stock > 0, if previous status was out_of_stock, default to in_stock (or low_stock if below reorder level)
-                setForm((prev) => ({
-                  ...prev,
-                  stock_units: units,
-                  status: prev.status === 'out_of_stock'
-                    ? (units <= (prev.reorder_level || 20) ? 'low_stock' : 'in_stock')
-                    : prev.status,
-                }));
-              }
-            }}
-            placeholder="0"
-            className={`w-full px-3 py-2 border rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs font-semibold ${
-              form.stock_units === 0
-                ? 'bg-red-50/70 border-red-300 text-red-700'
-                : 'bg-slate-50 border-slate-200 text-slate-800'
-            }`}
-          />
-        </div>
-
-        {/* Stock Status - Auto out_of_stock when 0 units, manual configuration when > 0 */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-semibold text-slate-700 block">Stock Status</label>
-            {form.stock_units === 0 ? (
-              <span className="text-[9px] font-bold text-red-600">⚡ Auto Out of Stock</span>
-            ) : (
-              <span className="text-[9px] font-medium text-emerald-600">✓ Manual Configuration</span>
-            )}
-          </div>
-          <select
-            value={form.stock_units === 0 ? 'out_of_stock' : (form.status || 'in_stock')}
-            onChange={(e) => {
-              const newStatus = e.target.value as InventoryItem['status'];
-              if (form.stock_units === 0 && (newStatus === 'in_stock' || newStatus === 'low_stock')) {
-                addToast('Cannot mark In Stock when quantity is 0 units. Set stock units > 0 first.', 'warning');
-                return;
-              }
-              setForm((prev) => ({ ...prev, status: newStatus }));
-            }}
-            className={`w-full px-3 py-2 border rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs font-semibold ${
-              form.stock_units === 0
-                ? 'bg-red-50 border-red-300 text-red-700'
-                : 'bg-slate-50 border-slate-200 text-slate-800'
-            }`}
-          >
-            {form.stock_units === 0 ? (
-              <>
-                <option value="out_of_stock">Out of Stock (Auto - 0 Units)</option>
-                <option value="discontinued">Discontinued (0 Units)</option>
-              </>
-            ) : (
-              <>
-                <option value="in_stock">In Stock</option>
-                <option value="low_stock">Low Stock</option>
-                <option value="out_of_stock">Out of Stock</option>
-                <option value="discontinued">Discontinued</option>
-              </>
-            )}
-          </select>
-        </div>
-
-        {/* Stock Value */}
-        <div>
-          <label className="font-semibold text-slate-700 block mb-1">Stock Value (₹)</label>
-          <input
-            type="number"
-            min="0"
-            value={(form.stock_value as number) ?? 0}
-            onChange={(e) => setForm({ ...form, stock_value: Math.max(0, Number(e.target.value) || 0) })}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800 font-semibold"
-          />
-        </div>
-
-        {/* Reorder Level */}
-        <div>
-          <label className="font-semibold text-slate-700 block mb-1">Reorder Level</label>
-          <input
-            type="number"
-            min="0"
-            value={(form.reorder_level as number) ?? 20}
-            onChange={(e) => setForm({ ...form, reorder_level: Math.max(0, Number(e.target.value) || 0) })}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800"
-          />
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
@@ -810,16 +918,29 @@ export const InventoryView: React.FC = () => {
       {/* Add Modal */}
       {isAddOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[94dvh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <div><h3 className="font-bold text-base text-slate-900 flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-600" /> Add New Inventory SKU</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Record item in warehouse catalog with location & supplier.</p></div>
-              <button onClick={() => setIsAddOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-white">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-emerald-600" /> Add New Inventory SKU
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Record item in warehouse catalog with location & supplier.</p>
+              </div>
+              <button onClick={() => setIsAddOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleAdd} className="p-5"><FormBody />
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button type="button" onClick={() => setIsAddOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl text-xs">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all text-xs">Add SKU</button>
+            <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              <div className="p-5 overflow-y-auto flex-1 overscroll-contain">
+                <InventoryFormFields form={form} setForm={setForm} addToast={addToast} />
+              </div>
+              <div className="pt-4 p-4 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-slate-50/50">
+                <button type="button" onClick={() => setIsAddOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl text-xs transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all text-xs">
+                  Add SKU
+                </button>
               </div>
             </form>
           </div>
@@ -829,19 +950,37 @@ export const InventoryView: React.FC = () => {
       {/* Edit Modal */}
       {editItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[94dvh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <div><h3 className="font-bold text-base text-slate-900 flex items-center gap-2"><Edit3 className="w-4 h-4 text-blue-600" /> Edit SKU</h3>
-              <p className="text-xs text-slate-500 mt-0.5 font-mono">{editItem.sku} — {editItem.name}</p></div>
-              <button onClick={() => setEditItem(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-white">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-blue-600" /> Edit SKU
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-mono">{editItem.sku} — {editItem.name}</p>
+              </div>
+              <button onClick={() => setEditItem(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleSaveEdit} className="p-5"><FormBody />
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button type="button" onClick={() => { setDeleteConfirm(editItem); setEditItem(null); }}
-                  className="flex items-center gap-1.5 px-3 py-2 text-red-500 hover:bg-red-50 font-semibold rounded-xl text-xs"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+            <form onSubmit={handleSaveEdit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              <div className="p-5 overflow-y-auto flex-1 overscroll-contain">
+                <InventoryFormFields form={form} setForm={setForm} addToast={addToast} />
+              </div>
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-2 shrink-0 bg-slate-50/50">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteConfirm(editItem); setEditItem(null); }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-red-500 hover:bg-red-50 font-semibold rounded-xl text-xs transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setEditItem(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl text-xs">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all text-xs">Save Changes</button>
+                  <button type="button" onClick={() => setEditItem(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl text-xs transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all text-xs">
+                    Save Changes
+                  </button>
                 </div>
               </div>
             </form>
