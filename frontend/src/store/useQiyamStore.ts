@@ -39,7 +39,8 @@ import {
   INITIAL_TRANSACTIONS,
   INITIAL_INVOICES,
   INITIAL_QUOTATIONS,
-  INITIAL_ACCOUNTS
+  INITIAL_ACCOUNTS,
+  INITIAL_TASKS
 } from './initialDatasets';
 import { INITIAL_TEMPLATES } from './initialTemplates';
 
@@ -516,6 +517,8 @@ interface QiyamState {
   addCustomer: (cust: Record<string, unknown>) => Promise<Record<string, unknown>>;
   addExpense: (exp: Partial<Expense>) => Promise<Expense>;
   addTask: (task: Partial<Task>) => Promise<Task>;
+  updateTask: (taskId: string | number, updates: Partial<Task>) => Promise<Task | null>;
+  deleteTask: (taskId: string | number) => Promise<boolean>;
   addInventoryItem: (inv: Partial<InventoryItem>) => Promise<InventoryItem>;
   updateInventoryItem: (id: string | number, updates: Partial<InventoryItem>) => Promise<void>;
   deleteInventoryItem: (id: string | number) => Promise<void>;
@@ -1622,7 +1625,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   appointments: INITIAL_APPOINTMENTS,
   employees: getStoredCache('employees', INITIAL_EMPLOYEES),
   attendance: getStoredCache('attendance', INITIAL_ATTENDANCE),
-  tasks: [],
+  tasks: getStoredCache('tasks', INITIAL_TASKS),
   routes: [],
   inventory: getStoredCache('inventory', INITIAL_INVENTORY),
   transactions: getStoredCache('transactions', INITIAL_TRANSACTIONS),
@@ -1735,7 +1738,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const appointments  = safeVal(8, current.appointments, INITIAL_APPOINTMENTS, 'appointments');
     const employees     = safeVal(9, current.employees, INITIAL_EMPLOYEES, 'employees');
     const attendance    = safeVal(10, current.attendance, INITIAL_ATTENDANCE, 'attendance');
-    const tasks         = safeVal(11, current.tasks, [], 'tasks');
+    const tasks         = safeVal(11, current.tasks, INITIAL_TASKS, 'tasks');
     const routes        = safeVal(12, current.routes, [], 'routes');
     const inventory     = safeVal(13, current.inventory, INITIAL_INVENTORY, 'inventory');
     const transactions  = safeVal(14, current.transactions, INITIAL_TRANSACTIONS, 'transactions');
@@ -2980,11 +2983,19 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const checklist = task.checklist.map((c) =>
       c.id === checklistId ? { ...c, completed: !c.completed } : c
     );
-    const res = await apiClient.put(`/operations/tasks/${taskId}/`, { ...task, checklist });
-    if (res?.id && res.success !== false) {
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === taskId ? (res as Task) : t)),
-      }));
+    // Instant optimistic update
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === taskId ? { ...task, checklist } : t)),
+    }));
+    try {
+      const res = await apiClient.put(`/operations/tasks/${taskId}/`, { ...task, checklist });
+      if (res?.id && res.success !== false) {
+        set((state) => ({
+          tasks: state.tasks.map((t) => (t.id === taskId ? (res as Task) : t)),
+        }));
+      }
+    } catch {
+      // Optimistic already reflected
     }
   },
 
@@ -3762,7 +3773,9 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   addTask: async (task) => {
-    const nextId = get().tasks.length + 1;
+    const nextId = get().tasks.length > 0
+      ? Math.max(...get().tasks.map((t) => (typeof t.id === 'number' ? t.id : parseInt(String(t.id).replace(/\D/g, '') || '0'))), 0) + 1
+      : 1;
     const item: Task = {
       id: nextId,
       title: task.title || 'Job Checklist Inspection',
@@ -3774,10 +3787,10 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       due_date: task.due_date || 'Today 5:00 PM',
       tags: task.tags || ['QC', 'Field'],
       description: task.description || '',
-      checklist: task.checklist || [
-        { id: '1', text: 'Pre-check refrigerant pressure', completed: true },
-        { id: '2', text: 'Clean compressor coil', completed: false },
-        { id: '3', text: 'Customer signoff on WhatsApp', completed: false },
+      checklist: Array.isArray(task.checklist) ? task.checklist : [
+        { id: '1', text: 'Pre-check refrigerant pressure', completed: false },
+        { id: '2', text: 'Compressor amp measurement', completed: false },
+        { id: '3', text: 'Customer digital signoff', completed: false },
       ],
       ...task,
     };
@@ -3785,12 +3798,55 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       const res = await apiClient.post('/operations/tasks/', item);
       const created = (res?.id && res.success !== false) ? (res as Task) : item;
       set((state) => ({ tasks: [created, ...state.tasks] }));
-      get().addToast(`Task "${created.title}" created`, 'success');
+      get().addToast(`Task "${created.title}" created successfully`, 'success');
       return created;
     } catch {
       set((state) => ({ tasks: [item, ...state.tasks] }));
-      get().addToast(`Task "${item.title}" created`, 'success');
+      get().addToast(`Task "${item.title}" created successfully`, 'success');
       return item;
+    }
+  },
+
+  updateTask: async (taskId, updates) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return null;
+    const updatedTask: Task = { ...task, ...updates };
+    // Optimistic update
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
+    }));
+    try {
+      const res = await apiClient.put(`/operations/tasks/${taskId}/`, updatedTask);
+      if (res?.id && res.success !== false) {
+        const finalTask = res as Task;
+        set((state) => ({
+          tasks: state.tasks.map((t) => (t.id === taskId ? finalTask : t)),
+        }));
+        get().addToast(`Task "${finalTask.title}" updated`, 'success');
+        return finalTask;
+      }
+      get().addToast(`Task "${updatedTask.title}" updated`, 'success');
+      return updatedTask;
+    } catch {
+      get().addToast(`Task "${updatedTask.title}" updated`, 'success');
+      return updatedTask;
+    }
+  },
+
+  deleteTask: async (taskId) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    const title = task?.title || 'Task';
+    // Optimistic remove
+    set((state) => ({
+      tasks: state.tasks.filter((t) => t.id !== taskId),
+    }));
+    try {
+      await apiClient.delete(`/operations/tasks/${taskId}/`);
+      get().addToast(`Task "${title}" deleted`, 'info');
+      return true;
+    } catch {
+      get().addToast(`Task "${title}" deleted`, 'info');
+      return true;
     }
   },
 

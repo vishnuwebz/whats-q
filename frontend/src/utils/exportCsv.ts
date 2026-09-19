@@ -100,10 +100,15 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       break;
     }
     case 'ops-tasks': {
-      headers = ['ID', 'Title', 'Subtitle', 'Related To', 'Assignee', 'Priority', 'Status', 'Due Date'];
-      rows = (store.tasks || []).map((t: any) => [
-        t.id, t.title, t.subtitle, t.related_to, t.assignee, t.priority, t.status, t.due_date
-      ]);
+      headers = ['ID', 'Title', 'Subtitle', 'Related To', 'Assignee', 'Priority', 'Status', 'Due Date', 'Checklist Progress', 'Checklist Items'];
+      rows = (store.tasks || []).map((t: any) => {
+        const completed = (t.checklist || []).filter((c: any) => c.completed).length;
+        const total = (t.checklist || []).length;
+        const itemsStr = (t.checklist || []).map((c: any) => `[${c.completed ? 'X' : ' '}] ${c.text}`).join('; ');
+        return [
+          t.id, t.title, t.subtitle, t.related_to, t.assignee, t.priority, t.status, t.due_date, `${completed}/${total}`, itemsStr
+        ];
+      });
       break;
     }
     case 'ops-routes': {
