@@ -203,7 +203,18 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
         if (!isSubscribed) return;
         const { type, token, phone, deviceName, group } = event.data || {};
         if (token === qrSessionToken || !token) {
-          if (type === 'DEVICE_CONNECTED') {
+          if (group) {
+            setConnectedDevice((prev) => ({
+              ...prev,
+              phone: phone || prev.phone,
+              name: deviceName || 'WhatsApp Web Live Session',
+              linkedAt: 'Just now',
+            }));
+            setGroups((prev) => [group, ...prev.filter((g) => g.id !== group.id)]);
+            setSelectedGroup(group);
+            setConnectionState('connected');
+            addToast(`🎉 Fetched "${group.name}" with ${group.members.length} phone numbers from WhatsApp Web!`, 'success');
+          } else if (type === 'DEVICE_CONNECTED') {
             setConnectedDevice((prev) => ({
               ...prev,
               phone: phone || prev.phone,
@@ -212,17 +223,6 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
             }));
             setConnectionState('connected');
             addToast(`📱 Phone ${phone || ''} linked via QR code!`, 'success');
-          } else if (type === 'GROUP_PUSHED' && group) {
-            setConnectedDevice((prev) => ({
-              ...prev,
-              phone: phone || prev.phone,
-              name: deviceName || 'Mobile Phone Device',
-              linkedAt: 'Just now',
-            }));
-            setGroups((prev) => [group, ...prev.filter((g) => g.id !== group.id)]);
-            setSelectedGroup(group);
-            setConnectionState('connected');
-            addToast(`🎉 Fetched "${group.name}" with ${group.members.length} phone numbers from mobile!`, 'success');
           }
         }
       };
@@ -374,6 +374,25 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
     setSelectedGroup(newGroup);
     setConnectionState('connected');
     addToast(`Successfully grabbed ${newGroup.members.length} real phone numbers from "${newGroup.name}"!`, 'success');
+  };
+
+  // 1-Click Paste & Extract from System Clipboard
+  const handlePasteClipboardNumbers = async () => {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (!clipText || !clipText.trim()) {
+        addToast('Clipboard is empty. Please run the script in WhatsApp Web or copy numbers first!', 'error');
+        return;
+      }
+      const contacts = parseRawTextToContacts(clipText);
+      if (contacts.length === 0) {
+        addToast('No phone numbers detected in clipboard. Please copy numbers from WhatsApp Web.', 'error');
+        return;
+      }
+      handleSaveInspectedGroup(contacts);
+    } catch {
+      addToast('Clipboard permission was not granted by browser. Please paste into Option 2 manually!', 'error');
+    }
   };
 
   // Verify Scan Status Manually (without fake simulated data)
@@ -1030,24 +1049,66 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
                         {/* Option 1: WhatsApp Web 1-Click Live Bridge */}
                         {linkExtractionMethod === 'web_grabber' && (
-                          <div className="p-4 bg-white rounded-xl border border-emerald-200 space-y-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <div className="text-xs text-slate-700">
-                                Open the group in WhatsApp Web and run this 1-second auto-scraper. It reads the decrypted roster from your active browser session and broadcasts all numbers straight back here:
+                          <div className="p-4 sm:p-5 bg-white rounded-xl border border-emerald-200 space-y-4 shadow-2xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                              <div>
+                                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                  <span>Step-by-Step 1-Click Extraction</span>
+                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                                    Fastest &amp; 100% Real
+                                  </span>
+                                </h4>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  Extract all numbers directly from your open WhatsApp Web tab in 3 easy steps:
+                                </p>
                               </div>
                               <a
                                 href={`https://web.whatsapp.com/accept?code=${inspectedGroupMeta.code || ''}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shrink-0 cursor-pointer shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shrink-0 cursor-pointer shadow-xs transition"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
-                                <span>Open in WhatsApp Web</span>
+                                <span>Switch to WhatsApp Web</span>
                               </a>
                             </div>
 
+                            {/* 3 Step Visual Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
+                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                                  <span>Open Group &amp; Info</span>
+                                </div>
+                                <p className="text-slate-600 text-[11px] leading-relaxed">
+                                  In WhatsApp Web, click on <strong>"{inspectedGroupMeta.title}"</strong>, then click the <strong>group name header</strong> at the top to open the member drawer.
+                                </p>
+                              </div>
+
+                              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
+                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                                  <span>Open Console &amp; Run</span>
+                                </div>
+                                <p className="text-slate-600 text-[11px] leading-relaxed">
+                                  Press <kbd className="px-1.5 py-0.5 bg-slate-200 border border-slate-300 rounded font-mono text-[10px] font-bold">F12</kbd> (Console tab). Click <strong>Copy Script</strong> below, paste (<kbd className="px-1 py-0.5 bg-slate-200 border border-slate-300 rounded font-mono text-[10px]">Ctrl+V</kbd>), and press <kbd className="px-1 py-0.5 bg-slate-200 border border-slate-300 rounded font-mono text-[10px]">Enter</kbd>.
+                                </p>
+                              </div>
+
+                              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1 text-xs">
+                                <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                                  <span>Paste &amp; Extract</span>
+                                </div>
+                                <p className="text-emerald-800 text-[11px] leading-relaxed">
+                                  The script copies all numbers to your clipboard. Click the big green button below to import all numbers into WhatsQ instantly!
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Script Box */}
                             <div className="relative">
-                              <pre className="p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] overflow-x-auto max-h-28">
+                              <pre className="p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] overflow-x-auto max-h-24">
                                 {WHATSAPP_WEB_GRABBER_SCRIPT}
                               </pre>
                               <button
@@ -1056,41 +1117,64 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                                   navigator.clipboard?.writeText(WHATSAPP_WEB_GRABBER_SCRIPT);
                                   setCopiedScript(true);
                                   setTimeout(() => setCopiedScript(false), 2000);
-                                  addToast('Grabber script copied to clipboard! Paste into WhatsApp Web console (F12)', 'info');
+                                  addToast('Grabber script copied to clipboard! Paste into WhatsApp Web Console (F12)', 'info');
                                 }}
-                                className="absolute right-2 top-2 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                                className="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition"
                               >
-                                {copiedScript ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                <span>{copiedScript ? 'Copied!' : 'Copy Script'}</span>
+                                {copiedScript ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{copiedScript ? 'Copied to Clipboard!' : 'Copy Script'}</span>
+                              </button>
+                            </div>
+
+                            {/* Big Paste & Extract Action Button */}
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={handlePasteClipboardNumbers}
+                                className="w-full py-3 px-5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+                              >
+                                <Copy className="w-4 h-4" />
+                                <span>📋 Paste from Clipboard &amp; Extract All Numbers</span>
                               </button>
                             </div>
 
                             <div className="text-[11px] text-slate-500 flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                              <span>Broadcast channel active. When executed in WhatsApp Web, members will stream directly into this dashboard!</span>
+                              <span>Live sync active. When the script runs in WhatsApp Web, numbers will stream directly into this dashboard!</span>
                             </div>
                           </div>
                         )}
 
                         {/* Option 2: Paste Participants or Drop _chat.txt */}
                         {linkExtractionMethod === 'paste_export' && (
-                          <div className="p-4 bg-white rounded-xl border border-emerald-200 space-y-3">
+                          <div className="p-4 sm:p-5 bg-white rounded-xl border border-emerald-200 space-y-4 shadow-2xs">
+                            {/* Zero-Coding Direct Copy Tip */}
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+                              <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <div className="font-bold text-amber-950">💡 Zero-Coding WhatsApp Web Trick:</div>
+                                <div className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                                  In WhatsApp Web, click on the group name <strong>"{inspectedGroupMeta.title}"</strong> at the top bar. You will see all participant numbers displayed directly under the title separated by commas (e.g. <em>+91 94963..., +91 98450...</em>). Simply highlight them with your mouse, press <kbd className="px-1 py-0.5 bg-amber-100 border border-amber-300 rounded font-mono text-[10px]">Ctrl+C</kbd>, and paste them directly into the box below!
+                                </div>
+                              </div>
+                            </div>
+
                             <div>
                               <label className="block text-xs font-bold text-slate-700 mb-1">
                                 Paste Participant Numbers / WhatsApp Group Info:
                               </label>
                               <textarea
-                                rows={3}
+                                rows={4}
                                 value={manualParticipantsText}
                                 onChange={(e) => setManualParticipantsText(e.target.value)}
-                                placeholder="Paste copied group participant list (e.g. +91 94963 00233, +91 98450 12345, John Doe, etc.)..."
+                                placeholder="Paste comma-separated or newline-separated numbers (e.g. +91 94963 00233, +91 98450 12345, +1 555 234 5678)..."
                                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
                               />
                             </div>
 
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
                               <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <span>Or upload exported chat:</span>
+                                <span>Or upload chat export:</span>
                                 <input
                                   type="file"
                                   accept=".txt"
@@ -1118,10 +1202,10 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                                   handleSaveInspectedGroup(contacts);
                                 }}
                                 disabled={!manualParticipantsText.trim()}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
-                                <span>Save Group &amp; Grab Numbers</span>
+                                <span>Save Group &amp; Extract Numbers</span>
                               </button>
                             </div>
                           </div>

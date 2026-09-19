@@ -285,17 +285,26 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
     const header = document.querySelector('header [data-testid="conversation-info-header"]') ||
                    document.querySelector('header span[title]') ||
                    document.querySelector('header [role="button"]');
-    const groupName = header ? (header.getAttribute('title') || header.innerText || 'WhatsApp Group').split('\\n')[0].trim() : 'WhatsApp Group';
+    const groupName = header ? (header.getAttribute('title') || header.innerText || 'WhatsApp Group').split('\n')[0].trim() : 'WhatsApp Group';
 
+    // Find all phone number strings in active DOM and group info drawer
     const rawText = document.body.innerText;
-    const phoneMatches = rawText.match(/(?:\\+?\\d{1,4}[\\s\\-]?)?(?:\\(?\\d{2,5}\\)?[\\s\\-]?)?\\d{3,5}[\\s\\-]?\\d{3,5}/g) || [];
+    const phoneMatches = rawText.match(/(?:\+?\d{1,4}[\s\-]?)?(?:\(?\d{2,5}\)?[\s\-]?)?\d{3,5}[\s\-]?\d{3,5}/g) || [];
+    
+    // Also look for specific span titles with numbers
+    document.querySelectorAll('span[title]').forEach(el => {
+      const t = el.getAttribute('title') || '';
+      const m = t.match(/(?:\+?\d{1,4}[\s\-]?)?(?:\(?\d{2,5}\)?[\s\-]?)?\d{3,5}[\s\-]?\d{3,5}/g);
+      if (m) phoneMatches.push(...m);
+    });
+
     const cleanPhones = Array.from(new Set(phoneMatches.map(p => p.trim()).filter(p => {
       const digits = p.replace(/[^0-9]/g, '');
       return digits.length >= 8 && digits.length <= 15;
     })));
 
     if (cleanPhones.length === 0) {
-      alert('⚠️ No phone numbers found in current view. Please open the Group Info drawer (click group name at the top) so participants are visible, then run again!');
+      alert('⚠️ No phone numbers found in current view.\n\nPlease click on the group name ("' + groupName + '") at the top of the chat so the Group Info sidebar opens with the member list, then run this script again!');
       return;
     }
 
@@ -325,19 +334,19 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
     try {
       const channel = new BroadcastChannel('qiyam_group_grabber');
       channel.postMessage({
-        type: 'DEVICE_CONNECTED',
+        type: 'GROUP_PUSHED',
         phone: cleanPhones[0],
         deviceName: 'WhatsApp Web Live Session',
         group: groupObj
       });
-      console.log('📡 Broadcasted real group to WhatsQ Dashboard!');
     } catch(bcErr) {}
 
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(cleanPhones.join('\\n'));
+      navigator.clipboard.writeText(cleanPhones.join('\n'));
     }
 
-    alert('🎉 SUCCESS! Extracted ' + cleanPhones.length + ' REAL phone numbers from "' + groupName + '". Auto-synced to your WhatsQ Dashboard and copied to clipboard!');
+    console.log('✅ Extracted ' + cleanPhones.length + ' phone numbers:', cleanPhones);
+    alert('🎉 SUCCESS! Extracted ' + cleanPhones.length + ' REAL phone numbers from "' + groupName + '".\n\nAll ' + cleanPhones.length + ' numbers are COPIED to your clipboard!\n\nNow switch back to your WhatsQ Dashboard and click "Paste from Clipboard & Extract Numbers"!');
     return groupObj;
   } catch(e) {
     alert('Grabber error: ' + e.message);
