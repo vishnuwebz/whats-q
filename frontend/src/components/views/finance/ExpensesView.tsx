@@ -8,7 +8,7 @@ import {
   Filter,
   TrendingDown,
   TrendingUp,
-  DollarSign,
+  IndianRupee,
   X,
   Edit3,
   Trash2,
@@ -23,13 +23,33 @@ import {
   ChevronDown,
   ArrowUpDown,
   Tag,
-  Receipt,
   Sparkles,
   Wallet
 } from 'lucide-react';
 import { Expense } from '@/types';
 import { exportTableToCsv } from '@/utils/exportCsv';
 import { INITIAL_EXPENSES } from '@/store/initialDatasets';
+
+// Custom Official Payment Voucher Icon with Indian Rupee (₹) Symbol
+const ReceiptRupee: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+    <path d="M8.5 7.5h6.5" />
+    <path d="M8.5 10.5h6.5" />
+    <path d="M8.5 13.5h1.8" />
+    <path d="M10.3 13.5c3.6 0 3.6-6 0-6" />
+    <path d="m9.8 13.5 4.5 4.5" />
+  </svg>
+);
 
 const EXPENSE_CATEGORIES = [
   'Operations',
@@ -534,7 +554,7 @@ export const ExpensesView: React.FC = () => {
             <div className="flex items-center justify-between text-slate-500 font-semibold">
               <span>Salaries & Payroll</span>
               <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
-                <DollarSign className="w-3.5 h-3.5" />
+                <IndianRupee className="w-3.5 h-3.5" />
               </span>
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
@@ -890,7 +910,7 @@ export const ExpensesView: React.FC = () => {
                               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                               title="View official voucher"
                             >
-                              <Receipt className="w-4 h-4" />
+                              <ReceiptRupee className="w-4 h-4" />
                             </button>
 
                             {/* Edit Expense */}
@@ -1468,8 +1488,8 @@ export const ExpensesView: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
-                  <Receipt className="w-5 h-5" />
+                <div className="p-2 rounded-xl bg-red-50 text-red-600">
+                  <ReceiptRupee className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">Official Payment Voucher</h3>
