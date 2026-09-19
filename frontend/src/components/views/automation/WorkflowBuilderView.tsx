@@ -402,6 +402,11 @@ export const WorkflowBuilderView: React.FC = () => {
     }
   ]);
 
+  // Active Selected Node & Drag-and-Drop state
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>('group-1');
+  const [draggingBlock, setDraggingBlock] = useState<{ blockTitle: string; category: string } | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+
   // Load selected workflow from store if available
   useEffect(() => {
     if (activeWorkflowTitle) {
@@ -409,7 +414,12 @@ export const WorkflowBuilderView: React.FC = () => {
     }
     const safeGroups = normalizeToFlowGroups(activeWorkflowGroups, activeWorkflowTitle || 'Service Booking Flow');
     setGroups(safeGroups);
+    if (safeGroups.length > 0) {
+      setSelectedGroupId(safeGroups[0].id);
+    }
   }, [activeWorkflowTitle, activeWorkflowGroups]);
+
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId) || groups[0] || null;
 
   // Initial Keyword Rules
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>([
@@ -622,6 +632,7 @@ export const WorkflowBuilderView: React.FC = () => {
   const handleJumpToGroup = (grp: FlowGroup) => {
     if (!canvasRef.current) return;
     setActiveJumpGroupId(grp.id);
+    setSelectedGroupId(grp.id);
     canvasRef.current.scrollTo({
       left: Math.max(0, grp.x * zoom - 80),
       top: Math.max(0, grp.y * zoom - 60),
@@ -646,8 +657,9 @@ export const WorkflowBuilderView: React.FC = () => {
   // Add Group to Canvas
   const handleAddGroup = () => {
     const nextIdx = groups.length + 1;
+    const newGrpId = `group-${Date.now()}`;
     const newGrp: FlowGroup = {
-      id: `group-${Date.now()}`,
+      id: newGrpId,
       title: `Group #${nextIdx}`,
       x: 60 + (groups.length % 5) * 360,
       y: 120 + Math.floor(groups.length / 5) * 380,
@@ -660,55 +672,150 @@ export const WorkflowBuilderView: React.FC = () => {
       ]
     };
     setGroups([...groups, newGrp]);
+    setSelectedGroupId(newGrpId);
     addToast(`Added Group #${nextIdx} to canvas`, 'success');
   };
 
-  // Add block to Group from Library
-  const handleAddBlockToGroup = (blockTitle: string, category: string) => {
-    if (groups.length === 0) {
-      handleAddGroup();
-      return;
-    }
-    const targetGroup = groups[groups.length - 1];
-    let newItem: GroupItem;
-
+  // Helper to create appropriate GroupItem for a block
+  const createBlockItem = (blockTitle: string, category: string): GroupItem => {
+    const ts = Date.now();
     if (category === 'PAYMENTS') {
-      newItem = {
-        id: `item-${Date.now()}`,
+      return {
+        id: `item-${ts}`,
         type: 'payment',
         content: `${blockTitle} Checkout`,
         provider: 'STRIPE',
         currency: 'USD',
         amount: 49,
         quantity: 1,
-        varName: 'payment_status'
-      };
-    } else if (category === 'INPUTS') {
-      newItem = {
-        id: `item-${Date.now()}`,
-        type: 'collect',
-        varName: blockTitle.toLowerCase().replace(/\s+/g, '_')
-      };
-    } else if (category === 'CHOICES') {
-      newItem = {
-        id: `item-${Date.now()}`,
-        type: 'choice',
-        question: `Select option from ${blockTitle}`,
-        options: [{ label: 'Option A' }, { label: 'Option B' }]
-      };
-    } else {
-      newItem = {
-        id: `item-${Date.now()}`,
-        type: 'message',
-        content: `${blockTitle} block content. Tap configure to edit.`
+        varName: 'payment_status',
       };
     }
+    if (category === 'INPUTS') {
+      const varMap: Record<string, string> = {
+        Email: 'customer_email',
+        Phone: 'phone_number',
+        Date: 'appointment_date',
+        Time: 'preferred_time',
+        Website: 'website_url',
+        Number: 'number_input',
+        File: 'uploaded_document',
+        Text: 'user_response',
+      };
+      return {
+        id: `item-${ts}`,
+        type: 'collect',
+        varName: varMap[blockTitle] || blockTitle.toLowerCase().replace(/\s+/g, '_'),
+      };
+    }
+    if (category === 'CHOICES') {
+      return {
+        id: `item-${ts}`,
+        type: 'choice',
+        question: blockTitle === 'List Menu' ? 'Select from options list' : 'Choose an option',
+        options: [
+          { label: 'Option 1' },
+          { label: 'Option 2' },
+          ...(blockTitle === 'List Menu' ? [{ label: 'Option 3' }] : []),
+        ],
+      };
+    }
+    if (category === 'LOGIC') {
+      if (blockTitle === 'Condition') {
+        return {
+          id: `item-${ts}`,
+          type: 'choice',
+          question: 'Branch Condition (If/Else Rule)',
+          options: [{ label: 'Condition Met' }, { label: 'Fallback / Else' }],
+        };
+      }
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        content: '🤖 Chatbot Auto-Response: Process customer intent via AI model.',
+      };
+    }
+    if (category === 'INTEGRATIONS') {
+      return {
+        id: `item-${ts}`,
+        type: 'message',
+        content: `⚡ ${blockTitle} Integration: Sync incoming data to external service.`,
+      };
+    }
+    // MESSAGES
+    const messagePreviews: Record<string, string> = {
+      Image: '📷 [Image: Select or upload image in configuration]',
+      Video: '🎥 [Video: Service Walkthrough MP4]',
+      YouTube: '▶️ [YouTube Video: https://youtu.be/example]',
+      Media: '🖼️ [Media File: Rich media payload]',
+      File: '📄 [Document: PDF brochure or spec sheet]',
+      Audio: '🎙️ [Audio: Voice Note attachment]',
+      Location: '📍 [Location Pin: Office / Branch location coordinates]',
+      Text: 'New message block content. Click to configure message text.',
+    };
+    return {
+      id: `item-${ts}`,
+      type: 'message',
+      content: messagePreviews[blockTitle] || `${blockTitle} block content. Click to configure.`,
+    };
+  };
+
+  // Add block to Group from Library (adds to currently selected node or target group)
+  const handleAddBlockToGroup = (blockTitle: string, category: string, targetGroupId?: string) => {
+    if (groups.length === 0) {
+      handleAddGroup();
+      return;
+    }
+    const targetId = targetGroupId || selectedGroupId || groups[0]?.id;
+    const targetGroup = groups.find((g) => g.id === targetId) || groups[0];
+    const newItem = createBlockItem(blockTitle, category);
 
     const updated = groups.map((g) =>
       g.id === targetGroup.id ? { ...g, items: [...(g.items || []), newItem] } : g
     );
     setGroups(updated);
+    setSelectedGroupId(targetGroup.id);
     addToast(`Added "${blockTitle}" block to ${targetGroup.title}`, 'success');
+  };
+
+  // Reusable draggable block button renderer
+  const renderBlockButton = (
+    label: string,
+    category: string,
+    Icon: React.ComponentType<{ className?: string }>,
+    colorScheme: 'emerald' | 'amber' | 'purple' | 'blue' = 'emerald',
+    fullWidth: boolean = false
+  ) => {
+    const colorStyles = {
+      emerald: 'hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 text-slate-700',
+      amber: 'hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 text-slate-700',
+      purple: 'hover:bg-purple-50 hover:border-purple-300 hover:text-purple-800 text-slate-700',
+      blue: 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 text-slate-700',
+    }[colorScheme];
+
+    return (
+      <button
+        key={label}
+        type="button"
+        draggable={true}
+        onDragStart={(e) => {
+          e.dataTransfer.setData('application/json', JSON.stringify({ blockTitle: label, category }));
+          e.dataTransfer.effectAllowed = 'copy';
+          setDraggingBlock({ blockTitle: label, category });
+        }}
+        onDragEnd={() => {
+          setDraggingBlock(null);
+          setDragOverGroupId(null);
+        }}
+        onClick={() => handleAddBlockToGroup(label, category)}
+        className={`${fullWidth ? 'w-full p-2.5' : 'p-2'} rounded-xl border border-slate-200 bg-white ${colorStyles} flex items-center gap-1.5 transition text-[11px] font-medium shadow-2xs cursor-grab active:cursor-grabbing select-none hover:shadow-md hover:scale-[1.02] active:scale-95 group/btn`}
+        title={`Click to add to "${selectedGroup?.title || 'selected node'}", or Drag & Drop directly onto any node card`}
+      >
+        <Icon className="w-3.5 h-3.5 text-slate-500 group-hover/btn:text-emerald-600 shrink-0 transition-colors" />
+        <span className="truncate flex-1 text-left">{label}</span>
+        <Move className="w-2.5 h-2.5 text-slate-300 group-hover/btn:text-slate-400 shrink-0 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+      </button>
+    );
   };
 
   // Open Configure Element Modal for any item
@@ -1763,6 +1870,51 @@ export const WorkflowBuilderView: React.FC = () => {
               onPointerMove={handleCanvasPointerMove}
               onPointerUp={handleCanvasPointerUp}
               onPointerLeave={handleCanvasPointerUp}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }}
+              onDrop={(e) => {
+                // If dropped on the canvas background (not on an existing group card)
+                const isBackground = (e.target as HTMLElement).closest('.group-card') === null;
+                if (isBackground && canvasRef.current) {
+                  e.preventDefault();
+                  const rect = canvasRef.current.getBoundingClientRect();
+                  const dropX = Math.round((e.clientX - rect.left + canvasRef.current.scrollLeft) / zoom);
+                  const dropY = Math.round((e.clientY - rect.top + canvasRef.current.scrollTop) / zoom);
+
+                  let blockTitle = draggingBlock?.blockTitle || 'Text';
+                  let category = draggingBlock?.category || 'MESSAGES';
+                  try {
+                    const rawData = e.dataTransfer.getData('application/json');
+                    if (rawData) {
+                      const data = JSON.parse(rawData);
+                      if (data && data.blockTitle && data.category) {
+                        blockTitle = data.blockTitle;
+                        category = data.category;
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Drop error:', err);
+                  }
+
+                  const newItem = createBlockItem(blockTitle, category);
+                  const nextIdx = groups.length + 1;
+                  const newGrpId = `group-${Date.now()}`;
+                  const newGrp: FlowGroup = {
+                    id: newGrpId,
+                    title: `Group #${nextIdx}`,
+                    x: Math.max(20, dropX - 150),
+                    y: Math.max(20, dropY - 50),
+                    items: [newItem],
+                  };
+                  setGroups((prev) => [...prev, newGrp]);
+                  setSelectedGroupId(newGrpId);
+                  setDraggingBlock(null);
+                  setDragOverGroupId(null);
+                  addToast(`Created Group #${nextIdx} with "${blockTitle}" at drop location`, 'success');
+                }
+              }}
               className={`flex-1 overflow-auto bg-[#F4F6F5] relative p-12 select-none ${
                 isPanning ? 'cursor-grabbing' : 'cursor-grab'
               }`}
@@ -1787,170 +1939,276 @@ export const WorkflowBuilderView: React.FC = () => {
                 </svg>
 
                 {/* Render Group Cards with Pointer Dragging Support */}
-                {groups.map((grp) => (
-                  <div
-                    key={grp.id}
-                    style={{
-                      left: `${grp.x}px`,
-                      top: `${grp.y}px`,
-                      cursor: draggedGroupId === grp.id ? 'grabbing' : 'default',
-                    }}
-                    className={`group-card absolute w-[300px] bg-white rounded-2xl border-2 transition-shadow z-10 flex flex-col ${
-                      draggedGroupId === grp.id
-                        ? 'border-emerald-600 shadow-2xl scale-[1.01]'
-                        : 'border-emerald-400/80 shadow-md hover:shadow-lg'
-                    }`}
-                  >
-                    {/* Card Header (Drag Handle) */}
+                {groups.map((grp) => {
+                  const isSelected = selectedGroupId === grp.id;
+                  const isDragOver = dragOverGroupId === grp.id;
+
+                  return (
                     <div
-                      onPointerDown={(e) => handlePointerDownGroup(e, grp.id)}
-                      className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 rounded-t-2xl cursor-grab active:cursor-grabbing select-none"
+                      key={grp.id}
+                      style={{
+                        left: `${grp.x}px`,
+                        top: `${grp.y}px`,
+                        cursor: draggedGroupId === grp.id ? 'grabbing' : 'default',
+                      }}
+                      onClick={() => setSelectedGroupId(grp.id)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = 'copy';
+                        if (dragOverGroupId !== grp.id) {
+                          setDragOverGroupId(grp.id);
+                        }
+                      }}
+                      onDragLeave={(e) => {
+                        e.stopPropagation();
+                        if (dragOverGroupId === grp.id) {
+                          setDragOverGroupId(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragOverGroupId(null);
+                        setDraggingBlock(null);
+                        try {
+                          const rawData = e.dataTransfer.getData('application/json');
+                          if (rawData) {
+                            const data = JSON.parse(rawData);
+                            if (data && data.blockTitle && data.category) {
+                              handleAddBlockToGroup(data.blockTitle, data.category, grp.id);
+                              setSelectedGroupId(grp.id);
+                              return;
+                            }
+                          }
+                        } catch (err) {
+                          console.error('Drop error:', err);
+                        }
+                        if (draggingBlock) {
+                          handleAddBlockToGroup(draggingBlock.blockTitle, draggingBlock.category, grp.id);
+                          setSelectedGroupId(grp.id);
+                        }
+                      }}
+                      className={`group-card absolute w-[300px] bg-white rounded-2xl border-2 transition-all z-10 flex flex-col ${
+                        isDragOver
+                          ? 'border-emerald-500 ring-4 ring-emerald-500/50 shadow-2xl scale-[1.02] bg-emerald-50/20'
+                          : isSelected
+                          ? 'border-emerald-500 ring-4 ring-emerald-400/30 shadow-xl'
+                          : draggedGroupId === grp.id
+                          ? 'border-emerald-600 shadow-2xl scale-[1.01]'
+                          : 'border-slate-200/90 hover:border-emerald-300 shadow-md hover:shadow-lg'
+                      }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Move className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="font-bold text-xs text-slate-800">{grp.title}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setGroups(groups.filter((g) => g.id !== grp.id));
-                            addToast(`Deleted ${grp.title}`, 'info');
-                          }}
-                          className="hover:text-red-500 transition p-1"
-                          title="Delete Group"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Card Items */}
-                    <div className="p-3.5 space-y-3 text-xs flex-1">
-                      {(grp.items || []).map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => handleOpenConfigModal(grp, item)}
-                          className="space-y-1.5 cursor-pointer group/item relative transition hover:opacity-95"
-                          title="Click to Configure Element"
-                        >
-                          {/* Hover Edit Badge */}
-                          <div className="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 transition bg-white/90 shadow-xs border border-slate-200 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-slate-600 flex items-center gap-1 z-10">
-                            <Sliders className="w-2.5 h-2.5 text-emerald-600" />
-                            <span>Configure</span>
-                          </div>
-
-                          {/* Message Item */}
-                          {item.type === 'message' && (
-                            <div className="bg-[#EAFBF3] border border-emerald-200/80 p-2.5 rounded-xl text-slate-800 space-y-1 hover:border-emerald-400 transition">
-                              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[10px]">
-                                <MessageSquare className="w-3 h-3" />
-                                <span>Message</span>
-                              </div>
-                              <div className="text-[11px] leading-relaxed text-slate-700 font-medium">
-                                {item.content}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Collect Input Item */}
-                          {item.type === 'collect' && (
-                            <div className="bg-purple-50 border border-purple-200/80 px-3 py-2 rounded-xl flex items-center justify-between text-purple-900 hover:border-purple-400 transition">
-                              <div className="flex items-center gap-2 font-semibold text-[11px]">
-                                <span className="font-mono text-[10px] text-purple-500">T:</span>
-                                <span>Collect Input</span>
-                                <span className="bg-purple-200/70 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                                  {item.varName || 'input_var'}
-                                </span>
-                              </div>
-                              <span className="w-2 h-2 rounded-full bg-purple-500" />
-                            </div>
-                          )}
-
-                          {/* Choice / Question Item (List Menu or Buttons) */}
-                          {item.type === 'choice' && (
-                            <div className="space-y-2">
-                              {item.question && (
-                                <div className="font-bold text-slate-800 text-[11px] flex items-center gap-1 text-amber-800">
-                                  <HelpCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span>{item.question}</span>
-                                </div>
-                              )}
-                              {item.content && (
-                                <div className="text-[10px] text-slate-500 italic px-1">
-                                  {item.content}
-                                </div>
-                              )}
-                              <div className="space-y-1.5">
-                                {item.options?.map((opt, oIdx) => (
-                                  <div
-                                    key={oIdx}
-                                    className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100 flex items-center justify-between text-slate-800 font-semibold text-[11px] transition shadow-2xs"
-                                  >
-                                    <span>{opt.label}</span>
-                                    <div className="flex items-center gap-1.5">
-                                      {opt.targetGroup && (
-                                        <span className="text-[9px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-mono">
-                                          &gt;&gt; {opt.targetGroup}
-                                        </span>
-                                      )}
-                                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                              {item.varName && (
-                                <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                                  <span className="font-mono text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                    Saved to: {item.varName}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Payment Checkout Item (Matching Screenshot media_1789380618719.png) */}
-                          {item.type === 'payment' && (
-                            <div className="bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-xl space-y-2.5 hover:border-emerald-600 transition">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-[11px]">
-                                  <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
-                                  <span>Payment: {item.provider || 'STRIPE'}</span>
-                                </div>
-                                <span className="bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                                  {item.currency || 'USD'} ${item.amount || 49}
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-slate-700 font-medium">
-                                {item.content || 'Checkout Link'}
-                              </div>
-                              {/* Ports for Success and Failed */}
-                              <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between text-[10px] font-semibold">
-                                <div className="flex items-center gap-1 text-emerald-700">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                  <span>Success &gt;&gt;</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-red-600">
-                                  <span>&gt;&gt; Failed</span>
-                                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Jump to Group Item */}
-                          {item.type === 'jump' && (
-                            <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 flex items-center justify-between font-semibold text-[11px] hover:border-blue-400 transition">
-                              <span>&gt;&gt; Jump to {item.targetGroup}</span>
-                              <span className="w-2 h-2 rounded-full bg-blue-500" />
-                            </div>
+                      {/* Card Header (Drag Handle) */}
+                      <div
+                        onPointerDown={(e) => handlePointerDownGroup(e, grp.id)}
+                        className={`p-3.5 border-b flex items-center justify-between rounded-t-2xl cursor-grab active:cursor-grabbing select-none transition-colors ${
+                          isSelected
+                            ? 'bg-emerald-50/90 border-emerald-200'
+                            : 'bg-slate-50/80 border-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Move className="w-3.5 h-3.5 text-slate-400" />
+                          <span
+                            className={`w-2 h-2 rounded-full transition-colors ${
+                              isSelected ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-slate-300'
+                            }`}
+                          />
+                          <span className="font-bold text-xs text-slate-800">{grp.title}</span>
+                          {isSelected && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-full shadow-2xs flex items-center gap-1">
+                              <Check className="w-2.5 h-2.5" />
+                              Selected
+                            </span>
                           )}
                         </div>
-                      ))}
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const remaining = groups.filter((g) => g.id !== grp.id);
+                              setGroups(remaining);
+                              if (selectedGroupId === grp.id) {
+                                setSelectedGroupId(remaining[0]?.id || null);
+                              }
+                              addToast(`Deleted ${grp.title}`, 'info');
+                            }}
+                            className="hover:text-red-500 transition p-1 cursor-pointer"
+                            title="Delete Group"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card Items */}
+                      <div className="p-3.5 space-y-3 text-xs flex-1">
+                        {(grp.items || []).map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGroupId(grp.id);
+                              handleOpenConfigModal(grp, item);
+                            }}
+                            className="space-y-1.5 cursor-pointer group/item relative transition hover:opacity-95"
+                            title="Click to Configure Element"
+                          >
+                            {/* Hover Badges: Configure & Delete */}
+                            <div className="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 transition flex items-center gap-1 z-10">
+                              <div className="bg-white/95 shadow-xs border border-slate-200 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-slate-600 flex items-center gap-1">
+                                <Sliders className="w-2.5 h-2.5 text-emerald-600" />
+                                <span>Configure</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setGroups((prev) =>
+                                    prev.map((g) =>
+                                      g.id === grp.id
+                                        ? { ...g, items: (g.items || []).filter((it) => it.id !== item.id) }
+                                        : g
+                                    )
+                                  );
+                                  addToast('Removed block from node', 'info');
+                                }}
+                                className="bg-white/95 shadow-xs border border-slate-200 hover:border-red-300 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-md p-0.5 transition cursor-pointer"
+                                title="Delete element"
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+
+                            {/* Message Item */}
+                            {item.type === 'message' && (
+                              <div className="bg-[#EAFBF3] border border-emerald-200/80 p-2.5 rounded-xl text-slate-800 space-y-1 hover:border-emerald-400 transition">
+                                <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[10px]">
+                                  <MessageSquare className="w-3 h-3" />
+                                  <span>Message</span>
+                                </div>
+                                <div className="text-[11px] leading-relaxed text-slate-700 font-medium">
+                                  {item.content}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Collect Input Item */}
+                            {item.type === 'collect' && (
+                              <div className="bg-purple-50 border border-purple-200/80 px-3 py-2 rounded-xl flex items-center justify-between text-purple-900 hover:border-purple-400 transition">
+                                <div className="flex items-center gap-2 font-semibold text-[11px]">
+                                  <span className="font-mono text-[10px] text-purple-500">T:</span>
+                                  <span>Collect Input</span>
+                                  <span className="bg-purple-200/70 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                    {item.varName || 'input_var'}
+                                  </span>
+                                </div>
+                                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                              </div>
+                            )}
+
+                            {/* Choice / Question Item (List Menu or Buttons) */}
+                            {item.type === 'choice' && (
+                              <div className="space-y-2">
+                                {item.question && (
+                                  <div className="font-bold text-slate-800 text-[11px] flex items-center gap-1 text-amber-800">
+                                    <HelpCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <span>{item.question}</span>
+                                  </div>
+                                )}
+                                {item.content && (
+                                  <div className="text-[10px] text-slate-500 italic px-1">
+                                    {item.content}
+                                  </div>
+                                )}
+                                <div className="space-y-1.5">
+                                  {item.options?.map((opt, oIdx) => (
+                                    <div
+                                      key={oIdx}
+                                      className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100 flex items-center justify-between text-slate-800 font-semibold text-[11px] transition shadow-2xs"
+                                    >
+                                      <span>{opt.label}</span>
+                                      <div className="flex items-center gap-1.5">
+                                        {opt.targetGroup && (
+                                          <span className="text-[9px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-mono">
+                                            &gt;&gt; {opt.targetGroup}
+                                          </span>
+                                        )}
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                {item.varName && (
+                                  <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <span className="font-mono text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                      Saved to: {item.varName}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Payment Checkout Item */}
+                            {item.type === 'payment' && (
+                              <div className="bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-xl space-y-2.5 hover:border-emerald-600 transition">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-[11px]">
+                                    <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
+                                    <span>Payment: {item.provider || 'STRIPE'}</span>
+                                  </div>
+                                  <span className="bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                                    {item.currency || 'USD'} ${item.amount || 49}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-700 font-medium">
+                                  {item.content || 'Checkout Link'}
+                                </div>
+                                {/* Ports for Success and Failed */}
+                                <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between text-[10px] font-semibold">
+                                  <div className="flex items-center gap-1 text-emerald-700">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span>Success &gt;&gt;</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-red-600">
+                                    <span>&gt;&gt; Failed</span>
+                                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Jump to Group Item */}
+                            {item.type === 'jump' && (
+                              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 flex items-center justify-between font-semibold text-[11px] hover:border-blue-400 transition">
+                                <span>&gt;&gt; Jump to {item.targetGroup}</span>
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Animated Drop Target Indicator when dragging over this card */}
+                        {isDragOver && (
+                          <div className="border-2 border-dashed border-emerald-500 bg-emerald-100/70 rounded-xl p-3 text-center text-emerald-800 font-bold text-xs animate-pulse flex items-center justify-center gap-2 transition-all">
+                            <Plus className="w-4 h-4 text-emerald-600 animate-bounce" />
+                            <span>Drop "{draggingBlock?.blockTitle || 'Block'}" to Add</span>
+                          </div>
+                        )}
+
+                        {/* Selected Hint at bottom when active and not dragging */}
+                        {!isDragOver && isSelected && (
+                          <div className="pt-1 text-center">
+                            <span className="text-[10px] text-emerald-600/80 font-medium inline-flex items-center gap-1 bg-emerald-50/60 border border-emerald-200/50 rounded-lg px-2 py-0.5">
+                              <Plus className="w-2.5 h-2.5" /> Click block in sidebar to add here
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -2033,7 +2291,7 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
             ) : (
               /* Expanded Block Library */
-              <div className="w-68 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto font-sans text-xs z-10 no-pan transition-all">
+              <div className="w-72 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto font-sans text-xs z-10 no-pan transition-all">
                 {/* Library Header */}
                 <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
                   <div className="flex items-center gap-1.5">
@@ -2057,8 +2315,38 @@ export const WorkflowBuilderView: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Active Target Node Indicator & Selector */}
+                <div className="mx-3 mt-3 mb-1 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col gap-1.5 shadow-2xs">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-600 font-bold flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      Target Node:
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-1.5 py-0.5 rounded truncate max-w-[120px]">
+                      {selectedGroup ? selectedGroup.title : 'None Selected'}
+                    </span>
+                  </div>
+                  {groups.length > 0 && (
+                    <select
+                      value={selectedGroupId || (groups[0]?.id || '')}
+                      onChange={(e) => setSelectedGroupId(e.target.value)}
+                      className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-medium focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer"
+                      title="Select target node to receive clicked blocks"
+                    >
+                      {groups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.title} ({g.items?.length || 0} blocks)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <div className="text-[10px] text-slate-500 leading-tight">
+                    💡 <span className="font-semibold text-slate-700">Click</span> to add to target, or <span className="font-semibold text-slate-700">Drag & Drop</span> onto any node card.
+                  </div>
+                </div>
+
                 {/* Categorized Blocks List with Accordions */}
-                <div className="p-3 space-y-3.5 overflow-y-auto">
+                <div className="p-3 space-y-3 overflow-y-auto">
                   {/* MESSAGES */}
                   <div className="border border-slate-100 rounded-xl p-2 bg-slate-50/30">
                     <button
@@ -2087,16 +2375,7 @@ export const WorkflowBuilderView: React.FC = () => {
                           { label: 'File', icon: FileText },
                           { label: 'Audio', icon: Music },
                           { label: 'Location', icon: MapPin },
-                        ].map((b, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleAddBlockToGroup(b.label, 'MESSAGES')}
-                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                          >
-                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate">{b.label}</span>
-                          </button>
-                        ))}
+                        ].map((b) => renderBlockButton(b.label, 'MESSAGES', b.icon, 'emerald'))}
                       </div>
                     )}
                   </div>
@@ -2123,16 +2402,7 @@ export const WorkflowBuilderView: React.FC = () => {
                         {[
                           { label: 'Quick Reply', icon: MessageSquare },
                           { label: 'List Menu', icon: List },
-                        ].map((b, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleAddBlockToGroup(b.label, 'CHOICES')}
-                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                          >
-                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate">{b.label}</span>
-                          </button>
-                        ))}
+                        ].map((b) => renderBlockButton(b.label, 'CHOICES', b.icon, 'amber'))}
                       </div>
                     )}
                   </div>
@@ -2165,16 +2435,7 @@ export const WorkflowBuilderView: React.FC = () => {
                           { label: 'Time', icon: Clock },
                           { label: 'Phone', icon: Smartphone },
                           { label: 'File', icon: FileText },
-                        ].map((b, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleAddBlockToGroup(b.label, 'INPUTS')}
-                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-purple-50 hover:border-purple-300 hover:text-purple-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                          >
-                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate">{b.label}</span>
-                          </button>
-                        ))}
+                        ].map((b) => renderBlockButton(b.label, 'INPUTS', b.icon, 'purple'))}
                       </div>
                     )}
                   </div>
@@ -2198,13 +2459,7 @@ export const WorkflowBuilderView: React.FC = () => {
                     </button>
                     {!collapsedCategories['PAYMENTS'] && (
                       <div className="pt-1">
-                        <button
-                          onClick={() => handleAddBlockToGroup('Stripe Checkout', 'PAYMENTS')}
-                          className="w-full p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-900 flex items-center gap-2 transition text-[11px] font-semibold text-emerald-800 shadow-2xs cursor-pointer"
-                        >
-                          <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>Payment Checkout Link</span>
-                        </button>
+                        {renderBlockButton('Stripe Checkout', 'PAYMENTS', CreditCard, 'emerald', true)}
                       </div>
                     )}
                   </div>
@@ -2231,16 +2486,7 @@ export const WorkflowBuilderView: React.FC = () => {
                         {[
                           { label: 'Condition', icon: GitBranch },
                           { label: 'Chatbot', icon: Bot },
-                        ].map((b, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleAddBlockToGroup(b.label, 'LOGIC')}
-                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                          >
-                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate">{b.label}</span>
-                          </button>
-                        ))}
+                        ].map((b) => renderBlockButton(b.label, 'LOGIC', b.icon, 'blue'))}
                       </div>
                     )}
                   </div>
@@ -2271,16 +2517,7 @@ export const WorkflowBuilderView: React.FC = () => {
                           { label: 'Zapier', icon: Zap },
                           { label: 'Make.com', icon: Sparkles },
                           { label: 'Pabbly', icon: Layers },
-                        ].map((b, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleAddBlockToGroup(b.label, 'INTEGRATIONS')}
-                            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800 flex items-center gap-1.5 transition text-[11px] font-medium text-slate-700 shadow-2xs cursor-pointer"
-                          >
-                            <b.icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate">{b.label}</span>
-                          </button>
-                        ))}
+                        ].map((b) => renderBlockButton(b.label, 'INTEGRATIONS', b.icon, 'emerald'))}
                       </div>
                     )}
                   </div>
