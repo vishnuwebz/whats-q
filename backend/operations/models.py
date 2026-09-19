@@ -134,5 +134,12 @@ class InventoryItem(models.Model):
     supplier = models.CharField(max_length=150, default='Fresh Supplies Pvt. Ltd.')
     image_url = models.TextField(blank=True, default='')
 
+    def save(self, *args, **kwargs):
+        if self.stock_units is not None and int(self.stock_units) <= 0:
+            self.stock_units = 0
+            self.stock_value = 0.0
+            self.status = 'out_of_stock'
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.name} ({self.sku})"

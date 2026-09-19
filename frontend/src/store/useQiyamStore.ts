@@ -3861,51 +3861,67 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
 
   addInventoryItem: async (inv) => {
     const nextId = get().inventory.length + 1;
+    const units = inv.stock_units !== undefined ? Number(inv.stock_units) : 50;
+    const isOutOfStock = units <= 0;
     const item: InventoryItem = {
       id: nextId,
       name: inv.name || 'AC Copper Piping 1/2"',
       sku: inv.sku || `SKU-${1000 + nextId}`,
       category: inv.category || 'Spare Parts',
-      stock_units: Number(inv.stock_units) || 50,
-      stock_value: Number(inv.stock_value) || 12500,
-      status: inv.status || 'in_stock',
       location: inv.location || 'Rack B-03',
       reorder_level: Number(inv.reorder_level) || 15,
       reorder_qty: Number(inv.reorder_qty) || 30,
       supplier: inv.supplier || 'Voltas Genuine Spares',
       ...inv,
+      stock_units: isOutOfStock ? 0 : units,
+      stock_value: isOutOfStock ? 0 : (Number(inv.stock_value) || 0),
+      status: isOutOfStock ? 'out_of_stock' : (inv.status || 'in_stock'),
     };
     try {
       const res = await apiClient.post('/operations/inventory/', item);
       const created = (res?.id && res.success !== false) ? (res as InventoryItem) : item;
-      set((state) => ({ inventory: [created, ...state.inventory] }));
+      const nextList = [created, ...get().inventory];
+      set({ inventory: nextList });
+      persistCache('inventory', nextList);
       get().addToast(`SKU "${created.sku}" added to inventory`, 'success');
       return created;
     } catch {
-      set((state) => ({ inventory: [item, ...state.inventory] }));
+      const nextList = [item, ...get().inventory];
+      set({ inventory: nextList });
+      persistCache('inventory', nextList);
       get().addToast(`SKU "${item.sku}" added`, 'success');
       return item;
     }
   },
 
   updateInventoryItem: async (id, updates) => {
-    set((state) => ({
-      inventory: state.inventory.map((item) =>
-        String(item.id) === String(id) ? { ...item, ...updates } : item
-      ),
-    }));
+    let finalUpdates = { ...updates };
+    if (updates.stock_units !== undefined) {
+      const units = Number(updates.stock_units);
+      if (units <= 0) {
+        finalUpdates.stock_units = 0;
+        finalUpdates.stock_value = 0;
+        finalUpdates.status = 'out_of_stock';
+      }
+    }
+
+    const nextList = get().inventory.map((item) =>
+      String(item.id) === String(id) ? { ...item, ...finalUpdates } : item
+    );
+    set({ inventory: nextList });
+    persistCache('inventory', nextList);
     get().addToast('Inventory item updated', 'success');
     try {
-      await apiClient.patch(`/operations/inventory/${id}/`, updates);
+      await apiClient.patch(`/operations/inventory/${id}/`, finalUpdates);
     } catch {
       // Optimistic update fallback
     }
   },
 
   deleteInventoryItem: async (id) => {
-    set((state) => ({
-      inventory: state.inventory.filter((item) => String(item.id) !== String(id)),
-    }));
+    const nextList = get().inventory.filter((item) => String(item.id) !== String(id));
+    set({ inventory: nextList });
+    persistCache('inventory', nextList);
     get().addToast('Inventory item removed', 'info');
     try {
       await apiClient.delete(`/operations/inventory/${id}/`);

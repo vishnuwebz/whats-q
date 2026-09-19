@@ -4,7 +4,7 @@ import { Header } from '@/components/layout/Header';
 import {
   Package, Search, Plus, X, Edit3, Trash2, ImagePlus,
   ZoomIn, Download, UploadCloud, RefreshCw, Camera, AlertTriangle,
-  ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, Filter,
+  ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, Filter, ChevronDown,
 } from 'lucide-react';
 import { InventoryItem } from '@/types';
 
@@ -253,13 +253,27 @@ export const InventoryView: React.FC = () => {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) { addToast('Enter item name', 'error'); return; }
-    addInventoryItem({ ...form });
+    const units = form.stock_units !== undefined ? Number(form.stock_units) : 0;
+    const isZero = units === 0;
+    addInventoryItem({
+      ...form,
+      stock_units: units,
+      stock_value: isZero ? 0 : (form.stock_value || 0),
+      status: isZero ? 'out_of_stock' : (form.status || 'in_stock'),
+    });
     setIsAddOpen(false); setForm(blankForm());
   };
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editItem) return;
-    updateInventoryItem(editItem.id, { ...form });
+    const units = form.stock_units !== undefined ? Number(form.stock_units) : 0;
+    const isZero = units === 0;
+    updateInventoryItem(editItem.id, {
+      ...form,
+      stock_units: units,
+      stock_value: isZero ? 0 : (form.stock_value || 0),
+      status: isZero ? 'out_of_stock' : (form.status || 'in_stock'),
+    });
     setEditItem(null);
   };
   const handleDelete = (item: InventoryItem) => { deleteInventoryItem(item.id); setDeleteConfirm(null); };
@@ -293,24 +307,118 @@ export const InventoryView: React.FC = () => {
             {['Grocery','Dairy','Personal Care','Hardware','Appliances','Electronics','Clothing'].map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
+
+        {/* Stock Units input with automatic out_of_stock handling */}
         <div>
-          <label className="font-semibold text-slate-700 block mb-1">Status</label>
-          <select value={form.status || 'in_stock'} onChange={(e) => setForm({ ...form, status: e.target.value as InventoryItem['status'] })}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800">
-            <option value="in_stock">In Stock</option>
-            <option value="low_stock">Low Stock</option>
-            <option value="out_of_stock">Out of Stock</option>
-            <option value="discontinued">Discontinued</option>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-semibold text-slate-700 block">Stock Units *</label>
+            {form.stock_units === 0 && (
+              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200 animate-pulse">
+                0 units = Out of Stock
+              </span>
+            )}
+          </div>
+          <input
+            type="number"
+            min="0"
+            required
+            value={(form.stock_units as number) ?? 0}
+            onChange={(e) => {
+              const rawVal = e.target.value;
+              const units = rawVal === '' ? 0 : Math.max(0, parseInt(rawVal, 10) || 0);
+              if (units === 0) {
+                // If stock is 0, automatically change status to out_of_stock and valuation to 0
+                setForm((prev) => ({
+                  ...prev,
+                  stock_units: 0,
+                  stock_value: 0,
+                  status: 'out_of_stock',
+                }));
+              } else {
+                // When stock > 0, if previous status was out_of_stock, default to in_stock (or low_stock if below reorder level)
+                setForm((prev) => ({
+                  ...prev,
+                  stock_units: units,
+                  status: prev.status === 'out_of_stock'
+                    ? (units <= (prev.reorder_level || 20) ? 'low_stock' : 'in_stock')
+                    : prev.status,
+                }));
+              }
+            }}
+            placeholder="0"
+            className={`w-full px-3 py-2 border rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs font-semibold ${
+              form.stock_units === 0
+                ? 'bg-red-50/70 border-red-300 text-red-700'
+                : 'bg-slate-50 border-slate-200 text-slate-800'
+            }`}
+          />
+        </div>
+
+        {/* Stock Status - Auto out_of_stock when 0 units, manual configuration when > 0 */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-semibold text-slate-700 block">Stock Status</label>
+            {form.stock_units === 0 ? (
+              <span className="text-[9px] font-bold text-red-600">⚡ Auto Out of Stock</span>
+            ) : (
+              <span className="text-[9px] font-medium text-emerald-600">✓ Manual Configuration</span>
+            )}
+          </div>
+          <select
+            value={form.stock_units === 0 ? 'out_of_stock' : (form.status || 'in_stock')}
+            onChange={(e) => {
+              const newStatus = e.target.value as InventoryItem['status'];
+              if (form.stock_units === 0 && (newStatus === 'in_stock' || newStatus === 'low_stock')) {
+                addToast('Cannot mark In Stock when quantity is 0 units. Set stock units > 0 first.', 'warning');
+                return;
+              }
+              setForm((prev) => ({ ...prev, status: newStatus }));
+            }}
+            className={`w-full px-3 py-2 border rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs font-semibold ${
+              form.stock_units === 0
+                ? 'bg-red-50 border-red-300 text-red-700'
+                : 'bg-slate-50 border-slate-200 text-slate-800'
+            }`}
+          >
+            {form.stock_units === 0 ? (
+              <>
+                <option value="out_of_stock">Out of Stock (Auto - 0 Units)</option>
+                <option value="discontinued">Discontinued (0 Units)</option>
+              </>
+            ) : (
+              <>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="discontinued">Discontinued</option>
+              </>
+            )}
           </select>
         </div>
-        {(['stock_units', 'stock_value', 'reorder_level'] as const).map((k) => (
-          <div key={k}>
-            <label className="font-semibold text-slate-700 block mb-1 capitalize">{k.replace(/_/g, ' ')}{k === 'stock_value' ? ' (₹)' : ''}</label>
-            <input type="number" min="0" value={(form[k] as number) ?? 0}
-              onChange={(e) => setForm({ ...form, [k]: Number(e.target.value) })}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800" />
-          </div>
-        ))}
+
+        {/* Stock Value */}
+        <div>
+          <label className="font-semibold text-slate-700 block mb-1">Stock Value (₹)</label>
+          <input
+            type="number"
+            min="0"
+            value={(form.stock_value as number) ?? 0}
+            onChange={(e) => setForm({ ...form, stock_value: Math.max(0, Number(e.target.value) || 0) })}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800 font-semibold"
+          />
+        </div>
+
+        {/* Reorder Level */}
+        <div>
+          <label className="font-semibold text-slate-700 block mb-1">Reorder Level</label>
+          <input
+            type="number"
+            min="0"
+            value={(form.reorder_level as number) ?? 20}
+            onChange={(e) => setForm({ ...form, reorder_level: Math.max(0, Number(e.target.value) || 0) })}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-xs text-slate-800"
+          />
+        </div>
       </div>
     </div>
   );
@@ -647,7 +755,42 @@ export const InventoryView: React.FC = () => {
                       <td className="py-3.5 px-4 font-bold text-slate-900">{item.stock_units} units</td>
                       <td className="py-3.5 px-4 font-bold text-emerald-600">₹{item.stock_value.toLocaleString()}</td>
                       <td className="py-3.5 px-4 text-slate-500">{item.location}</td>
-                      <td className="py-3.5 px-4"><StatusBadge status={item.status} /></td>
+                      <td className="py-3.5 px-4">
+                        {item.stock_units === 0 ? (
+                          <div className="inline-flex items-center gap-1.5" title="0 units in stock — Automatic Out of Stock">
+                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full border bg-red-50 text-red-700 border-red-200 tracking-wide inline-flex items-center gap-1 shadow-2xs select-none">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                              OUT OF STOCK
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="relative inline-block group">
+                            <select
+                              value={item.status}
+                              onChange={(e) => {
+                                const newStatus = e.target.value as InventoryItem['status'];
+                                updateInventoryItem(item.id, { status: newStatus });
+                              }}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border cursor-pointer appearance-none outline-none pr-5.5 transition-all shadow-2xs ${
+                                item.status === 'in_stock'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                  : item.status === 'low_stock'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
+                                  : item.status === 'out_of_stock'
+                                  ? 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100'
+                                  : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                              }`}
+                              title="Click to manually configure stock status"
+                            >
+                              <option value="in_stock">IN STOCK</option>
+                              <option value="low_stock">LOW STOCK</option>
+                              <option value="out_of_stock">OUT OF STOCK</option>
+                              <option value="discontinued">DISCONTINUED</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-slate-600 transition-colors" />
+                          </div>
+                        )}
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600">{item.supplier}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-end gap-1">
