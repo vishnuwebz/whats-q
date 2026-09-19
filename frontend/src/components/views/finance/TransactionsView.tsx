@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Receipt, Search, Filter, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, X } from 'lucide-react';
-import { isDateWithinInterval } from '@/utils/dateFilter';
+import { Receipt, Search, Filter, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, X, Wallet } from 'lucide-react';
+import { INITIAL_ACCOUNTS } from '@/store/initialDatasets';
 
 export const TransactionsView: React.FC = () => {
-  const { transactions, addTransaction, addToast, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
+  const { transactions, accounts, addTransaction, addToast, globalFilter, targetHighlightId, setActiveTab } = useQiyamStore();
   const [filterType, setFilterType] = useState<string>('all');
+  const [accountFilter, setAccountFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Dynamically resolve payment accounts from /finance/accounts store
+  const dynamicAccounts = useMemo(() => {
+    const list = accounts && accounts.length > 0 ? accounts : INITIAL_ACCOUNTS;
+    const active = list.filter((acc) => acc.status?.toLowerCase() !== 'inactive');
+    return active.length > 0 ? active : list;
+  }, [accounts]);
 
   // Form state
   const [txForm, setTxForm] = useState({
@@ -17,15 +25,29 @@ export const TransactionsView: React.FC = () => {
     description: '',
     category: 'Sales Receipt',
     party: '',
-    account: 'HDFC Business Account',
+    account: '',
     amount: 5000,
     payment_mode: 'UPI / GPay',
     reference_id: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
     status: 'completed' as 'completed' | 'pending' | 'failed'
   });
 
+  // Ensure default account is selected when opening modal
+  useEffect(() => {
+    if (isModalOpen && (!txForm.account || !dynamicAccounts.some((a) => a.name === txForm.account))) {
+      if (dynamicAccounts.length > 0) {
+        setTxForm((prev) => ({ ...prev, account: dynamicAccounts[0].name }));
+      }
+    }
+  }, [isModalOpen, dynamicAccounts]);
+
+  const selectedAccountInfo = useMemo(() => {
+    return dynamicAccounts.find((a) => a.name === txForm.account) || dynamicAccounts[0];
+  }, [dynamicAccounts, txForm.account]);
+
   const filtered = transactions.filter((t) => {
     if (filterType !== 'all' && t.tx_type !== filterType) return false;
+    if (accountFilter !== 'all' && t.account !== accountFilter) return false;
     if (globalFilter.status && globalFilter.status !== 'all') {
       const s = globalFilter.status.toLowerCase();
       if (['income', 'expense', 'transfer'].includes(s)) {
@@ -34,16 +56,14 @@ export const TransactionsView: React.FC = () => {
         if (t.status !== s) return false;
       }
     }
-    if (!isDateWithinInterval(t.date_str, globalDateInterval)) {
-      return false;
-    }
     
     const activeSearch = (search || globalFilter.query || '').toLowerCase();
     if (activeSearch) {
       return (
         t.description.toLowerCase().includes(activeSearch) ||
         t.party.toLowerCase().includes(activeSearch) ||
-        t.reference_id.toLowerCase().includes(activeSearch)
+        t.reference_id.toLowerCase().includes(activeSearch) ||
+        (t.account || '').toLowerCase().includes(activeSearch)
       );
     }
     return true;
@@ -56,8 +76,11 @@ export const TransactionsView: React.FC = () => {
       return;
     }
 
+    const resolvedAccount = txForm.account || dynamicAccounts[0]?.name || 'HDFC Business Account';
+
     addTransaction({
       ...txForm,
+      account: resolvedAccount,
       amount: Number(txForm.amount)
     });
 
@@ -69,7 +92,7 @@ export const TransactionsView: React.FC = () => {
       description: '',
       category: 'Sales Receipt',
       party: '',
-      account: 'HDFC Business Account',
+      account: dynamicAccounts[0]?.name || 'HDFC Business Account',
       amount: 5000,
       payment_mode: 'UPI / GPay',
       reference_id: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -147,15 +170,30 @@ export const TransactionsView: React.FC = () => {
             </button>
           </div>
 
-          <div className="relative w-full sm:w-auto">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search reference or description..."
-              className="w-full sm:w-56 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
-            />
+          <div className="flex items-center gap-2">
+            {/* Dynamic Account Filter Dropdown */}
+            <select
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none focus:ring-1 focus:ring-emerald-500 font-medium cursor-pointer"
+              title="Filter transactions by account"
+            >
+              <option value="all">All Accounts ({dynamicAccounts.length})</option>
+              {dynamicAccounts.map((acc) => (
+                <option key={acc.id} value={acc.name}>{acc.name}</option>
+              ))}
+            </select>
+
+            <div className="relative w-full sm:w-auto">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search reference, party, account..."
+                className="w-full sm:w-52 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
           </div>
         </div>
 
@@ -308,17 +346,39 @@ export const TransactionsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Bank / Cash Account</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700 block">Bank / Cash Account *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setActiveTab('finance-accounts');
+                      }}
+                      className="text-[11px] text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                      title="Manage payment accounts in /finance/accounts"
+                    >
+                      <span>View Accounts ({dynamicAccounts.length})</span>
+                      <ArrowUpRight className="w-3 h-3" />
+                    </button>
+                  </div>
                   <select
                     value={txForm.account}
                     onChange={(e) => setTxForm({ ...txForm, account: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800 font-medium cursor-pointer"
+                    required
                   >
-                    <option value="HDFC Business Account">HDFC Business Account</option>
-                    <option value="ICICI Current Account">ICICI Current Account</option>
-                    <option value="Razorpay Settlement">Razorpay Settlement</option>
-                    <option value="Cash in Hand">Cash in Hand</option>
+                    {dynamicAccounts.map((acc) => (
+                      <option key={acc.id} value={acc.name}>
+                        {acc.name} ({acc.provider || acc.account_type} • ₹{Number(acc.current_balance || 0).toLocaleString()})
+                      </option>
+                    ))}
                   </select>
+                  {selectedAccountInfo && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60">
+                      <span>Type: <strong className="text-slate-700">{selectedAccountInfo.account_type}</strong></span>
+                      <span>Available: <strong className="text-emerald-600 font-bold">₹{Number(selectedAccountInfo.current_balance || 0).toLocaleString()}</strong></span>
+                    </div>
+                  )}
                 </div>
 
                 <div>

@@ -3934,26 +3934,50 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     const nextId = get().transactions.length + 1;
     const item: Transaction = {
       id: nextId,
-      date_str: tx.date_str || 'Today',
+      date_str: tx.date_str || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
       tx_type: tx.tx_type || 'income',
       description: tx.description || 'Advance Payment Received',
       category: tx.category || 'Service Billing',
       party: tx.party || 'Customer',
-      account: tx.account || 'HDFC Current A/C',
+      account: tx.account || get().accounts[0]?.name || 'HDFC Business Account',
       amount: Number(tx.amount) || 2800,
-      payment_mode: tx.payment_mode || 'UPI (GPay)',
+      payment_mode: tx.payment_mode || 'UPI / GPay',
       reference_id: tx.reference_id || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
       status: tx.status || 'completed',
       ...tx,
     };
+
+    // Dynamically update corresponding account balance in /finance/accounts
+    if (item.account) {
+      const matchAccount = get().accounts.find(
+        (a) => a.name.toLowerCase() === (item.account || '').toLowerCase()
+      );
+      if (matchAccount) {
+        const delta = item.tx_type === 'income' ? item.amount : (item.tx_type === 'expense' ? -item.amount : 0);
+        if (delta !== 0) {
+          const updatedAccounts = get().accounts.map((a) =>
+            a.id === matchAccount.id
+              ? { ...a, current_balance: Math.max(0, Number(a.current_balance || 0) + delta) }
+              : a
+          );
+          set({ accounts: updatedAccounts });
+          persistCache('accounts', updatedAccounts);
+        }
+      }
+    }
+
     try {
       const res = await apiClient.post('/finance/transactions/', item);
       const created = (res?.id && res.success !== false) ? (res as Transaction) : item;
-      set((state) => ({ transactions: [created, ...state.transactions] }));
+      const nextTransactions = [created, ...get().transactions];
+      set({ transactions: nextTransactions });
+      persistCache('transactions', nextTransactions);
       get().addToast(`Transaction "₹${created.amount}" recorded`, 'success');
       return created;
     } catch {
-      set((state) => ({ transactions: [item, ...state.transactions] }));
+      const nextTransactions = [item, ...get().transactions];
+      set({ transactions: nextTransactions });
+      persistCache('transactions', nextTransactions);
       get().addToast(`Transaction "₹${item.amount}" recorded`, 'success');
       return item;
     }
