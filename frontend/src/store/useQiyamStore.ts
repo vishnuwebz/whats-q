@@ -2983,12 +2983,21 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const checklist = task.checklist.map((c) =>
       c.id === checklistId ? { ...c, completed: !c.completed } : c
     );
+    const allCompleted = checklist.length > 0 && checklist.every((c) => c.completed);
+    let newStatus = task.status;
+    if (allCompleted && task.status !== 'completed') {
+      newStatus = 'completed';
+    } else if (!allCompleted && task.status === 'completed') {
+      newStatus = 'in_progress';
+    }
+    const updatedTask: Task = { ...task, checklist, status: newStatus };
+
     // Instant optimistic update
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...task, checklist } : t)),
+      tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
     }));
     try {
-      const res = await apiClient.put(`/operations/tasks/${taskId}/`, { ...task, checklist });
+      const res = await apiClient.put(`/operations/tasks/${taskId}/`, updatedTask);
       if (res?.id && res.success !== false) {
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === taskId ? (res as Task) : t)),

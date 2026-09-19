@@ -8,7 +8,6 @@ import {
   Search, ArrowUpDown, MoreVertical
 } from 'lucide-react';
 import { Task } from '@/types';
-import { isDateWithinInterval } from '@/utils/dateFilter';
 import { exportTableToCsv } from '@/utils/exportCsv';
 
 type StatusFilter = 'all' | 'in_progress' | 'pending' | 'completed' | 'overdue';
@@ -70,7 +69,6 @@ export const TasksView: React.FC = () => {
     employees,
     jobs,
     globalFilter,
-    globalDateInterval,
   } = store;
 
   // Local View States
@@ -348,13 +346,29 @@ export const TasksView: React.FC = () => {
     addToast(`Exported ${res.count} tasks to CSV (${res.filename})`, 'success');
   };
 
+  // Helper to determine if a task is overdue
+  const isTaskOverdue = (t: Task) => {
+    if (t.status === 'completed') return false;
+    if (t.status === 'overdue') return true;
+    if (!t.due_date) return false;
+    const lower = t.due_date.toLowerCase();
+    if (lower.includes('yesterday') || lower.includes('overdue')) return true;
+    try {
+      const d = new Date(t.due_date);
+      if (!isNaN(d.getTime())) {
+        return d.getTime() < Date.now();
+      }
+    } catch {}
+    return false;
+  };
+
   // Calculate high-level stats
   const stats = useMemo(() => {
     const total = tasks.length;
     const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
     const completed = tasks.filter((t) => t.status === 'completed').length;
     const pending = tasks.filter((t) => t.status === 'pending').length;
-    const overdue = tasks.filter((t) => t.status === 'overdue').length;
+    const overdue = tasks.filter(isTaskOverdue).length;
 
     let totalChecklistItems = 0;
     let completedChecklistItems = 0;
@@ -377,7 +391,11 @@ export const TasksView: React.FC = () => {
     return tasks
       .filter((t) => {
         // Tab Status filter
-        if (activeTab !== 'all' && t.status !== activeTab) return false;
+        if (activeTab === 'overdue') {
+          if (!isTaskOverdue(t)) return false;
+        } else if (activeTab !== 'all' && t.status !== activeTab) {
+          return false;
+        }
 
         // Global status filter if present
         if (globalFilter.status && globalFilter.status !== 'all') {
@@ -385,7 +403,7 @@ export const TasksView: React.FC = () => {
           if (s === 'in_progress' && t.status !== 'in_progress') return false;
           if (s === 'completed' && t.status !== 'completed') return false;
           if (s === 'pending' && t.status !== 'pending') return false;
-          if (s === 'overdue' && t.status !== 'overdue') return false;
+          if (s === 'overdue' && !isTaskOverdue(t)) return false;
           if (!['in_progress', 'completed', 'pending', 'overdue'].includes(s) && t.status !== s) return false;
         }
 
@@ -396,9 +414,6 @@ export const TasksView: React.FC = () => {
         // Assignee filter
         if (assigneeFilter !== 'all' && t.assignee !== assigneeFilter) return false;
         if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && t.assignee !== globalFilter.assignedTo) return false;
-
-        // Date interval filter
-        if (!isDateWithinInterval(t.due_date, globalDateInterval)) return false;
 
         // Local & Global search query filter
         const q = (searchQuery || globalFilter.query || '').trim().toLowerCase();
@@ -429,7 +444,7 @@ export const TasksView: React.FC = () => {
         }
         return String(a.due_date).localeCompare(String(b.due_date));
       });
-  }, [tasks, activeTab, priorityFilter, assigneeFilter, searchQuery, sortBy, globalFilter, globalDateInterval]);
+  }, [tasks, activeTab, priorityFilter, assigneeFilter, searchQuery, sortBy, globalFilter]);
 
   // Unique assignees for filter dropdown
   const uniqueAssignees = useMemo(() => {
