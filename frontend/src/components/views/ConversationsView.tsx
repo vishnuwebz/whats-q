@@ -1437,18 +1437,14 @@ export const ConversationsView: React.FC = () => {
                     <Phone className="w-4 h-4" />
                   </button>
 
-                  {/* Active Automation Workflow Trigger & Inspector Button */}
+                  {/* Active Automation Workflow Trigger & Inspector Button (Thunder symbol only) */}
                   <button
                     onClick={() => setIsWorkflowModalOpen(true)}
-                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs group"
-                    title="Control & Inspect Active Chatbot Workflow"
+                    className="p-1.5 sm:p-2 text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 hover:border-purple-300 rounded-lg transition-all cursor-pointer shadow-2xs group"
+                    title={`Workflow: ${currentConv.active_workflow || 'Service Booking Flow'} (Click to inspect & control)`}
+                    aria-label="Active Automation Workflow"
                   >
-                    <Zap className={`w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform fill-purple-200 ${currentConv.active_workflow === 'Paused' ? 'opacity-50' : 'animate-pulse'}`} />
-                    <span className="hidden lg:inline text-purple-600 font-medium">Flow:</span>
-                    <span className="font-bold truncate max-w-[100px] sm:max-w-[130px]">
-                      {currentConv.active_workflow || 'Service Booking Flow'}
-                    </span>
-                    <ExternalLink className="w-3 h-3 text-purple-500 shrink-0" />
+                    <Zap className={`w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform fill-purple-200 ${currentConv.active_workflow === 'Paused' ? 'opacity-50' : 'animate-pulse'}`} />
                   </button>
 
                   <button
