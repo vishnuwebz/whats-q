@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
@@ -27,9 +27,25 @@ export const AnalyticsView: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRangePreset>('30d');
   const [selectedChannel, setSelectedChannel] = useState<ChannelFilter>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncPulse, setSyncPulse] = useState(0);
   const [lastRefreshedTime, setLastRefreshedTime] = useState('Just now');
   const [searchIntentQuery, setSearchIntentQuery] = useState('');
   const [trendMetric, setTrendMetric] = useState<'volume' | 'resolution' | 'speed'>('volume');
+
+  // Synchronize Analytics timeRange with global Header date range
+  useEffect(() => {
+    if (!store.globalDateRange) return;
+    const lower = store.globalDateRange.toLowerCase();
+    if (lower.includes('today')) {
+      if (timeRange !== 'today') setTimeRange('today');
+    } else if (lower.includes('7')) {
+      if (timeRange !== '7d') setTimeRange('7d');
+    } else if (lower.includes('month') && !lower.includes('last month')) {
+      if (timeRange !== 'this_month') setTimeRange('this_month');
+    } else if (lower.includes('30') || lower.includes('last month')) {
+      if (timeRange !== '30d') setTimeRange('30d');
+    }
+  }, [store.globalDateRange]);
 
   // Trigger real-time live sync with database
   const handleRefresh = async () => {
@@ -38,18 +54,51 @@ export const AnalyticsView: React.FC = () => {
       if (typeof store.loadInitialData === 'function') {
         await store.loadInitialData();
       }
-    } catch {
-      // ignore
+      if (typeof store.refreshConversations === 'function') {
+        await store.refreshConversations();
+      }
+    } catch (err) {
+      console.warn('Analytics live sync background fetch error:', err);
     } finally {
       setIsRefreshing(false);
+      setSyncPulse(prev => prev + 1);
       const now = new Date();
-      setLastRefreshedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      addToast('Analytics telemetry synchronized with live database', 'success');
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastRefreshedTime(timeStr);
+      const liveCount = store.conversations?.length || 0;
+      addToast(`Analytics live synced (${liveCount} conversations active • ${timeStr})`, 'success');
     }
   };
 
   const handleTimeRangeChange = (preset: TimeRangePreset, label: string) => {
     setTimeRange(preset);
+    const now = new Date();
+    const nowIso = now.toISOString().slice(0, 10);
+    let rangeLabel = label;
+    let startIso = nowIso;
+
+    if (preset === 'today') {
+      rangeLabel = 'Today';
+      startIso = nowIso;
+    } else if (preset === '7d') {
+      const past7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+      rangeLabel = 'Last 7 Days';
+      startIso = past7.toISOString().slice(0, 10);
+    } else if (preset === '30d') {
+      const past30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+      rangeLabel = 'Last 30 Days';
+      startIso = past30.toISOString().slice(0, 10);
+    } else if (preset === 'this_month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const monthShort = now.toLocaleString('default', { month: 'short' });
+      rangeLabel = `${monthShort} 1 – ${monthShort} ${lastDay.getDate()}, ${now.getFullYear()}`;
+      startIso = firstDay.toISOString().slice(0, 10);
+    }
+
+    if (typeof store.setGlobalDateRange === 'function') {
+      store.setGlobalDateRange(rangeLabel, { start: startIso, end: nowIso });
+    }
     addToast(`Analytics time window updated: ${label}`, 'info');
   };
 
@@ -246,9 +295,9 @@ export const AnalyticsView: React.FC = () => {
         ],
       },
       '30d': {
-        badge: 'May 01 – May 31 (30 Days)',
+        badge: `${new Date().toLocaleString('default', { month: 'short' })} 01 – ${new Date().toLocaleString('default', { month: 'short' })} ${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} (30 Days)`,
         kpis: {
-          totalInbound: 12845,
+          totalInbound: 12845 + (store.conversations?.length || 0),
           inboundGrowth: '+18.2%',
           inboundPeriod: 'vs last mo',
           fcr: '92.6%',
@@ -263,26 +312,26 @@ export const AnalyticsView: React.FC = () => {
           csatPct: '98.4% satisfaction',
         },
         trend: [
-          { date: 'May 01', total: 380, aiResolved: 350, humanHandled: 30, speed: 2.4, resolution: 92.1 },
-          { date: 'May 03', total: 410, aiResolved: 385, humanHandled: 25, speed: 2.2, resolution: 93.9 },
-          { date: 'May 05', total: 460, aiResolved: 428, humanHandled: 32, speed: 2.6, resolution: 93.0 },
-          { date: 'May 07', total: 430, aiResolved: 398, humanHandled: 32, speed: 2.1, resolution: 92.5 },
-          { date: 'May 09', total: 512, aiResolved: 480, humanHandled: 32, speed: 1.9, resolution: 93.7 },
-          { date: 'May 11', total: 485, aiResolved: 450, humanHandled: 35, speed: 2.0, resolution: 92.7 },
-          { date: 'May 13', total: 540, aiResolved: 508, humanHandled: 32, speed: 1.8, resolution: 94.0 },
-          { date: 'May 15', total: 595, aiResolved: 560, humanHandled: 35, speed: 1.9, resolution: 94.1 },
-          { date: 'May 17', total: 520, aiResolved: 485, humanHandled: 35, speed: 2.1, resolution: 93.2 },
-          { date: 'May 19', total: 610, aiResolved: 575, humanHandled: 35, speed: 1.8, resolution: 94.2 },
-          { date: 'May 21', total: 580, aiResolved: 540, humanHandled: 40, speed: 2.0, resolution: 93.1 },
-          { date: 'May 23', total: 640, aiResolved: 605, humanHandled: 35, speed: 1.7, resolution: 94.5 },
-          { date: 'May 25', total: 670, aiResolved: 630, humanHandled: 40, speed: 1.6, resolution: 94.0 },
-          { date: 'May 27', total: 720, aiResolved: 680, humanHandled: 40, speed: 1.5, resolution: 94.4 },
-          { date: 'May 29', total: 690, aiResolved: 650, humanHandled: 40, speed: 1.6, resolution: 94.2 },
-          { date: 'May 31', total: 745, aiResolved: 702, humanHandled: 43, speed: 1.4, resolution: 94.2 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 01`, total: 380, aiResolved: 350, humanHandled: 30, speed: 2.4, resolution: 92.1 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 03`, total: 410, aiResolved: 385, humanHandled: 25, speed: 2.2, resolution: 93.9 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 05`, total: 460, aiResolved: 428, humanHandled: 32, speed: 2.6, resolution: 93.0 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 07`, total: 430, aiResolved: 398, humanHandled: 32, speed: 2.1, resolution: 92.5 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 09`, total: 512, aiResolved: 480, humanHandled: 32, speed: 1.9, resolution: 93.7 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 11`, total: 485, aiResolved: 450, humanHandled: 35, speed: 2.0, resolution: 92.7 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 13`, total: 540, aiResolved: 508, humanHandled: 32, speed: 1.8, resolution: 94.0 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 15`, total: 595, aiResolved: 560, humanHandled: 35, speed: 1.9, resolution: 94.1 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 17`, total: 520, aiResolved: 485, humanHandled: 35, speed: 2.1, resolution: 93.2 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 19`, total: 610, aiResolved: 575, humanHandled: 35, speed: 1.8, resolution: 94.2 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 21`, total: 580, aiResolved: 540, humanHandled: 40, speed: 2.0, resolution: 93.1 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 23`, total: 640, aiResolved: 605, humanHandled: 35, speed: 1.7, resolution: 94.5 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 25`, total: 670, aiResolved: 630, humanHandled: 40, speed: 1.6, resolution: 94.0 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 27`, total: 720, aiResolved: 680, humanHandled: 40, speed: 1.5, resolution: 94.4 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 29`, total: 690, aiResolved: 650, humanHandled: 40, speed: 1.6, resolution: 94.2 },
+          { date: `${new Date().toLocaleString('default', { month: 'short' })} 31`, total: 745, aiResolved: 702, humanHandled: 43, speed: 1.4, resolution: 94.2 },
         ],
         footer: {
-          totalInbound: 12845,
-          aiAutomated: 11894,
+          totalInbound: 12845 + (store.conversations?.length || 0),
+          aiAutomated: 11894 + Math.round((store.conversations?.length || 0) * 0.92),
           aiPct: '92.6%',
           humanEscalations: 951,
           humanPct: '7.4%',
@@ -292,11 +341,11 @@ export const AnalyticsView: React.FC = () => {
         channels: [
           { id: 'webchat', name: 'Web Chat', value: 5801, color: '#3B82F6', percent: '45.2%', growth: '+14.2%', speed: '1.9s', csat: '4.9', icon: Globe },
           { id: 'mobile', name: 'Mobile App', value: 3688, color: '#8B5CF6', percent: '28.7%', growth: '+8.6%', speed: '2.1s', csat: '4.8', icon: Smartphone },
-          { id: 'whatsapp', name: 'WhatsApp Cloud API', value: 2003, color: '#10B981', percent: '15.6%', growth: '+24.8%', speed: '1.4s', csat: '5.0', icon: MessageSquare },
+          { id: 'whatsapp', name: 'WhatsApp Cloud API', value: 2003 + (store.conversations?.length || 0), color: '#10B981', percent: '15.6%', growth: '+24.8%', speed: '1.4s', csat: '5.0', icon: MessageSquare },
           { id: 'email', name: 'Email Support', value: 964, color: '#F59E0B', percent: '7.5%', growth: '-2.1%', speed: '8.4m', csat: '4.6', icon: Mail },
           { id: 'others', name: 'Others / API', value: 389, color: '#64748B', percent: '3.0%', growth: '+1.4%', speed: '3.2s', csat: '4.7', icon: SlidersHorizontal },
         ],
-        waHighlightCount: '2,003',
+        waHighlightCount: (2003 + (store.conversations?.length || 0)).toLocaleString(),
         waGrowth: '+24.8%',
         slaTiers: {
           instantBadge: '92.6% Instant',
@@ -316,9 +365,9 @@ export const AnalyticsView: React.FC = () => {
         ],
       },
       this_month: {
-        badge: 'Current Month to Date (MTD)',
+        badge: `${new Date().toLocaleString('default', { month: 'long' })} ${new Date().getFullYear()} (MTD)`,
         kpis: {
-          totalInbound: 8420,
+          totalInbound: 8420 + (store.conversations?.length || 0),
           inboundGrowth: '+16.5%',
           inboundPeriod: 'vs last mo MTD',
           fcr: '93.2%',
@@ -345,8 +394,8 @@ export const AnalyticsView: React.FC = () => {
           { date: 'Day 28', total: 680, aiResolved: 642, humanHandled: 38, speed: 1.4, resolution: 94.4 },
         ],
         footer: {
-          totalInbound: 8420,
-          aiAutomated: 7847,
+          totalInbound: 8420 + (store.conversations?.length || 0),
+          aiAutomated: 7847 + Math.round((store.conversations?.length || 0) * 0.93),
           aiPct: '93.2%',
           humanEscalations: 573,
           humanPct: '6.8%',
@@ -356,11 +405,11 @@ export const AnalyticsView: React.FC = () => {
         channels: [
           { id: 'webchat', name: 'Web Chat', value: 3780, color: '#3B82F6', percent: '44.9%', growth: '+13.8%', speed: '1.8s', csat: '4.9', icon: Globe },
           { id: 'mobile', name: 'Mobile App', value: 2410, color: '#8B5CF6', percent: '28.6%', growth: '+8.3%', speed: '2.0s', csat: '4.8', icon: Smartphone },
-          { id: 'whatsapp', name: 'WhatsApp Cloud API', value: 1520, color: '#10B981', percent: '18.1%', growth: '+25.1%', speed: '1.4s', csat: '5.0', icon: MessageSquare },
+          { id: 'whatsapp', name: 'WhatsApp Cloud API', value: 1520 + (store.conversations?.length || 0), color: '#10B981', percent: '18.1%', growth: '+25.1%', speed: '1.4s', csat: '5.0', icon: MessageSquare },
           { id: 'email', name: 'Email Support', value: 510, color: '#F59E0B', percent: '6.1%', growth: '-1.9%', speed: '7.9m', csat: '4.6', icon: Mail },
           { id: 'others', name: 'Others / API', value: 200, color: '#64748B', percent: '2.4%', growth: '+1.3%', speed: '3.1s', csat: '4.7', icon: SlidersHorizontal },
         ],
-        waHighlightCount: '1,520',
+        waHighlightCount: (1520 + (store.conversations?.length || 0)).toLocaleString(),
         waGrowth: '+25.1%',
         slaTiers: {
           instantBadge: '93.2% Instant',
@@ -381,8 +430,35 @@ export const AnalyticsView: React.FC = () => {
       },
     };
 
-    return datasets[timeRange] || datasets['30d'];
-  }, [timeRange]);
+    const selectedData = datasets[timeRange] || datasets['30d'];
+
+    // Adapt dataset when a specific channel is selected
+    if (selectedChannel !== 'all') {
+      const match = selectedData.channels.find(c => c.id === selectedChannel);
+      if (match) {
+        return {
+          ...selectedData,
+          badge: `${selectedData.badge} • ${match.name}`,
+          kpis: {
+            ...selectedData.kpis,
+            totalInbound: match.value,
+            inboundGrowth: match.growth,
+            inboundPeriod: `on ${match.name}`,
+            botReply: match.speed,
+            botReplySub: `${match.name} SLA`,
+            csat: `${match.csat} / 5.0`,
+            csatPct: `${Math.round(parseFloat(match.csat) * 20)}% satisfaction`,
+          },
+          channels: selectedData.channels.map(c => ({
+            ...c,
+            color: c.id === selectedChannel ? c.color : '#CBD5E1'
+          }))
+        };
+      }
+    }
+
+    return selectedData;
+  }, [timeRange, selectedChannel, syncPulse, store.conversations]);
 
   // AI Intent Intelligence Dataset (dynamic counts scaled by active time range)
   const intentData = useMemo(() => {
@@ -550,53 +626,147 @@ export const AnalyticsView: React.FC = () => {
             </button>
           </div>
 
-          {/* Date Range Presets & Channel Filter */}
+          {/* Date Range Presets, Channel Selector & Live Sync */}
           <div className="flex flex-wrap items-center gap-2 text-xs w-full md:w-auto justify-between md:justify-end">
-            {/* Range Presets */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-[11px] font-semibold text-slate-600">
+            {/* Range Presets (Today, 7D, 30D, Month) */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-[11px] font-semibold text-slate-600 shadow-2xs border border-slate-200/60">
               <button
+                type="button"
                 onClick={() => handleTimeRangeChange('today', 'Today')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${timeRange === 'today' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'hover:text-slate-900'}`}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeRange === 'today'
+                    ? 'bg-white text-emerald-700 shadow-xs font-bold ring-1 ring-slate-200/50'
+                    : 'hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+                title="View today's real-time metrics"
               >
                 Today
               </button>
               <button
+                type="button"
                 onClick={() => handleTimeRangeChange('7d', 'Last 7 Days')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${timeRange === '7d' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'hover:text-slate-900'}`}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeRange === '7d'
+                    ? 'bg-white text-emerald-700 shadow-xs font-bold ring-1 ring-slate-200/50'
+                    : 'hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+                title="View trailing 7 days"
               >
                 7D
               </button>
               <button
+                type="button"
                 onClick={() => handleTimeRangeChange('30d', 'Last 30 Days')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${timeRange === '30d' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'hover:text-slate-900'}`}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeRange === '30d'
+                    ? 'bg-white text-emerald-700 shadow-xs font-bold ring-1 ring-slate-200/50'
+                    : 'hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+                title="View trailing 30 days"
               >
                 30D
               </button>
               <button
+                type="button"
                 onClick={() => handleTimeRangeChange('this_month', 'Current Month')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${timeRange === 'this_month' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'hover:text-slate-900'}`}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  timeRange === 'this_month'
+                    ? 'bg-white text-emerald-700 shadow-xs font-bold ring-1 ring-slate-200/50'
+                    : 'hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+                title="View current month to date"
               >
                 Month
               </button>
             </div>
 
+            {/* Interactive Channel Filter */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-[11px] font-semibold text-slate-600 shadow-2xs border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedChannel('all');
+                  addToast('Channel filter: All Channels', 'info');
+                }}
+                className={`px-2 py-1 rounded-md transition-all cursor-pointer ${
+                  selectedChannel === 'all'
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'hover:text-slate-900'
+                }`}
+                title="Metrics across all channels"
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedChannel('whatsapp');
+                  addToast('Channel filter: WhatsApp Cloud API', 'info');
+                }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all cursor-pointer ${
+                  selectedChannel === 'whatsapp'
+                    ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                    : 'hover:text-slate-900'
+                }`}
+                title="Filter by WhatsApp Cloud API"
+              >
+                <MessageSquare className="w-3 h-3 text-emerald-600" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedChannel('webchat');
+                  addToast('Channel filter: Web Chat', 'info');
+                }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all cursor-pointer ${
+                  selectedChannel === 'webchat'
+                    ? 'bg-white text-blue-700 shadow-xs font-bold'
+                    : 'hover:text-slate-900'
+                }`}
+                title="Filter by Web Chat"
+              >
+                <Globe className="w-3 h-3 text-blue-600" />
+                <span className="hidden sm:inline">Web</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedChannel('mobile');
+                  addToast('Channel filter: Mobile App', 'info');
+                }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all cursor-pointer ${
+                  selectedChannel === 'mobile'
+                    ? 'bg-white text-purple-700 shadow-xs font-bold'
+                    : 'hover:text-slate-900'
+                }`}
+                title="Filter by Mobile App"
+              >
+                <Smartphone className="w-3 h-3 text-purple-600" />
+                <span className="hidden sm:inline">App</span>
+              </button>
+            </div>
+
             {/* Live Sync Status Button */}
             <button
+              type="button"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              title="Click to sync real-time analytics with database"
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100/90 active:scale-95 border border-emerald-200/80 rounded-lg text-emerald-800 text-[11px] font-medium transition-all cursor-pointer disabled:opacity-60 shadow-2xs group"
+              title="Click to sync real-time analytics with live database"
+              className={`flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100/90 active:scale-95 border border-emerald-200/80 rounded-lg text-emerald-800 text-[11px] font-medium transition-all cursor-pointer disabled:opacity-60 shadow-2xs group ${
+                isRefreshing ? 'ring-2 ring-emerald-400 ring-offset-1' : ''
+              }`}
             >
-              <span className={`w-2 h-2 rounded-full bg-emerald-500 ${isRefreshing ? 'animate-ping' : 'animate-pulse'}`} />
-              <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Live Sync'}</span>
-              <RefreshCw className={`w-3 h-3 text-emerald-600 transition-transform duration-700 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-              <span className="text-[10px] text-emerald-600/80 font-normal">({lastRefreshedTime})</span>
+              <span className={`w-2 h-2 rounded-full bg-emerald-500 shrink-0 ${isRefreshing ? 'animate-ping' : 'animate-pulse'}`} />
+              <span className="font-semibold whitespace-nowrap">{isRefreshing ? 'Syncing...' : 'Live Sync'}</span>
+              <RefreshCw className={`w-3 h-3 text-emerald-600 shrink-0 transition-transform duration-700 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+              <span className="text-[10px] text-emerald-700/90 font-normal">({lastRefreshedTime})</span>
             </button>
           </div>
         </div>
 
         {/* 6-Card Modern KPI Ribbon */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 text-xs">
+        <div className={`grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 text-xs transition-opacity duration-300 ${isRefreshing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           {/* Card 1: Inbound Conversations */}
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-emerald-500/50 transition-all">
             <div className="flex items-center justify-between text-slate-500 font-semibold mb-1">
@@ -698,20 +868,32 @@ export const AnalyticsView: React.FC = () => {
                 {/* Metric Selector Buttons */}
                 <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
                   <button
-                    onClick={() => setTrendMetric('volume')}
-                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendMetric === 'volume' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                    type="button"
+                    onClick={() => {
+                      setTrendMetric('volume');
+                      addToast('Chart metric: Volume (Inbound vs AI)', 'info');
+                    }}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendMetric === 'volume' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900'}`}
                   >
                     Volume (Inbound vs AI)
                   </button>
                   <button
-                    onClick={() => setTrendMetric('resolution')}
-                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendMetric === 'resolution' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                    type="button"
+                    onClick={() => {
+                      setTrendMetric('resolution');
+                      addToast('Chart metric: Resolution Rate %', 'info');
+                    }}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendMetric === 'resolution' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900'}`}
                   >
                     Resolution %
                   </button>
                   <button
-                    onClick={() => setTrendMetric('speed')}
-                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendMetric === 'speed' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                    type="button"
+                    onClick={() => {
+                      setTrendMetric('speed');
+                      addToast('Chart metric: Bot Reply Speed (Seconds)', 'info');
+                    }}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendMetric === 'speed' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900'}`}
                   >
                     Reply Speed (Sec)
                   </button>
@@ -1109,13 +1291,17 @@ export const AnalyticsView: React.FC = () => {
                     <div key={day} className="grid grid-cols-13 gap-1 items-center">
                       <div className="font-bold text-slate-700 text-xs px-1">{day}</div>
                       {heatmapData[day].map((val, idx) => (
-                        <div
+                        <button
                           key={idx}
-                          title={`${day} @ ${timeSlots[idx]}: Load Factor ${val}/100`}
-                          className={`h-8 rounded-lg flex items-center justify-center text-[10px] transition-all hover:scale-105 cursor-pointer shadow-2xs ${getHeatColor(val)}`}
+                          type="button"
+                          title={`${day} @ ${timeSlots[idx]}: Load Factor ${val}/100 - Click for staffing analysis`}
+                          onClick={() => {
+                            addToast(`${day} @ ${timeSlots[idx]}: Traffic Load Factor ${val}/100 — Recommended staffing: ${val >= 80 ? '3+ live agents' : val >= 50 ? '2 agents' : '1 agent'}`, 'info');
+                          }}
+                          className={`h-8 w-full rounded-lg flex items-center justify-center text-[10px] transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs select-none ${getHeatColor(val)}`}
                         >
                           {val}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   ))}
