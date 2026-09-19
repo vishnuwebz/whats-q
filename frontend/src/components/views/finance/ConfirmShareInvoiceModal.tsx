@@ -57,7 +57,7 @@ Please feel free to ask if you have any questions or require an itemized breakdo
 
   return (
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div

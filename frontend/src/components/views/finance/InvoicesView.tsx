@@ -451,113 +451,6 @@ Please feel free to ask if you have any questions or require an itemized breakdo
             </table>
           </div>
         </div>
-
-        {/* Invoice Preview Modal */}
-        {selectedInvoice && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl p-5 sm:p-6 space-y-4 text-xs max-h-[92dvh] overflow-y-auto animate-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Tax Invoice</div>
-                  <h3 className="font-bold text-base sm:text-lg text-slate-900">{selectedInvoice.invoice_number}</h3>
-                </div>
-                <button
-                  onClick={() => setSelectedInvoice(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">Billed To</span>
-                  <div className="font-bold text-slate-900 text-sm mt-0.5">{selectedInvoice.customer_name}</div>
-                  <div className="text-slate-600 font-mono">{selectedInvoice.customer_phone}</div>
-                  <div className="text-slate-500">{selectedInvoice.customer_email}</div>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">Invoice Details</span>
-                  <div className="text-slate-700 mt-0.5">Date: <strong className="text-slate-900">{selectedInvoice.invoice_date}</strong></div>
-                  <div className="text-slate-700">Due: <strong className="text-slate-900">{selectedInvoice.due_date}</strong></div>
-                  <div className="text-slate-700">Method: <strong className="text-slate-900">{selectedInvoice.payment_method}</strong></div>
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div className="border border-slate-200 rounded-xl overflow-x-auto scrollbar-thin">
-                <table className="w-full text-left min-w-[380px]">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="p-2.5">Item Description</th>
-                      <th className="p-2.5 text-center">Qty</th>
-                      <th className="p-2.5 text-right">Rate</th>
-                      <th className="p-2.5 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                      selectedInvoice.items.map((item, idx) => (
-                        <tr key={idx}>
-                          <td className="p-2.5 font-medium text-slate-800">{item.description}</td>
-                          <td className="p-2.5 text-center">{item.qty}</td>
-                          <td className="p-2.5 text-right">₹{item.unitPrice.toLocaleString()}</td>
-                          <td className="p-2.5 text-right font-bold text-slate-900">₹{item.amount.toLocaleString()}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td className="p-2.5 font-medium text-slate-800">AC Installation & Maintenance Services</td>
-                        <td className="p-2.5 text-center">1</td>
-                        <td className="p-2.5 text-right">₹{selectedInvoice.amount.toLocaleString()}</td>
-                        <td className="p-2.5 text-right font-bold text-slate-900">₹{selectedInvoice.amount.toLocaleString()}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <div className="w-56 space-y-1.5 text-right">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal:</span>
-                    <span>₹{selectedInvoice.amount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>GST (18% included):</span>
-                    <span>₹{(selectedInvoice.amount * 0.18).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between font-black text-sm text-slate-900 pt-1 border-t border-slate-200">
-                    <span>Total Amount:</span>
-                    <span className="text-emerald-600">₹{selectedInvoice.amount.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
-                <button
-                  onClick={() => handleDownloadPdf(selectedInvoice)}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download PDF</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setConfirmInvoice({
-                      invoice: selectedInvoice,
-                      mode: 'share',
-                    });
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Share via WhatsApp</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Create Invoice Modal */}
@@ -695,6 +588,113 @@ Please feel free to ask if you have any questions or require an itemized breakdo
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Preview Modal */}
+      {selectedInvoice && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl p-5 sm:p-6 space-y-4 text-xs max-h-[92dvh] overflow-y-auto animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Tax Invoice</div>
+                <h3 className="font-bold text-base sm:text-lg text-slate-900">{selectedInvoice.invoice_number}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedInvoice(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <span className="text-slate-400 font-semibold block text-[10px]">Billed To</span>
+                <div className="font-bold text-slate-900 text-sm mt-0.5">{selectedInvoice.customer_name}</div>
+                <div className="text-slate-600 font-mono">{selectedInvoice.customer_phone}</div>
+                <div className="text-slate-500">{selectedInvoice.customer_email}</div>
+              </div>
+              <div>
+                <span className="text-slate-400 font-semibold block text-[10px]">Invoice Details</span>
+                <div className="text-slate-700 mt-0.5">Date: <strong className="text-slate-900">{selectedInvoice.invoice_date}</strong></div>
+                <div className="text-slate-700">Due: <strong className="text-slate-900">{selectedInvoice.due_date}</strong></div>
+                <div className="text-slate-700">Method: <strong className="text-slate-900">{selectedInvoice.payment_method}</strong></div>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="border border-slate-200 rounded-xl overflow-x-auto scrollbar-thin">
+              <table className="w-full text-left min-w-[380px]">
+                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5">Item Description</th>
+                    <th className="p-2.5 text-center">Qty</th>
+                    <th className="p-2.5 text-right">Rate</th>
+                    <th className="p-2.5 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                    selectedInvoice.items.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="p-2.5 font-medium text-slate-800">{item.description}</td>
+                        <td className="p-2.5 text-center">{item.qty}</td>
+                        <td className="p-2.5 text-right">₹{item.unitPrice.toLocaleString()}</td>
+                        <td className="p-2.5 text-right font-bold text-slate-900">₹{item.amount.toLocaleString()}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="p-2.5 font-medium text-slate-800">AC Installation & Maintenance Services</td>
+                      <td className="p-2.5 text-center">1</td>
+                      <td className="p-2.5 text-right">₹{selectedInvoice.amount.toLocaleString()}</td>
+                      <td className="p-2.5 text-right font-bold text-slate-900">₹{selectedInvoice.amount.toLocaleString()}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <div className="w-56 space-y-1.5 text-right">
+                <div className="flex justify-between text-slate-600">
+                  <span>Subtotal:</span>
+                  <span>₹{selectedInvoice.amount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>GST (18% included):</span>
+                  <span>₹{(selectedInvoice.amount * 0.18).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-black text-sm text-slate-900 pt-1 border-t border-slate-200">
+                  <span>Total Amount:</span>
+                  <span className="text-emerald-600">₹{selectedInvoice.amount.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+              <button
+                onClick={() => handleDownloadPdf(selectedInvoice)}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PDF</span>
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmInvoice({
+                    invoice: selectedInvoice,
+                    mode: 'share',
+                  });
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Share via WhatsApp</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
