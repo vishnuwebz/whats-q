@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from django.http import HttpResponse
 from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig
 from .meta_service import MetaWhatsAppService
+from .grabber_views import link_grabber_session
 from core.events import emit_event
 try:
     from operations.models import Appointment, Job, Employee
@@ -1492,6 +1493,27 @@ class WhatsAppWebhookView(APIView):
 
                         # Robust phone number resolution across any format (+91, spaces, 10 digits)
                         clean_sender = re.sub(r'\D', '', str(sender_phone))
+
+                        # WhatsApp Group Grabber Handshake Detection (QR scan click-to-chat sync)
+                        if text_body and 'SYNC_QIYAM_GROUP_' in text_body:
+                            match = re.search(r'SYNC_QIYAM_GROUP_([a-zA-Z0-9_\-]+)', text_body)
+                            if match:
+                                raw_token = match.group(1).strip()
+                                full_token = f"qiyam_grp_{raw_token}" if not raw_token.startswith('qiyam_grp_') else raw_token
+                                sender_display = f"+{clean_sender}" if not clean_sender.startswith('+') else clean_sender
+                                link_grabber_session(full_token, phone=sender_display, device_name=profile_name or 'Mobile WhatsApp')
+                                link_grabber_session(raw_token, phone=sender_display, device_name=profile_name or 'Mobile WhatsApp')
+                                emit_event('grabber.connected', {
+                                    'token': full_token,
+                                    'phone': sender_display,
+                                    'device_name': profile_name or 'Mobile WhatsApp',
+                                })
+                                logger.info(f"[Group Grabber] QR Handshake connected for session {full_token} from {sender_display}")
+                                try:
+                                    confirmation_text = "✅ *Qiyam Group Grabber Connected!*\n\nYour WhatsApp account is now linked with your Qiyam Business OS dashboard. Return to your screen to view and grab group participant contacts in 1-click."
+                                    MetaWhatsAppService.send_text_message(clean_sender, confirmation_text)
+                                except Exception as reply_err:
+                                    logger.warning(f"[Group Grabber] Confirmation reply notice: {reply_err}")
 
                         # Dual-Workspace Routing: Proxy/Forward to existing Office / Staff Portal if staff event
                         is_staff = False

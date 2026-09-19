@@ -110,8 +110,8 @@ export const AITemplatesView: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                WABA ID: <code className="font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{metaConfig?.waba_id || '109876543210987'}</code> • 
-                Display: <span className="font-semibold text-slate-700">{metaConfig?.business_phone_display || '+91 98765 43210'}</span> ({metaConfig?.business_name || 'CoolFix Services'})
+                WABA ID: <code className="font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{metaConfig?.waba_id || '4567067243541240'}</code> • 
+                Display: <span className="font-semibold text-slate-700">{metaConfig?.business_phone_display || '+91 94963 00233'}</span> ({metaConfig?.business_name || 'Qiyam Business Solutions'})
               </p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { TabType } from '../../types';
 import {
@@ -179,10 +179,10 @@ export const Sidebar: React.FC = () => {
   const [tenants, setTenants] = useState([
     {
       id: 'TN2345',
-      name: 'CoolFix Services',
+      name: 'Qiyam Business Solutions',
       branch: 'HQ • Kozhikode',
       status: 'Active',
-      phone: '+91 98765 43210',
+      phone: '+91 94963 00233',
       initial: 'Q',
       color: 'from-emerald-500 to-teal-600',
       staffCount: 18,
@@ -220,6 +220,28 @@ export const Sidebar: React.FC = () => {
   ]);
   const [activeTenantId, setActiveTenantId] = useState('TN2345');
   const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0];
+
+  // Resolve active outbound WhatsApp line from store or localStorage
+  const activeOutboundLine = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('whatsq_waba_numbers');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const primary = parsed.find((n: any) => n.isPrimary) || parsed[0];
+          const raw = (primary?.phone || '').trim();
+          if (raw && !raw.includes('9876543210') && !raw.includes('98765 43210')) {
+            return raw;
+          }
+        }
+      }
+    } catch {}
+    const configPhone = (metaConfig?.business_phone_display || '').trim();
+    if (configPhone && !configPhone.includes('9876543210') && !configPhone.includes('98765 43210')) {
+      return configPhone;
+    }
+    return '+91 94963 00233';
+  }, [metaConfig?.business_phone_display]);
 
   const handleSelectTenant = (tenant: (typeof tenants)[0]) => {
     setActiveTenantId(tenant.id);
@@ -1557,7 +1579,7 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => setIsSimulatorOpen(true)}
             className="w-9 h-9 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition border border-emerald-500/30 cursor-pointer"
-            title={`Active Outbound Sender: ${metaConfig?.business_phone_display || '+91 98765 43210'} (Click to Simulate)`}
+            title={`Active Outbound Sender: ${activeOutboundLine} (Click to Simulate)`}
           >
             <MessageSquare className="w-4 h-4" />
           </button>
@@ -1577,7 +1599,7 @@ export const Sidebar: React.FC = () => {
                   <span>Outbound Sender Line</span>
                 </div>
                 <div className="text-[11px] font-mono font-bold text-white group-hover:underline tracking-wide">
-                  {metaConfig?.business_phone_display || '+91 98765 43210'}
+                  {activeOutboundLine}
                 </div>
               </div>
             </div>
@@ -1953,7 +1975,7 @@ export const Sidebar: React.FC = () => {
               </div>
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">WhatsApp Phone</span>
-                <span className="text-emerald-400 font-medium font-mono">+91 98765 43210</span>
+                <span className="text-emerald-400 font-medium font-mono">{activeOutboundLine}</span>
               </div>
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">Current Workspace</span>

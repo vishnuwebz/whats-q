@@ -888,11 +888,11 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     automations_enabled: 12,
     icon_slug: 'whatsapp',
     config: {
-      phone_number_id: '109823485721982',
-      waba_id: '891238472918234',
+      phone_number_id: '1307178355804150',
+      waba_id: '4567067243541240',
       api_version: 'v21.0',
-      business_name: 'CoolFix Services',
-      business_phone_display: '+91 98765 43210',
+      business_name: 'Qiyam Business Solutions',
+      business_phone_display: '+91 94963 00233',
       auto_reply_enabled: true,
       dual_mode_enabled: true,
     },
@@ -1088,6 +1088,69 @@ export const INITIAL_SUPPRESSION_LIST: SuppressionRecord[] = [
     notes: 'Replied to marketing broadcast requesting removal.',
   },
 ];
+
+export const DEFAULT_META_CONFIG: MetaConfig = {
+  phone_number_id: '1307178355804150',
+  waba_id: '4567067243541240',
+  access_token: 'EAAG...',
+  verify_token: 'qiyam_whatsapp_secret_token_2026',
+  api_version: 'v21.0',
+  webhook_url: 'https://qiyam-business-os.qiyamapp.com/api/webhooks/whatsapp/',
+  is_active: true,
+  connection_status: 'connected',
+  business_name: 'Qiyam Business Solutions',
+  business_phone_display: '+91 94963 00233',
+  quality_rating: 'GREEN',
+};
+
+const getStoredMetaConfig = (): MetaConfig => {
+  try {
+    const cached = localStorage.getItem('whatsq_meta_config');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed === 'object') {
+        if (
+          parsed.business_phone_display?.includes('9876543210') ||
+          parsed.business_phone_display?.includes('98765 43210')
+        ) {
+          parsed.business_phone_display = '+91 94963 00233';
+          parsed.business_name = 'Qiyam Business Solutions';
+          parsed.waba_id = '4567067243541240';
+          localStorage.setItem('whatsq_meta_config', JSON.stringify(parsed));
+        }
+
+        // Also auto-migrate legacy mock numbers in whatsq_waba_numbers if present
+        try {
+          const storedNumbers = localStorage.getItem('whatsq_waba_numbers');
+          if (storedNumbers) {
+            const numParsed = JSON.parse(storedNumbers);
+            if (Array.isArray(numParsed) && numParsed.length > 0) {
+              const hasReal = numParsed.some((n: any) => n.phone?.replace(/[^0-9]/g, '').includes('9496300233'));
+              if (!hasReal) {
+                const migratedNums = numParsed.map((n: any) => {
+                  if (n.phone?.replace(/[^0-9]/g, '').includes('9876543210') || n.isPrimary) {
+                    return {
+                      ...n,
+                      phone: '+91 94963 00233',
+                      displayName: 'Qiyam Business Solutions',
+                      isPrimary: true,
+                      status: 'CONNECTED',
+                    };
+                  }
+                  return n;
+                });
+                localStorage.setItem('whatsq_waba_numbers', JSON.stringify(migratedNums));
+              }
+            }
+          }
+        } catch {}
+
+        return { ...DEFAULT_META_CONFIG, ...parsed };
+      }
+    }
+  } catch {}
+  return DEFAULT_META_CONFIG;
+};
 
 export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: getInitialActiveTab(),
@@ -1669,7 +1732,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   templates: getStoredCache('templates', INITIAL_TEMPLATES),
   integrations: INITIAL_INTEGRATIONS,
   branches: INITIAL_BRANCHES,
-  metaConfig: null,
+  metaConfig: getStoredMetaConfig(),
   workspace: null,
   channelMetrics: [],
   intentMetrics: [],
@@ -1758,7 +1821,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
 
     const conversations = safeVal(0, current.conversations, getStoredConversations(), 'conversations');
     const templates     = safeVal(1, current.templates, INITIAL_TEMPLATES, 'templates');
-    const metaConfig    = (results[2].status === 'fulfilled' && (results[2] as any).value) || current.metaConfig || null;
+    const metaConfig    = (results[2].status === 'fulfilled' && (results[2] as any).value) || current.metaConfig || getStoredMetaConfig();
     const leads         = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
     const deals         = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
     const followups     = safeVal(5, current.followups, [], 'followups');
@@ -1833,7 +1896,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       backendOnline: true,
       conversations: sanitizedConversations,
       templates,
-      metaConfig: metaConfig || null,
+      metaConfig: metaConfig || getStoredMetaConfig(),
       leads,
       deals,
       followups,
@@ -2810,16 +2873,16 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   saveMetaConfig: async (configData) => {
     const current = get().metaConfig;
     const updated: MetaConfig = {
-      phone_number_id: configData.phone_number_id || current?.phone_number_id || '105948372619485',
-      waba_id: configData.waba_id || current?.waba_id || '109823485729103',
+      phone_number_id: configData.phone_number_id || current?.phone_number_id || '1307178355804150',
+      waba_id: configData.waba_id || current?.waba_id || '4567067243541240',
       access_token: configData.access_token || current?.access_token || 'EAAG...',
-      verify_token: configData.verify_token || current?.verify_token || 'whatsq_meta_webhook_token_secure_2026',
-      api_version: configData.api_version || current?.api_version || 'v20.0',
+      verify_token: configData.verify_token || current?.verify_token || 'qiyam_whatsapp_secret_token_2026',
+      api_version: configData.api_version || current?.api_version || 'v21.0',
       webhook_url: configData.webhook_url || current?.webhook_url || 'https://qiyam-business-os.qiyamapp.com/api/webhooks/whatsapp/',
       is_active: configData.is_active ?? (current?.is_active ?? true),
       connection_status: configData.connection_status || current?.connection_status || 'connected',
-      business_name: configData.business_name || current?.business_name || 'Qiyam Solutions',
-      business_phone_display: configData.business_phone_display || current?.business_phone_display || '+91 98765 43210',
+      business_name: configData.business_name || current?.business_name || 'Qiyam Business Solutions',
+      business_phone_display: configData.business_phone_display || current?.business_phone_display || '+91 94963 00233',
       quality_rating: configData.quality_rating || current?.quality_rating || 'GREEN',
       ...configData,
     };

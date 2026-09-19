@@ -5,8 +5,8 @@ class MetaWhatsAppConfig(models.Model):
     """
     Configuration credentials for Meta WhatsApp Cloud API (Graph API)
     """
-    phone_number_id = models.CharField(max_length=100, blank=True, default='')
-    waba_id = models.CharField(max_length=100, blank=True, default='') # WhatsApp Business Account ID
+    phone_number_id = models.CharField(max_length=100, blank=True, default='1307178355804150')
+    waba_id = models.CharField(max_length=100, blank=True, default='4567067243541240') # WhatsApp Business Account ID
     access_token = models.TextField(blank=True, default='') # Permanent or Temporary Meta Token
     verify_token = models.CharField(max_length=100, default='qiyam_whatsapp_secret_token_2026')
     app_secret = models.CharField(max_length=100, blank=True, default='')
@@ -14,9 +14,9 @@ class MetaWhatsAppConfig(models.Model):
     webhook_url = models.CharField(max_length=255, default='https://your-domain.com/api/conversations/webhook/')
     is_active = models.BooleanField(default=True)
     last_tested_at = models.DateTimeField(null=True, blank=True)
-    connection_status = models.CharField(max_length=50, default='disconnected') # connected, disconnected, invalid_token, error
-    business_phone_display = models.CharField(max_length=50, default='+91 98765 43210')
-    business_name = models.CharField(max_length=150, default='CoolFix Services')
+    connection_status = models.CharField(max_length=50, default='connected') # connected, disconnected, invalid_token, error
+    business_phone_display = models.CharField(max_length=50, default='+91 94963 00233')
+    business_name = models.CharField(max_length=150, default='Qiyam Business Solutions')
     quality_rating = models.CharField(max_length=50, default='GREEN')
     
     # Dual-Workspace Co-existence & Automated Replies

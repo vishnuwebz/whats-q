@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Send,
   Calendar,
@@ -38,6 +38,7 @@ export const BulkOverviewView: React.FC = () => {
     bulkScheduledMessages,
     bulkTemplates,
     metaWallet,
+    metaConfig,
     setActiveTab,
     addToast,
   } = useQiyamStore();
@@ -56,6 +57,27 @@ export const BulkOverviewView: React.FC = () => {
   const avgReadRate = totalDelivered > 0 ? ((totalRead / totalDelivered) * 100).toFixed(1) : '82.6';
 
   const totalAudienceReach = bulkRecipientLists.reduce((acc, l) => acc + (l.contactCount || l.contacts || 0), 0);
+
+  const connectedPhone = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('whatsq_waba_numbers');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const primary = parsed.find((n: any) => n.isPrimary) || parsed[0];
+          const raw = (primary?.phone || '').trim();
+          if (raw && !raw.includes('9876543210') && !raw.includes('98765 43210')) {
+            return raw;
+          }
+        }
+      }
+    } catch {}
+    const configPhone = (metaConfig?.business_phone_display || '').trim();
+    if (configPhone && !configPhone.includes('9876543210') && !configPhone.includes('98765 43210')) {
+      return configPhone;
+    }
+    return '+91 94963 00233';
+  }, [metaConfig?.business_phone_display]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
@@ -497,7 +519,7 @@ export const BulkOverviewView: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Connected Phone</span>
-                  <span className="font-mono text-slate-800 font-bold">+91 98765 43210</span>
+                  <span className="font-mono text-slate-800 font-bold">{connectedPhone}</span>
                 </div>
               </div>
             </div>

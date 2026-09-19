@@ -62,7 +62,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   
   // Pairing mode: 'mobile' (Scan with Any Phone Camera / Google Lens) | 'direct' (WhatsApp SCAN CODE) | 'multidevice' (Linked Devices) | 'code' (8-Digit Code)
   const [pairingMode, setPairingMode] = useState<'mobile' | 'direct' | 'multidevice' | 'code'>('mobile');
-  const [phoneForCode, setPhoneForCode] = useState('+91 98450 12345');
+  const [phoneForCode, setPhoneForCode] = useState('+91 94963 00233');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedNumbersType, setCopiedNumbersType] = useState<string | null>(null);
 
@@ -519,7 +519,28 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   // =========================================================================
   // DYNAMIC QR CODE DATA
   // =========================================================================
-  const cleanSenderNumber = (metaConfig?.business_phone_display || '+91 98765 43210').replace(/[^0-9]/g, '');
+  const activeBusinessPhone = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('whatsq_waba_numbers');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const primary = parsed.find((n: any) => n.isPrimary) || parsed[0];
+          const raw = (primary?.phone || '').trim();
+          if (raw && !raw.includes('9876543210') && !raw.includes('98765 43210')) {
+            return raw;
+          }
+        }
+      }
+    } catch {}
+    const configPhone = (metaConfig?.business_phone_display || '').trim();
+    if (configPhone && !configPhone.includes('9876543210') && !configPhone.includes('98765 43210')) {
+      return configPhone;
+    }
+    return '+91 94963 00233';
+  }, [metaConfig?.business_phone_display]);
+
+  const cleanSenderNumber = activeBusinessPhone.replace(/[^0-9]/g, '');
 
   const qrData = useMemo(() => {
     if (pairingMode === 'mobile') {
@@ -733,6 +754,20 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                     />
                     <span>Expires in: <strong className="text-emerald-700 font-bold">{qrCountdown}s</strong></span>
                   </div>
+
+                  {/* Verified Meta Cloud API Line Badge */}
+                  <div className="mt-3 px-3.5 py-2 bg-emerald-50/90 border border-emerald-300/80 rounded-xl text-center w-full max-w-[210px] shadow-2xs">
+                    <div className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider flex items-center justify-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Verified Meta Line</span>
+                    </div>
+                    <div className="font-mono text-xs font-bold text-slate-900 mt-0.5">
+                      {activeBusinessPhone}
+                    </div>
+                    <div className="text-[10px] text-emerald-800/80 font-medium">
+                      Qiyam Business Solutions
+                    </div>
+                  </div>
                 </div>
 
                 {/* Step-by-Step Pairing Instructions */}
@@ -752,7 +787,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                       {pairingMode === 'mobile'
                         ? 'Works with any iPhone Camera, Android Camera, or Google Lens. Instantly loads the mobile portal and connects automatically.'
                         : pairingMode === 'direct'
-                        ? 'Open WhatsApp > Settings > Tap QR icon next to your name > SCAN CODE.'
+                        ? `Open WhatsApp > Settings > Tap QR icon next to your name > SCAN CODE. Scanning opens a secure handshake chat with your official line (${activeBusinessPhone}) and links this session instantly.`
                         : pairingMode === 'multidevice'
                         ? 'Open WhatsApp > Menu (⋮) or Settings > Linked Devices > Link a Device.'
                         : 'Enter your phone number and confirm the 8-digit code inside WhatsApp.'}

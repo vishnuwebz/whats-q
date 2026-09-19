@@ -39,8 +39,8 @@ interface WhatsAppNumberItem {
 const DEFAULT_NUMBERS: WhatsAppNumberItem[] = [
   {
     id: 'num-1',
-    phone: '+91 98765 43210',
-    displayName: 'Qiyam Official Support',
+    phone: '+91 94963 00233',
+    displayName: 'Qiyam Business Solutions',
     branch: 'Kozhikode Head Office',
     isPrimary: true,
     quality: 'HIGH',
@@ -121,9 +121,9 @@ export const WhatsAppChannelSettings: React.FC = () => {
     addToast,
   } = useQiyamStore();
 
-  const [wabaId, setWabaId] = useState('109823485729103');
+  const [wabaId, setWabaId] = useState('4567067243541240');
   const [phoneId, setPhoneId] = useState('105948372619485');
-  const [appId, setAppId] = useState('984726154839201');
+  const [appId, setAppId] = useState('10298369947950538');
   const [verifyToken, setVerifyToken] = useState('whatsq_meta_webhook_token_secure_2026');
   const [webhookUrl] = useState('https://qiyam-business-os.qiyamapp.com/api/webhooks/whatsapp/');
 
@@ -135,7 +135,31 @@ export const WhatsAppChannelSettings: React.FC = () => {
   const [numbers, setNumbers] = useState<WhatsAppNumberItem[]>(() => {
     try {
       const stored = localStorage.getItem('whatsq_waba_numbers');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed: WhatsAppNumberItem[] = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If the real connected number +91 94963 00233 is already present:
+          const hasRealNumber = parsed.some(
+            (n) => n.phone.replace(/[^0-9]/g, '').includes('9496300233')
+          );
+          if (hasRealNumber) return parsed;
+          // Auto-migrate legacy mock +91 98765 43210 to real +91 94963 00233
+          const migrated = parsed.map((n) => {
+            if (n.phone.replace(/[^0-9]/g, '').includes('9876543210') || n.isPrimary) {
+              return {
+                ...n,
+                phone: '+91 94963 00233',
+                displayName: 'Qiyam Business Solutions',
+                isPrimary: true,
+                status: 'CONNECTED' as const,
+              };
+            }
+            return n;
+          });
+          localStorage.setItem('whatsq_waba_numbers', JSON.stringify(migrated));
+          return migrated;
+        }
+      }
     } catch {}
     return DEFAULT_NUMBERS;
   });
@@ -150,9 +174,9 @@ export const WhatsAppChannelSettings: React.FC = () => {
 
   // Outbound Test Dispatcher State
   const [testSenderNumber, setTestSenderNumber] = useState(
-    numbers.find((n) => n.isPrimary)?.phone || numbers[0]?.phone || '+91 98765 43210'
+    numbers.find((n) => n.isPrimary)?.phone || numbers[0]?.phone || '+91 94963 00233'
   );
-  const [testRecipient, setTestRecipient] = useState('+91 98765 43210');
+  const [testRecipient, setTestRecipient] = useState('+91 94963 00233');
   const [testTemplateName, setTestTemplateName] = useState('service_booking_confirmation');
   const [isDispatchingTest, setIsDispatchingTest] = useState(false);
 

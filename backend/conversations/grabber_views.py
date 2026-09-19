@@ -17,6 +17,30 @@ def _cleanup_expired_sessions():
     for t in expired:
         _GRABBER_SESSIONS.pop(t, None)
 
+def link_grabber_session(token: str, phone: str = '', device_name: str = 'Mobile WhatsApp Device', groups: list = None) -> bool:
+    """
+    Direct helper to link a group grabber session token, used by Meta Webhook or API handlers
+    when user scans the WhatsApp QR code and sends the SYNC message to the verified line.
+    """
+    _cleanup_expired_sessions()
+    if not token:
+        return False
+    session = _GRABBER_SESSIONS.get(token, {
+        'groups': []
+    })
+    session['status'] = 'connected'
+    session['device_name'] = device_name or 'Mobile WhatsApp Device'
+    session['phone'] = phone or session.get('phone', '')
+    session['updated_at'] = time.time()
+    if groups:
+        if isinstance(groups, list):
+            session['groups'] = groups
+        else:
+            session['groups'].append(groups)
+    _GRABBER_SESSIONS[token] = session
+    logger.info(f"[Group Grabber] Session '{token}' linked successfully via WhatsApp QR sync from {phone}")
+    return True
+
 class GroupGrabberSessionView(APIView):
     """
     Handles real-time QR code session synchronization between mobile phone scanner

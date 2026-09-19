@@ -32,8 +32,8 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
   const [verifyToken, setVerifyToken] = useState('qiyam_whatsapp_secret_token_2026');
   const [appSecret, setAppSecret] = useState('');
   const [apiVersion, setApiVersion] = useState('v21.0');
-  const [businessName, setBusinessName] = useState('CoolFix Services');
-  const [businessPhoneDisplay, setBusinessPhoneDisplay] = useState('+91 98765 43210');
+  const [businessName, setBusinessName] = useState('Qiyam Business Solutions');
+  const [businessPhoneDisplay, setBusinessPhoneDisplay] = useState('+91 94963 00233');
 
   // Dual-Workspace & Auto-Reply State
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
@@ -63,8 +63,8 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
       setVerifyToken(config.verify_token || 'qiyam_whatsapp_secret_token_2026');
       setAppSecret(config.app_secret || '');
       setApiVersion(config.api_version || 'v21.0');
-      setBusinessName(config.business_name || 'CoolFix Services');
-      setBusinessPhoneDisplay(config.business_phone_display || '+91 98765 43210');
+      setBusinessName(config.business_name || 'Qiyam Business Solutions');
+      setBusinessPhoneDisplay(config.business_phone_display || '+91 94963 00233');
       setAutoReplyEnabled(config.auto_reply_enabled !== undefined ? Boolean(config.auto_reply_enabled) : true);
       setDualModeEnabled(config.dual_mode_enabled !== undefined ? Boolean(config.dual_mode_enabled) : true);
       setForwardWebhookUrl(config.forward_webhook_url || '');
