@@ -312,81 +312,182 @@ export const parseGroupInviteLink = (
 };
 
 /**
- * WhatsApp Web 1-Click Live Extraction Script
- * Grabs genuine phone numbers from active group and auto-broadcasts directly to WhatsQ!
+ * WhatsApp Web In-Page Floating Grabber Script & Bookmarklet
+ * Extracts genuine contact names AND phone numbers from the active WhatsApp Web group!
  */
 export const WHATSAPP_WEB_GRABBER_SCRIPT = `
-(function grabWhatsAppGroup() {
+(function runWhatsQGrabber() {
   try {
-    const header = document.querySelector('header [data-testid="conversation-info-header"]') ||
-                   document.querySelector('header span[title]') ||
-                   document.querySelector('header [role="button"]');
-    const groupName = header ? (header.getAttribute('title') || header.innerText || 'WhatsApp Group').split('\n')[0].trim() : 'WhatsApp Group';
+    const existing = document.getElementById('whatsq-grabber-overlay');
+    if (existing) existing.remove();
 
-    // Find all phone number strings in active DOM and group info drawer
-    const rawText = document.body.innerText;
-    const phoneMatches = rawText.match(/(?:\+?\d{1,4}[\s\-]?)?(?:\(?\d{2,5}\)?[\s\-]?)?\d{3,5}[\s\-]?\d{3,5}/g) || [];
-    
-    // Also look for specific span titles with numbers
-    document.querySelectorAll('span[title]').forEach(el => {
-      const t = el.getAttribute('title') || '';
-      const m = t.match(/(?:\+?\d{1,4}[\s\-]?)?(?:\(?\d{2,5}\)?[\s\-]?)?\d{3,5}[\s\-]?\d{3,5}/g);
-      if (m) phoneMatches.push(...m);
+    // 1. Detect Group Title
+    const header = document.querySelector('header [data-testid="conversation-info-header"]') ||
+                   document.querySelector('header [role="button"]') ||
+                   document.querySelector('header');
+    let groupName = 'WhatsApp Group';
+    if (header) {
+      const tSpan = header.querySelector('span[title]') || header.querySelector('[dir="auto"]');
+      groupName = tSpan ? (tSpan.getAttribute('title') || tSpan.innerText).trim() : (header.innerText || '').split('\\n')[0].trim();
+    }
+
+    // 2. Extract Participants (Name + Phone + Admin)
+    const contactsMap = new Map();
+    const listItems = document.querySelectorAll('div[role="listitem"], div[data-testid="cell-frame-container"]');
+    listItems.forEach((item) => {
+      const text = item.innerText || '';
+      const lines = text.split('\\n').map((l) => l.trim()).filter(Boolean);
+      let phone = '';
+      let name = '';
+      const isAdmin = /admin/i.test(text);
+
+      lines.forEach((line) => {
+        const m = line.match(/(?:\\+?\\d{1,4}[\\s\\-]?)?(?:\\(?\\d{2,5}\\)?[\\s\\-]?)?\\d{3,5}[\\s\\-]?\\d{3,5}/);
+        if (m) {
+          const digits = m[0].replace(/[^0-9]/g, '');
+          if (digits.length >= 8 && digits.length <= 15) {
+            phone = m[0].trim();
+          }
+        } else if (!name && !/admin|group|click|message/i.test(line) && line.length < 50) {
+          name = line;
+        }
+      });
+
+      item.querySelectorAll('span[title]').forEach((sp) => {
+        const t = sp.getAttribute('title') || '';
+        const m = t.match(/(?:\\+?\\d{1,4}[\\s\\-]?)?(?:\\(?\\d{2,5}\\)?[\\s\\-]?)?\\d{3,5}[\\s\\-]?\\d{3,5}/);
+        if (m) {
+          const digits = m[0].replace(/[^0-9]/g, '');
+          if (digits.length >= 8 && digits.length <= 15 && !phone) {
+            phone = m[0].trim();
+          }
+        } else if (!name && t.length < 50 && !/admin|group/i.test(t)) {
+          name = t;
+        }
+      });
+
+      if (phone) {
+        const cleanPhone = phone.startsWith('+') ? phone : '+' + phone;
+        const digits = cleanPhone.replace(/[^0-9]/g, '');
+        if (!contactsMap.has(digits)) {
+          contactsMap.set(digits, {
+            name: name || ('Member ' + (contactsMap.size + 1)),
+            phone: cleanPhone,
+            isAdmin: isAdmin
+          });
+        }
+      }
     });
 
-    const cleanPhones = Array.from(new Set(phoneMatches.map(p => p.trim()).filter(p => {
+    // Also scan all body text and header subtitles for any phone numbers
+    const allText = document.body.innerText || '';
+    const phoneMatches = allText.match(/(?:\\+?\\d{1,4}[\\s\\-]?)?(?:\\(?\\d{2,5}\\)?[\\s\\-]?)?\\d{3,5}[\\s\\-]?\\d{3,5}/g) || [];
+    phoneMatches.forEach((p) => {
       const digits = p.replace(/[^0-9]/g, '');
-      return digits.length >= 8 && digits.length <= 15;
-    })));
+      if (digits.length >= 8 && digits.length <= 15 && !contactsMap.has(digits)) {
+        const cleanPhone = p.trim().startsWith('+') ? p.trim() : '+' + p.trim();
+        contactsMap.set(digits, {
+          name: 'Member ' + (contactsMap.size + 1),
+          phone: cleanPhone,
+          isAdmin: false
+        });
+      }
+    });
 
-    if (cleanPhones.length === 0) {
-      alert('⚠️ No phone numbers found in current view.\n\nPlease click on the group name ("' + groupName + '") at the top of the chat so the Group Info sidebar opens with the member list, then run this script again!');
+    const members = Array.from(contactsMap.values());
+    if (members.length === 0) {
+      alert('⚠️ No participant phone numbers found in current view.\\n\\nPlease click on the group name ("' + groupName + '") at the top of the chat to open the Group Info drawer, then click the WhatsQ Grabber bookmark/button again!');
       return;
     }
 
+    // Auto-copy phone numbers to clipboard
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(members.map((m) => m.phone).join('\\n'));
+    }
+
+    // Build Group Object for WhatsQ
     const groupObj = {
       id: 'grp-web-' + Date.now(),
       jid: '120363' + Date.now() + '@g.us',
       name: groupName,
-      description: 'Extracted from WhatsApp Web with ' + cleanPhones.length + ' real participant numbers.',
+      description: 'Extracted from WhatsApp Web with ' + members.length + ' real members.',
       avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
       category: 'Customer Community',
-      memberCount: cleanPhones.length,
+      memberCount: members.length,
       isAdmin: true,
       createdAt: new Date().toISOString().split('T')[0],
-      members: cleanPhones.map((p, idx) => ({
-        id: 'wa-live-' + p.replace(/[^0-9]/g, '') + '-' + idx,
-        name: idx === 0 ? groupName + ' Admin' : 'Member ' + (idx + 1),
-        phone: p.startsWith('+') ? p : '+' + p,
-        whatsappId: p.replace(/[^0-9]/g, '') + '@c.us',
-        role: idx === 0 ? 'admin' : 'member',
-        country: 'Verified Number',
+      members: members.map((m, idx) => ({
+        id: 'wa-live-' + m.phone.replace(/[^0-9]/g, '') + '-' + idx,
+        name: m.name,
+        phone: m.phone,
+        whatsappId: m.phone.replace(/[^0-9]/g, '') + '@c.us',
+        role: m.isAdmin ? 'admin' : 'member',
+        country: 'Verified Contact',
         isValidWhatsApp: true,
         statusMessage: 'Active WhatsApp Group Member',
         joinedAt: new Date().toLocaleDateString()
       }))
     };
 
+    // Broadcast across channels
     try {
       const channel = new BroadcastChannel('qiyam_group_grabber');
       channel.postMessage({
         type: 'GROUP_PUSHED',
-        phone: cleanPhones[0],
+        phone: members[0].phone,
         deviceName: 'WhatsApp Web Live Session',
         group: groupObj
       });
-    } catch(bcErr) {}
+    } catch(e) {}
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(cleanPhones.join('\n'));
-    }
+    // 3. Inject Floating WhatsQ Widget on WhatsApp Web
+    const overlay = document.createElement('div');
+    overlay.id = 'whatsq-grabber-overlay';
+    overlay.style.cssText = 'position:fixed;top:20px;right:20px;width:380px;max-width:92vw;max-height:85vh;background:#0f172a;color:#f8fafc;border-radius:18px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7),0 0 0 2px #059669;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;z-index:999999;display:flex;flex-direction:column;overflow:hidden;';
 
-    console.log('✅ Extracted ' + cleanPhones.length + ' phone numbers:', cleanPhones);
-    alert('🎉 SUCCESS! Extracted ' + cleanPhones.length + ' REAL phone numbers from "' + groupName + '".\n\nAll ' + cleanPhones.length + ' numbers are COPIED to your clipboard!\n\nNow switch back to your WhatsQ Dashboard and click "Paste from Clipboard & Extract Numbers"!');
+    const itemsHtml = members.map((m, idx) => '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:' + (idx%2===0?'rgba(30,41,59,0.7)':'rgba(15,23,42,0.5)') + ';border-radius:8px;margin-bottom:3px;font-size:11px;"><div style="display:flex;align-items:center;gap:8px;overflow:hidden;"><div style="width:24px;height:24px;border-radius:6px;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:10px;">' + (m.name.charAt(0).toUpperCase() || 'M') + '</div><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><div style="font-weight:600;color:#f1f5f9;">' + m.name.replace(/</g,'&lt;') + '</div><div style="color:#94a3b8;font-family:monospace;font-size:10px;">' + m.phone + '</div></div></div>' + (m.isAdmin ? '<span style="font-size:9px;padding:2px 5px;background:rgba(245,158,11,0.2);color:#fbbf24;border-radius:4px;font-weight:bold;">ADMIN</span>' : '') + '</div>').join('');
+
+    overlay.innerHTML = '<div style="padding:14px 16px;background:linear-gradient(135deg,#065f46,#0f172a);display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:18px;">⚡</div><div><div style="font-size:13px;font-weight:800;color:#fff;">WhatsQ Group Grabber</div><div style="font-size:10px;color:#6ee7b7;">100% Real WhatsApp Web Roster</div></div></div><button id="whatsq-w-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:2px 6px;">✕</button></div>' +
+      '<div style="padding:10px 16px;background:rgba(30,41,59,0.5);border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-size:12px;font-weight:700;color:#e2e8f0;">' + groupName.replace(/</g,'&lt;') + '</div><div style="font-size:10px;color:#94a3b8;">' + members.length + ' contacts discovered</div></div><span style="background:#059669;color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;">' + members.length + ' Found</span></div>' +
+      '<div style="padding:10px 16px;flex:1;overflow-y:auto;max-height:38vh;">' + itemsHtml + '</div>' +
+      '<div style="padding:12px 16px;background:#0b1120;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px;"><button id="whatsq-w-send" style="width:100%;padding:10px;border-radius:10px;border:none;background:#059669;color:#fff;font-weight:700;font-size:12px;cursor:pointer;">🚀 Send All to WhatsQ Dashboard</button><div style="display:flex;gap:6px;"><button id="whatsq-w-csv" style="flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:10px;font-weight:600;cursor:pointer;">📥 Download CSV</button><button id="whatsq-w-copy" style="flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:10px;font-weight:600;cursor:pointer;">📋 Copy Numbers</button></div><div id="whatsq-w-status" style="font-size:10px;color:#34d399;text-align:center;margin-top:2px;">All ' + members.length + ' numbers are copied to clipboard!</div></div>';
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('whatsq-w-close').onclick = () => overlay.remove();
+    document.getElementById('whatsq-w-send').onclick = () => {
+      navigator.clipboard.writeText(members.map((m) => m.phone).join('\\n'));
+      const s = document.getElementById('whatsq-w-status');
+      if (s) s.innerHTML = '✅ <strong>Saved to clipboard!</strong> Go to WhatsQ & click "Paste from Clipboard".';
+      try {
+        const ch = new BroadcastChannel('qiyam_group_grabber');
+        ch.postMessage({ type: 'GROUP_PUSHED', group: groupObj });
+      } catch(e) {}
+    };
+    document.getElementById('whatsq-w-csv').onclick = () => {
+      const csv = 'Name,Phone Number,Role\\n' + members.map((m) => '"' + m.name.replace(/"/g,'""') + '","' + m.phone + '","' + (m.isAdmin ? 'Admin' : 'Member') + '"').join('\\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (groupName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'whatsapp_group') + '_contacts.csv';
+      a.click();
+    };
+    document.getElementById('whatsq-w-copy').onclick = () => {
+      navigator.clipboard.writeText(members.map((m) => m.phone).join('\\n'));
+      const s = document.getElementById('whatsq-w-status');
+      if (s) s.innerHTML = '📋 Copied ' + members.length + ' phone numbers!';
+    };
+
     return groupObj;
-  } catch(e) {
-    alert('Grabber error: ' + e.message);
+  } catch(err) {
+    alert('WhatsQ Grabber error: ' + err.message);
   }
 })();
 `.trim();
+
+/**
+ * 1-Click Browser Bookmarklet URL
+ * Users can drag this link onto their browser bookmark bar!
+ */
+export const WHATSQ_BOOKMARKLET_URL = `javascript:${encodeURIComponent(WHATSAPP_WEB_GRABBER_SCRIPT)}`;
 

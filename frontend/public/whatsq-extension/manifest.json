@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsQ - WhatsApp Group & Contacts Grabber",
+  "version": "1.0.0",
+  "description": "1-Click WhatsApp Group Phone Number & Contact Extractor for WhatsQ Business OS",
+  "permissions": ["activeTab", "clipboardWrite", "storage"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WhatsQ Group Extractor"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

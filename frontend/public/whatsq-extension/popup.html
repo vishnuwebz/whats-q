@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>WhatsQ Group Grabber</title>
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-primary {
+      background: linear-gradient(135deg, #059669, #0d9488);
+      color: #fff;
+    }
+    .instructions {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.5;
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="font-size: 20px;">⚡</div>
+    <div>
+      <div style="font-weight: 800; font-size: 15px;">WhatsQ Grabber</div>
+      <div style="font-size: 11px; color: #94a3b8;">WhatsApp Web Group Extractor</div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <span style="font-size: 12px; font-weight: 600;">Status</span>
+    <span class="badge" id="status-badge">Ready</span>
+  </div>
+
+  <button class="btn btn-primary" id="grab-btn">
+    ⚡ Open Grabber in WhatsApp Web
+  </button>
+
+  <div class="instructions">
+    <strong>How to use:</strong><br>
+    1. Open any group on <a href="https://web.whatsapp.com" target="_blank" style="color: #34d399;">web.whatsapp.com</a>.<br>
+    2. Click the group title to open member details.<br>
+    3. Click the green <strong>"⚡ WhatsQ Grab"</strong> button inside WhatsApp Web!
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

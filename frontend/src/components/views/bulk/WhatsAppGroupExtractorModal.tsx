@@ -43,7 +43,8 @@ import {
   parseWhatsAppChatExport,
   parseGroupInviteLink,
   sanitizeWhatsAppGroupLink,
-  WHATSAPP_WEB_GRABBER_SCRIPT
+  WHATSAPP_WEB_GRABBER_SCRIPT,
+  WHATSQ_BOOKMARKLET_URL
 } from './whatsappGroupUtils';
 
 interface WhatsAppGroupExtractorModalProps {
@@ -84,10 +85,12 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   const [qrCountdown, setQrCountdown] = useState(60);
   const [qrSessionToken, setQrSessionToken] = useState(() => 'qiyam_grp_' + Math.random().toString(36).substring(2, 9));
   
-  // Pairing mode: 'link' (Direct Group Link - Zero QR) | 'mobile' (Scan with Any Phone Camera) | 'direct' (WhatsApp SCAN CODE) | 'multidevice' (Linked Devices) | 'code' (8-Digit Code)
-  const [pairingMode, setPairingMode] = useState<'link' | 'mobile' | 'direct' | 'multidevice' | 'code'>('link');
+  // Pairing mode: 'link' (Direct Group Link - Zero QR) | 'embedded_web' (WhatsApp Web Inside Software) | 'mobile' (Scan with Any Phone Camera) | 'direct' (WhatsApp SCAN CODE) | 'multidevice' (Linked Devices) | 'code' (8-Digit Code)
+  const [pairingMode, setPairingMode] = useState<'link' | 'embedded_web' | 'mobile' | 'direct' | 'multidevice' | 'code'>('link');
   const [phoneForCode, setPhoneForCode] = useState(activeBusinessPhone);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedBookmarklet, setCopiedBookmarklet] = useState(false);
+  const [showDevScript, setShowDevScript] = useState(false);
   const [copiedNumbersType, setCopiedNumbersType] = useState<string | null>(null);
 
   // Direct Group Link Inspector State (100% Genuine Metadata & Real Data)
@@ -394,6 +397,20 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
       handleSaveInspectedGroup(contacts);
     } catch {
       addToast('Clipboard permission was not granted by browser. Please paste into Option 2 manually!', 'error');
+    }
+  };
+
+  // Launch Connected WhatsApp Web Companion Window
+  const handleLaunchCompanionWindow = () => {
+    const w = window.open(
+      'https://web.whatsapp.com',
+      'WhatsQ_WhatsApp_Web_Companion',
+      'width=1180,height=820,menubar=no,status=no,toolbar=no'
+    );
+    if (!w) {
+      addToast('Popup was blocked by browser. Please allow popups for WhatsQ to launch companion!', 'error');
+    } else {
+      addToast('WhatsApp Web Companion opened! Click the WhatsQ Bookmarklet on that window to grab members.', 'info');
     }
   };
 
@@ -847,6 +864,22 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
                 <button
                   type="button"
+                  onClick={() => setPairingMode('embedded_web')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    pairingMode === 'embedded_web'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 bg-white/60'
+                  }`}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>WhatsApp Web Live Station</span>
+                  <span className="bg-emerald-200 text-emerald-900 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                    In-App &amp; Companion
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setPairingMode('mobile')}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     pairingMode === 'mobile'
@@ -884,6 +917,118 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                   <span>8-Digit Phone Code</span>
                 </button>
               </div>
+
+              {/* WHATSAPP WEB EMBEDDED STATION & COMPANION */}
+              {pairingMode === 'embedded_web' && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4 animate-in fade-in duration-200">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <span>WhatsApp Web Live Station</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          SEAMLESS SYNC
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Run WhatsApp Web inside the software or in our synchronized companion window, and grab group members with names and phone numbers.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleLaunchCompanionWindow}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Open WhatsApp Web Companion</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1-Click Bookmarklet & Extension Toolbox Banner */}
+                  <div className="p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white rounded-2xl space-y-3 shadow-md">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-sm text-emerald-300 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                          <span>1-Click Non-Technical Extension Bookmarklet</span>
+                        </div>
+                        <p className="text-xs text-slate-300 mt-0.5">
+                          Drag this button to your Bookmarks bar. Next time you're on WhatsApp Web, just click it to grab all member names &amp; numbers instantly!
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={WHATSQ_BOOKMARKLET_URL}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            addToast('⭐ Drag this green button into your browser bookmarks bar (Press Ctrl+Shift+B if hidden)!', 'info');
+                          }}
+                          draggable={true}
+                          className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition cursor-grab flex items-center gap-2 active:cursor-grabbing border-2 border-emerald-300"
+                        >
+                          <span>⭐ Drag to Bookmarks: WhatsQ Grabber</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(WHATSQ_BOOKMARKLET_URL);
+                            setCopiedBookmarklet(true);
+                            setTimeout(() => setCopiedBookmarklet(false), 2000);
+                            addToast('Bookmarklet URL copied! You can paste it into browser bookmarks.', 'info');
+                          }}
+                          className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1 border border-white/20"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{copiedBookmarklet ? 'Copied!' : 'Copy Link'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Embedded Iframe Container with Fallback */}
+                  <div className="relative border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 min-h-[440px] flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+                    <iframe
+                      src="https://web.whatsapp.com"
+                      title="WhatsApp Web"
+                      className="w-full h-[460px] border-none rounded-xl"
+                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                    />
+
+                    {/* Fallback Banner */}
+                    <div className="mt-4 p-4 bg-slate-800/95 border border-slate-700 rounded-xl max-w-xl text-left text-xs text-slate-200 space-y-2">
+                      <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Connected Companion Synchronization</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        If your browser displays <em>"web.whatsapp.com refused to connect"</em> inside the box above (due to WhatsApp's default security headers), click <strong>"Launch WhatsApp Web Companion"</strong> below to open WhatsApp Web side-by-side with full real-time contact and group sync!
+                      </p>
+                      <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={handleLaunchCompanionWindow}
+                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Launch WhatsApp Web Companion</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePasteClipboardNumbers}
+                          className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>📋 Paste Contacts from Clipboard</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* OPTION A: DIRECT GROUP LINK & ZERO QR CARD */}
               {pairingMode === 'link' && (
@@ -1062,77 +1207,95 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
                               <div>
                                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                                  <span>Step-by-Step 1-Click Extraction</span>
+                                  <span>1-Click In-Browser Contact &amp; Name Grabber</span>
                                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
-                                    Fastest &amp; 100% Real
+                                    Zero Console Required
                                   </span>
                                 </h4>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                  Extract all numbers directly from your open WhatsApp Web tab in 3 easy steps:
+                                  Extract real member names and phone numbers directly from <strong>"{inspectedGroupMeta.title}"</strong> on WhatsApp Web:
                                 </p>
                               </div>
-                              <a
-                                href={`https://web.whatsapp.com/accept?code=${inspectedGroupMeta.code || ''}`}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                type="button"
+                                onClick={handleLaunchCompanionWindow}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shrink-0 cursor-pointer shadow-xs transition"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
-                                <span>Switch to WhatsApp Web</span>
-                              </a>
-                            </div>
-
-                            {/* 3 Step Visual Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
-                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
-                                  <span>Open Group &amp; Info</span>
-                                </div>
-                                <p className="text-slate-600 text-[11px] leading-relaxed">
-                                  In WhatsApp Web, click on <strong>"{inspectedGroupMeta.title}"</strong>, then click the <strong>group name header</strong> at the top to open the member drawer.
-                                </p>
-                              </div>
-
-                              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
-                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
-                                  <span>Open Console &amp; Run</span>
-                                </div>
-                                <p className="text-slate-600 text-[11px] leading-relaxed">
-                                  Press <kbd className="px-1.5 py-0.5 bg-slate-200 border border-slate-300 rounded font-mono text-[10px] font-bold">F12</kbd> (Console tab). Click <strong>Copy Script</strong> below, paste (<kbd className="px-1 py-0.5 bg-slate-200 border border-slate-300 rounded font-mono text-[10px]">Ctrl+V</kbd>), and press <kbd className="px-1 py-0.5 bg-slate-200 border border-slate-300 rounded font-mono text-[10px]">Enter</kbd>.
-                                </p>
-                              </div>
-
-                              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1 text-xs">
-                                <div className="font-bold text-emerald-900 flex items-center gap-1.5">
-                                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">3</span>
-                                  <span>Paste &amp; Extract</span>
-                                </div>
-                                <p className="text-emerald-800 text-[11px] leading-relaxed">
-                                  The script copies all numbers to your clipboard. Click the big green button below to import all numbers into WhatsQ instantly!
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Script Box */}
-                            <div className="relative">
-                              <pre className="p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] overflow-x-auto max-h-24">
-                                {WHATSAPP_WEB_GRABBER_SCRIPT}
-                              </pre>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  navigator.clipboard?.writeText(WHATSAPP_WEB_GRABBER_SCRIPT);
-                                  setCopiedScript(true);
-                                  setTimeout(() => setCopiedScript(false), 2000);
-                                  addToast('Grabber script copied to clipboard! Paste into WhatsApp Web Console (F12)', 'info');
-                                }}
-                                className="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                              >
-                                {copiedScript ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                <span>{copiedScript ? 'Copied to Clipboard!' : 'Copy Script'}</span>
+                                <span>Open WhatsApp Web Companion</span>
                               </button>
+                            </div>
+
+                            {/* Method A: 1-Click Browser Bookmarklet (Zero-Install!) */}
+                            <div className="p-4 bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-50 border-2 border-emerald-400/80 rounded-2xl space-y-3 shadow-xs">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                <div className="space-y-0.5">
+                                  <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                                    <span>Method 1 (Easiest): 1-Click Browser Bookmarklet</span>
+                                    <span className="text-[10px] px-2 py-0.5 bg-emerald-200 text-emerald-900 font-extrabold rounded-full">RECOMMENDED</span>
+                                  </div>
+                                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                                    Drag the button below into your browser's Bookmarks Bar (press <kbd className="px-1.5 py-0.5 bg-white border border-emerald-300 rounded font-mono text-[10px]">Ctrl+Shift+B</kbd> if hidden).
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <a
+                                    href={WHATSQ_BOOKMARKLET_URL}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      addToast('⭐ Drag this green button into your browser bookmarks bar (Press Ctrl+Shift+B if hidden)!', 'info');
+                                    }}
+                                    draggable={true}
+                                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-grab active:cursor-grabbing border border-emerald-400 flex items-center gap-1.5"
+                                  >
+                                    <span>⭐ Drag to Bookmarks: WhatsQ Grabber</span>
+                                  </a>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(WHATSQ_BOOKMARKLET_URL);
+                                      setCopiedBookmarklet(true);
+                                      setTimeout(() => setCopiedBookmarklet(false), 2000);
+                                      addToast('Bookmarklet URL copied to clipboard!', 'info');
+                                    }}
+                                    className="p-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer border border-slate-300"
+                                    title="Copy Bookmarklet Link"
+                                  >
+                                    {copiedBookmarklet ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] text-slate-600">
+                                <div className="p-2.5 bg-white/80 rounded-xl border border-emerald-200 flex items-start gap-2">
+                                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                                  <span>Open <strong>"{inspectedGroupMeta.title}"</strong> on WhatsApp Web and click the group name at top.</span>
+                                </div>
+                                <div className="p-2.5 bg-white/80 rounded-xl border border-emerald-200 flex items-start gap-2">
+                                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                                  <span>Click <strong>WhatsQ Grabber</strong> in your bookmarks. The floating card appears with Names &amp; Numbers!</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Method B: Chrome Extension Link */}
+                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-700">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">Method 2: Permanent Chrome Extension</span>
+                                <span className="text-slate-500 text-[11px] hidden sm:inline">• Adds a permanent "⚡ WhatsQ Grab" button inside WhatsApp Web</span>
+                              </div>
+                              <a
+                                href="/whatsq-extension/README.md"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline shrink-0"
+                              >
+                                <span>Extension Guide (10 Sec)</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
                             </div>
 
                             {/* Big Paste & Extract Action Button */}
@@ -1140,16 +1303,48 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                               <button
                                 type="button"
                                 onClick={handlePasteClipboardNumbers}
-                                className="w-full py-3 px-5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+                                className="w-full py-3.5 px-5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
                               >
                                 <Copy className="w-4 h-4" />
-                                <span>📋 Paste from Clipboard &amp; Extract All Numbers</span>
+                                <span>📋 Paste from Clipboard &amp; Extract All Contacts (Names + Numbers)</span>
                               </button>
+                            </div>
+
+                            {/* Collapsible Advanced Developer Script */}
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setShowDevScript(!showDevScript)}
+                                className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>{showDevScript ? '▼ Hide' : '▶ Advanced:'} Raw Console Script (For Developers)</span>
+                              </button>
+
+                              {showDevScript && (
+                                <div className="mt-2 relative animate-in fade-in duration-150">
+                                  <pre className="p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] overflow-x-auto max-h-28">
+                                    {WHATSAPP_WEB_GRABBER_SCRIPT}
+                                  </pre>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(WHATSAPP_WEB_GRABBER_SCRIPT);
+                                      setCopiedScript(true);
+                                      setTimeout(() => setCopiedScript(false), 2000);
+                                      addToast('Grabber script copied to clipboard!', 'info');
+                                    }}
+                                    className="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                                  >
+                                    {copiedScript ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                    <span>{copiedScript ? 'Copied!' : 'Copy Script'}</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             <div className="text-[11px] text-slate-500 flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                              <span>Live sync active. When the script runs in WhatsApp Web, numbers will stream directly into this dashboard!</span>
+                              <span>Live listener active. When members are grabbed on WhatsApp Web, they stream directly into this dashboard!</span>
                             </div>
                           </div>
                         )}
