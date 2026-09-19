@@ -61,6 +61,9 @@ export async function forceHardRefresh(reason = 'OTA Deployment Update'): Promis
       store.versionInfo?.current_commit ||
       getInitialBuildCommit() ||
       '';
+    if (store.activeTab) {
+      localStorage.setItem('whatsq_last_active_tab', store.activeTab);
+    }
     if (targetCommit) {
       localStorage.setItem('whatsq_acknowledged_commit', targetCommit);
     }

@@ -72,71 +72,12 @@ import { BulkRecipientListsView } from './components/views/bulk/BulkRecipientLis
 import { BulkScheduledMessagesView } from './components/views/bulk/BulkScheduledMessagesView';
 import { MobileGroupGrabberPortal } from './components/views/bulk/MobileGroupGrabberPortal';
 import { TabType } from './types';
-
-const TAB_TO_PATH: Record<TabType, string> = {
-  'dashboard': '/dashboard',
-  'conversations': '/conversations',
-  'bulk-overview': '/bulk/overview',
-  'bulk-send': '/bulk/send',
-  'bulk-templates': '/bulk/templates',
-  'bulk-campaigns': '/bulk/campaigns',
-  'bulk-recipients': '/bulk/recipients',
-  'bulk-suppression': '/bulk/suppression',
-  'bulk-scheduled': '/bulk/scheduled',
-  'crm-leads': '/crm/leads',
-  'crm-deals': '/crm/deals',
-  'crm-followups': '/crm/followups',
-  'crm-customers': '/crm/customers',
-  'ops-jobs': '/operations/jobs',
-  'ops-appointments': '/operations/appointments',
-  'ops-employees': '/operations/employees',
-  'ops-schedule': '/operations/schedule',
-  'ops-attendance': '/operations/attendance',
-  'ops-tasks': '/operations/tasks',
-  'ops-routes': '/operations/routes',
-  'ops-inventory': '/operations/inventory',
-  'finance-overview': '/finance/overview',
-  'finance-transactions': '/finance/transactions',
-  'finance-invoices': '/finance/invoices',
-  'finance-quotations': '/finance/quotations',
-  'finance-expenses': '/finance/expenses',
-  'finance-budget': '/finance/budget',
-  'finance-payments': '/finance/payments',
-  'finance-accounts': '/finance/accounts',
-  'finance-reports': '/finance/reports',
-  'automation-builder': '/automation/builder',
-  'automation-workflows': '/automation/workflows',
-  'automation-templates': '/automation/templates',
-  'branches': '/branches',
-  'automation-branches': '/branches',
-  'automation-logs': '/automation/logs',
-  'automation-approvals': '/automation/approvals',
-  'ai-overview': '/ai/overview',
-  'ai-branches': '/ai/branches',
-  'ai-knowledgebase': '/ai/knowledgebase',
-  'ai-templates': '/ai/templates',
-  'template-hub': '/template-hub',
-  'template-create': '/template-create',
-  'ai-settings': '/ai/settings',
-  'analytics': '/analytics',
-  'integrations': '/integrations',
-  'settings': '/settings',
-  'settings-backup': '/settings/backup',
-  'settings-whatsapp': '/settings/whatsapp',
-  'landing': '/landing',
-};
-
-const resolveTabFromPath = (path: string): TabType => {
-  const normalized = path.toLowerCase().replace(/\/$/, '') || '/dashboard';
-  if (normalized === '/messenger') return 'conversations';
-  if (['/landing', '/showcase', '/welcome', '/home'].includes(normalized)) return 'landing';
-  for (const [tab, p] of Object.entries(TAB_TO_PATH)) {
-    if (p === normalized || `/${tab}` === normalized) {
-      return tab as TabType;
-    }
-  }
-  return 'dashboard';
-};
+import {
+  TAB_TO_PATH,
+  resolveTabFromPath,
+  persistActiveTab,
+  getInitialActiveTab,
+} from './utils/tabRouting';
 
 export const App: React.FC = () => {
   const {
@@ -175,15 +116,21 @@ export const App: React.FC = () => {
     realtimeSyncManager.start();
     const stopOta = initOtaUpdater();
 
-    const initialTab = resolveTabFromPath(window.location.pathname);
-    setActiveTab(initialTab);
-
-    if (window.location.pathname === '/' || window.location.pathname === '') {
-      window.history.replaceState(null, '', TAB_TO_PATH[initialTab]);
+    // Check if the current URL has a specific path that takes precedence
+    const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    if (currentPath && currentPath !== '' && currentPath !== '/' && currentPath !== '/index.html') {
+      const tabFromPath = resolveTabFromPath(window.location.pathname, window.location.search, window.location.hash);
+      if (tabFromPath && tabFromPath !== activeTab) {
+        setActiveTab(tabFromPath);
+      }
+    } else {
+      // If root '/' or empty, ensure the browser URL reflects the restored activeTab
+      const canonical = TAB_TO_PATH[activeTab] || '/dashboard';
+      window.history.replaceState(null, '', canonical);
     }
 
     const handlePopState = () => {
-      const poppedTab = resolveTabFromPath(window.location.pathname);
+      const poppedTab = resolveTabFromPath(window.location.pathname, window.location.search, window.location.hash);
       setActiveTab(poppedTab);
     };
 
@@ -211,7 +158,7 @@ export const App: React.FC = () => {
     };
   }, [loadInitialData, fetchVersionInfo, setActiveTab]);
 
-  // 2. Sync URL address bar whenever activeTab changes
+  // 2. Sync URL address bar and localStorage whenever activeTab changes
   React.useEffect(() => {
     const canonicalPath = TAB_TO_PATH[activeTab] || '/dashboard';
     const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
@@ -219,6 +166,7 @@ export const App: React.FC = () => {
     if (currentPath !== canonicalPath && currentPath !== altPath) {
       window.history.pushState(null, '', canonicalPath);
     }
+    persistActiveTab(activeTab);
   }, [activeTab]);
 
   const renderActiveView = () => {

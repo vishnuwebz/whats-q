@@ -29,6 +29,7 @@ import {
   initialBulkScheduledMessages
 } from './bulkData';
 import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
+import { getInitialActiveTab, persistActiveTab } from '../utils/tabRouting';
 import {
   INITIAL_INVENTORY,
   INITIAL_LEADS,
@@ -1069,8 +1070,11 @@ export const INITIAL_SUPPRESSION_LIST: SuppressionRecord[] = [
 ];
 
 export const useQiyamStore = create<QiyamState>((set, get) => ({
-  activeTab: 'dashboard',
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  activeTab: getInitialActiveTab(),
+  setActiveTab: (tab) => {
+    persistActiveTab(tab);
+    set({ activeTab: tab });
+  },
   backendOnline: false,
 
   sendConfirmation: null,
@@ -1429,8 +1433,13 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     startOtaCountdown(5);
   },
 
-  selectedConversationId: getStoredConversations()[0]?.id || '',
+  selectedConversationId: (typeof window !== 'undefined' && localStorage.getItem('whatsq_selected_conversation_id')) || getStoredConversations()[0]?.id || '',
   setSelectedConversationId: (id) => {
+    if (typeof window !== 'undefined' && id) {
+      try {
+        localStorage.setItem('whatsq_selected_conversation_id', String(id));
+      } catch {}
+    }
     set((state) => ({
       selectedConversationId: id,
       conversations: state.conversations.map((c) =>
