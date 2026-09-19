@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { TabType } from '../../types';
 import {
-  LayoutDashboard, MessageSquare, MessagesSquare, Users, Briefcase, DollarSign,
+  LayoutDashboard, MessageSquare, MessagesSquare, Users, Briefcase, IndianRupee,
   Zap, Bot, BarChart3, Puzzle, Settings as SettingsIcon,
   ChevronDown, ChevronRight, UserCheck, Calendar, Clock,
-  CheckSquare, Navigation, Package, Receipt, FileText,
+  CheckSquare, Navigation, Package, ReceiptText, FileText,
   CreditCard, Wallet, BookOpen, Layers, GitBranch,
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
@@ -34,7 +34,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'bulk-scheduled', title: 'Scheduled Messages', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar' },
   { tab: 'crm-leads', title: 'Leads', category: 'CRM', icon: Users, keywords: 'prospects pipeline inquiries conversion funnel' },
   { tab: 'crm-customers', title: 'Customers', category: 'CRM', icon: UserCheck, keywords: 'clients directory accounts profiles' },
-  { tab: 'crm-deals', title: 'Pipeline Deals', category: 'CRM', icon: DollarSign, keywords: 'stages revenue opportunities sales forecast' },
+  { tab: 'crm-deals', title: 'Pipeline Deals', category: 'CRM', icon: IndianRupee, keywords: 'stages revenue opportunities sales forecast' },
   { tab: 'crm-followups', title: 'Follow-ups', category: 'CRM', icon: Clock, keywords: 'reminders scheduled calls pending tasks' },
   { tab: 'branches', title: 'Branches', category: 'Main', icon: Building2, keywords: 'locations outlets offices stores calicut kochi' },
   { tab: 'ops-jobs', title: 'Jobs', category: 'Operations', icon: Briefcase, keywords: 'work orders field service tickets assignment' },
@@ -46,15 +46,15 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'ops-routes', title: 'Route Optimization', category: 'Operations', icon: Navigation, keywords: 'gps dispatch map delivery logistics navigation' },
   { tab: 'ops-inventory', title: 'Inventory', category: 'Operations', icon: Package, keywords: 'stock warehouse products spare parts items' },
   { tab: 'automation-approvals', title: 'Approvals', category: 'Operations', icon: ShieldCheck, keywords: 'authorization sign-off purchase orders leave requests' },
-  { tab: 'finance-overview', title: 'Finance Overview', category: 'Finance', icon: DollarSign, keywords: 'revenue profit cash flow ledger balance' },
-  { tab: 'finance-transactions', title: 'Transactions', category: 'Finance', icon: Receipt, keywords: 'payments bank entries debits credits log' },
+  { tab: 'finance-overview', title: 'Finance Overview', category: 'Finance', icon: IndianRupee, keywords: 'revenue profit cash flow ledger balance' },
+  { tab: 'finance-transactions', title: 'Transactions', category: 'Finance', icon: ReceiptText, keywords: 'payments bank entries debits credits log' },
   { tab: 'finance-invoices', title: 'Invoices', category: 'Finance', icon: FileText, keywords: 'billing tax gst statements pdf receivables' },
   { tab: 'finance-quotations', title: 'Quotations', category: 'Finance', icon: FileCheck, keywords: 'quotations estimates quotes proposals pricing convert invoice' },
   { tab: 'finance-expenses', title: 'Expenses', category: 'Finance', icon: CreditCard, keywords: 'bills receipts disbursements spending' },
   { tab: 'finance-payments', title: 'Payments', category: 'Finance', icon: Wallet, keywords: 'collections payout gateway settlement' },
   { tab: 'finance-accounts', title: 'Chart of Accounts', category: 'Finance', icon: Layers, keywords: 'banking general ledger assets liabilities' },
   { tab: 'finance-reports', title: 'Financial Reports', category: 'Finance', icon: BarChart3, keywords: 'p&l balance sheet cash statement' },
-  { tab: 'finance-budget', title: 'Budget Planning', category: 'Finance', icon: DollarSign, keywords: 'forecast limits quarterly targets allocation' },
+  { tab: 'finance-budget', title: 'Budget Planning', category: 'Finance', icon: IndianRupee, keywords: 'forecast limits quarterly targets allocation' },
   { tab: 'automation-builder', title: 'Workflow Builder', category: 'Automation', icon: Zap, keywords: 'no-code visual trigger node action flow' },
   { tab: 'automation-workflows', title: 'Workflows', category: 'Automation', icon: GitBranch, keywords: 'active rules automated sequences triggers' },
   { tab: 'automation-templates', title: 'Templates', category: 'Automation', icon: BookOpen, keywords: 'bot flows auto-reply recipes blueprints' },
@@ -1113,7 +1113,7 @@ export const Sidebar: React.FC = () => {
                   : 'hover:bg-[#16233B] text-slate-300'
               }`}
             >
-              <DollarSign className="w-4 h-4 shrink-0" />
+              <IndianRupee className="w-4 h-4 shrink-0" />
             </button>
           ) : (
             <>
@@ -1128,7 +1128,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <DollarSign className={`w-4 h-4 ${isFinanceActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  <IndianRupee className={`w-4 h-4 ${isFinanceActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                   <span>Finance</span>
                   {!financeOpen && isFinanceActive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -1155,7 +1155,7 @@ export const Sidebar: React.FC = () => {
                       isActive('finance-transactions') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
                     }`}
                   >
-                    <Receipt className="w-3.5 h-3.5" />
+                    <ReceiptText className="w-3.5 h-3.5" />
                     <span>Transactions</span>
                   </button>
                   <button

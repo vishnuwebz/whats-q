@@ -3,10 +3,10 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
   TrendingUp, TrendingDown, Users, Calendar, CheckCircle2,
-  AlertTriangle, DollarSign, Zap, Bot, ArrowRight,
+  AlertTriangle, IndianRupee, Zap, Bot, ArrowRight,
   Clock, ShieldAlert, Sparkles, Send, Eye, RefreshCw, X,
   Check, Phone, MapPin, ExternalLink, ShieldCheck, CheckCheck,
-  Compass, Briefcase, Receipt, GitBranch, MessageSquare
+  Compass, Briefcase, ReceiptText, GitBranch, MessageSquare
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { queryAIEngine, generateExecutiveGreeting } from '@/utils/aiQueryEngine';
@@ -285,7 +285,7 @@ export const DashboardView: React.FC = () => {
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-semibold">Total Revenue</span>
               <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <DollarSign className="w-4 h-4" />
+                <IndianRupee className="w-4 h-4" />
               </div>
             </div>
             <div className="text-xl font-bold text-slate-900">₹{kpis.totalRev.toLocaleString()}</div>
@@ -827,7 +827,7 @@ export const DashboardView: React.FC = () => {
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-slate-800 group-hover:text-emerald-800">
                     <div className="flex items-center gap-1.5 truncate">
-                      <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <ReceiptText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span className="truncate">Invoices &amp; Pay</span>
                     </div>
                     <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform text-xs">→</span>
@@ -966,7 +966,7 @@ export const DashboardView: React.FC = () => {
                     onClick={() => handleAskAi('Send payment reminders')}
                     className="text-xs px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-medium transition-all shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
                   >
-                    <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                    <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Payment Reminders</span>
                   </button>
                   <button

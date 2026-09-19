@@ -8,7 +8,7 @@ import {
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
   Tag, Clock, UserPlus, FileText, ChevronRight, ChevronDown,
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
-  DollarSign, CheckCircle2, RefreshCw
+  IndianRupee, CheckCircle2, RefreshCw
 } from 'lucide-react';
 
 export const ALL_LEAD_STAGES: Array<{

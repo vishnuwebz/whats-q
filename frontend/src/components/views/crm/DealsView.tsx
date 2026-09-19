@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Briefcase, Plus, Search, DollarSign, ArrowRight, User, Phone, CheckCircle2, X, MessageSquare, Trash2, ExternalLink, Tag, Sparkles } from 'lucide-react';
+import { Briefcase, Plus, Search, IndianRupee, ArrowRight, User, Phone, CheckCircle2, X, MessageSquare, Trash2, ExternalLink, Tag, Sparkles } from 'lucide-react';
 import { Deal } from '@/types';
 import { isDateWithinInterval } from '@/utils/dateFilter';
 

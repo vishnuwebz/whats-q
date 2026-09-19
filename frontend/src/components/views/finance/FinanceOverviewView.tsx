@@ -2,8 +2,8 @@ import React from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
-  DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Wallet, CreditCard, Receipt, FileText, BarChart3, Download
+  IndianRupee, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
+  Wallet, CreditCard, ReceiptText, FileText, BarChart3, Download
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { exportTableToCsv } from '@/utils/exportCsv';
@@ -79,7 +79,7 @@ export const FinanceOverviewView: React.FC = () => {
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-semibold truncate">Net Profit (EBITDA)</span>
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
+                <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
             <div className={`text-xl sm:text-2xl font-black ${netProfit >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
@@ -149,7 +149,7 @@ export const FinanceOverviewView: React.FC = () => {
           >
             <div className="font-bold text-slate-900 flex items-center justify-between">
               <span>Transactions</span>
-              <Receipt className="w-4 h-4 text-blue-600" />
+              <ReceiptText className="w-4 h-4 text-blue-600" />
             </div>
             <div className="text-slate-500">Live bank sync & cash ledgers</div>
           </div>

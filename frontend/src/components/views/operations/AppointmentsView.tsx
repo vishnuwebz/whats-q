@@ -5,7 +5,7 @@ import { Appointment } from '@/types';
 import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Calendar, Clock, MapPin, User, Search, Filter, Plus,
-  CheckCircle2, AlertCircle, MoreVertical, DollarSign, MessageSquare, X,
+  CheckCircle2, AlertCircle, MoreVertical, IndianRupee, MessageSquare, X,
   Phone, Send, ExternalLink, ShieldCheck, ChevronRight, FileText, Check,
   CreditCard, Sparkles, ArrowRight, RotateCcw, Copy, Radio
 } from 'lucide-react';

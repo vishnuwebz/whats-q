@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Receipt, Search, Filter, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, X, Wallet } from 'lucide-react';
+import { ReceiptText, Search, Filter, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, X, Wallet } from 'lucide-react';
 import { INITIAL_ACCOUNTS } from '@/store/initialDatasets';
 
 export const TransactionsView: React.FC = () => {
@@ -340,7 +340,7 @@ export const TransactionsView: React.FC = () => {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <Receipt className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <ReceiptText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">No transactions match the selected filters</p>
                     <p className="text-xs text-slate-400 mt-1">Try switching transaction type, account, or clearing search query.</p>
                     <button

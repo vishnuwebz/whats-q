@@ -5,7 +5,7 @@ import {
   Globe,
   Clock,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Sparkles,
   Volume2,
   Paperclip,
@@ -38,7 +38,7 @@ export const GeneralSettings: React.FC = () => {
     () => localStorage.getItem('whatsq_dateformat') || 'May 31, 2024 (MMM DD, YYYY)'
   );
   const [currency, setCurrency] = useState(
-    () => localStorage.getItem('whatsq_currency') || 'INR (₹)'
+    () => localStorage.getItem('whatsq_currency') || 'INR (₹) - Indian Rupee'
   );
   const [language, setLanguage] = useState(
     () => localStorage.getItem('whatsq_language') || 'English (US)'

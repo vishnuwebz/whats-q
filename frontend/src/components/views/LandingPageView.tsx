@@ -6,7 +6,7 @@ import {
   Bot,
   ShieldCheck,
   Navigation,
-  Receipt,
+  ReceiptText,
   Users,
   Calendar,
   CheckCircle2,
@@ -15,7 +15,7 @@ import {
   QrCode,
   Building2,
   TrendingUp,
-  DollarSign,
+  IndianRupee,
   Play,
   Check,
   ChevronDown,
@@ -462,7 +462,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onLaunchApp })
                     {/* GST Invoicing & Payment */}
                     <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                        <ReceiptText className="w-3.5 h-3.5 text-emerald-400" />
                         <div>
                           <div className="text-[10px] text-slate-400">GST Invoice & UPI</div>
                           <div className="font-semibold text-slate-200">{simSteps[activeSimStep].invoiceStatus}</div>
@@ -673,7 +673,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onLaunchApp })
           <div className="rounded-3xl bg-gradient-to-b from-slate-900/90 to-[#0B1528] border border-white/10 p-8 hover:border-emerald-500/50 transition-all duration-300 group flex flex-col justify-between shadow-2xl">
             <div>
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-6">
-                <Receipt className="w-6 h-6" />
+                <ReceiptText className="w-6 h-6" />
               </div>
               <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 font-semibold">
                 Cashflow Acceleration

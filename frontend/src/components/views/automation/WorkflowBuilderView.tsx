@@ -8,7 +8,7 @@ import {
   HelpCircle, CreditCard, Layers, Bot, Zap, Smartphone,
   CheckCircle2, Clock, Calendar, Paperclip, ChevronRight, ChevronDown, ChevronLeft,
   ExternalLink, Sparkles, AlertCircle, ArrowRight, CornerDownRight,
-  Move, Sliders, DollarSign, RefreshCw, Eye, BookOpen, Info,
+  Move, Sliders, IndianRupee, RefreshCw, Eye, BookOpen, Info,
   ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe,
   Upload, Link2
 } from 'lucide-react';
@@ -423,8 +423,8 @@ export const WorkflowBuilderView: React.FC = () => {
           type: 'payment',
           content: 'University Application Fee Checkout',
           provider: 'STRIPE',
-          currency: 'USD',
-          amount: 49,
+          currency: 'INR',
+          amount: 3999,
           quantity: 1,
           varName: 'payment_status',
           successTarget: 'group-9',
@@ -441,7 +441,7 @@ export const WorkflowBuilderView: React.FC = () => {
         {
           id: 'item-9-1',
           type: 'message',
-          content: '🎉 Payment of $49 confirmed via Stripe! Your application ID is #UQ-2026. A counselor will review your application.'
+          content: '🎉 Payment of ₹3,999 confirmed via Stripe! Your application ID is #UQ-2026. A counselor will review your application.'
         }
       ]
     },
@@ -748,8 +748,8 @@ export const WorkflowBuilderView: React.FC = () => {
         type: 'payment',
         content: `${blockTitle} Checkout`,
         provider: 'STRIPE',
-        currency: 'USD',
-        amount: 49,
+        currency: 'INR',
+        amount: 3999,
         quantity: 1,
         varName: 'payment_status',
       };
@@ -2473,7 +2473,7 @@ export const WorkflowBuilderView: React.FC = () => {
                                     <span>Payment: {item.provider || 'STRIPE'}</span>
                                   </div>
                                   <span className="bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                                    {item.currency || 'USD'} ${item.amount || 49}
+                                    {item.currency || 'INR'} {item.currency === 'USD' ? '$' : '₹'}{item.amount || 3999}
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-slate-700 font-medium">
@@ -3078,8 +3078,8 @@ export const WorkflowBuilderView: React.FC = () => {
                         type: newType,
                         options: newType === 'choice' ? configModal.draftItem.options || [{ label: 'Option 1' }] : undefined,
                         provider: newType === 'payment' ? 'STRIPE' : undefined,
-                        currency: newType === 'payment' ? 'USD' : undefined,
-                        amount: newType === 'payment' ? 49 : undefined,
+                        currency: newType === 'payment' ? 'INR' : undefined,
+                        amount: newType === 'payment' ? 3999 : undefined,
                         quantity: newType === 'payment' ? 1 : undefined,
                       }
                     });
@@ -3303,7 +3303,7 @@ export const WorkflowBuilderView: React.FC = () => {
                     <div>
                       <label className="block text-slate-700 font-semibold mb-1">Currency</label>
                       <select
-                        value={configModal.draftItem.currency || 'USD'}
+                        value={configModal.draftItem.currency || 'INR'}
                         onChange={(e) =>
                           setConfigModal({
                             ...configModal,
@@ -3312,11 +3312,11 @@ export const WorkflowBuilderView: React.FC = () => {
                         }
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       >
-                        <option value="USD">USD ($)</option>
                         <option value="INR">INR (₹)</option>
+                        <option value="AED">AED (د.إ)</option>
+                        <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>
-                        <option value="AED">AED (د.إ)</option>
                       </select>
                     </div>
 
@@ -3324,7 +3324,7 @@ export const WorkflowBuilderView: React.FC = () => {
                       <label className="block text-slate-700 font-semibold mb-1">Price Amount</label>
                       <input
                         type="number"
-                        value={configModal.draftItem.amount || 49}
+                        value={configModal.draftItem.amount || 3999}
                         onChange={(e) =>
                           setConfigModal({
                             ...configModal,
@@ -3991,7 +3991,7 @@ export const WorkflowBuilderView: React.FC = () => {
                     VIP University Admissions & Stripe Checkout
                   </h4>
                   <p className="text-slate-600 leading-relaxed text-[11px]">
-                    Includes full student onboarding: name confirmation, study abroad qualification, List Menu course selection, and $49 Stripe payment.
+                    Includes full student onboarding: name confirmation, study abroad qualification, List Menu course selection, and ₹3,999 Stripe payment.
                   </p>
                 </div>
                 <div className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
@@ -4170,7 +4170,7 @@ export const WorkflowBuilderView: React.FC = () => {
                       <div className="mt-2 p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="font-bold text-emerald-900 text-[11px]">
-                          Secure Checkout Gateway: Stripe $49 USD
+                          Secure Checkout Gateway: Stripe / UPI ₹3,999
                         </span>
                       </div>
                     )}

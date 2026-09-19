@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Conversation } from '@/types';
 import {
   X, Zap, Play, Pause, ExternalLink, Calendar, MapPin,
-  DollarSign, UserCheck, CheckCircle2, ChevronRight, Send,
+  IndianRupee, UserCheck, CheckCircle2, ChevronRight, Send,
   Sliders, MessageSquare, ArrowRight, Sparkles, FileText
 } from 'lucide-react';
 import { useQiyamStore } from '@/store/useQiyamStore';
@@ -74,7 +74,7 @@ export const ChatWorkflowModal: React.FC<ChatWorkflowModalProps> = ({
       option: 'Option 3',
       badge: '3️⃣',
       title: 'Quotation & Pricing Breakdown',
-      icon: DollarSign,
+      icon: IndianRupee,
       color: 'amber',
       triggerKeywords: ["'3'", "'3️⃣'", "'price'", "'cost'", "'quote'", "'charges'", "'quotation'"],
       actionDescription: 'Pulls official service estimate: Inspection (₹800) + Labour (₹2,000) = ₹2,800 total, prompting customer with CONFIRM instruction.',

@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import {
   Search, X, ArrowRight, MessageSquare, User, Briefcase, FileText,
   Users, Package, Zap, ChevronRight, Navigation, LayoutDashboard,
-  Calendar, CheckCircle2, Clock, Building2, Receipt
+  Calendar, CheckCircle2, Clock, Building2, ReceiptText
 } from 'lucide-react';
 import { TabType } from '@/types';
 
@@ -367,7 +367,7 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
             type: 'Transaction',
             typeBadgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
             tab: 'finance-transactions',
-            icon: <Receipt className="w-4 h-4 text-emerald-600" />,
+            icon: <ReceiptText className="w-4 h-4 text-emerald-600" />,
             onClick: () => {
               setActiveTab('finance-transactions');
               onClose();

@@ -16,7 +16,7 @@ import {
   Building,
   Check,
   ArrowRight,
-  Receipt
+  ReceiptText
 } from 'lucide-react';
 
 interface TierPlan {
@@ -275,7 +275,7 @@ export const SubscriptionSettings: React.FC = () => {
               onClick={() => setIsBillingModalOpen(true)}
               className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5"
             >
-              <Receipt className="w-3.5 h-3.5 text-slate-500" />
+              <ReceiptText className="w-3.5 h-3.5 text-slate-500" />
               <span>Manage Billing</span>
             </button>
             <button

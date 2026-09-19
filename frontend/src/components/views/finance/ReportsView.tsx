@@ -3,8 +3,8 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
   BarChart3, Download, FileSpreadsheet, TrendingUp, TrendingDown,
-  DollarSign, ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
-  Receipt, FileText, Calendar, Filter, CheckCircle2, AlertTriangle,
+  IndianRupee, ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
+  ReceiptText, FileText, Calendar, Filter, CheckCircle2, AlertTriangle,
   Building2, Printer, ChevronRight, MessageSquare, Phone, ExternalLink,
   ShieldCheck, RefreshCw, X, ArrowRight, Eye, PieChart as PieIcon, Layers
 } from 'lucide-react';
@@ -429,7 +429,7 @@ Please ignore this message if you have already completed the transfer. If you re
             <div className="flex items-center justify-between text-slate-500 mb-1">
               <span className="text-[11px] font-semibold">Net Profit (EBITDA)</span>
               <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                <DollarSign className="w-3.5 h-3.5" />
+                <IndianRupee className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="text-lg sm:text-xl font-black text-purple-700">₹11,30,190</div>

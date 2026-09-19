@@ -4,7 +4,7 @@ import { Header } from '@/components/layout/Header';
 import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
   Smile, Mic, CheckCheck, Clock, UserCheck, Calendar,
-  Receipt, Bot, Sparkles, Check, ChevronRight, Tag,
+  ReceiptText, Bot, Sparkles, Check, ChevronRight, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
