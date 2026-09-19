@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { WhatsAppTemplateItem } from '@/types';
 import {
@@ -32,10 +32,11 @@ export const AutoWorkflowModal: React.FC<AutoWorkflowModalProps> = ({
     addToast
   } = useQiyamStore();
 
-  if (!isOpen || !template) return null;
-
-  // Initial analysis
-  const initialAnalysis = useMemo(() => analyzeTemplateData(template), [template]);
+  // Initial analysis - safe against null template
+  const initialAnalysis = useMemo(
+    () => analyzeTemplateData(template || {}),
+    [template]
+  );
 
   // Form customizer state
   const [workflowTitle, setWorkflowTitle] = useState(initialAnalysis.suggestedTitle);
@@ -44,15 +45,39 @@ export const AutoWorkflowModal: React.FC<AutoWorkflowModalProps> = ({
   const [triggerMode, setTriggerMode] = useState<'template_send' | 'inbound_message' | 'keyword'>('template_send');
   const [isBuilding, setIsBuilding] = useState(false);
 
+  // Synchronize state with incoming template when modal opens or template updates
+  useEffect(() => {
+    if (isOpen && template) {
+      const analysis = analyzeTemplateData(template);
+      setWorkflowTitle(analysis.suggestedTitle);
+      setIncludePayment(analysis.hasPaymentIntent);
+      setIncludeAgentHandoff(true);
+      setTriggerMode('template_send');
+      setIsBuilding(false);
+    }
+  }, [isOpen, template]);
+
   // Dynamically recompute the generated flow graph based on user configuration
   const generatedFlow: WorkflowGenerationResult = useMemo(() => {
+    if (!template) {
+      return {
+        title: '',
+        description: '',
+        groups: [],
+        keywordRules: [],
+        analysis: initialAnalysis
+      };
+    }
     return generateWorkflowFromTemplate(template, {
-      customTitle: workflowTitle,
+      customTitle: workflowTitle || initialAnalysis.suggestedTitle,
       includePayment,
       includeAgentHandoff,
       triggerMode
     });
-  }, [template, workflowTitle, includePayment, includeAgentHandoff, triggerMode]);
+  }, [template, workflowTitle, includePayment, includeAgentHandoff, triggerMode, initialAnalysis]);
+
+  // Early return strictly AFTER all hooks have executed
+  if (!isOpen || !template) return null;
 
   const handleLaunchWorkflow = async () => {
     setIsBuilding(true);

@@ -1266,11 +1266,13 @@ export const CreateTemplateView: React.FC = () => {
       )}
 
       {/* Auto Workflow Builder Modal */}
-      <AutoWorkflowModal
-        isOpen={isAutoWorkflowModalOpen}
-        onClose={() => setIsAutoWorkflowModalOpen(false)}
-        template={buildPayload()}
-      />
+      {isAutoWorkflowModalOpen && (
+        <AutoWorkflowModal
+          isOpen={isAutoWorkflowModalOpen}
+          onClose={() => setIsAutoWorkflowModalOpen(false)}
+          template={buildPayload()}
+        />
+      )}
     </div>
   );
 };

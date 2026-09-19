@@ -670,14 +670,16 @@ export const TemplateHubView: React.FC = () => {
       />
 
       {/* Auto Workflow Builder Modal */}
-      <AutoWorkflowModal
-        isOpen={isAutoWorkflowModalOpen}
-        onClose={() => {
-          setIsAutoWorkflowModalOpen(false);
-          setWorkflowTemplateTarget(null);
-        }}
-        template={workflowTemplateTarget}
-      />
+      {isAutoWorkflowModalOpen && workflowTemplateTarget && (
+        <AutoWorkflowModal
+          isOpen={isAutoWorkflowModalOpen}
+          onClose={() => {
+            setIsAutoWorkflowModalOpen(false);
+            setWorkflowTemplateTarget(null);
+          }}
+          template={workflowTemplateTarget}
+        />
+      )}
     </div>
   );
 };
