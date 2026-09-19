@@ -61,6 +61,7 @@ export const GeneralSettings: React.FC = () => {
     localStorage.setItem('whatsq_dateformat', dateFormat);
     localStorage.setItem('whatsq_currency', currency);
     localStorage.setItem('whatsq_language', language);
+    window.dispatchEvent(new Event('whatsq_workspace_updated'));
 
     setTimeout(() => {
       setIsSaving(false);
@@ -83,6 +84,7 @@ export const GeneralSettings: React.FC = () => {
       setBrandLogo(result);
       try {
         localStorage.setItem('whatsq_brand_logo', result);
+        window.dispatchEvent(new Event('whatsq_workspace_updated'));
         addToast('Brand logo uploaded and applied across workspace!', 'success');
       } catch (err) {
         addToast('Storage quota exceeded. Please choose a smaller image.', 'error');
@@ -94,6 +96,7 @@ export const GeneralSettings: React.FC = () => {
   const handleRemoveLogo = () => {
     setBrandLogo('');
     localStorage.removeItem('whatsq_brand_logo');
+    window.dispatchEvent(new Event('whatsq_workspace_updated'));
     if (fileInputRef.current) fileInputRef.current.value = '';
     addToast('Brand logo reset to default avatar.', 'info');
   };

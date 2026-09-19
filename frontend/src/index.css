@@ -61,3 +61,24 @@
   animation-play-state: paused;
 }
 
+/* Sidebar Brand Title Marquee */
+@keyframes brandTitleScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-brand-scroll {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: brandTitleScroll 12s linear infinite;
+  will-change: transform;
+}
+
+.animate-brand-scroll:hover {
+  animation-play-state: paused;
+}
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { TabType } from '../../types';
 import {
@@ -150,6 +150,29 @@ export const Sidebar: React.FC = () => {
     metaConfig,
     suppressionList,
   } = useQiyamStore();
+
+  // Brand Header & Workspace Name
+  const [brandTitle, setBrandTitle] = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('whatsq_workspace_name') || 'Qiyam Business OS' : 'Qiyam Business OS'
+  );
+  const [brandLogo, setBrandLogo] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('whatsq_brand_logo') : null
+  );
+
+  useEffect(() => {
+    const handleWorkspaceSync = () => {
+      if (typeof window !== 'undefined') {
+        setBrandTitle(localStorage.getItem('whatsq_workspace_name') || 'Qiyam Business OS');
+        setBrandLogo(localStorage.getItem('whatsq_brand_logo'));
+      }
+    };
+    window.addEventListener('storage', handleWorkspaceSync);
+    window.addEventListener('whatsq_workspace_updated', handleWorkspaceSync);
+    return () => {
+      window.removeEventListener('storage', handleWorkspaceSync);
+      window.removeEventListener('whatsq_workspace_updated', handleWorkspaceSync);
+    };
+  }, []);
 
   // Tenant / Organization Switcher state
   const [isTenantOpen, setIsTenantOpen] = useState(false);
@@ -482,36 +505,55 @@ export const Sidebar: React.FC = () => {
         {/* Brand Header */}
         <div className={`p-3.5 flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between'} border-b border-[#1E293B]/60 transition-all`}>
           <div
-            className="flex items-center gap-3 overflow-hidden cursor-pointer"
+            className="flex items-center gap-2.5 overflow-hidden cursor-pointer min-w-0 flex-1 mr-1.5"
             onClick={() => handleTabClick('dashboard')}
-            title="WhatsQ Dashboard"
+            title={brandTitle}
           >
-            {(() => {
-              const brandLogo = typeof window !== 'undefined' ? localStorage.getItem('whatsq_brand_logo') : null;
-              const workspaceName = typeof window !== 'undefined' ? localStorage.getItem('whatsq_workspace_name') || 'WhatsQ' : 'WhatsQ';
-              return (
-                <>
-                  <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30 overflow-hidden">
-                    {brandLogo ? (
-                      <img src={brandLogo} alt="Tenant Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                      </svg>
-                    )}
-                  </div>
-                  {!isCollapsed && (
-                    <div className="truncate">
-                      <div className="font-bold text-white tracking-wide text-base leading-tight truncate">{workspaceName}</div>
-                      <div className="text-[11px] text-emerald-400 font-medium truncate">Qiyam Business OS</div>
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30 overflow-hidden">
+              {brandLogo ? (
+                <img src={brandLogo} alt="Tenant Logo" className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              )}
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1 overflow-hidden">
+                {/* Brand Title: Smooth Auto-scrolling Marquee so full name is never missed */}
+                {brandTitle.length > 10 ? (
+                  <div
+                    className="relative overflow-hidden w-full select-none cursor-pointer [mask-image:linear-gradient(to_right,black_calc(100%-18px),transparent)]"
+                    title={brandTitle}
+                  >
+                    <div
+                      className="animate-brand-scroll inline-flex items-center font-bold text-white tracking-wide text-base leading-tight whitespace-nowrap"
+                      style={{
+                        animationDuration: `${Math.max(8, brandTitle.length * 0.45)}s`,
+                      }}
+                    >
+                      <span className="pr-4">{brandTitle}</span>
+                      <span className="pr-4 text-emerald-400/70 font-bold text-xs">•</span>
+                      <span className="pr-4">{brandTitle}</span>
+                      <span className="pr-4 text-emerald-400/70 font-bold text-xs">•</span>
                     </div>
-                  )}
-                </>
-              );
-            })()}
+                  </div>
+                ) : (
+                  <div
+                    className="font-bold text-white tracking-wide text-base leading-tight truncate"
+                    title={brandTitle}
+                  >
+                    {brandTitle}
+                  </div>
+                )}
+                <div className="text-[11px] text-emerald-400 font-medium truncate">
+                  Qiyam Business OS
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Mobile close button */}
             <button
               onClick={() => setIsMobileSidebarOpen(false)}
