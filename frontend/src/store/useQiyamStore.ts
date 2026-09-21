@@ -459,6 +459,7 @@ interface QiyamState {
   metaWallet: MetaWalletInfo;
   walletTransactions: MetaWalletTransaction[];
   bulkCampaigns: BulkCampaign[];
+  fetchBulkCampaigns: () => Promise<void>;
   bulkRecipientLists: BulkRecipientList[];
   bulkScheduledMessages: BulkScheduledMessage[];
   bulkTemplates: BulkTemplateItem[];
@@ -2421,8 +2422,71 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     return true;
   },
 
+  // ─── Real Campaign API ─────────────────────────────────────────────────────
+
+  fetchBulkCampaigns: async () => {
+    try {
+      const res = await apiClient.get('/conversations/bulk-campaigns/');
+      if (res && Array.isArray(res.results !== undefined ? res.results : res)) {
+        const raw = res.results !== undefined ? res.results : res;
+        const mapped: BulkCampaign[] = raw.map((c: any) => ({
+          id: String(c.id),
+          name: c.name,
+          description: c.description || '',
+          type: c.type || 'Marketing',
+          category: c.category || 'marketing',
+          audienceListName: c.audience_list_name || '',
+          totalRecipients: c.total_recipients || 0,
+          recipients: c.total_recipients || 0,
+          deliveredCount: c.delivered_count || 0,
+          delivered: c.delivered_count || 0,
+          deliveredPercent: c.delivered_percent || 0,
+          readCount: c.read_count || 0,
+          repliedCount: c.replied_count || 0,
+          failedCount: c.failed_count || 0,
+          failed: c.failed_count || 0,
+          failedPercent: c.failed_percent || 0,
+          pending: 0,
+          templateName: c.template_name || '',
+          messageText: c.message_text || '',
+          cost: c.cost || 0,
+          status: c.status || 'COMPLETED',
+          createdBy: c.created_by || '',
+          createdAt: c.created_at || new Date().toISOString(),
+          createdOn: c.created_at
+            ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : '',
+          completedOn: c.completed_at
+            ? new Date(c.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : '',
+          scheduledFor: c.scheduled_for || null,
+          recipientsList: (c.recipient_logs || []).map((log: any) => ({
+            id: String(log.id),
+            name: log.name || '',
+            phone: log.phone || '',
+            status: log.status || 'QUEUED',
+            time: log.time || '',
+            errorReason: log.errorReason || '',
+          })),
+        }));
+        set({ bulkCampaigns: mapped });
+      }
+    } catch (err) {
+      // Silently fail — no fake data, just empty list
+      console.warn('[fetchBulkCampaigns] failed:', err);
+    }
+  },
+
   sendBulkMessage: async (campaign: any) => {
-    const totalRecipients = campaign.totalRecipients || campaign.recipientsCount || 1000;
+    // Build contacts list from the campaign payload
+    const contacts: { name: string; phone: string }[] = campaign.contacts || [];
+    const totalRecipients = contacts.length || campaign.totalRecipients || campaign.recipientsCount || 0;
+
+    if (totalRecipients === 0) {
+      get().addToast('No contacts to send to. Please select recipients.', 'error');
+      return { success: false, error: 'No contacts' };
+    }
+
     const rate =
       campaign.category === 'utility' || campaign.type === 'Utility'
         ? 0.3
@@ -2437,78 +2501,42 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
 
     if (currentBalance < totalCost) {
       get().addToast(
-        `Insufficient Meta Wallet balance (₹${currentBalance.toFixed(
-          2
-        )}). Need ₹${totalCost.toFixed(2)}. Please add funds.`,
+        `Insufficient Meta Wallet balance (₹${currentBalance.toFixed(2)}). Need ₹${totalCost.toFixed(2)}. Please add funds.`,
         'error'
       );
       return { success: false, error: 'Insufficient balance' };
     }
 
-    const newBalance = Number((currentBalance - totalCost).toFixed(2));
-    const nowStr = new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    const nowFull =
-      new Date().toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }) +
-      ', ' +
-      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const newTx: MetaWalletTransaction = {
-      id: `tx-${Date.now()}`,
-      type: 'debit',
-      category: 'Campaign Messages',
-      amount: totalCost,
-      currency: get().metaWallet.currency,
-      description: `${totalRecipients.toLocaleString()} messages for "${campaign.name}"`,
-      timestamp: nowFull,
-      balanceAfter: newBalance,
-      campaignId: `cmp-${Date.now()}`,
-      campaignName: campaign.name,
-    };
-
-    if (campaign.scheduleType === 'later' || campaign.scheduleType === 'schedule') {
-      const newScheduled: BulkScheduledMessage = {
-        id: `sch-${Date.now()}`,
+    try {
+      const res = await apiClient.post('/conversations/bulk-campaigns/launch/', {
         name: campaign.name,
-        campaignName: campaign.name,
-        description:
-          campaign.description ||
-          `Broadcast to ${
-            campaign.audienceListName || campaign.recipientSegment || 'Audience'
-          }`,
-        type: 'Campaign',
-        scheduledDateTime:
-          campaign.scheduledFor ||
-          `${campaign.scheduledDate || nowStr} ${
-            campaign.scheduledTime || '10:00 AM'
-          }`,
-        scheduledDate: campaign.scheduledDate || nowStr,
-        scheduledTime: campaign.scheduledTime || '10:00 AM',
-        scheduledFor:
-          campaign.scheduledFor || `${campaign.scheduledDate || nowStr}T10:00`,
-        recipientGroupName:
-          campaign.audienceListName ||
-          campaign.recipientSegment ||
-          'All Active Customers',
-        recipientCount: totalRecipients,
-        recipients: totalRecipients,
-        status: 'QUEUED',
+        description: campaign.description || '',
+        type: campaign.type || 'Marketing',
         category: campaign.category || 'marketing',
-        estimatedCost: totalCost,
-        createdBy: 'Rahul Mehta',
-        createdOn: nowFull,
-        createdAt: nowFull,
-        templateName: campaign.templateName || 'Offer Announcement',
-        templateUsed: campaign.templateName || 'Offer Announcement',
-        messageText: campaign.messageText || '',
-      };
+        audience_list_name: campaign.audienceListName || '',
+        template_name: campaign.templateName || '',
+        message_text: campaign.messageText || '',
+        contacts,
+        cost: totalCost,
+        account_ids: campaign.accountIds || [],
+        created_by: campaign.createdBy || 'Admin',
+        min_delay: campaign.minDelay || 4,
+        max_delay: campaign.maxDelay || 8,
+        batch_size: campaign.batchSize || 25,
+        sleep_seconds: campaign.sleepSeconds || 30,
+      });
+
+      if (!res || res.success === false) {
+        get().addToast(res?.error || 'Failed to launch campaign', 'error');
+        return { success: false, error: res?.error || 'Launch failed' };
+      }
+
+      // Deduct from wallet UI
+      const newBalance = Number((currentBalance - totalCost).toFixed(2));
+      const nowFull =
+        new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+        ', ' +
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       set((state) => ({
         metaWallet: {
@@ -2516,73 +2544,36 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
           balance: newBalance,
           lastUpdated: 'Just now',
         },
-        walletTransactions: [newTx, ...state.walletTransactions],
-        bulkScheduledMessages: [newScheduled, ...state.bulkScheduledMessages],
+        walletTransactions: [
+          {
+            id: `tx-${Date.now()}`,
+            type: 'debit' as const,
+            category: 'Campaign Messages',
+            amount: totalCost,
+            currency: state.metaWallet.currency,
+            description: `${totalRecipients.toLocaleString()} messages for "${campaign.name}"`,
+            timestamp: nowFull,
+            balanceAfter: newBalance,
+            campaignId: String(res.campaign?.id || ''),
+            campaignName: campaign.name,
+          },
+          ...state.walletTransactions,
+        ],
       }));
 
+      // Refresh campaign list from DB
+      await get().fetchBulkCampaigns();
+
       get().addToast(
-        `Scheduled "${campaign.name}" for ${newScheduled.scheduledDateTime}. Reserved ₹${totalCost.toFixed(
-          2
-        )} from Meta Wallet.`,
+        `Campaign "${campaign.name}" launched to ${totalRecipients.toLocaleString()} contacts! ₹${totalCost.toFixed(2)} deducted.`,
         'success'
       );
-      return { success: true, campaignId: newScheduled.id };
+
+      return { success: true, campaignId: String(res.campaign?.id || '') };
+    } catch (err: any) {
+      get().addToast(`Campaign launch failed: ${err?.message || 'Unknown error'}`, 'error');
+      return { success: false, error: err?.message || 'Unknown error' };
     }
-
-    const deliveredCount = Math.round(totalRecipients * 0.98);
-    const failedCount = totalRecipients - deliveredCount;
-    const newCmp: BulkCampaign = {
-      id: `cmp-${Date.now()}`,
-      name: campaign.name,
-      description:
-        campaign.description ||
-        `Broadcast to ${
-          campaign.audienceListName || campaign.recipientSegment || 'Audience'
-        }`,
-      type: campaign.type || 'Marketing',
-      category: campaign.category || 'marketing',
-      audienceListName:
-        campaign.audienceListName ||
-        campaign.recipientSegment ||
-        'All Active Customers',
-      totalRecipients,
-      recipients: totalRecipients,
-      deliveredCount,
-      delivered: deliveredCount,
-      deliveredPercent: 98.0,
-      readCount: Math.round(totalRecipients * 0.72),
-      repliedCount: Math.round(totalRecipients * 0.14),
-      failedCount,
-      failed: failedCount,
-      failedPercent: 2.0,
-      pending: 0,
-      cost: totalCost,
-      createdOn: nowStr,
-      createdAt: new Date().toISOString(),
-      createdBy: 'Rahul Mehta',
-      completedOn: nowFull,
-      status: 'COMPLETED',
-      templateName: campaign.templateName || 'Offer Announcement',
-      messageText: campaign.messageText || '',
-    };
-
-    set((state) => ({
-      metaWallet: {
-        ...state.metaWallet,
-        balance: newBalance,
-        lastUpdated: 'Just now',
-      },
-      walletTransactions: [newTx, ...state.walletTransactions],
-      bulkCampaigns: [newCmp, ...state.bulkCampaigns],
-    }));
-
-    get().addToast(
-      `Dispatched "${campaign.name}" to ${totalRecipients.toLocaleString()} recipients! Deducted ₹${totalCost.toFixed(
-        2
-      )} from Meta Wallet.`,
-      'success'
-    );
-    return { success: true, campaignId: newCmp.id };
   },
 
   updateMetaWallet: (updates) => {

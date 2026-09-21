@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   History,
   Search,
@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Send,
   CheckCheck,
+  Loader2,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkCampaign } from '../../../types';
@@ -26,17 +27,22 @@ import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 
 export const BulkCampaignHistoryView: React.FC = () => {
-  const { bulkCampaigns, duplicateCampaign, setActiveTab, addToast } = useQiyamStore();
+  const { bulkCampaigns, fetchBulkCampaigns, duplicateCampaign, setActiveTab, addToast } = useQiyamStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedCampaign, setSelectedCampaign] = useState<BulkCampaign | null>(
-    bulkCampaigns[0] || null
-  );
+  const [selectedCampaign, setSelectedCampaign] = useState<BulkCampaign | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'preview' | 'recipients' | 'errors'>(
     'overview'
   );
+
+  // Fetch real campaign history from backend on mount
+  useEffect(() => {
+    setIsLoading(true);
+    fetchBulkCampaigns().finally(() => setIsLoading(false));
+  }, []);
 
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
@@ -51,11 +57,11 @@ export const BulkCampaignHistoryView: React.FC = () => {
     });
   }, [bulkCampaigns, searchQuery, statusFilter]);
 
-  // Aggregate Metrics
+  // Aggregate Metrics — all real from DB
   const totalCampaigns = bulkCampaigns.length;
   const totalMessagesSent = bulkCampaigns.reduce((acc, c) => acc + c.totalRecipients, 0);
   const totalDelivered = bulkCampaigns.reduce((acc, c) => acc + c.deliveredCount, 0);
-  const avgDeliveryRate = totalMessagesSent > 0 ? (totalDelivered / totalMessagesSent) * 100 : 98.4;
+  const avgDeliveryRate = totalMessagesSent > 0 ? (totalDelivered / totalMessagesSent) * 100 : 0;
   const totalMetaSpend = bulkCampaigns.reduce((acc, c) => acc + c.cost, 0);
 
   const formatMoney = (amount: number) => {
@@ -252,11 +258,50 @@ export const BulkCampaignHistoryView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCampaigns.map((camp) => {
-                  const delRate = ((camp.deliveredCount / camp.totalRecipients) * 100).toFixed(1);
-                  const readRate = ((camp.readCount / camp.totalRecipients) * 100).toFixed(1);
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                        <span className="text-sm text-slate-500">Loading campaign history...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredCampaigns.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+                          <Send className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">No campaigns yet</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {searchQuery || statusFilter !== 'all'
+                              ? 'No campaigns match your filter.'
+                              : 'Launch your first WhatsApp broadcast to see results here.'}
+                          </p>
+                        </div>
+                        {!searchQuery && statusFilter === 'all' && (
+                          <button
+                            onClick={() => setActiveTab('bulk-send')}
+                            className="mt-1 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition cursor-pointer"
+                          >
+                            + New Campaign
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredCampaigns.map((camp) => {
+                  const delRate = camp.totalRecipients > 0
+                    ? ((camp.deliveredCount / camp.totalRecipients) * 100).toFixed(1)
+                    : '0.0';
+                  const readRate = camp.totalRecipients > 0
+                    ? ((camp.readCount / camp.totalRecipients) * 100).toFixed(1)
+                    : '0.0';
                   const isCompleted = camp.status === 'COMPLETED';
-                  const isSending = camp.status === 'SENDING';
+                  const isSending = camp.status === 'SENDING' || camp.status === 'RUNNING';
                   return (
                     <tr key={camp.id} className="hover:bg-slate-50/60 transition">
                       <td className="p-4">

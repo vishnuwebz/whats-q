@@ -55,7 +55,7 @@ export const BulkSendMessageView: React.FC = () => {
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
 
   // Form states
-  const [campaignName, setCampaignName] = useState('Diwali Mega Sale 2024');
+  const [campaignName, setCampaignName] = useState('');
   const [category, setCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
   const [sendType, setSendType] = useState<'now' | 'schedule'>('now');
   const [scheduledDateTime, setScheduledDateTime] = useState('2026-09-18T10:00');
@@ -428,22 +428,32 @@ export const BulkSendMessageView: React.FC = () => {
           addToast(`Campaign scheduled successfully for ${scheduledDateTime}!`, 'success');
           setActiveTab('bulk-scheduled');
         } else {
-          setTimeout(() => {
-            sendBulkMessage({
-              name: campaignName,
-              category,
-              audienceListName: `${activeList.name} (${audienceCount} selected)`,
-              totalRecipients: audienceCount,
-              templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Broadcast',
-              cost: estimatedCost,
-            });
+          setIsSending(true);
+          // Build real contacts list from the selected IDs
+          const selectedContacts = currentListContacts
+            .filter((c) => activeSelectedIds.has(c.id))
+            .map((c) => ({ name: c.name, phone: c.phone }));
+
+          sendBulkMessage({
+            name: campaignName,
+            category,
+            type: category === 'utility' ? 'Utility' : category === 'authentication' ? 'Authentication' : 'Marketing',
+            audienceListName: `${activeList.name} (${audienceCount} selected)`,
+            totalRecipients: audienceCount,
+            templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Broadcast',
+            messageText: messageType === 'template'
+              ? (activeTemplate.bodyText || activeTemplate.body || '')
+              : freeformText,
+            contacts: selectedContacts,
+            cost: estimatedCost,
+          }).then((result: any) => {
             setIsSending(false);
-            addToast(
-              `Campaign "${campaignName}" launched successfully to ${audienceCount} selected contacts!`,
-              'success'
-            );
-            setActiveTab('bulk-campaigns');
-          }, 1000);
+            if (result?.success) {
+              setActiveTab('bulk-campaigns');
+            }
+          }).catch(() => {
+            setIsSending(false);
+          });
         }
       },
     });

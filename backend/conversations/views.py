@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.http import HttpResponse
-from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice
+from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice, BulkCampaign, BulkCampaignLog
 from .meta_service import MetaWhatsAppService
 from .grabber_views import link_grabber_session
 from core.events import emit_event
@@ -2500,3 +2500,177 @@ class InspectGroupInviteView(APIView):
                 **group_data,
             })
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BulkCampaign — Real Campaign History + Launch API
+# ─────────────────────────────────────────────────────────────────────────────
+
+class BulkCampaignSerializer(serializers.ModelSerializer):
+    delivered_percent = serializers.FloatField(read_only=True)
+    failed_percent = serializers.FloatField(read_only=True)
+    recipient_logs = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BulkCampaign
+        fields = [
+            'id', 'gateway_campaign_id', 'name', 'description', 'type', 'category',
+            'audience_list_name', 'total_recipients', 'delivered_count', 'read_count',
+            'replied_count', 'failed_count', 'delivered_percent', 'failed_percent',
+            'template_name', 'message_text', 'cost', 'status',
+            'created_by', 'created_at', 'completed_at', 'scheduled_for',
+            'recipient_logs',
+        ]
+
+    def get_recipient_logs(self, obj):
+        logs = obj.logs.all()[:50]  # cap at 50 for performance
+        return [
+            {
+                'id': log.id,
+                'name': log.name,
+                'phone': log.phone,
+                'status': log.status,
+                'errorReason': log.error_reason,
+                'time': log.sent_at.strftime('%I:%M %p') if log.sent_at else '',
+            }
+            for log in logs
+        ]
+
+
+class BulkCampaignViewSet(viewsets.ModelViewSet):
+    """
+    Real Campaign API. Stores every broadcast to DB so history is persistent.
+    - GET  /api/conversations/bulk-campaigns/         → list real campaigns
+    - POST /api/conversations/bulk-campaigns/launch/  → start a new broadcast
+    - POST /api/conversations/bulk-campaigns/{id}/update_status/ → gateway callback
+    """
+    queryset = BulkCampaign.objects.all()
+    serializer_class = BulkCampaignSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    @action(detail=False, methods=['post'])
+    def launch(self, request):
+        """
+        Launches a real broadcast campaign.
+        Expects:
+          name, category, audience_list_name, template_name, message_text,
+          contacts: [{name, phone}, ...], cost (optional)
+        """
+        data = request.data
+        name = data.get('name', '').strip()
+        if not name:
+            return Response({'success': False, 'error': 'Campaign name is required'}, status=400)
+
+        contacts = data.get('contacts', [])
+        if not contacts:
+            return Response({'success': False, 'error': 'No contacts provided'}, status=400)
+
+        category = data.get('category', 'marketing')
+        message_text = data.get('message_text', '')
+        template_name = data.get('template_name', '')
+        audience_list_name = data.get('audience_list_name', '')
+        rate = 0.30 if category == 'utility' else 0.12 if category == 'authentication' else 0.78
+        cost = float(data.get('cost', round(len(contacts) * rate, 2)))
+
+        # Create DB record first
+        campaign = BulkCampaign.objects.create(
+            name=name,
+            description=data.get('description', f'Broadcast to {audience_list_name}'),
+            type=data.get('type', 'Marketing'),
+            category=category,
+            audience_list_name=audience_list_name,
+            total_recipients=len(contacts),
+            template_name=template_name,
+            message_text=message_text,
+            cost=cost,
+            status='RUNNING',
+            created_by=data.get('created_by', 'Admin'),
+        )
+
+        # Create log rows (QUEUED) for each contact
+        BulkCampaignLog.objects.bulk_create([
+            BulkCampaignLog(
+                campaign=campaign,
+                name=c.get('name', ''),
+                phone=c.get('phone', ''),
+                status='QUEUED',
+            )
+            for c in contacts
+        ])
+
+        # Now call the WhatsApp gateway to actually send
+        gateway_campaign_id = None
+        try:
+            ensure_baileys_service(wait_until_ready=True)
+            payload = json.dumps({
+                'id': f'camp-{campaign.id}',
+                'name': name,
+                'accountIds': data.get('account_ids', []),
+                'template': {
+                    'messageText': message_text,
+                    'templateName': template_name,
+                },
+                'targetContacts': [
+                    {'name': c.get('name', ''), 'phone': c.get('phone', '')}
+                    for c in contacts
+                ],
+                'minDelay': int(data.get('min_delay', 4)),
+                'maxDelay': int(data.get('max_delay', 8)),
+                'batchSize': int(data.get('batch_size', 25)),
+                'sleepSeconds': int(data.get('sleep_seconds', 30)),
+            }).encode('utf-8')
+
+            gw_req = urllib.request.Request(
+                f'{BAILEYS_GATEWAY_URL}/api/campaigns/start',
+                data=payload,
+                headers={'Content-Type': 'application/json'},
+                method='POST',
+            )
+            with urllib.request.urlopen(gw_req, timeout=15) as resp:
+                gw_data = json.loads(resp.read().decode('utf-8'))
+                gateway_campaign_id = gw_data.get('campaign', {}).get('id') or f'camp-{campaign.id}'
+
+            campaign.gateway_campaign_id = gateway_campaign_id
+            campaign.save(update_fields=['gateway_campaign_id'])
+
+            logger.info(f'[BulkCampaign] Launched campaign {campaign.id} "{name}" → gateway {gateway_campaign_id}')
+
+        except Exception as e:
+            logger.error(f'[BulkCampaign] Gateway launch failed for campaign {campaign.id}: {e}')
+            # Don't fail — we still record the campaign. Mark it as failed.
+            campaign.status = 'FAILED'
+            campaign.save(update_fields=['status'])
+            return Response({
+                'success': False,
+                'error': f'WhatsApp gateway error: {str(e)}',
+                'campaign_id': campaign.id,
+            }, status=500)
+
+        return Response({
+            'success': True,
+            'campaign': BulkCampaignSerializer(campaign).data,
+        }, status=201)
+
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        """
+        Called by the gateway (or polling) to update campaign progress/completion.
+        Expects: status, sent_count, delivered_count, failed_count
+        """
+        try:
+            campaign = self.get_object()
+        except BulkCampaign.DoesNotExist:
+            return Response({'error': 'Campaign not found'}, status=404)
+
+        new_status = request.data.get('status', '').upper()
+        if new_status in ['COMPLETED', 'PAUSED', 'FAILED', 'RUNNING']:
+            campaign.status = new_status
+
+        campaign.delivered_count = int(request.data.get('delivered_count', campaign.delivered_count))
+        campaign.failed_count = int(request.data.get('failed_count', campaign.failed_count))
+
+        if new_status == 'COMPLETED':
+            import datetime as dt
+            campaign.completed_at = dt.datetime.now(dt.timezone.utc)
+
+        campaign.save()
+        return Response({'success': True, 'campaign': BulkCampaignSerializer(campaign).data})

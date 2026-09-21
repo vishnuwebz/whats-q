@@ -180,3 +180,98 @@ class WhatsAppTemplate(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.meta_category} - {self.meta_status})"
+
+
+class BulkCampaign(models.Model):
+    """
+    Persists every real WhatsApp broadcast campaign launched via Qiyam.
+    Tracks gateway results so Campaign History shows real send/deliver/fail counts.
+    """
+    STATUS_CHOICES = [
+        ('QUEUED', 'Queued'),
+        ('RUNNING', 'Running'),
+        ('COMPLETED', 'Completed'),
+        ('PAUSED', 'Paused'),
+        ('FAILED', 'Failed'),
+    ]
+    TYPE_CHOICES = [
+        ('Marketing', 'Marketing'),
+        ('Utility', 'Utility'),
+        ('Authentication', 'Authentication'),
+        ('Engagement', 'Engagement'),
+    ]
+
+    gateway_campaign_id = models.CharField(max_length=100, blank=True, default='')  # gateway camp-xxx id
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES, default='Marketing')
+    category = models.CharField(max_length=50, default='marketing')  # marketing | utility | authentication
+
+    # Audience
+    audience_list_name = models.CharField(max_length=255, default='')
+    total_recipients = models.IntegerField(default=0)
+
+    # Results (updated by gateway callbacks or on completion)
+    delivered_count = models.IntegerField(default=0)
+    read_count = models.IntegerField(default=0)
+    replied_count = models.IntegerField(default=0)
+    failed_count = models.IntegerField(default=0)
+
+    # Template / Message
+    template_name = models.CharField(max_length=255, blank=True, default='')
+    message_text = models.TextField(blank=True, default='')
+
+    # Financials
+    cost = models.FloatField(default=0.0)  # INR
+
+    # Timing
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='QUEUED')
+    created_by = models.CharField(max_length=150, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    scheduled_for = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.status}) — {self.total_recipients} recipients"
+
+    @property
+    def delivered_percent(self):
+        if self.total_recipients == 0:
+            return 0.0
+        return round((self.delivered_count / self.total_recipients) * 100, 1)
+
+    @property
+    def failed_percent(self):
+        if self.total_recipients == 0:
+            return 0.0
+        return round((self.failed_count / self.total_recipients) * 100, 1)
+
+
+class BulkCampaignLog(models.Model):
+    """
+    Individual per-contact dispatch log for a BulkCampaign.
+    STATUS shows real delivery state returned by Meta Cloud API or Baileys.
+    """
+    STATUS_CHOICES = [
+        ('QUEUED', 'Queued'),
+        ('SENT', 'Sent'),
+        ('DELIVERED', 'Delivered'),
+        ('READ', 'Read'),
+        ('FAILED', 'Failed'),
+    ]
+
+    campaign = models.ForeignKey(BulkCampaign, related_name='logs', on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, blank=True, default='')
+    phone = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='QUEUED')
+    error_reason = models.CharField(max_length=500, blank=True, default='')
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f"{self.phone} [{self.status}] — {self.campaign.name}"
