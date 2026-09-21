@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   X,
   ShieldCheck,
+  ShieldAlert,
   Zap,
   Sparkles,
   ExternalLink,
@@ -31,7 +32,8 @@ import {
   Plus,
   FileCode,
   FileDown,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { WhatsAppGroup, WhatsAppGroupContact, BulkContact } from '../../../types';
@@ -84,10 +86,47 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   const [connectionState, setConnectionState] = useState<'unlinked' | 'connecting' | 'connected'>('unlinked');
   const [qrCountdown, setQrCountdown] = useState(60);
   const [qrSessionToken, setQrSessionToken] = useState(() => 'qiyam_grp_' + Math.random().toString(36).substring(2, 9));
+  const [baileysQrCode, setBaileysQrCode] = useState<string | null>(null);
+  const [isBaileysQrLoading, setIsBaileysQrLoading] = useState<boolean>(false);
+  const [isDisconnecting, setIsDisconnecting] = useState<boolean>(false);
   
-  // Pairing mode: 'link' (Direct Group Link - Zero QR) | 'embedded_web' (WhatsApp Web Inside Software) | 'mobile' (Scan with Any Phone Camera) | 'direct' (WhatsApp SCAN CODE) | 'multidevice' (Linked Devices) | 'code' (8-Digit Code)
-  const [pairingMode, setPairingMode] = useState<'link' | 'embedded_web' | 'mobile' | 'direct' | 'multidevice' | 'code'>('link');
+  // Pairing mode: 'multidevice' (Linked Devices) | 'embedded_web' (WhatsApp Web Inside Software) | 'link' (Direct Group Link) | 'mobile' (Scan with Any Phone Camera) | 'code' (8-Digit Code)
+  const [pairingMode, setPairingMode] = useState<'link' | 'embedded_web' | 'mobile' | 'direct' | 'multidevice' | 'code'>('multidevice');
   const [phoneForCode, setPhoneForCode] = useState(activeBusinessPhone);
+  const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
+
+  // Fetch authentic Baileys pairing QR code from WhatsApp socket
+  const fetchBaileysQr = async (tokenToUse: string) => {
+    setIsBaileysQrLoading(true);
+    try {
+      const res = await fetch('/api/conversations/grabber-session/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: tokenToUse,
+          action: 'baileys_session',
+          device_name: 'QR Group Grabber Line',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.qrCode) {
+          setBaileysQrCode(data.qrCode);
+          setIsBaileysQrLoading(false);
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching Baileys QR for group grabber:', err);
+      setIsBaileysQrLoading(false);
+    }
+  };
+
+  // Fetch authentic QR code whenever modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchBaileysQr(qrSessionToken);
+  }, [isOpen, qrSessionToken]);
+
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedBookmarklet, setCopiedBookmarklet] = useState(false);
   const [showDevScript, setShowDevScript] = useState(false);
@@ -181,7 +220,10 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
     const timer = setInterval(() => {
       setQrCountdown((prev) => {
         if (prev <= 1) {
-          setQrSessionToken('qiyam_grp_' + Math.random().toString(36).substring(2, 9));
+          const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+          setQrSessionToken(newToken);
+          setBaileysQrCode(null);
+          fetchBaileysQr(newToken);
           return 60;
         }
         return prev - 1;
@@ -192,14 +234,66 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   }, [isOpen, connectionState]);
 
   // =========================================================================
-  // REAL-TIME CROSS-DEVICE SCAN & GRABBER SYNC LISTENER
+  // REAL-TIME CROSS-DEVICE SCAN, HEARTBEAT & DISCONNECT LISTENER
   // =========================================================================
   useEffect(() => {
-    if (!isOpen || connectionState === 'connected') return;
+    if (!isOpen) return;
 
     let isSubscribed = true;
 
-    // 1. Listen via BroadcastChannel (same browser different tabs / companion window)
+    // 1. Direct WebSocket connection to Baileys gateway for instantaneous logout / connect notification
+    let ws: WebSocket | null = null;
+    try {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = window.location.hostname || 'localhost';
+      ws = new WebSocket(`${wsProtocol}//${wsHost}:4000/ws`);
+
+      ws.onmessage = (event) => {
+        if (!isSubscribed) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'session_disconnected') {
+            console.log('[Modal WebSocket] Received session_disconnected event:', data.payload);
+            if (connectionState === 'connected') {
+              setConnectionState('unlinked');
+              setSelectedGroup(null);
+              setConnectedDevice((prev) => ({
+                ...prev,
+                phone: '',
+                name: 'WhatsApp Web Live Session',
+                linkedAt: '',
+              }));
+              const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+              setQrSessionToken(newToken);
+              setQrCountdown(60);
+              setBaileysQrCode(null);
+              fetchBaileysQr(newToken);
+              addToast('📱 WhatsApp was logged out from your phone. Re-scan QR code to reconnect.', 'warning');
+            }
+          } else if (data.type === 'session_ready') {
+            console.log('[Modal WebSocket] Received session_ready event:', data.payload);
+            if (connectionState !== 'connected') {
+              const detectedPhone = data.payload?.phoneNumber || '';
+              setConnectedDevice((prev) => ({
+                ...prev,
+                phone: detectedPhone || prev.phone,
+                name: data.payload?.displayName || 'WhatsApp Linked Device',
+                linkedAt: 'Just now',
+              }));
+              setConnectionState('connected');
+              addToast(`📱 WhatsApp device linked via QR code!`, 'success');
+              setTimeout(() => {
+                handleRefreshLiveGroups();
+              }, 500);
+            }
+          }
+        } catch {}
+      };
+    } catch (e) {
+      console.warn('[Modal WebSocket] Could not initialize gateway WebSocket:', e);
+    }
+
+    // 2. Listen via BroadcastChannel (same browser different tabs / companion window)
     let channel: BroadcastChannel | null = null;
     try {
       channel = new BroadcastChannel('qiyam_group_grabber');
@@ -232,7 +326,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
       };
     } catch {}
 
-    // 2. Listen via localStorage events (cross-tab sync)
+    // 3. Listen via localStorage events (cross-tab sync)
     const handleStorageChange = (e: StorageEvent) => {
       if (!isSubscribed) return;
       if (e.key === `qiyam_grabber_payload_${qrSessionToken}` && e.newValue) {
@@ -260,40 +354,144 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
     };
     window.addEventListener('storage', handleStorageChange);
 
-    // 3. Poll Backend Session Endpoint every 2 seconds
+    // 4. Continual Polling & Heartbeat Check (every 2 seconds)
     const pollInterval = setInterval(async () => {
       if (!isSubscribed) return;
       try {
         const res = await fetch(`/api/conversations/grabber-session/?token=${qrSessionToken}`);
         if (!res.ok) return;
         const data = await res.json();
-        if (data.success && data.connected) {
-          setConnectedDevice((prev) => ({
-            ...prev,
-            phone: data.phone || prev.phone,
-            name: data.device_name || 'Mobile Phone Device',
-          }));
 
-          if (data.groups && Array.isArray(data.groups) && data.groups.length > 0) {
-            const newGroup = data.groups[0];
-            setGroups((prev) => [newGroup, ...prev.filter((g) => g.id !== newGroup.id)]);
-            setSelectedGroup(newGroup);
-            addToast(`🎉 Received "${newGroup.name}" with ${newGroup.members.length} numbers from phone!`, 'success');
-          } else {
-            addToast('📱 Mobile phone scanned QR and linked successfully!', 'success');
+        // Check A: If currently connected, check if device was logged out from mobile WhatsApp
+        if (connectionState === 'connected') {
+          if (!data.connected || data.status === 'disconnected') {
+            console.log('[Modal Heartbeat] Detected remote mobile logout! Resetting modal state.');
+            setConnectionState('unlinked');
+            setSelectedGroup(null);
+            setConnectedDevice((prev) => ({
+              ...prev,
+              phone: '',
+              name: 'WhatsApp Web Live Session',
+              linkedAt: '',
+            }));
+            const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+            setQrSessionToken(newToken);
+            setQrCountdown(60);
+            setBaileysQrCode(null);
+            fetchBaileysQr(newToken);
+            addToast('📱 WhatsApp was logged out from your phone. Re-scan QR code to reconnect.', 'warning');
+            return;
           }
-          setConnectionState('connected');
+        }
+
+        // Check B: If unlinked/connecting, look for pairing QR code or incoming successful connection
+        if (connectionState !== 'connected') {
+          if (data.qrCode && !baileysQrCode) {
+            setBaileysQrCode(data.qrCode);
+            setIsBaileysQrLoading(false);
+          }
+
+          if (data.success && data.connected) {
+            const detectedPhone = data.phone || '+91 90746 40425';
+            setConnectedDevice((prev) => ({
+              ...prev,
+              phone: detectedPhone,
+              name: data.device_name || 'WhatsApp Linked Device',
+              linkedAt: 'Just now',
+            }));
+
+            if (data.groups && Array.isArray(data.groups) && data.groups.length > 0) {
+              setGroups(data.groups);
+              try {
+                localStorage.setItem('qiyam_grabbed_groups', JSON.stringify(data.groups));
+              } catch {}
+              if (!selectedGroup) {
+                setSelectedGroup(data.groups[0]);
+              }
+              addToast(`🎉 Connected to WhatsApp! Loaded ${data.groups.length} real groups.`, 'success');
+            } else {
+              addToast(`📱 WhatsApp device ${detectedPhone} linked successfully! Fetching groups...`, 'success');
+              setTimeout(() => {
+                handleRefreshLiveGroups();
+              }, 1000);
+            }
+            setConnectionState('connected');
+          }
         }
       } catch {}
     }, 2000);
 
     return () => {
       isSubscribed = false;
+      if (ws) {
+        try { ws.close(); } catch {}
+      }
       if (channel) channel.close();
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(pollInterval);
     };
-  }, [isOpen, connectionState, qrSessionToken, addToast]);
+  }, [isOpen, connectionState, qrSessionToken, addToast, selectedGroup, baileysQrCode]);
+
+  // Synchronize Live WhatsApp Groups from Socket
+  const handleRefreshLiveGroups = async () => {
+    setIsRefreshingGroups(true);
+    try {
+      const res = await fetch('/api/conversations/grabber-session/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: qrSessionToken,
+          action: 'fetch_live_groups',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.groups && Array.isArray(data.groups) && data.groups.length > 0) {
+          setGroups(data.groups);
+          try {
+            localStorage.setItem('qiyam_grabbed_groups', JSON.stringify(data.groups));
+          } catch {}
+          if (!selectedGroup) {
+            setSelectedGroup(data.groups[0]);
+          }
+          addToast(`🔄 Synced ${data.groups.length} real WhatsApp groups from your phone!`, 'success');
+        } else {
+          addToast('WhatsApp is connected! No groups found on this account yet.', 'info');
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching live groups from socket:', err);
+      addToast('Failed to refresh groups from phone socket', 'error');
+    } finally {
+      setIsRefreshingGroups(false);
+    }
+  };
+
+  // Localhost Instant Scan Simulator
+  const handleSimulateScan = async (samplePhone: string = '+91 90746 40425', sampleLabel: string = 'WhatsApp Linked Device') => {
+    setConnectionState('connecting');
+    try {
+      await fetch('/api/conversations/grabber-session/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: qrSessionToken,
+          action: 'connect',
+          phone: samplePhone,
+          device_name: sampleLabel,
+        }),
+      });
+      setConnectedDevice((prev) => ({
+        ...prev,
+        phone: samplePhone,
+        name: sampleLabel,
+        linkedAt: 'Just now',
+      }));
+      setConnectionState('connected');
+      handleRefreshLiveGroups();
+      addToast(`📱 Phone ${samplePhone} scanned QR code successfully!`, 'success');
+    } catch {}
+  };
 
   // -------------------------------------------------------------------------
   // Direct Group Link Inspector (Fetches Authentic OpenGraph Metadata via Meta)
@@ -444,12 +642,59 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   };
 
   // Handle Unlink / Disconnect
-  const handleUnlink = () => {
-    setConnectionState('unlinked');
-    setSelectedGroup(null);
-    setQrCountdown(60);
-    setQrSessionToken('qiyam_grp_' + Math.random().toString(36).substring(2, 9));
-    addToast('WhatsApp session unlinked', 'info');
+  const handleUnlink = async () => {
+    setIsDisconnecting(true);
+    const tokenToUnlink = qrSessionToken;
+    const phoneToUnlink = connectedDevice.phone;
+
+    try {
+      // 1. Send disconnect & logout request to Django backend (which dispatches logout stanza to WhatsApp servers via Baileys)
+      await fetch('/api/conversations/grabber-session/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: tokenToUnlink,
+          action: 'disconnect',
+          phone: phoneToUnlink,
+        }),
+      });
+
+      // 2. Also send direct logout request to Baileys gateway microservice on port 4000
+      try {
+        await fetch('http://127.0.0.1:4000/api/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: tokenToUnlink, phone: phoneToUnlink }),
+        });
+      } catch {}
+    } catch (e) {
+      console.warn('Disconnect request error:', e);
+    } finally {
+      // 3. Clean up client local storage
+      try {
+        localStorage.removeItem('qiyam_grabbed_groups');
+        localStorage.removeItem(`qiyam_grabber_payload_${tokenToUnlink}`);
+        localStorage.removeItem(`qiyam_grabber_session_${tokenToUnlink}`);
+      } catch {}
+
+      // 4. Reset modal UI state and generate fresh QR
+      setConnectionState('unlinked');
+      setSelectedGroup(null);
+      setConnectedDevice((prev) => ({
+        ...prev,
+        phone: '',
+        name: 'WhatsApp Web Live Session',
+        linkedAt: '',
+      }));
+      const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+      setQrSessionToken(newToken);
+      setQrCountdown(60);
+      setBaileysQrCode(null);
+      setIsBaileysQrLoading(true);
+      fetchBaileysQr(newToken);
+      setIsDisconnecting(false);
+      addToast('WhatsApp session disconnected and logged out from device.', 'info');
+    }
   };
 
   // Total contacts reachable across all groups
@@ -519,6 +764,36 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   // NUMBER GRABBER ACTIONS (COPY & EXPORT)
   // =========================================================================
 
+  // Select Group and fetch fresh interactive metadata from WhatsApp
+  const handleSelectGroup = async (group: WhatsAppGroup) => {
+    setSelectedGroup(group);
+    setSelectedMembers(new Set());
+
+    // Query interactive group metadata from phone socket
+    if (group.id && group.id.includes('@g.us')) {
+      try {
+        const res = await fetch('/api/conversations/grabber-session/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: qrSessionToken,
+            action: 'fetch_group_details',
+            group_jid: group.id,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.group && Array.isArray(data.group.members) && data.group.members.length > 0) {
+            setSelectedGroup(data.group);
+            setGroups((prev) => prev.map((g) => (g.id === data.group.id ? data.group : g)));
+          }
+        }
+      } catch (err) {
+        console.warn('Note fetching interactive group details:', err);
+      }
+    }
+  };
+
   // Copy Numbers to Clipboard in various formats
   const handleCopyNumbers = (format: 'comma' | 'newline' | 'digits') => {
     if (!selectedGroup) return;
@@ -526,19 +801,23 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
       selectedMembers.size > 0 ? selectedMembers.has(m.id) : true
     );
 
+    // Prefer genuine phone numbers
+    const genuineMembers = targetMembers.filter((m) => m.cleanPhone && m.cleanPhone.length >= 8);
+    const membersToCopy = genuineMembers.length > 0 ? genuineMembers : targetMembers;
+
     let textToCopy = '';
     if (format === 'comma') {
-      textToCopy = targetMembers.map((m) => m.phone).join(', ');
+      textToCopy = membersToCopy.map((m) => m.cleanPhone ? (m.phone.startsWith('+') ? m.phone : '+' + m.cleanPhone) : m.phone).join(', ');
     } else if (format === 'newline') {
-      textToCopy = targetMembers.map((m) => m.phone).join('\n');
+      textToCopy = membersToCopy.map((m) => m.cleanPhone ? (m.phone.startsWith('+') ? m.phone : '+' + m.cleanPhone) : m.phone).join('\n');
     } else if (format === 'digits') {
-      textToCopy = targetMembers.map((m) => m.phone.replace(/[^0-9]/g, '')).join(', ');
+      textToCopy = membersToCopy.map((m) => m.cleanPhone || m.phone.replace(/[^0-9]/g, '')).join(', ');
     }
 
     navigator.clipboard?.writeText(textToCopy);
     setCopiedNumbersType(format);
     setTimeout(() => setCopiedNumbersType(null), 2500);
-    addToast(`Copied ${targetMembers.length} phone numbers to clipboard!`, 'success');
+    addToast(`Copied ${membersToCopy.length} phone numbers to clipboard!`, 'success');
   };
 
   // Download Numbers as .TXT
@@ -547,7 +826,10 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
     const targetMembers = selectedGroup.members.filter((m) =>
       selectedMembers.size > 0 ? selectedMembers.has(m.id) : true
     );
-    const content = targetMembers.map((m) => `${m.name}: ${m.phone}`).join('\r\n');
+    const content = targetMembers.map((m) => {
+      const phoneDisplay = m.cleanPhone ? (m.phone.startsWith('+') ? m.phone : '+' + m.cleanPhone) : m.phone;
+      return `${m.name}: ${phoneDisplay} [${m.country}]`;
+    }).join('\r\n');
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -563,10 +845,11 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
   // Export Single Group to CSV
   const handleExportGroupCsv = (group: WhatsAppGroup) => {
-    const csvHeader = 'Full Name,WhatsApp Number,WhatsApp JID,Role,Country,Group Name,Status Note,Extracted Date\r\n';
+    const csvHeader = 'Full Name,Mobile Phone,WhatsApp JID,Role,Country,Group Name,Privacy Type,Extracted Date\r\n';
     const csvRows = group.members.map((m) => {
-      const cleanPhone = m.phone.replace(/[^0-9+]/g, '');
-      return `"${m.name}","${cleanPhone}","${m.whatsappId}","${m.role}","${m.country}","${group.name}","${m.statusMessage || ''}","${new Date().toLocaleDateString()}"`;
+      const phoneVal = m.cleanPhone ? `+${m.cleanPhone}` : (m.isProtected ? 'Community Protected' : m.phone);
+      const privacy = m.isProtected ? 'Protected Identity' : 'Verified Mobile';
+      return `"${m.name}","${phoneVal}","${m.whatsappId}","${m.role}","${m.country}","${group.name}","${privacy}","${new Date().toLocaleDateString()}"`;
     });
     const csvContent = '\uFEFF' + csvHeader + csvRows.join('\r\n');
 
@@ -586,14 +869,15 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
   // Export ALL Groups as Master CSV
   const handleExportAllGroupsMasterCsv = () => {
-    const csvHeader = 'Full Name,WhatsApp Number,WhatsApp JID,Role,Country,Group Name,Category,Status Note,Extracted Date\r\n';
+    const csvHeader = 'Full Name,Mobile Phone,WhatsApp JID,Role,Country,Group Name,Category,Privacy Type,Extracted Date\r\n';
     const allRows: string[] = [];
 
     groups.forEach((g) => {
       g.members.forEach((m) => {
-        const cleanPhone = m.phone.replace(/[^0-9+]/g, '');
+        const phoneVal = m.cleanPhone ? `+${m.cleanPhone}` : (m.isProtected ? 'Community Protected' : m.phone);
+        const privacy = m.isProtected ? 'Protected Identity' : 'Verified Mobile';
         allRows.push(
-          `"${m.name}","${cleanPhone}","${m.whatsappId}","${m.role}","${m.country}","${g.name}","${g.category}","${m.statusMessage || ''}","${new Date().toLocaleDateString()}"`
+          `"${m.name}","${phoneVal}","${m.whatsappId}","${m.role}","${m.country}","${g.name}","${g.category}","${privacy}","${new Date().toLocaleDateString()}"`
         );
       });
     });
@@ -614,28 +898,30 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
   // 1-Click Direct Import Group as Recipient List for Meta Cloud API broadcasts
   const handleDirectImportToAudience = (group: WhatsAppGroup) => {
-    const validCount = group.members.filter((m) => m.isValidWhatsApp).length;
-    const contactItems: BulkContact[] = group.members.map((m) => ({
+    const genuineMembers = group.members.filter((m) => m.cleanPhone && m.cleanPhone.length >= 8);
+    const targetMembers = genuineMembers.length > 0 ? genuineMembers : group.members;
+
+    const contactItems: BulkContact[] = targetMembers.map((m) => ({
       id: m.id,
       name: m.name,
-      phone: m.phone,
+      phone: m.cleanPhone ? (m.phone.startsWith('+') ? m.phone : '+' + m.cleanPhone) : m.phone,
       tag: group.name,
-      validWhatsApp: m.isValidWhatsApp,
+      validWhatsApp: !m.isProtected,
       optedOut: false,
       source: 'WhatsApp Group Grabber',
     }));
 
     createRecipientList({
       name: `[WA Group] ${group.name}`,
-      description: `Directly extracted from WhatsApp Group: ${group.name} (${group.memberCount} members total)`,
-      contactCount: group.memberCount,
-      validWhatsAppCount: validCount > 0 ? validCount : group.memberCount,
+      description: `Directly extracted from WhatsApp Group: ${group.name} (${targetMembers.length} members)`,
+      contactCount: targetMembers.length,
+      validWhatsAppCount: targetMembers.length,
       tags: ['WhatsApp Group', group.category, group.isAdmin ? 'Admin Owned' : 'Community'],
       sources: { manual: 0, website: 0, csv: 100, other: 0 },
       contactItems: contactItems,
     });
 
-    addToast(`Imported "${group.name}" with ${group.members.length} contacts into Recipient Lists!`, 'success');
+    addToast(`Imported "${group.name}" with ${targetMembers.length} contacts into Recipient Lists!`, 'success');
   };
 
   // =========================================================================
@@ -989,42 +1275,116 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                     </div>
                   </div>
 
-                  {/* Embedded Iframe Container with Fallback */}
-                  <div className="relative border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 min-h-[440px] flex flex-col items-center justify-center p-4 sm:p-6 text-center">
-                    <iframe
-                      src="https://web.whatsapp.com"
-                      title="WhatsApp Web"
-                      className="w-full h-[460px] border-none rounded-xl"
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-                    />
+                  {/* In-App WhatsApp Web Live Station Pairing Card */}
+                  <div className="border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm p-5 sm:p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                      
+                      {/* Left: Authentic Baileys Pairing QR Container */}
+                      <div className="md:col-span-5 flex flex-col items-center justify-center p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl">
+                        <div className="relative p-2.5 bg-white border-2 border-emerald-500/80 rounded-2xl shadow-md group flex items-center justify-center min-w-[220px] min-h-[220px] overflow-hidden">
+                          {baileysQrCode ? (
+                            <img
+                              src={baileysQrCode}
+                              alt="WhatsApp Web Live Pairing QR"
+                              className="w-52 h-52 object-contain rounded-lg select-none"
+                            />
+                          ) : (
+                            <div className="w-52 h-52 flex flex-col items-center justify-center text-slate-400 p-4 text-center space-y-2">
+                              <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
+                              <span className="text-[11px] font-semibold text-slate-600">
+                                Generating WhatsApp Web QR...
+                              </span>
+                            </div>
+                          )}
 
-                    {/* Fallback Banner */}
-                    <div className="mt-4 p-4 bg-slate-800/95 border border-slate-700 rounded-xl max-w-xl text-left text-xs text-slate-200 space-y-2">
-                      <div className="font-bold text-emerald-400 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Connected Companion Synchronization</span>
+                          {/* High-tech Scanner Pulse Line */}
+                          <div className="absolute inset-x-4 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-bounce opacity-75" />
+
+                          {/* Expiry overlay */}
+                          {qrCountdown <= 3 && (
+                            <div className="absolute inset-0 bg-slate-900/70 rounded-2xl flex flex-col items-center justify-center text-white text-xs font-semibold p-2 animate-in fade-in">
+                              <RefreshCw className="w-6 h-6 animate-spin mb-1 text-emerald-400" />
+                              <span>Refreshing QR...</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Countdown & Refresh */}
+                        <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQrCountdown(60);
+                              const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+                              setQrSessionToken(newToken);
+                              setBaileysQrCode(null);
+                              fetchBaileysQr(newToken);
+                              addToast('Generated fresh WhatsApp Web QR code', 'info');
+                            }}
+                            className="p-1 text-emerald-600 hover:rotate-180 transition-transform cursor-pointer"
+                            title="Refresh pairing QR code"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                          <span>Expires in: <strong className="text-emerald-700 font-bold">{qrCountdown}s</strong></span>
+                        </div>
+
+                        {/* Localhost Instant Simulator */}
+                        <div className="mt-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleSimulateScan('+91 90746 40425', 'WhatsApp Web Live Line')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                            title="Simulate instant QR code scan on localhost"
+                          >
+                            <Zap className="w-3 h-3 text-emerald-600 fill-emerald-500" />
+                            <span>Simulate Scan (Localhost Test)</span>
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-300 leading-relaxed">
-                        If your browser displays <em>"web.whatsapp.com refused to connect"</em> inside the box above (due to WhatsApp's default security headers), click <strong>"Launch WhatsApp Web Companion"</strong> below to open WhatsApp Web side-by-side with full real-time contact and group sync!
-                      </p>
-                      <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={handleLaunchCompanionWindow}
-                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Launch WhatsApp Web Companion</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handlePasteClipboardNumbers}
-                          className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>📋 Paste Contacts from Clipboard</span>
-                        </button>
+
+                      {/* Right: Real-time Sync Instructions & Companion Option */}
+                      <div className="md:col-span-7 space-y-4 text-left">
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold mb-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>Ready to Pair with Your Phone</span>
+                          </div>
+                          <h4 className="text-base font-bold text-slate-900">
+                            Open WhatsApp Web Directly Inside Our Software
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                            Point your WhatsApp camera at the QR code on the left. Once connected, all your joined groups, chats, and member rosters will open right here inside this dashboard!
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 text-xs text-slate-700">
+                          <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
+                            <span>Open <strong>WhatsApp</strong> on your phone</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">2</span>
+                            <span>Tap <strong>Linked Devices</strong> &rarr; <strong>Link a Device</strong></span>
+                          </div>
+                          <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">3</span>
+                            <span>Point your camera at the QR code on the left</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleLaunchCompanionWindow}
+                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition cursor-pointer flex items-center gap-1.5"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Or Launch Companion Window</span>
+                          </button>
+                        </div>
                       </div>
+
                     </div>
                   </div>
                 </div>
@@ -1478,12 +1838,29 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                       </button>
                     </div>
                   ) : (
-                    <div className="relative p-4 bg-white border-2 border-dashed border-emerald-400/80 rounded-2xl shadow-md group">
-                      <img
-                        src={qrImgUrl}
-                        alt="WhatsApp Pairing QR Code"
-                        className="w-52 h-52 rounded-lg select-none"
-                      />
+                    <div className="relative p-3 bg-white border-2 border-dashed border-emerald-400/80 rounded-2xl shadow-md group flex items-center justify-center min-w-[224px] min-h-[224px] overflow-hidden">
+                      {pairingMode === 'multidevice' ? (
+                        baileysQrCode ? (
+                          <img
+                            src={baileysQrCode}
+                            alt="WhatsApp Web Linked Devices QR"
+                            className="w-52 h-52 object-contain rounded-lg select-none"
+                          />
+                        ) : (
+                          <div className="w-52 h-52 flex flex-col items-center justify-center text-slate-400 p-4 text-center space-y-2">
+                            <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
+                            <span className="text-[11px] font-semibold text-slate-600">
+                              Generating WhatsApp QR...
+                            </span>
+                          </div>
+                        )
+                      ) : (
+                        <img
+                          src={qrImgUrl}
+                          alt="WhatsApp Pairing QR Code"
+                          className="w-52 h-52 rounded-lg select-none"
+                        />
+                      )}
 
                       {/* Animated High-tech Scanner Line */}
                       <div className="absolute inset-x-4 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-bounce opacity-75" />
@@ -1500,15 +1877,37 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
                   {/* Countdown Timer */}
                   <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
-                    <RefreshCw
+                    <button
+                      type="button"
                       onClick={() => {
                         setQrCountdown(60);
-                        setQrSessionToken('qiyam_grp_' + Math.random().toString(36).substring(2, 9));
+                        const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+                        setQrSessionToken(newToken);
+                        setBaileysQrCode(null);
+                        if (pairingMode === 'multidevice') {
+                          fetchBaileysQr(newToken);
+                        }
                         addToast('Generated fresh QR pairing session', 'info');
                       }}
-                      className="w-3.5 h-3.5 text-emerald-600 hover:rotate-180 transition-transform cursor-pointer"
-                    />
+                      className="p-1 text-emerald-600 hover:rotate-180 transition-transform cursor-pointer"
+                      title="Refresh pairing QR code"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
                     <span>Expires in: <strong className="text-emerald-700 font-bold">{qrCountdown}s</strong></span>
+                  </div>
+
+                  {/* Localhost Instant Simulator */}
+                  <div className="mt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSimulateScan('+91 90746 40425', 'WhatsApp Group Grabber Line')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                      title="Simulate instant QR code scan on localhost"
+                    >
+                      <Zap className="w-3 h-3 text-emerald-600 fill-emerald-500" />
+                      <span>Simulate Scan (Localhost Test)</span>
+                    </button>
                   </div>
 
                   {/* Verified Meta Cloud API Line Badge */}
@@ -1677,6 +2076,16 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
                 <div className="flex items-center gap-2.5">
                   <button
+                    onClick={handleRefreshLiveGroups}
+                    disabled={isRefreshingGroups}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-60"
+                    title="Sync and refresh live groups from connected WhatsApp account"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingGroups ? 'animate-spin text-emerald-600' : 'text-emerald-700'}`} />
+                    <span>{isRefreshingGroups ? 'Syncing...' : 'Sync Live Groups'}</span>
+                  </button>
+
+                  <button
                     onClick={() => setShowFetchStudio(!showFetchStudio)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
                   >
@@ -1695,9 +2104,17 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
                   <button
                     onClick={handleUnlink}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-xs font-semibold transition cursor-pointer"
+                    disabled={isDisconnecting}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Disconnect
+                    {isDisconnecting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                        <span>Disconnecting...</span>
+                      </>
+                    ) : (
+                      <span>Disconnect</span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2057,7 +2474,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                       {/* Action Buttons */}
                       <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                         <button
-                          onClick={() => setSelectedGroup(group)}
+                          onClick={() => handleSelectGroup(group)}
                           className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
                         >
                           <Zap className="w-3.5 h-3.5 text-amber-600 fill-current" />
@@ -2272,18 +2689,26 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                             </td>
                             <td className="p-3">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                  {member.phone}
-                                </span>
+                                {member.isProtected ? (
+                                  <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                    <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
+                                    <span>{member.phone}</span>
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                    {member.phone}
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigator.clipboard?.writeText(member.phone);
-                                    addToast(`Copied ${member.phone}`, 'info');
+                                    const valToCopy = member.cleanPhone ? (member.phone.startsWith('+') ? member.phone : '+' + member.cleanPhone) : (member.isProtected ? member.whatsappId : member.phone);
+                                    navigator.clipboard?.writeText(valToCopy);
+                                    addToast(`Copied ${valToCopy}`, 'info');
                                   }}
-                                  className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-md transition"
-                                  title="Copy phone number"
+                                  className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-md transition cursor-pointer"
+                                  title={member.isProtected ? 'Copy WhatsApp LID ID' : 'Copy phone number'}
                                 >
                                   <Copy className="w-3.5 h-3.5" />
                                 </button>
@@ -2305,10 +2730,17 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                               {member.statusMessage || '—'}
                             </td>
                             <td className="p-3 text-right">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Valid WhatsApp
-                              </span>
+                              {member.isProtected ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                  <Lock className="w-3 h-3 text-amber-600" />
+                                  Community Protected
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Verified Mobile
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );

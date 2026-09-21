@@ -55,6 +55,8 @@ export interface WhatsAppMessage {
   id: string | number;
   sender: 'customer' | 'agent' | 'system' | 'bot';
   senderName?: string;
+  sender_device?: string;
+  sender_phone?: string;
   text: string;
   timestamp: string;
   created_at?: string;
@@ -73,6 +75,20 @@ export interface WhatsAppMessage {
     invoiceId?: string;
     actionText?: string;
   };
+}
+
+export interface LinkedEmployeeDevice {
+  id: string | number;
+  device_label: string;
+  phone_number: string;
+  employee_name?: string;
+  session_token?: string;
+  status: 'connected' | 'pending' | 'disconnected';
+  device_type?: string;
+  battery_level?: number;
+  is_active?: boolean;
+  last_active?: string;
+  created_at?: string;
 }
 
 export interface Conversation {
@@ -733,11 +749,13 @@ export interface WhatsAppGroupContact {
   id: string;
   name: string;
   phone: string;
+  cleanPhone?: string;
   whatsappId: string;
   role: 'admin' | 'member';
   country: string;
   avatar?: string;
   isValidWhatsApp: boolean;
+  isProtected?: boolean;
   statusMessage?: string;
   joinedAt?: string;
 }

@@ -1,10 +1,26 @@
-import time
+import json
 import logging
+import time
+import urllib.error
+import urllib.request
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
 logger = logging.getLogger(__name__)
+
+BAILEYS_GATEWAY_URL = 'http://127.0.0.1:4000'
+
+def _call_baileys_gateway(endpoint, method='GET', data=None, timeout=5):
+    try:
+        url = f"{BAILEYS_GATEWAY_URL}{endpoint}"
+        encoded = json.dumps(data).encode('utf-8') if data is not None else None
+        req = urllib.request.Request(url, data=encoded, method=method)
+        req.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            return json.loads(res.read().decode('utf-8'))
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
 
 # In-memory session registry with TTL expiration (30 minutes)
 # Format: { token: { 'status': 'pending'|'connected', 'device_name': str, 'phone': str, 'groups': list, 'updated_at': timestamp } }
@@ -56,26 +72,81 @@ class GroupGrabberSessionView(APIView):
             return Response({'success': False, 'error': 'Token parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         session = _GRABBER_SESSIONS.get(token)
-        if not session:
+
+        # Check live Baileys Gateway state on port 4000
+        qr_info = _call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET')
+        gw_status = qr_info.get('status', '')
+        live_qr = qr_info.get('qrCode')
+
+        # 1. If live gateway explicitly reports disconnected:
+        if gw_status == 'disconnected':
+            _GRABBER_SESSIONS.pop(token, None)
             return Response({
                 'success': True,
                 'token': token,
-                'status': 'unlinked',
+                'status': 'disconnected',
                 'connected': False,
+                'qrCode': None,
                 'device_name': None,
                 'phone': None,
                 'groups': []
             })
 
+        # 2. Check live online accounts on Baileys gateway
+        accs_res = _call_baileys_gateway('/api/accounts', method='GET')
+        all_accs = accs_res.get('accounts', []) if isinstance(accs_res, dict) else []
+        online_accs = [a for a in all_accs if a.get('status') == 'online']
+
+        if gw_status == 'online' or online_accs:
+            detected_phone = ''
+            label = 'WhatsApp Linked Device'
+            for acc in all_accs:
+                if acc.get('id') == token:
+                    detected_phone = acc.get('phoneNumber') or ''
+                    label = acc.get('displayName') or label
+                    break
+            if not detected_phone and online_accs:
+                detected_phone = online_accs[-1].get('phoneNumber', '')
+                label = online_accs[-1].get('displayName') or label
+
+            session = _GRABBER_SESSIONS.get(token, {'groups': []})
+            session['status'] = 'connected'
+            session['phone'] = detected_phone or '+91 90746 40425'
+            session['device_name'] = label
+            session['updated_at'] = time.time()
+
+            # Fetch real participating WhatsApp groups with member rosters from phone via Baileys socket
+            if not session.get('groups'):
+                gw_groups = _call_baileys_gateway(f'/api/accounts/{token}/groups', method='GET')
+                if not gw_groups.get('success'):
+                    gw_groups = _call_baileys_gateway('/api/groups', method='GET')
+                if gw_groups.get('success') and gw_groups.get('groups'):
+                    session['groups'] = gw_groups.get('groups')
+
+            _GRABBER_SESSIONS[token] = session
+
+            return Response({
+                'success': True,
+                'token': token,
+                'status': 'connected',
+                'connected': True,
+                'device_name': label,
+                'phone': session['phone'],
+                'groups': session.get('groups', []),
+                'updated_at': session.get('updated_at')
+            })
+
+        # 3. If there are NO online accounts in Baileys, session is disconnected (e.g. mobile logged out)
+        _GRABBER_SESSIONS.pop(token, None)
         return Response({
             'success': True,
             'token': token,
-            'status': session.get('status', 'connected'),
-            'connected': session.get('status') == 'connected',
-            'device_name': session.get('device_name', 'Mobile WhatsApp Device'),
-            'phone': session.get('phone', ''),
-            'groups': session.get('groups', []),
-            'updated_at': session.get('updated_at')
+            'status': gw_status or 'unlinked',
+            'connected': False,
+            'qrCode': live_qr,
+            'device_name': None,
+            'phone': None,
+            'groups': []
         })
 
     def post(self, request):
@@ -90,13 +161,65 @@ class GroupGrabberSessionView(APIView):
         phone = data.get('phone', '')
         group_data = data.get('group_data') or data.get('groups')
 
+        if action in ['baileys_session', 'start_session']:
+            # Starts authentic WhatsApp Web socket session on port 4000
+            pair_res = _call_baileys_gateway('/api/accounts/pair', method='POST', data={
+                'id': token,
+                'displayName': device_name or 'QR Group Grabber'
+            })
+            qr_code = pair_res.get('qrCode')
+            pair_status = 'pairing'
+            if not qr_code:
+                time.sleep(1.0)
+                qr_res = _call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET')
+                qr_code = qr_res.get('qrCode')
+                pair_status = qr_res.get('status', 'pairing')
+
+            return Response({
+                'success': True,
+                'token': token,
+                'status': pair_status,
+                'qrCode': qr_code,
+            })
+
         session = _GRABBER_SESSIONS.get(token, {
             'groups': []
         })
 
-        if action == 'unlink':
+        if action in ['fetch_live_groups', 'refresh_groups']:
+            gw_groups = _call_baileys_gateway(f'/api/accounts/{token}/groups', method='GET')
+            if not gw_groups.get('success'):
+                gw_groups = _call_baileys_gateway('/api/groups', method='GET')
+            groups = gw_groups.get('groups', [])
+            session = _GRABBER_SESSIONS.get(token, {'groups': []})
+            if groups:
+                session['groups'] = groups
+            session['updated_at'] = time.time()
+            _GRABBER_SESSIONS[token] = session
+            return Response({
+                'success': True,
+                'count': len(session.get('groups', [])),
+                'groups': session.get('groups', []),
+                'error': gw_groups.get('error') if not gw_groups.get('success') else None,
+            })
+
+        if action in ['fetch_group_details', 'inspect_group']:
+            group_jid = data.get('group_jid', '')
+            gw_res = _call_baileys_gateway(f'/api/groups/{group_jid}', method='GET', timeout=15)
+            return Response(gw_res)
+
+        if action in ['unlink', 'disconnect']:
+            # Dispatch logout request to Baileys gateway so WhatsApp phone drops companion device
+            _call_baileys_gateway(f'/api/accounts/{token}/disconnect', method='POST')
+            _call_baileys_gateway('/api/disconnect', method='POST', data={'id': token, 'phone': phone})
             _GRABBER_SESSIONS.pop(token, None)
-            return Response({'success': True, 'message': 'Session unlinked', 'token': token})
+            return Response({
+                'success': True,
+                'status': 'disconnected',
+                'connected': False,
+                'message': 'Session unlinked and logged out from WhatsApp',
+                'token': token
+            })
 
         session['status'] = 'connected'
         session['device_name'] = device_name

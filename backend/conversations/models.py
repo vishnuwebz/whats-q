@@ -98,6 +98,8 @@ class Message(models.Model):
     timestamp = models.CharField(max_length=50, default='10:30 AM')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='read')
     meta_message_id = models.CharField(max_length=150, blank=True, default='') # wamid.HBgL...
+    sender_device = models.CharField(max_length=150, blank=True, default='') # e.g. "Ramesh Kumar (Sales Desk)", "Meta Cloud API"
+    sender_phone = models.CharField(max_length=50, blank=True, default='') # e.g. "+91 98471 23456"
     error_details = models.JSONField(blank=True, null=True)
     rich_card = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -107,6 +109,29 @@ class Message(models.Model):
 
     def __str__(self):
         return f"[{self.sender}] {self.text[:30]}"
+
+class LinkedEmployeeDevice(models.Model):
+    """
+    Connected Employee WhatsApp Devices linked via QR Code scanning.
+    Allows sales staff, dispatch coordinators, and field employees to chat with customers
+    directly from their individual or company-given WhatsApp phone lines within Qiyam Business OS.
+    """
+    device_label = models.CharField(max_length=150, default='Surat Wholesale Line')
+    phone_number = models.CharField(max_length=50, blank=True, default='')
+    employee_name = models.CharField(max_length=150, blank=True, default='')
+    session_token = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    status = models.CharField(max_length=50, default='connected') # connected, pending, disconnected
+    device_type = models.CharField(max_length=100, default='WhatsApp Web Multi-Device')
+    battery_level = models.IntegerField(default=95)
+    is_active = models.BooleanField(default=True)
+    last_active = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.device_label} ({self.phone_number}) [{self.status}]"
 
 class WhatsAppTemplate(models.Model):
     META_CATEGORY_CHOICES = [

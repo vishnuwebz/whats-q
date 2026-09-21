@@ -7,7 +7,8 @@ from .views import (
     MetaConfigViewSet,
     WhatsAppWebhookView,
     SimulateWhatsAppMessageView,
-    InspectGroupInviteView
+    InspectGroupInviteView,
+    LinkedEmployeeDeviceViewSet,
 )
 from .grabber_views import GroupGrabberSessionView
 
@@ -16,6 +17,7 @@ router.register(r'threads', ConversationViewSet)
 router.register(r'messages', MessageViewSet)
 router.register(r'templates', WhatsAppTemplateViewSet)
 router.register(r'meta-config', MetaConfigViewSet, basename='meta-config')
+router.register(r'linked-devices', LinkedEmployeeDeviceViewSet, basename='linked-devices')
 
 urlpatterns = [
     path('webhook/', WhatsAppWebhookView.as_view(), name='whatsapp_webhook'),

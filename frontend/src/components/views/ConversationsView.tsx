@@ -8,7 +8,7 @@ import {
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
-  Zap, Play, Pause, GitBranch, Edit3
+  Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
@@ -16,8 +16,10 @@ import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
 import { DeleteConversationModal } from './conversations/DeleteConversationModal';
 import { ManualOptOutModal } from './conversations/ManualOptOutModal';
 import { ChatWorkflowModal } from './conversations/ChatWorkflowModal';
+import { LinkEmployeeWhatsAppModal } from './conversations/LinkEmployeeWhatsAppModal';
+import { EditEmployeeDeviceModal } from './conversations/EditEmployeeDeviceModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
-import { Conversation } from '@/types';
+import { Conversation, LinkedEmployeeDevice } from '@/types';
 import { apiClient } from '@/api/client';
 import {
   sortConversationsByRecency,
@@ -66,12 +68,19 @@ export const ConversationsView: React.FC = () => {
     setActiveWorkflowGroups,
     toggleConversationWorkflow,
     simulateInboundWhatsApp,
+    linkedDevices,
+    activeSenderDeviceId,
+    setActiveSenderDeviceId,
+    unlinkEmployeeDevice,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isLinkDeviceModalOpen, setIsLinkDeviceModalOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<LinkedEmployeeDevice | null>(null);
+  const [isLineSelectorOpen, setIsLineSelectorOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
   const [isManualOptOutModalOpen, setIsManualOptOutModalOpen] = useState(false);
@@ -461,7 +470,7 @@ export const ConversationsView: React.FC = () => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !currentConv) return;
 
-    sendMessage(currentConv.id, inputText, 'agent');
+    sendMessage(currentConv.id, inputText, 'agent', activeSenderDeviceId);
     setInputText('');
   };
 
@@ -908,6 +917,41 @@ export const ConversationsView: React.FC = () => {
         primaryActionLabel="New WhatsApp Chat"
         onPrimaryAction={() => setIsSimulatorOpen(true)}
       />
+
+      {/* Top Connected Employee Devices & QR Link Action Strip */}
+      <div className="bg-white border-b border-slate-200/80 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Multi-Device Inbox:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-semibold">
+              <span>📱</span>
+              <span>{linkedDevices.length} Employee Phone{linkedDevices.length === 1 ? '' : 's'} Linked</span>
+            </span>
+
+            <span className="hidden sm:inline text-slate-300">•</span>
+
+            <span className="text-[11px] text-slate-500 hidden sm:inline">
+              Company Official Line: <strong className="font-mono text-slate-800 font-semibold">{metaConfig?.business_phone_display || '+91 94963 00233'}</strong> (Meta Cloud API)
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <button
+            type="button"
+            onClick={() => setIsLinkDeviceModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs shadow-emerald-700/20 transition-all active:scale-95 cursor-pointer"
+            title="Scan QR code to connect an employee's WhatsApp phone to this dashboard"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>Link Employee WhatsApp</span>
+          </button>
+        </div>
+      </div>
 
       {/* Main 3-Pane WhatsApp Shared Inbox */}
       <div className="flex-1 flex overflow-hidden border-t border-slate-200">
@@ -1700,6 +1744,13 @@ export const ConversationsView: React.FC = () => {
                                   <span>Qiyam AI Assistant</span>
                                 </div>
                               )}
+                              {!isCustomer && !isBot && !isTemplateMessage && (msg.sender_device || msg.sender_phone) && (
+                                <div className="flex items-center gap-1 text-[9.5px] font-semibold text-emerald-200/90 mb-1">
+                                  <Smartphone className="w-2.5 h-2.5 text-emerald-300" />
+                                  <span>{msg.sender_device || 'Employee WhatsApp'}</span>
+                                  {msg.sender_phone && <span className="font-mono text-[9px] opacity-75">({msg.sender_phone})</span>}
+                                </div>
+                              )}
                               <div className="whitespace-pre-wrap break-words">{msg.text}</div>
 
                               {/* Rich Confirmation Card */}
@@ -1877,25 +1928,171 @@ export const ConversationsView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Active Outbound WhatsApp Business Line Strip */}
-              <div className="px-3 sm:px-4 py-1.5 bg-emerald-50/70 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-700">
-                <div className="flex items-center gap-2 truncate">
+              {/* Active Outbound WhatsApp Business Line Strip & Multi-Employee Device Switcher */}
+              <div className="px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-slate-50 border-t border-emerald-100/90 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="font-bold text-emerald-950">Active Outbound Line:</span>
-                  <span className="font-mono font-bold text-emerald-900 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-xs">
-                    {metaConfig?.business_phone_display || '+91 98765 43210'}
-                  </span>
-                  <span className="text-slate-500 hidden sm:inline">• Meta Cloud API (Official Verified)</span>
+                  <span className="font-bold text-slate-800 shrink-0">Sending via:</span>
+
+                  {/* Line Selector Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsLineSelectorOpen(!isLineSelectorOpen)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-50 border border-emerald-300 rounded-lg text-slate-900 font-semibold text-xs shadow-2xs transition-all cursor-pointer"
+                      title="Select which WhatsApp line to send customer replies from"
+                    >
+                      {activeSenderDeviceId === 'meta_cloud' ? (
+                        <>
+                          <span className="text-emerald-700 font-bold">🏢 Meta Cloud API</span>
+                          <span className="font-mono text-slate-600">({metaConfig?.business_phone_display || '+91 94963 00233'})</span>
+                        </>
+                      ) : (
+                        (() => {
+                          const dev = linkedDevices.find((d) => String(d.id) === String(activeSenderDeviceId));
+                          return (
+                            <>
+                              <span className="text-teal-700 font-bold">📱 {dev?.device_label || 'Employee WhatsApp'}</span>
+                              <span className="font-mono text-slate-600">({dev?.phone_number || ''})</span>
+                            </>
+                          );
+                        })()
+                      )}
+                      <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isLineSelectorOpen ? 'rotate-90' : ''}`} />
+                    </button>
+
+                    {/* Popover Dropdown */}
+                    {isLineSelectorOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsLineSelectorOpen(false)} />
+                        <div className="absolute left-0 bottom-full mb-1.5 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                          <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Select Outbound Channel</span>
+                            <span className="text-[10px] text-emerald-600 font-bold">{linkedDevices.length + 1} Lines Active</span>
+                          </div>
+
+                          <div className="py-1 space-y-1 max-h-56 overflow-y-auto">
+                            {/* Meta Cloud API Option */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveSenderDeviceId('meta_cloud');
+                                setIsLineSelectorOpen(false);
+                                addToast('Outbound line: Official Meta Cloud API', 'info');
+                              }}
+                              className={`w-full text-left p-2 rounded-xl text-xs flex items-start gap-2.5 transition-colors cursor-pointer ${
+                                activeSenderDeviceId === 'meta_cloud' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                                🏢
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between font-bold text-slate-900">
+                                  <span className="truncate">Meta Cloud API (Official)</span>
+                                  {activeSenderDeviceId === 'meta_cloud' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                </div>
+                                <div className="text-[11px] font-mono text-slate-500">{metaConfig?.business_phone_display || '+91 94963 00233'}</div>
+                                <div className="text-[10px] text-emerald-700 font-medium mt-0.5">Template broadcasts &amp; Verified line</div>
+                              </div>
+                            </button>
+
+                            {/* Linked Employee Devices */}
+                            {linkedDevices.map((dev) => {
+                              const isSelected = String(activeSenderDeviceId) === String(dev.id);
+                              return (
+                                <div
+                                  key={dev.id}
+                                  className={`group relative w-full text-left p-2 rounded-xl text-xs flex items-start gap-2.5 transition-colors cursor-pointer ${
+                                    isSelected ? 'bg-teal-50 border border-teal-200' : 'hover:bg-slate-50 border border-transparent'
+                                  }`}
+                                  onClick={() => {
+                                    setActiveSenderDeviceId(dev.id);
+                                    setIsLineSelectorOpen(false);
+                                    addToast(`Outbound line: ${dev.device_label} (${dev.phone_number})`, 'success');
+                                  }}
+                                >
+                                  <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Smartphone className="w-4 h-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0 pr-14">
+                                    <div className="flex items-center justify-between font-bold text-slate-900">
+                                      <span className="truncate">{dev.device_label}</span>
+                                      {isSelected && <Check className="w-3.5 h-3.5 text-teal-600 shrink-0 ml-1" />}
+                                    </div>
+                                    <div className="text-[11px] font-mono text-slate-500 truncate">
+                                      {dev.phone_number} {dev.employee_name && dev.employee_name !== dev.device_label ? `• ${dev.employee_name}` : ''}
+                                    </div>
+                                    <div className="text-[10px] text-teal-600 font-semibold mt-0.5 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                      <span className="truncate">{dev.employee_name ? `${dev.employee_name}'s Line` : 'Employee Connected Line'}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Edit and Unlink action buttons */}
+                                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingDevice(dev);
+                                        setIsLineSelectorOpen(false);
+                                      }}
+                                      className="p-1 rounded-md bg-white hover:bg-teal-50 text-slate-400 hover:text-teal-700 border border-slate-200/80 shadow-2xs hover:border-teal-300 transition-all cursor-pointer"
+                                      title="Edit line name or employee name"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`Disconnect and unlink ${dev.device_label} (${dev.phone_number})?`)) {
+                                          unlinkEmployeeDevice(dev.id);
+                                        }
+                                      }}
+                                      className="p-1 rounded-md bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/80 shadow-2xs hover:border-rose-300 transition-all cursor-pointer"
+                                      title="Unlink this phone line"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Quick Link New Device Footer */}
+                          <div className="pt-1.5 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsLineSelectorOpen(false);
+                                setIsLinkDeviceModalOpen(true);
+                              }}
+                              className="w-full py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>+ Connect Another Employee Phone</span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('settings-whatsapp')}
-                  className="text-emerald-700 hover:text-emerald-900 font-semibold hover:underline flex items-center gap-1 text-[10px] shrink-0 cursor-pointer"
-                  title="View or configure Meta Cloud API outbound numbers in Settings"
-                >
-                  <span>Verify in Settings</span>
-                  <ChevronRight className="w-3 h-3" />
-                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsLinkDeviceModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 bg-white hover:bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer"
+                    title="Scan QR code to link an employee WhatsApp phone"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Link New Phone</span>
+                  </button>
+                </div>
               </div>
 
               {/* Caution strip when suppressed */}
@@ -2152,6 +2349,19 @@ export const ConversationsView: React.FC = () => {
           onOpenWorkflowBuilder={handleOpenWorkflowBuilder}
         />
       )}
+
+      {/* Link Employee WhatsApp QR Code Scanner Modal */}
+      <LinkEmployeeWhatsAppModal
+        isOpen={isLinkDeviceModalOpen}
+        onClose={() => setIsLinkDeviceModalOpen(false)}
+      />
+
+      {/* Edit Linked Employee Device Modal */}
+      <EditEmployeeDeviceModal
+        isOpen={!!editingDevice}
+        device={editingDevice}
+        onClose={() => setEditingDevice(null)}
+      />
     </div>
   );
 };

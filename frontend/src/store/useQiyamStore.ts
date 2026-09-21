@@ -8,7 +8,8 @@ import {
   BulkCampaign, BulkContact, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
   MetaWalletInfo, MetaWalletTransaction,
   SuppressionRecord,
-  RoleDefinition, RoleModule, RolePermissionAction, RecordScope
+  RoleDefinition, RoleModule, RolePermissionAction, RecordScope,
+  LinkedEmployeeDevice
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -483,7 +484,14 @@ interface QiyamState {
   loadInitialData: () => Promise<void>;
   refreshConversations: () => Promise<void>;
   globalSearch: (query: string) => Promise<void>;
-  sendMessage: (conversationId: string | number, text: string, sender?: 'agent' | 'customer' | 'bot') => Promise<void>;
+  linkedDevices: LinkedEmployeeDevice[];
+  activeSenderDeviceId: string | number | 'meta_cloud';
+  fetchLinkedDevices: () => Promise<void>;
+  linkEmployeeDevice: (device: Partial<LinkedEmployeeDevice>) => Promise<any>;
+  updateEmployeeDevice: (deviceId: string | number, updates: Partial<LinkedEmployeeDevice>) => Promise<any>;
+  unlinkEmployeeDevice: (deviceId: string | number) => Promise<void>;
+  setActiveSenderDeviceId: (id: string | number | 'meta_cloud') => void;
+  sendMessage: (conversationId: string | number, text: string, sender?: 'agent' | 'customer' | 'bot', senderDeviceId?: string | number | 'meta_cloud') => Promise<void>;
   sendTemplateMessage: (conversationId: string | number, templateId: string | number, variables: Record<string, string>) => Promise<void>;
   simulateInboundWhatsApp: (name: string, phone: string, text: string) => Promise<void>;
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
@@ -1171,6 +1179,19 @@ const getStoredMetaConfig = (): MetaConfig => {
   return DEFAULT_META_CONFIG;
 };
 
+const INITIAL_LINKED_DEVICES: LinkedEmployeeDevice[] = [
+  {
+    id: 1,
+    device_label: 'Surat Wholesale Line',
+    phone_number: '+91 94963 00233',
+    employee_name: 'Ramesh Kumar (Sales Desk)',
+    status: 'connected',
+    battery_level: 98,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+];
+
 export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: getInitialActiveTab(),
   setActiveTab: (tab) => {
@@ -1178,6 +1199,85 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     set({ activeTab: tab });
   },
   backendOnline: false,
+
+  linkedDevices: INITIAL_LINKED_DEVICES,
+  activeSenderDeviceId: 'meta_cloud',
+  setActiveSenderDeviceId: (id) => set({ activeSenderDeviceId: id }),
+
+  fetchLinkedDevices: async () => {
+    try {
+      const res = await apiClient.get('/conversations/linked-devices/');
+      if (Array.isArray(res) && res.length > 0) {
+        set({ linkedDevices: res });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch linked devices:', e);
+    }
+  },
+
+  linkEmployeeDevice: async (deviceData) => {
+    try {
+      const res = await apiClient.post('/conversations/linked-devices/', deviceData);
+      if (res && res.id && res.success !== false) {
+        set((state) => ({
+          linkedDevices: [res, ...state.linkedDevices.filter((d) => d.id !== res.id)],
+          activeSenderDeviceId: res.id,
+        }));
+        get().addToast(`WhatsApp device "${res.device_label}" linked successfully!`, 'success');
+        return res;
+      }
+    } catch (e) {
+      console.warn('Failed to link device via API, saving locally:', e);
+    }
+    const localDevice: LinkedEmployeeDevice = {
+      id: `dev-${Date.now()}`,
+      device_label: deviceData.device_label || 'Mobile WhatsApp Line',
+      phone_number: deviceData.phone_number || '+91 98471 23456',
+      employee_name: deviceData.employee_name || deviceData.device_label || 'Staff Member',
+      status: 'connected',
+      battery_level: 95,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      ...deviceData,
+    };
+    set((state) => ({
+      linkedDevices: [localDevice, ...state.linkedDevices.filter((d) => d.id !== localDevice.id)],
+      activeSenderDeviceId: localDevice.id,
+    }));
+    get().addToast(`WhatsApp device "${localDevice.device_label}" linked successfully!`, 'success');
+    return localDevice;
+  },
+
+  updateEmployeeDevice: async (deviceId, updates) => {
+    try {
+      const res = await apiClient.patch(`/conversations/linked-devices/${deviceId}/`, updates);
+      if (res && res.id) {
+        set((state) => ({
+          linkedDevices: state.linkedDevices.map((d) => (String(d.id) === String(deviceId) ? { ...d, ...res } : d)),
+        }));
+        get().addToast(`Updated line to "${res.device_label || res.employee_name}"`, 'success');
+        return res;
+      }
+    } catch (e) {
+      console.warn('Failed to update device via API:', e);
+    }
+    // Fallback local state update
+    set((state) => ({
+      linkedDevices: state.linkedDevices.map((d) => (String(d.id) === String(deviceId) ? { ...d, ...updates } : d)),
+    }));
+    get().addToast('Device updated successfully', 'success');
+  },
+
+  unlinkEmployeeDevice: async (deviceId) => {
+    try {
+      await apiClient.delete(`/conversations/linked-devices/${deviceId}/`);
+    } catch {}
+    set((state) => ({
+      linkedDevices: state.linkedDevices.filter((d) => String(d.id) !== String(deviceId)),
+      activeSenderDeviceId: state.activeSenderDeviceId === deviceId ? 'meta_cloud' : state.activeSenderDeviceId,
+    }));
+    get().addToast('WhatsApp device unlinked', 'info');
+  },
 
   sendConfirmation: null,
   requestSendConfirmation: (config) => set({ sendConfirmation: config }),
@@ -1956,6 +2056,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       selectedTemplateId: templates[0]?.id ?? null,
     });
 
+    get().fetchLinkedDevices();
+
     if (selectedConversationId) {
       get().markConversationAsRead(selectedConversationId);
     }
@@ -2023,15 +2125,27 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     set({ searchResults: results });
   },
 
-  sendMessage: async (conversationId, text, sender = 'agent') => {
+  sendMessage: async (conversationId, text, sender = 'agent', senderDeviceId) => {
     const tempId = `msg-${Date.now()}`;
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const targetDeviceId = senderDeviceId !== undefined ? senderDeviceId : get().activeSenderDeviceId;
+    const isEmployeeDevice = targetDeviceId && targetDeviceId !== 'meta_cloud';
+    const employeeDevice = isEmployeeDevice
+      ? get().linkedDevices.find((d) => String(d.id) === String(targetDeviceId) || d.device_label === String(targetDeviceId))
+      : null;
+
+    const resolvedSenderName = isEmployeeDevice && employeeDevice
+      ? (employeeDevice.employee_name || employeeDevice.device_label)
+      : (sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant');
 
     // 1. Optimistic message with initial 'sent' status (single tick)
     const optimisticMsg: WhatsAppMessage = {
       id: tempId,
       sender,
-      senderName: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
+      senderName: resolvedSenderName,
+      sender_device: employeeDevice ? employeeDevice.device_label : 'Meta Cloud API',
+      sender_phone: employeeDevice ? employeeDevice.phone_number : '',
       text,
       timestamp: nowTime,
       created_at: new Date().toISOString(),
@@ -2063,7 +2177,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       const res = await apiClient.post(`/conversations/threads/${conversationId}/send_message/`, {
         text,
         sender,
-        sender_name: sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant',
+        sender_name: resolvedSenderName,
+        sender_device: employeeDevice?.device_label || (isEmployeeDevice ? String(targetDeviceId) : ''),
+        sender_phone: employeeDevice?.phone_number || '',
+        sender_device_id: isEmployeeDevice ? targetDeviceId : undefined,
         contact_name: parentConv?.contact_name,
         phone_number: parentConv?.phone_number,
       });
