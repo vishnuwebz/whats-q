@@ -2135,6 +2135,31 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       ? get().linkedDevices.find((d) => String(d.id) === String(targetDeviceId) || d.device_label === String(targetDeviceId))
       : null;
 
+    const activeBusinessPhone = (() => {
+      try {
+        const stored = localStorage.getItem('whatsq_waba_numbers');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const primary = parsed.find((n: any) => n.isPrimary) || parsed[0];
+            const raw = (primary?.phone || '').trim();
+            if (raw && !raw.includes('9876543210')) return raw;
+          }
+        }
+      } catch {}
+      const configPhone = (get().metaConfig?.business_phone_display || '').trim();
+      if (configPhone && !configPhone.includes('9876543210')) return configPhone;
+      return '+91 94963 00233';
+    })();
+
+    const resolvedSenderPhone = employeeDevice
+      ? employeeDevice.phone_number
+      : (activeBusinessPhone || '+91 94963 00233');
+
+    const resolvedSenderDevice = employeeDevice
+      ? employeeDevice.device_label
+      : 'Meta Cloud API';
+
     const resolvedSenderName = isEmployeeDevice && employeeDevice
       ? (employeeDevice.employee_name || employeeDevice.device_label)
       : (sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant');
@@ -2144,8 +2169,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       id: tempId,
       sender,
       senderName: resolvedSenderName,
-      sender_device: employeeDevice ? employeeDevice.device_label : 'Meta Cloud API',
-      sender_phone: employeeDevice ? employeeDevice.phone_number : '',
+      sender_device: resolvedSenderDevice,
+      sender_phone: resolvedSenderPhone,
       text,
       timestamp: nowTime,
       created_at: new Date().toISOString(),
@@ -2178,8 +2203,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         text,
         sender,
         sender_name: resolvedSenderName,
-        sender_device: employeeDevice?.device_label || (isEmployeeDevice ? String(targetDeviceId) : ''),
-        sender_phone: employeeDevice?.phone_number || '',
+        sender_device: resolvedSenderDevice,
+        sender_phone: resolvedSenderPhone,
         sender_device_id: isEmployeeDevice ? targetDeviceId : undefined,
         contact_name: parentConv?.contact_name,
         phone_number: parentConv?.phone_number,

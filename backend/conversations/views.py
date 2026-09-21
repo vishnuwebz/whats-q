@@ -678,6 +678,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 dev.last_active = datetime.datetime.now()
                 dev.save(update_fields=['last_active'])
 
+        if not sender_phone:
+            dev_active = LinkedEmployeeDevice.objects.filter(status='connected').first()
+            if dev_active and dev_active.phone_number:
+                sender_phone = dev_active.phone_number
+                if not sender_device:
+                    sender_device = dev_active.device_label
+            else:
+                config = MetaWhatsAppConfig.objects.first()
+                sender_phone = (config.business_phone_display if config and config.business_phone_display else '+91 94963 00233')
+                if not sender_device:
+                    sender_device = 'Meta Cloud API'
+
         # Suppression Defense (WhatsApp Policy & Quality Score Protection)
         if (conversation.is_opted_out or conversation.is_blocked) and not request.data.get('force', False):
             reason = "opted out (STOP)" if conversation.is_opted_out else "blocked"

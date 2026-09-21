@@ -458,7 +458,7 @@ export const ConversationsView: React.FC = () => {
     if (!file || !currentConv) return;
     const sizeKB = (file.size / 1024).toFixed(0);
     const attachmentText = `📎 *Shared Document:* ${file.name} (${sizeKB} KB)`;
-    sendMessage(currentConv.id, attachmentText, 'agent');
+    sendMessage(currentConv.id, attachmentText, 'agent', activeSenderDeviceId);
     addToast(`Document "${file.name}" shared with ${currentConv.contact_name}!`, 'success');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -469,7 +469,7 @@ export const ConversationsView: React.FC = () => {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       setIsRecordingVoice(false);
       const duration = recordSeconds || 2;
-      sendMessage(currentConv.id, `🎙️ *Voice Note* (${duration}s audio)`, 'agent');
+      sendMessage(currentConv.id, `🎙️ *Voice Note* (${duration}s audio)`, 'agent', activeSenderDeviceId);
       addToast(`Voice note (${duration}s) sent to ${currentConv.contact_name}!`, 'success');
       setRecordSeconds(0);
     } else {
@@ -527,7 +527,7 @@ export const ConversationsView: React.FC = () => {
         ],
         confirmLabel: 'Confirm & Send Quotation',
         onConfirm: () => {
-          sendMessage(currentConv.id, quoteMsg, 'agent');
+          sendMessage(currentConv.id, quoteMsg, 'agent', activeSenderDeviceId);
           addToast('Quotation sent to WhatsApp', 'success');
         },
       });
@@ -1787,6 +1787,48 @@ export const ConversationsView: React.FC = () => {
 
                         const messageWorkflowName = msg.workflowName || currentConv.active_workflow || 'Service Booking Flow';
 
+                        const outgoingSender = !isCustomer ? (() => {
+                          let phone = (msg.sender_phone || '').trim();
+                          let deviceLabel = (msg.sender_device || '').trim();
+
+                          if (!phone && deviceLabel) {
+                            const matchedDev = linkedDevices.find(
+                              (d) => d.device_label === deviceLabel || String(d.id) === deviceLabel
+                            );
+                            if (matchedDev?.phone_number) {
+                              phone = matchedDev.phone_number;
+                            }
+                          }
+
+                          if (!phone) {
+                            if (activeSenderDeviceId && activeSenderDeviceId !== 'meta_cloud') {
+                              const activeDev = linkedDevices.find((d) => String(d.id) === String(activeSenderDeviceId));
+                              if (activeDev?.phone_number) {
+                                phone = activeDev.phone_number;
+                                if (!deviceLabel) deviceLabel = activeDev.device_label;
+                              }
+                            }
+                          }
+
+                          if (!phone && linkedDevices.length > 0) {
+                            const connectedDev = linkedDevices.find((d) => d.status === 'connected') || linkedDevices[0];
+                            if (connectedDev?.phone_number) {
+                              phone = connectedDev.phone_number;
+                              if (!deviceLabel) deviceLabel = connectedDev.device_label;
+                            }
+                          }
+
+                          if (!phone) {
+                            phone = metaConfig?.business_phone_display || '+91 94963 00233';
+                            if (!deviceLabel) deviceLabel = 'Meta Cloud API';
+                          }
+
+                          return {
+                            phone,
+                            deviceLabel: deviceLabel || (isBot ? 'Qiyam AI Assistant' : 'WhatsApp Line'),
+                          };
+                        })() : null;
+
                         return (
                           <div
                             key={msg.id}
@@ -1802,6 +1844,28 @@ export const ConversationsView: React.FC = () => {
                                   : 'bg-emerald-600 text-white rounded-tr-sm'
                               }`}
                             >
+                              {/* 1. Header: Outgoing Sender Phone & Channel on ALL green messages to avoid any confusion */}
+                              {!isCustomer && outgoingSender && (
+                                <div className="flex items-center justify-between gap-2 pb-1.5 mb-2.5 border-b border-white/20 text-[10.5px]">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    {isBot ? (
+                                      <Bot className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                                    ) : (
+                                      <Smartphone className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                                    )}
+                                    <span className="text-emerald-200/90 text-[10px] font-medium shrink-0">Sent from:</span>
+                                    <span className="font-mono font-bold text-white tracking-wide text-[11px] drop-shadow-xs truncate">
+                                      {outgoingSender.phone}
+                                    </span>
+                                  </div>
+                                  {outgoingSender.deviceLabel && (
+                                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-black/25 text-emerald-100 border border-white/15 shrink-0 max-w-[140px] truncate shadow-2xs">
+                                      {outgoingSender.deviceLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
                               {/* Service Workflow Option Bar above message template on green chat */}
                               {isTemplateMessage && (
                                 <div className="mb-2.5 pb-2 border-b border-emerald-400/25">
@@ -1876,13 +1940,6 @@ export const ConversationsView: React.FC = () => {
                                 <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200 mb-1">
                                   <Bot className="w-3 h-3" />
                                   <span>Qiyam AI Assistant</span>
-                                </div>
-                              )}
-                              {!isCustomer && !isBot && !isTemplateMessage && (msg.sender_device || msg.sender_phone) && (
-                                <div className="flex items-center gap-1 text-[9.5px] font-semibold text-emerald-200/90 mb-1">
-                                  <Smartphone className="w-2.5 h-2.5 text-emerald-300" />
-                                  <span>{msg.sender_device || 'Employee WhatsApp'}</span>
-                                  {msg.sender_phone && <span className="font-mono text-[9px] opacity-75">({msg.sender_phone})</span>}
                                 </div>
                               )}
                               <div className="whitespace-pre-wrap break-words">{msg.text}</div>
