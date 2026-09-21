@@ -256,10 +256,20 @@ class SystemUpdateService:
             else:
                 proc = cls._current_update_proc
                 cls._current_update_proc = None
+                stdout = ''
+                stderr = ''
+                try:
+                    out, err = proc.communicate(timeout=1)
+                    stdout = out or ''
+                    stderr = err or ''
+                except Exception:
+                    pass
                 return {
                     'in_progress': False,
                     'success': (poll == 0),
                     'returncode': poll,
+                    'stdout': stdout[-1500:],
+                    'stderr': stderr[-1500:],
                     'status': 'completed' if poll == 0 else 'failed'
                 }
         return {'in_progress': False, 'success': True, 'status': 'idle'}
@@ -274,31 +284,29 @@ class SystemUpdateService:
         cls._cache_time = 0
         cls._update_start_time = time.time()
         import shutil
-        script_path = '/usr/local/bin/update-whatsq'
-        if os.path.exists(script_path):
+        from django.conf import settings
+
+        script_candidates = [
+            '/var/www/whatsq/deploy.sh',
+            '/usr/local/bin/update-whatsq',
+            os.path.join(settings.BASE_DIR.parent, 'deploy.sh')
+        ]
+        script_path = next((s for s in script_candidates if os.path.exists(s)), None)
+
+        if script_path:
             try:
                 bash_bin = shutil.which('bash') or '/bin/bash'
-                sudo_bin = shutil.which('sudo')
+                cmd = [bash_bin, script_path]
 
-                # Check if running as root
-                is_root = False
-                try:
-                    if hasattr(os, 'geteuid') and os.geteuid() == 0:
-                        is_root = True
-                except Exception:
-                    pass
-
-                # If root or sudo is not installed, run directly with bash
-                if is_root or not sudo_bin:
-                    cmd = [bash_bin, script_path]
-                else:
-                    cmd = [sudo_bin, script_path]
+                env = os.environ.copy()
+                env['PATH'] = f"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:{env.get('PATH', '')}"
 
                 proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True
+                    text=True,
+                    env=env
                 )
                 cls._current_update_proc = proc
                 return {
@@ -309,24 +317,7 @@ class SystemUpdateService:
                 }
             except Exception as e:
                 logger.error(f"Failed to execute update script: {e}")
-                # Fallback: direct bash attempt
-                try:
-                    proc = subprocess.Popen(
-                        ['bash', script_path],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True
-                    )
-                    cls._current_update_proc = proc
-                    return {
-                        'success': True,
-                        'message': 'System update initiated via fallback shell!',
-                        'pid': proc.pid,
-                        'in_progress': True
-                    }
-                except Exception as inner_e:
-                    cls._current_update_proc = None
-                    return {'success': False, 'error': f"Update execution error: {str(e)}", 'in_progress': False}
+                return {'success': False, 'error': f"Update execution error: {str(e)}", 'in_progress': False}
         else:
             cls._current_update_proc = None
             return {
