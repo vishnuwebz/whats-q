@@ -1,0 +1,20 @@
+{
+  "name": "whatsq-whatsapp-gateway",
+  "version": "1.0.0",
+  "description": "WhatsQ WhatsApp Multi-Device & Group Grabber Gateway",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.13",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  }
+}

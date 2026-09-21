@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "frequency": "daily",
+  "intervalMinutes": 1440,
+  "maxRetention": 20,
+  "lastRunAt": null,
+  "nextRunAt": "2026-09-22T09:12:25.666Z"
+}

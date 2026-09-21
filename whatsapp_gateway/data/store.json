@@ -1,0 +1,6061 @@
+{
+  "metaConfig": {
+    "phoneNumberId": "1352203304637120",
+    "wabaId": "1098915959329432",
+    "phoneNumber": "+917338944799",
+    "accessToken": "EAAV4ZCZBY2mrQBSSgBjUHKSyrQFzF4kIwbtvjK5yYFhcBS97LOYsvvp2KHoLejx25mK5A3JndSTVjt2eg3ByC8g8285uZB7jSIJcHGmstlJmLb6ed6NLuh8CIUE4uQDTIqpcwvFzETBhUJRC3pg5toZBWySZAWy5d8ZAsmmhhTUZA5PEuDkZCPxN85ZA9jHpFGQZDZD",
+    "isActive": true
+  },
+  "accounts": [
+    {
+      "id": "acc-1787312440050",
+      "phoneNumber": "+917338944799",
+      "displayName": "Meta Official Dedicated",
+      "status": "online",
+      "dailyLimit": 10000,
+      "sentToday": 23,
+      "createdAt": "2026-08-27T09:47:00.000Z",
+      "warmupScore": 99
+    },
+    {
+      "id": "acc-1789973522198",
+      "phoneNumber": "",
+      "displayName": "WhatsApp Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T06:52:02.451Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "acc-1789972071458",
+      "phoneNumber": "+919074640425",
+      "displayName": "WhatsApp Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T06:55:28.061Z",
+      "warmupScore": 95
+    },
+    {
+      "id": "acc-1789974389035",
+      "phoneNumber": "+919074640425",
+      "displayName": "WhatsApp Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:06:30.106Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "emp_test_1",
+      "phoneNumber": "",
+      "displayName": "Test Device",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:14:58.487Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "test_pair_2",
+      "phoneNumber": "",
+      "displayName": "Demo",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:16:21.769Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "test_django_pair",
+      "phoneNumber": "",
+      "displayName": "Test Staff Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:18:15.178Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_muax0neqvxt4",
+      "phoneNumber": "+919074640425",
+      "displayName": "Surat Wholesale Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:20:01.697Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "test_verify_1789975303",
+      "phoneNumber": "",
+      "displayName": "Production Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:21:43.792Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_yuo4rdz",
+      "phoneNumber": "+919074640425",
+      "displayName": "QR Group Grabber Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:28:03.635Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_ggiee43",
+      "phoneNumber": "",
+      "displayName": "QR Group Grabber Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:28:35.334Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "grabber_test_1789975748",
+      "phoneNumber": "",
+      "displayName": "Group Extractor Phone",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:29:08.471Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "test_token_123",
+      "phoneNumber": "",
+      "displayName": "Mobile Device",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T07:54:24.247Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_a4qoef4",
+      "phoneNumber": "+919074640425",
+      "displayName": "QR Group Grabber Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:21:55.225Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_a3719q6",
+      "phoneNumber": "",
+      "displayName": "QR Group Grabber Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:22:54.910Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_6sfjm23",
+      "phoneNumber": "+919074640425",
+      "displayName": "QR Group Grabber Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:23:38.218Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_58xo4ai",
+      "phoneNumber": "+919645997333",
+      "displayName": "QR Group Grabber Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:27:07.447Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_3051se9",
+      "phoneNumber": "+918089564046",
+      "displayName": "QR Group Grabber Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:29:05.277Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_guqybv9",
+      "phoneNumber": "",
+      "displayName": "QR Group Grabber Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:44:34.062Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_d38kt5l",
+      "phoneNumber": "",
+      "displayName": "QR Group Grabber Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:46:28.889Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_3qzzxy2",
+      "phoneNumber": "",
+      "displayName": "QR Group Grabber Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:47:39.874Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "qiyam_grp_6mamsh1",
+      "phoneNumber": "+919074640425",
+      "displayName": "QR Group Grabber Line",
+      "status": "disconnected",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T08:48:34.610Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_mub10yuekrsl",
+      "phoneNumber": "",
+      "displayName": "Surat Wholesale Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T09:12:19.964Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_mub146emnfee",
+      "phoneNumber": "",
+      "displayName": "Surat Wholesale Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-21T09:14:42.716Z",
+      "warmupScore": 90
+    }
+  ],
+  "contacts": [
+    {
+      "id": "c-1",
+      "name": "Ramesh Patel",
+      "phone": "+911234567890",
+      "groupName": "VIP Customers",
+      "city": "Mumbai",
+      "createdAt": "2026-08-10",
+      "isBlacklisted": false,
+      "isValidatedWhatsApp": true
+    },
+    {
+      "id": "c-2",
+      "name": "Priya Sharma",
+      "phone": "+911234567890",
+      "groupName": "VIP Customers",
+      "city": "Delhi",
+      "createdAt": "2026-08-11",
+      "isBlacklisted": false,
+      "isValidatedWhatsApp": true
+    },
+    {
+      "id": "c-3",
+      "name": "Vikram Malhotra",
+      "phone": "+911234567890",
+      "groupName": "High-Value Leads",
+      "city": "Bangalore",
+      "createdAt": "2026-08-12",
+      "isBlacklisted": false,
+      "isValidatedWhatsApp": true
+    },
+    {
+      "id": "c-4",
+      "name": "Ananya Iyer",
+      "phone": "+911234567890",
+      "groupName": "Weekend Walk-ins",
+      "city": "Chennai",
+      "createdAt": "2026-08-14",
+      "isBlacklisted": false,
+      "isValidatedWhatsApp": true
+    },
+    {
+      "id": "c-5",
+      "name": "Rahul Verma",
+      "phone": "+911234567890",
+      "groupName": "Recent Inquiries",
+      "city": "Hyderabad",
+      "createdAt": "2026-08-15",
+      "isBlacklisted": false,
+      "isValidatedWhatsApp": true
+    },
+    {
+      "id": "c-6",
+      "name": "Sneha Kulkarni",
+      "phone": "+911234567890",
+      "groupName": "High-Value Leads",
+      "city": "Pune",
+      "createdAt": "2026-08-16",
+      "isBlacklisted": false,
+      "isValidatedWhatsApp": true
+    }
+  ],
+  "templates": [
+    {
+      "id": "tpl-1",
+      "title": "🏷️ 50% Flash Sale Offer",
+      "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+      "mediaName": "flash-sale.jpg",
+      "mediaPath": "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "buttons": [
+        {
+          "id": "btn-1",
+          "type": "url",
+          "text": "🛍️ Shop 50% Off",
+          "value": "https://store.com/sale"
+        },
+        {
+          "id": "btn-2",
+          "type": "quick_reply",
+          "text": "💬 Inquire Catalog"
+        }
+      ],
+      "createdAt": "2026-08-20"
+    },
+    {
+      "id": "tpl-2",
+      "title": "🍲 Chef Special Dining Combo",
+      "messageText": "*Special Family Combo!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+      "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+      "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+      "mediaType": "image",
+      "buttons": [
+        {
+          "id": "b1",
+          "type": "url",
+          "text": "🛒 Order Online",
+          "value": "https://restaurant.com/order"
+        },
+        {
+          "id": "b2",
+          "type": "call",
+          "text": "📞 Book Table",
+          "value": "+919876543210"
+        }
+      ],
+      "createdAt": "2026-08-21"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "camp-1788174641573",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+919074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1788174641572",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "Namaste! Try our chef's new Special Tandoori Butter Chicken served with Garlic Naan & Dal Makhani. Special weekend family combo at ₹399 only! 🌶️🍗",
+        "mediaName": "Tandoori-Butter-Chicken-Special.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          },
+          {
+            "id": "b3",
+            "type": "quick_reply",
+            "text": "View Full Menu"
+          }
+        ],
+        "createdAt": "2026-08-31T11:10:41.572Z"
+      },
+      "createdAt": "2026-08-31T11:10:44.376Z",
+      "completedAt": "2026-08-31T11:10:49.306Z"
+    },
+    {
+      "id": "camp-1788172501520",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 9074640425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1788172501520",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-31T10:35:01.520Z"
+      },
+      "createdAt": "2026-08-31T10:35:01.598Z",
+      "completedAt": "2026-08-31T10:35:03.132Z"
+    },
+    {
+      "id": "camp-1788154489703",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 0,
+      "failedCount": 1,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1788154489703",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-31T05:34:49.703Z"
+      },
+      "createdAt": "2026-08-31T05:34:50.392Z",
+      "completedAt": "2026-08-31T05:34:51.331Z"
+    },
+    {
+      "id": "camp-1787828336399",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787828336399",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:58:56.399Z"
+      },
+      "createdAt": "2026-08-27T10:58:56.468Z",
+      "completedAt": "2026-08-27T10:58:58.061Z"
+    },
+    {
+      "id": "camp-1787828307617",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787828307617",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-27T10:58:27.617Z"
+      },
+      "createdAt": "2026-08-27T10:58:27.645Z",
+      "completedAt": "2026-08-27T10:58:29.173Z"
+    },
+    {
+      "id": "camp-1787828277276",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 6,
+      "sentCount": 6,
+      "deliveredCount": 6,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787828277275",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-27T10:57:57.275Z"
+      },
+      "createdAt": "2026-08-27T10:57:57.300Z",
+      "completedAt": "2026-08-27T10:58:22.779Z"
+    },
+    {
+      "id": "camp-1787827619741",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787827619741",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:46:59.741Z"
+      },
+      "createdAt": "2026-08-27T10:47:05.235Z",
+      "completedAt": "2026-08-27T10:47:09.787Z"
+    },
+    {
+      "id": "camp-1787827514342",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787827514341",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:45:14.341Z"
+      },
+      "createdAt": "2026-08-27T10:45:14.377Z",
+      "completedAt": "2026-08-27T10:45:16.135Z"
+    },
+    {
+      "id": "camp-1787826972723",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 9074640425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787826972723",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:36:12.723Z"
+      },
+      "createdAt": "2026-08-27T10:36:13.004Z",
+      "completedAt": "2026-08-27T10:36:16.959Z"
+    },
+    {
+      "id": "camp-1787826815457",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 9074640425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787826815457",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:33:35.457Z"
+      },
+      "createdAt": "2026-08-27T10:33:35.497Z",
+      "completedAt": "2026-08-27T10:33:36.557Z"
+    },
+    {
+      "name": "Festival Special Offer 2026",
+      "recipients": [
+        {
+          "id": "c-test",
+          "name": "Vishnu Line",
+          "phone": "+919074640425"
+        }
+      ],
+      "template": {
+        "messageText": "Special offer from Qiyam Ventures!",
+        "mediaPath": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800",
+        "mediaType": "image",
+        "metaTemplateName": "qiyam_promotional_broadcast",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "Visit website",
+            "value": "https://qiyam.ventures"
+          }
+        ]
+      },
+      "senderAccountIds": [
+        "acc-1787312440050"
+      ],
+      "safetyPreset": "turbo",
+      "id": "camp-1787826736748",
+      "status": "completed",
+      "sentCount": 6,
+      "deliveredCount": 2,
+      "failedCount": 4,
+      "createdAt": "2026-08-27T10:32:16.748Z",
+      "completedAt": "2026-08-27T10:32:51.117Z"
+    },
+    {
+      "id": "camp-1787826466327",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 9074640425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787826466326",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:27:46.326Z"
+      },
+      "createdAt": "2026-08-27T10:27:46.487Z",
+      "completedAt": "2026-08-27T10:27:48.353Z"
+    },
+    {
+      "id": "camp-1787825765474",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787825765473",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:16:05.473Z"
+      },
+      "createdAt": "2026-08-27T10:16:05.916Z",
+      "completedAt": "2026-08-27T10:16:06.941Z"
+    },
+    {
+      "id": "camp-1787825455157",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787825455156",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T10:10:55.156Z"
+      },
+      "createdAt": "2026-08-27T10:10:55.439Z",
+      "completedAt": "2026-08-27T10:10:58.474Z"
+    },
+    {
+      "id": "camp-1787824536207",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787824536207",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T09:55:36.207Z"
+      },
+      "createdAt": "2026-08-27T09:55:36.294Z",
+      "completedAt": "2026-08-27T09:55:37.474Z"
+    },
+    {
+      "id": "camp-1787824272294",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787824272294",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T09:51:12.294Z"
+      },
+      "createdAt": "2026-08-27T09:51:12.381Z",
+      "completedAt": "2026-08-27T09:51:13.955Z"
+    },
+    {
+      "id": "camp-1787824116622",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787824116622",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-27T09:48:36.622Z"
+      },
+      "createdAt": "2026-08-27T09:48:36.666Z",
+      "completedAt": "2026-08-27T09:48:38.039Z"
+    },
+    {
+      "id": "camp-1787396327396",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787396327396",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T10:58:47.396Z"
+      },
+      "createdAt": "2026-08-22T10:58:47.474Z",
+      "completedAt": "2026-08-22T10:58:48.438Z"
+    },
+    {
+      "id": "camp-1787396077125",
+      "name": "💎 22k Gold Royal Bridal Collection",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787396077125",
+        "title": "💎 22k Gold Royal Bridal Collection",
+        "messageText": "Exclusive Akshay Tritiya Release! Handcrafted 22k Antique Gold Choker & Temple Jewelry Set. Special zero-making-charge offer for first 50 buyers.",
+        "mediaName": "Royal-Bridal-Necklace-2026.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b4",
+            "type": "url",
+            "text": "✨ Inquire Price",
+            "value": "https://jewellers.com/price"
+          },
+          {
+            "id": "b5",
+            "type": "call",
+            "text": "📞 Call Showroom",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T10:54:37.125Z"
+      },
+      "createdAt": "2026-08-22T10:54:37.154Z",
+      "completedAt": "2026-08-22T10:54:38.090Z"
+    },
+    {
+      "id": "camp-1787396025474",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "fahir",
+          "phone": "8089938510",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787396025473",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T10:53:45.473Z"
+      },
+      "createdAt": "2026-08-22T10:53:45.579Z",
+      "completedAt": "2026-08-22T10:53:46.568Z"
+    },
+    {
+      "id": "camp-1787395923549",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787395923549",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-22T10:52:03.549Z"
+      },
+      "createdAt": "2026-08-22T10:52:03.591Z",
+      "completedAt": "2026-08-22T10:52:04.503Z"
+    },
+    {
+      "id": "camp-1787395850570",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Test Recipient",
+          "phone": "8089938510",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787395850570",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-22T10:50:50.570Z"
+      },
+      "createdAt": "2026-08-22T10:50:50.612Z",
+      "completedAt": "2026-08-22T10:50:51.941Z"
+    },
+    {
+      "id": "camp-1787395748209",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "anshad",
+          "phone": "8089946615",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787395748209",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-22T10:49:08.209Z"
+      },
+      "createdAt": "2026-08-22T10:49:08.303Z",
+      "completedAt": "2026-08-22T10:49:09.849Z"
+    },
+    {
+      "id": "camp-1787395668466",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787392869523",
+          "name": "habeeb",
+          "phone": "8086166091",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787395668465",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T10:47:48.465Z"
+      },
+      "createdAt": "2026-08-22T10:47:48.488Z",
+      "completedAt": "2026-08-22T10:47:49.386Z"
+    },
+    {
+      "id": "camp-1787395636423",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787392869523",
+          "name": "habeeb",
+          "phone": "8086166091",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787395636422",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-22T10:47:16.423Z"
+      },
+      "createdAt": "2026-08-22T10:47:16.464Z",
+      "completedAt": "2026-08-22T10:47:17.850Z"
+    },
+    {
+      "id": "camp-1787392906294",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "WhatsApp Line",
+          "phone": "8086166091",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787392906294",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-22T10:01:46.294Z"
+      },
+      "createdAt": "2026-08-22T10:01:46.347Z",
+      "completedAt": "2026-08-22T10:01:47.859Z"
+    },
+    {
+      "id": "camp-1787392595892",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "habeeb test",
+          "phone": "8086166091",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787392595891",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T09:56:35.891Z"
+      },
+      "createdAt": "2026-08-22T09:56:35.961Z",
+      "completedAt": "2026-08-22T09:56:37.534Z"
+    },
+    {
+      "id": "camp-1787392044387",
+      "name": "🏷️ 50% Flash Sale Offer",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787392044386",
+        "title": "🏷️ 50% Flash Sale Offer",
+        "messageText": "🔥 *SPECIAL FLASH SALE!* Hello {{Name}}, enjoy flat 50% off on all premium collections. Free express delivery on orders today!",
+        "mediaName": "flash-sale.jpg",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "btn-1",
+            "type": "url",
+            "text": "🛍️ Shop 50% Off",
+            "value": "https://store.com/sale"
+          },
+          {
+            "id": "btn-2",
+            "type": "quick_reply",
+            "text": "💬 Inquire Catalog"
+          }
+        ],
+        "createdAt": "2026-08-22T09:47:24.386Z"
+      },
+      "createdAt": "2026-08-22T09:47:24.428Z",
+      "completedAt": "2026-08-22T09:47:26.447Z"
+    },
+    {
+      "id": "camp-1787391131782",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787391131782",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T09:32:11.782Z"
+      },
+      "createdAt": "2026-08-22T09:32:11.890Z",
+      "completedAt": "2026-08-22T09:32:13.358Z"
+    },
+    {
+      "id": "camp-1787391073111",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787391073110",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T09:31:13.110Z"
+      },
+      "createdAt": "2026-08-22T09:31:13.341Z",
+      "completedAt": "2026-08-22T09:31:15.119Z"
+    },
+    {
+      "id": "camp-1787390266129",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787390266128",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T09:17:46.128Z"
+      },
+      "createdAt": "2026-08-22T09:17:46.189Z",
+      "completedAt": "2026-08-22T09:17:47.574Z"
+    },
+    {
+      "id": "camp-1787383983401",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787383983401",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T07:33:03.401Z"
+      },
+      "createdAt": "2026-08-22T07:33:03.486Z",
+      "completedAt": "2026-08-22T07:33:04.517Z"
+    },
+    {
+      "id": "camp-1787383852763",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 4,
+      "sentCount": 4,
+      "deliveredCount": 4,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787383826692",
+          "name": "Vishnu",
+          "phone": "+91 9074640425",
+          "groupName": "COMPANY TESTING"
+        },
+        {
+          "id": "c-1787383810352",
+          "name": "Habeeb",
+          "phone": "+91 8086166091",
+          "groupName": "COMPANY TESTING"
+        },
+        {
+          "id": "c-1787383785643",
+          "name": "Fahir",
+          "phone": "+91 8089938510",
+          "groupName": "COMPANY TESTING"
+        },
+        {
+          "id": "c-1787383763494",
+          "name": "faris",
+          "phone": "+91 9895997333",
+          "groupName": "COMPANY TESTING"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787383852762",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T07:30:52.762Z"
+      },
+      "createdAt": "2026-08-22T07:30:52.813Z",
+      "completedAt": "2026-08-22T07:31:12.331Z"
+    },
+    {
+      "id": "camp-1787383370786",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 13,
+      "sentCount": 13,
+      "deliveredCount": 13,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787383357808",
+          "name": "habeeb original",
+          "phone": "8086166091",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787383252866",
+          "name": "habeeb",
+          "phone": "808616609",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382989448",
+          "name": "faris",
+          "phone": "9895997333",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382929076",
+          "name": "vishnu",
+          "phone": "+91 9074640425",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382888215",
+          "name": "fahir",
+          "phone": "+91 8089938510",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382855056",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382576848",
+          "name": "fahir",
+          "phone": "8089938510",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787383370786",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T07:22:50.786Z"
+      },
+      "createdAt": "2026-08-22T07:22:50.840Z",
+      "completedAt": "2026-08-22T07:23:40.981Z"
+    },
+    {
+      "id": "camp-1787383267665",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 12,
+      "sentCount": 12,
+      "deliveredCount": 12,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787383252865",
+          "name": "habeeb",
+          "phone": "808616609",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382989448",
+          "name": "faris",
+          "phone": "9895997333",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382929076",
+          "name": "vishnu",
+          "phone": "+91 9074640425",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382888215",
+          "name": "fahir",
+          "phone": "+91 8089938510",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382855056",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382576848",
+          "name": "fahir",
+          "phone": "8089938510",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787383267665",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T07:21:07.665Z"
+      },
+      "createdAt": "2026-08-22T07:21:07.755Z",
+      "completedAt": "2026-08-22T07:22:01.714Z"
+    },
+    {
+      "id": "camp-1787383014038",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 11,
+      "sentCount": 11,
+      "deliveredCount": 11,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787382989448",
+          "name": "faris",
+          "phone": "9895997333",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382929076",
+          "name": "vishnu",
+          "phone": "+91 9074640425",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382888215",
+          "name": "fahir",
+          "phone": "+91 8089938510",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382855056",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787382576848",
+          "name": "fahir",
+          "phone": "8089938510",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787383014038",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T07:16:54.038Z"
+      },
+      "createdAt": "2026-08-22T07:16:54.099Z",
+      "completedAt": "2026-08-22T07:17:35.875Z"
+    },
+    {
+      "id": "camp-1787382580690",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787382576837",
+          "name": "fahir",
+          "phone": "8089938510",
+          "groupName": "Primary Customers"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787382580690",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T07:09:40.690Z"
+      },
+      "createdAt": "2026-08-22T07:09:40.801Z",
+      "completedAt": "2026-08-22T07:09:42.291Z"
+    },
+    {
+      "id": "camp-1787382535421",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Faris",
+          "phone": "9895997333",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787382535421",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T07:08:55.421Z"
+      },
+      "createdAt": "2026-08-22T07:08:55.624Z",
+      "completedAt": "2026-08-22T07:08:57.755Z"
+    },
+    {
+      "id": "camp-1787380480478",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-manual-test",
+          "name": "Vishnu G",
+          "phone": "+91 90746 40425",
+          "groupName": "Manual Test"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787380480477",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [],
+        "poll": {
+          "question": "Which service do you need? (സേവനം തിരഞ്ഞെടുക്കുക)",
+          "options": [
+            {
+              "id": "opt-1",
+              "text": "Wholesale Bulk Order (ഹോൾസെയിൽ ഓർഡർ)"
+            },
+            {
+              "id": "opt-2",
+              "text": "Retail Purchase (റീട്ടെയിൽ ഓർഡർ)"
+            },
+            {
+              "id": "opt-3",
+              "text": "Distributorship Enquiry (ഡീലർഷിപ്പ്)"
+            }
+          ]
+        },
+        "createdAt": "2026-08-22T06:34:40.477Z"
+      },
+      "createdAt": "2026-08-22T06:34:40.555Z",
+      "completedAt": "2026-08-22T06:34:41.858Z"
+    },
+    {
+      "id": "camp-1787378815988",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787378815987",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T06:06:55.987Z"
+      },
+      "createdAt": "2026-08-22T06:06:56.020Z",
+      "completedAt": "2026-08-22T06:06:57.535Z"
+    },
+    {
+      "id": "camp-1787378649001",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787378649001",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Escape to Grand Palace Resort! Book 2 Nights & Get 1 Spa Voucher + Complimentary Buffet Breakfast. Limited weekend slots remaining! 🏨🌴",
+        "mediaName": "Luxury-Ocean-Villa-Suite.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b5",
+            "type": "url",
+            "text": "🏨 Book Villa",
+            "value": "https://hotel.com/book"
+          },
+          {
+            "id": "b6",
+            "type": "call",
+            "text": "📞 Call Concierge",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T06:04:09.001Z"
+      },
+      "createdAt": "2026-08-22T06:04:09.120Z",
+      "completedAt": "2026-08-22T06:04:10.574Z"
+    },
+    {
+      "id": "camp-1787378563584",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787378563584",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Exclusive Special Offer! Handcrafted 22k Antique Gold Choker & Temple Jewelry Set. Special zero-making-charge offer for first 50 buyers. 💎✨",
+        "mediaName": "Royal-Bridal-Necklace-2026.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b3",
+            "type": "url",
+            "text": "✨ Inquire Price",
+            "value": "https://jewellers.com/price"
+          },
+          {
+            "id": "b4",
+            "type": "call",
+            "text": "📞 Call Showroom",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T06:02:43.584Z"
+      },
+      "createdAt": "2026-08-22T06:02:43.672Z",
+      "completedAt": "2026-08-22T06:02:44.801Z"
+    },
+    {
+      "id": "camp-1787378271568",
+      "name": "📦 Wholesale Silk Saree Rate Card 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787378271567",
+        "title": "📦 Wholesale Silk Saree Rate Card 2026",
+        "messageText": "Hello [Name]!\n\nPlease find our *Wholesale Silk Saree Rate Card* attached. Special volume discounts available for bulk orders above 100 pieces.",
+        "mediaName": "Wholesale-Silk-Rate-Card.pdf",
+        "mediaType": "document",
+        "buttons": [
+          {
+            "id": "b7",
+            "type": "url",
+            "text": "🛒 Order Sample",
+            "value": "https://textiles.com/order"
+          },
+          {
+            "id": "b8",
+            "type": "call",
+            "text": "📞 Call Sales Team",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T05:57:51.567Z"
+      },
+      "createdAt": "2026-08-22T05:57:51.638Z",
+      "completedAt": "2026-08-22T05:57:53.294Z"
+    },
+    {
+      "id": "camp-1787378129859",
+      "name": "🏨 Luxury Ocean-View Villa Package",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787378129859",
+        "title": "🏨 Luxury Ocean-View Villa Package",
+        "messageText": "Escape to *Grand Palace Resort!* Book 2 Nights & Get *1 Free Spa Voucher* + Complimentary Buffet Breakfast. Limited weekend slots remaining! 🏨🌴",
+        "mediaName": "Luxury-Ocean-Villa-Suite.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b5",
+            "type": "url",
+            "text": "🏨 Book Villa",
+            "value": "https://hotel.com/book"
+          },
+          {
+            "id": "b6",
+            "type": "call",
+            "text": "📞 Call Concierge",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T05:55:29.859Z"
+      },
+      "createdAt": "2026-08-22T05:55:29.940Z",
+      "completedAt": "2026-08-22T05:55:31.494Z"
+    },
+    {
+      "id": "camp-1787377992563",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": false,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787377992563",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T05:53:12.563Z"
+      },
+      "createdAt": "2026-08-22T05:53:12.874Z",
+      "completedAt": "2026-08-22T05:53:14.742Z"
+    },
+    {
+      "id": "camp-1787377819603",
+      "name": "🏨 Luxury Ocean-View Villa Package",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 0,
+      "failedCount": 1,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": false,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787377819603",
+        "title": "🏨 Luxury Ocean-View Villa Package",
+        "messageText": "Escape to *Grand Palace Resort!* Book 2 Nights & Get *1 Free Spa Voucher* + Complimentary Buffet Breakfast. Limited weekend slots remaining! 🏨🌴",
+        "mediaName": "Luxury-Ocean-Villa-Suite.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b5",
+            "type": "url",
+            "text": "🏨 Book Villa",
+            "value": "https://hotel.com/book"
+          },
+          {
+            "id": "b6",
+            "type": "call",
+            "text": "📞 Call Concierge",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T05:50:19.603Z"
+      },
+      "createdAt": "2026-08-22T05:50:19.679Z",
+      "completedAt": "2026-08-22T05:50:19.750Z"
+    },
+    {
+      "id": "camp-1787377699014",
+      "name": "🏨 Luxury Ocean-View Villa Package",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 0,
+      "failedCount": 1,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": false,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787377699013",
+        "title": "🏨 Luxury Ocean-View Villa Package",
+        "messageText": "Escape to *Grand Palace Resort!* Book 2 Nights & Get *1 Free Spa Voucher* + Complimentary Buffet Breakfast. Limited weekend slots remaining! 🏨🌴",
+        "mediaName": "Luxury-Ocean-Villa-Suite.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b5",
+            "type": "url",
+            "text": "🏨 Book Villa",
+            "value": "https://hotel.com/book"
+          },
+          {
+            "id": "b6",
+            "type": "call",
+            "text": "📞 Call Concierge",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-22T05:48:19.013Z"
+      },
+      "createdAt": "2026-08-22T05:48:19.098Z",
+      "completedAt": "2026-08-22T05:48:19.231Z"
+    },
+    {
+      "id": "camp-1787376826599",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787305059598"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 0,
+      "failedCount": 1,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "Vishnu Line",
+          "phone": "+91 90746 40425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787376826598",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-22T05:33:46.598Z"
+      },
+      "createdAt": "2026-08-22T05:33:47.410Z",
+      "completedAt": "2026-08-22T05:33:47.472Z"
+    },
+    {
+      "id": "camp-1787312479286",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787312440050"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 0,
+      "failedCount": 1,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": false,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787312479286",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T11:41:19.286Z"
+      },
+      "createdAt": "2026-08-21T11:41:19.323Z",
+      "completedAt": "2026-08-21T11:41:19.531Z"
+    },
+    {
+      "id": "camp-1787312224414",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787312224414",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T11:37:04.414Z"
+      },
+      "createdAt": "2026-08-21T11:37:04.453Z",
+      "completedAt": "2026-08-21T11:37:06.092Z"
+    },
+    {
+      "id": "camp-1787312192012",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 6,
+      "sentCount": 6,
+      "deliveredCount": 6,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787312192012",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T11:36:32.012Z"
+      },
+      "createdAt": "2026-08-21T11:36:32.049Z",
+      "completedAt": "2026-08-21T11:36:59.050Z"
+    },
+    {
+      "id": "camp-1787311567429",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 6,
+      "sentCount": 6,
+      "deliveredCount": 6,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787311567428",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T11:26:07.428Z"
+      },
+      "createdAt": "2026-08-21T11:26:07.485Z",
+      "completedAt": "2026-08-21T11:26:34.975Z"
+    },
+    {
+      "id": "camp-1787309278229",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787309278229",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:47:58.229Z"
+      },
+      "createdAt": "2026-08-21T10:47:58.254Z",
+      "completedAt": "2026-08-21T10:48:00.181Z"
+    },
+    {
+      "id": "camp-1787308170086",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787308170086",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:29:30.086Z"
+      },
+      "createdAt": "2026-08-21T10:29:30.129Z",
+      "completedAt": "2026-08-21T10:29:32.637Z"
+    },
+    {
+      "id": "camp-1787308097938",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787305059598",
+        "acc-1787291526923"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787291526923",
+          "name": "WhatsApp Line",
+          "phone": "+918089564046",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787308097937",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:28:17.937Z"
+      },
+      "createdAt": "2026-08-21T10:28:18.222Z",
+      "completedAt": "2026-08-21T10:28:21.707Z"
+    },
+    {
+      "id": "camp-1787307701763",
+      "name": "📦 Wholesale Silk Saree Rate Card 2026",
+      "accountIds": [
+        "acc-1787305059598"
+      ],
+      "totalContacts": 7,
+      "sentCount": 7,
+      "deliveredCount": 7,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": false,
+      "targetContacts": [
+        {
+          "id": "c-1787307413525",
+          "name": "arshil",
+          "phone": "8089564046",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307701763",
+        "title": "📦 Wholesale Silk Saree Rate Card 2026",
+        "messageText": "Hello [Name]!\n\nPlease find our *Wholesale Silk Saree Rate Card* attached. Special volume discounts available for bulk orders above 100 pieces.",
+        "mediaName": "Wholesale-Silk-Rate-Card.pdf",
+        "mediaType": "document",
+        "buttons": [
+          {
+            "id": "b7",
+            "type": "url",
+            "text": "🛒 Order Sample",
+            "value": "https://textiles.com/order"
+          },
+          {
+            "id": "b8",
+            "type": "call",
+            "text": "📞 Call Sales Team",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:21:41.763Z"
+      },
+      "createdAt": "2026-08-21T10:21:41.801Z",
+      "completedAt": "2026-08-21T10:22:05.453Z"
+    },
+    {
+      "id": "camp-1787307632116",
+      "name": "📦 Wholesale Silk Saree Rate Card 2026",
+      "accountIds": [
+        "acc-1787305059598"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787291526923",
+          "name": "WhatsApp Line",
+          "phone": "+918089564046",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307632116",
+        "title": "📦 Wholesale Silk Saree Rate Card 2026",
+        "messageText": "Hello [Name]!\n\nPlease find our *Wholesale Silk Saree Rate Card* attached. Special volume discounts available for bulk orders above 100 pieces.",
+        "mediaName": "Wholesale-Silk-Rate-Card.pdf",
+        "mediaType": "document",
+        "buttons": [
+          {
+            "id": "b7",
+            "type": "url",
+            "text": "🛒 Order Sample",
+            "value": "https://textiles.com/order"
+          },
+          {
+            "id": "b8",
+            "type": "call",
+            "text": "📞 Call Sales Team",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:20:32.116Z"
+      },
+      "createdAt": "2026-08-21T10:20:32.153Z",
+      "completedAt": "2026-08-21T10:20:32.594Z"
+    },
+    {
+      "id": "camp-1787307559711",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307559711",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:19:19.711Z"
+      },
+      "createdAt": "2026-08-21T10:19:19.748Z",
+      "completedAt": "2026-08-21T10:19:21.473Z"
+    },
+    {
+      "id": "camp-1787307418409",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787305059598"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": false,
+      "targetContacts": [
+        {
+          "id": "c-1787307413525",
+          "name": "arshil",
+          "phone": "8089564046",
+          "groupName": "Primary Customers"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307418409",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:16:58.409Z"
+      },
+      "createdAt": "2026-08-21T10:16:58.436Z",
+      "completedAt": "2026-08-21T10:16:59.774Z"
+    },
+    {
+      "id": "camp-1787307300722",
+      "name": "🏨 Luxury Ocean-View Villa Package",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 6,
+      "sentCount": 6,
+      "deliveredCount": 6,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307300722",
+        "title": "🏨 Luxury Ocean-View Villa Package",
+        "messageText": "Escape to *Grand Palace Resort!* Book 2 Nights & Get *1 Free Spa Voucher* + Complimentary Buffet Breakfast. Limited weekend slots remaining! 🏨🌴",
+        "mediaName": "Luxury-Ocean-Villa-Suite.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [],
+        "poll": {
+          "question": "Which service do you need? (സേവനം തിരഞ്ഞെടുക്കുക)",
+          "options": [
+            {
+              "id": "opt-1",
+              "text": "Wholesale Bulk Order (ഹോൾസെയിൽ ഓർഡർ)"
+            },
+            {
+              "id": "opt-2",
+              "text": "Retail Purchase (റീട്ടെയിൽ ഓർഡർ)"
+            },
+            {
+              "id": "opt-3",
+              "text": "Distributorship Enquiry (ഡീലർഷിപ്പ്)"
+            }
+          ]
+        },
+        "createdAt": "2026-08-21T10:15:00.722Z"
+      },
+      "createdAt": "2026-08-21T10:15:00.759Z",
+      "completedAt": "2026-08-21T10:15:24.490Z"
+    },
+    {
+      "id": "camp-1787307251677",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787291526923",
+        "acc-1787305059598"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787291526923",
+          "name": "WhatsApp Line",
+          "phone": "+918089564046",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307251676",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-21T10:14:11.676Z"
+      },
+      "createdAt": "2026-08-21T10:14:11.712Z",
+      "completedAt": "2026-08-21T10:14:12.097Z"
+    },
+    {
+      "id": "camp-1787307162141",
+      "name": "📦 Wholesale Silk Saree Rate Card 2026",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 6,
+      "sentCount": 6,
+      "deliveredCount": 6,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307162141",
+        "title": "📦 Wholesale Silk Saree Rate Card 2026",
+        "messageText": "Hello [Name]!\n\nPlease find our *Wholesale Silk Saree Rate Card* attached. Special volume discounts available for bulk orders above 100 pieces.",
+        "mediaName": "Wholesale-Silk-Rate-Card.pdf",
+        "mediaType": "document",
+        "buttons": [
+          {
+            "id": "b7",
+            "type": "url",
+            "text": "🛒 Order Sample",
+            "value": "https://textiles.com/order"
+          },
+          {
+            "id": "b8",
+            "type": "call",
+            "text": "📞 Call Sales Team",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:12:42.141Z"
+      },
+      "createdAt": "2026-08-21T10:12:42.177Z",
+      "completedAt": "2026-08-21T10:13:03.719Z"
+    },
+    {
+      "id": "camp-1787307007347",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 6,
+      "sentCount": 6,
+      "deliveredCount": 6,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1",
+          "name": "Ramesh Patel",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-2",
+          "name": "Priya Sharma",
+          "phone": "+91 1234567890",
+          "groupName": "VIP Customers"
+        },
+        {
+          "id": "c-3",
+          "name": "Vikram Malhotra",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        },
+        {
+          "id": "c-4",
+          "name": "Ananya Iyer",
+          "phone": "+91 1234567890",
+          "groupName": "Weekend Walk-ins"
+        },
+        {
+          "id": "c-5",
+          "name": "Rahul Verma",
+          "phone": "+91 1234567890",
+          "groupName": "Recent Inquiries"
+        },
+        {
+          "id": "c-6",
+          "name": "Sneha Kulkarni",
+          "phone": "+91 1234567890",
+          "groupName": "High-Value Leads"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787307007347",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T10:10:07.347Z"
+      },
+      "createdAt": "2026-08-21T10:10:07.383Z",
+      "completedAt": "2026-08-21T10:10:37.053Z"
+    },
+    {
+      "id": "camp-1787306592397",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787291526923",
+        "acc-1787305059598"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787291526923",
+          "name": "WhatsApp Line",
+          "phone": "+918089564046",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787306592397",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-21T10:03:12.397Z"
+      },
+      "createdAt": "2026-08-21T10:03:12.425Z",
+      "completedAt": "2026-08-21T10:03:12.807Z"
+    },
+    {
+      "id": "camp-1787306507049",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923",
+        "acc-1787305059598"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787306507049",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "Namaste! Try our chef's new Special Tandoori Butter Chicken served with Garlic Naan & Dal Makhani. Special weekend family combo at ₹399 only! 🌶️🍗",
+        "mediaName": "Tandoori-Butter-Chicken-Special.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          },
+          {
+            "id": "b3",
+            "type": "quick_reply",
+            "text": "View Full Menu"
+          }
+        ],
+        "createdAt": "2026-08-21T10:01:47.049Z"
+      },
+      "createdAt": "2026-08-21T10:01:47.107Z",
+      "completedAt": "2026-08-21T10:01:49.685Z"
+    },
+    {
+      "id": "camp-1787305493049",
+      "name": "🍲 Chef Special Tandoori Butter Chicken",
+      "accountIds": [
+        "acc-1787291526923"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "recipient-acc-1787305059598",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Connected Phone"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787305493049",
+        "title": "🍲 Chef Special Tandoori Butter Chicken",
+        "messageText": "*Special Offer!* Try our chef's new _Tandoori Butter Chicken_ served with Garlic Naan. Special family combo at *₹399 only!* 🌶️🍗",
+        "mediaName": "Chef-Special-Tandoori-Chicken.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b1",
+            "type": "url",
+            "text": "🛒 Order Now",
+            "value": "https://restaurant.com/order"
+          },
+          {
+            "id": "b2",
+            "type": "call",
+            "text": "📞 Call Table Booking",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T09:44:53.049Z"
+      },
+      "createdAt": "2026-08-21T09:44:53.072Z",
+      "completedAt": "2026-08-21T09:44:59.940Z"
+    },
+    {
+      "id": "camp-1787303229549",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787294775807",
+        "acc-1787294709679"
+      ],
+      "totalContacts": 2,
+      "sentCount": 2,
+      "deliveredCount": 2,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787294821284",
+          "name": "New Customer",
+          "phone": "8089564046",
+          "groupName": "Primary Customers"
+        },
+        {
+          "id": "c-1787294002624",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Primary Customers"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787303229549",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-21T09:07:09.549Z"
+      },
+      "createdAt": "2026-08-21T09:07:09.605Z",
+      "completedAt": "2026-08-21T09:07:15.277Z"
+    },
+    {
+      "id": "camp-1787294828751",
+      "name": "💎 22k Gold Antique Bridal Collection",
+      "accountIds": [
+        "acc-1787294775807"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787294821283",
+          "name": "New Customer",
+          "phone": "8089564046",
+          "groupName": "Primary Customers"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787294828751",
+        "title": "💎 22k Gold Antique Bridal Collection",
+        "messageText": "*Exclusive Release!* Handcrafted _22k Antique Gold Choker_ & Temple Jewelry Set. Special *zero-making-charge* offer for first 50 buyers. 💎✨",
+        "mediaName": "Royal-Bridal-Necklace-2026.jpg",
+        "mediaPath": "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&auto=format&fit=crop&q=80",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b3",
+            "type": "url",
+            "text": "✨ Inquire Price",
+            "value": "https://jewellers.com/price"
+          },
+          {
+            "id": "b4",
+            "type": "call",
+            "text": "📞 Call Showroom",
+            "value": ""
+          }
+        ],
+        "createdAt": "2026-08-21T06:47:08.751Z"
+      },
+      "createdAt": "2026-08-21T06:47:08.785Z",
+      "completedAt": "2026-08-21T06:47:12.187Z"
+    },
+    {
+      "id": "camp-1787294741538",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1787294709679"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787294002624",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Primary Customers"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787294741538",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-21T06:45:41.538Z"
+      },
+      "createdAt": "2026-08-21T06:45:41.560Z",
+      "completedAt": "2026-08-21T06:45:41.800Z"
+    },
+    {
+      "id": "camp-1787294007394",
+      "name": "Festival Special Offer 2026",
+      "accountIds": [
+        "acc-1"
+      ],
+      "totalContacts": 1,
+      "sentCount": 1,
+      "deliveredCount": 1,
+      "failedCount": 0,
+      "status": "completed",
+      "safetyPreset": "turbo",
+      "minDelay": 2,
+      "maxDelay": 5,
+      "batchSize": 100,
+      "sleepSeconds": 15,
+      "isRoundRobin": true,
+      "targetContacts": [
+        {
+          "id": "c-1787294002624",
+          "name": "vishnu",
+          "phone": "9074640425",
+          "groupName": "Primary Customers"
+        }
+      ],
+      "template": {
+        "id": "tpl-1787294007394",
+        "title": "Festival Special Offer 2026",
+        "messageText": "Hello [Name]!\n\nSpecial Festival Offer for you! Get flat ₹500 OFF on your next order using the button below.\n\nWarm regards,\nSales Team",
+        "mediaType": "image",
+        "buttons": [
+          {
+            "id": "b-1",
+            "type": "quick_reply",
+            "text": "Claim ₹500 Discount"
+          }
+        ],
+        "createdAt": "2026-08-21T06:33:27.394Z"
+      },
+      "createdAt": "2026-08-21T06:33:27.556Z",
+      "completedAt": "2026-08-21T06:33:28.329Z"
+    }
+  ],
+  "campaignLogs": [
+    {
+      "id": "log-1788174649237-0",
+      "campaignId": "camp-1788174641573",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMEIwMkI4ODcxRkQ5QUM2QTI5AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-31T11:10:49.238Z"
+    },
+    {
+      "id": "log-1788172503080-0",
+      "campaignId": "camp-1788172501520",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSREJBNjBDNDU3QUU1MDYwNTZBAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-31T10:35:03.080Z"
+    },
+    {
+      "id": "log-1788154491292-0",
+      "campaignId": "camp-1788154489703",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "failed",
+      "channel": "meta_cloud_api",
+      "error": "Meta Token Expired: Please update your permanent access token in Connected Phones.",
+      "messageId": null,
+      "latency": "2.0s",
+      "timestamp": "2026-08-31T05:34:51.292Z"
+    },
+    {
+      "id": "log-1787828338008-0",
+      "campaignId": "camp-1787828336399",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNkM1QkM0NEIzRkE3NDMxMjQ2AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-27T10:58:58.008Z"
+    },
+    {
+      "id": "log-1787828309125-0",
+      "campaignId": "camp-1787828307617",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSQkY3RDBBNzMzMUNENjAwNzQ0AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-27T10:58:29.125Z"
+    },
+    {
+      "id": "log-1787828302657-5",
+      "campaignId": "camp-1787828277276",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMDIwQzAzNzIxNTE4QkFDRDY4AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:58:22.657Z"
+    },
+    {
+      "id": "log-1787828296587-4",
+      "campaignId": "camp-1787828277276",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSM0NCNzU5QTNGOUU4N0U4NDUzAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-27T10:58:16.587Z"
+    },
+    {
+      "id": "log-1787828291060-3",
+      "campaignId": "camp-1787828277276",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNkI1N0IzQUVGMjhDMzlCOThCAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-27T10:58:11.060Z"
+    },
+    {
+      "id": "log-1787828288171-2",
+      "campaignId": "camp-1787828277276",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSRDk1REI0Njk4NkYzNjAyMzE2AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-27T10:58:08.171Z"
+    },
+    {
+      "id": "log-1787828285216-1",
+      "campaignId": "camp-1787828277276",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNEMzQTA2NUI5QkU4MjlFNjI0AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:58:05.216Z"
+    },
+    {
+      "id": "log-1787828278777-0",
+      "campaignId": "camp-1787828277276",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSQUYxQURFRDREM0Q4RjJCODFEAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:57:58.779Z"
+    },
+    {
+      "id": "log-1787827629682-0",
+      "campaignId": "camp-1787827619741",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNjIxQjAwREE5Q0NDMDhBOTY5AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-27T10:47:09.684Z"
+    },
+    {
+      "id": "log-1787827516070-0",
+      "campaignId": "camp-1787827514342",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRjQxOTBDRkNCNzdEMzIyOUU1AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:45:16.073Z"
+    },
+    {
+      "id": "log-1787826976780-0",
+      "campaignId": "camp-1787826972723",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNUFCMUYzOENFQUNDMDYxODFFAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-27T10:36:16.809Z"
+    },
+    {
+      "id": "log-1787826816515-0",
+      "campaignId": "camp-1787826815457",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMUNGOTJERTAwNDA4REIzMUJEAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-27T10:33:36.515Z"
+    },
+    {
+      "id": "log-1787826771079-5",
+      "campaignId": "camp-1787826736748",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "6.0s",
+      "timestamp": "2026-08-27T10:32:51.079Z"
+    },
+    {
+      "id": "log-1787826765038-4",
+      "campaignId": "camp-1787826736748",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNTE2N0JCOUREQTZBRDEyMEU1AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:32:45.038Z"
+    },
+    {
+      "id": "log-1787826758629-3",
+      "campaignId": "camp-1787826736748",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "8086166091",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "7.0s",
+      "timestamp": "2026-08-27T10:32:38.629Z"
+    },
+    {
+      "id": "log-1787826751586-2",
+      "campaignId": "camp-1787826736748",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+919074640425",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:32:31.586Z"
+    },
+    {
+      "id": "log-1787826746549-1",
+      "campaignId": "camp-1787826736748",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "8.0s",
+      "timestamp": "2026-08-27T10:32:26.549Z"
+    },
+    {
+      "id": "log-1787826738499-0",
+      "campaignId": "camp-1787826736748",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNThBMjJDMzUzM0RCOUU4OTRBAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-27T10:32:18.499Z"
+    },
+    {
+      "id": "log-1787826468294-0",
+      "campaignId": "camp-1787826466327",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNjZCRENCM0NBREM5MzZBNDM4AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-27T10:27:48.296Z"
+    },
+    {
+      "id": "log-1787825766884-0",
+      "campaignId": "camp-1787825765474",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRjBDQzNCRkIwRTlEOTM5QkFFAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-27T10:16:06.884Z"
+    },
+    {
+      "id": "log-1787825458297-0",
+      "campaignId": "camp-1787825455157",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSODU1QkY1NzU3NDRDM0UxOTFGAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T10:10:58.327Z"
+    },
+    {
+      "id": "log-1787824537426-0",
+      "campaignId": "camp-1787824536207",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRkE4MjBCM0VFRDY5QkMzNDM0AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T09:55:37.426Z"
+    },
+    {
+      "id": "log-1787824273898-0",
+      "campaignId": "camp-1787824272294",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSQTlCMzlGMTVCQzMxOEMwQkY5AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-27T09:51:13.898Z"
+    },
+    {
+      "id": "log-1787824117973-0",
+      "campaignId": "camp-1787824116622",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+917338944799",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMzc4MjE3RjM0Mzc3REE4RTA4AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-27T09:48:37.975Z"
+    },
+    {
+      "id": "log-1787396328383-0",
+      "campaignId": "camp-1787396327396",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMDA3NUY4QjZCQjQ0RDY2RDlFAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T10:58:48.383Z"
+    },
+    {
+      "id": "log-1787396078026-0",
+      "campaignId": "camp-1787396077125",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSM0VDNTZEMEQyQ0M5OTA5QUU5AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T10:54:38.026Z"
+    },
+    {
+      "id": "log-1787396026519-0",
+      "campaignId": "camp-1787396025474",
+      "recipientPhone": "8089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSMzFEQjhCMjk4NThCOTcyQTM3AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T10:53:46.519Z"
+    },
+    {
+      "id": "log-1787395924460-0",
+      "campaignId": "camp-1787395923549",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMzRFODY4RDU5Q0UzNEY3NEFFAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T10:52:04.460Z"
+    },
+    {
+      "id": "log-1787395851880-0",
+      "campaignId": "camp-1787395850570",
+      "recipientPhone": "8089938510",
+      "recipientName": "Test Recipient",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSRDQ2MTY2Qjk5NzRDOTkyRjYyAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T10:50:51.881Z"
+    },
+    {
+      "id": "log-1787395749782-0",
+      "campaignId": "camp-1787395748209",
+      "recipientPhone": "8089946615",
+      "recipientName": "anshad",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTQ2NjE1FQIAERgSOTRDNEEyNzFFQ0U0REYzREZEAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T10:49:09.782Z"
+    },
+    {
+      "id": "log-1787395669340-0",
+      "campaignId": "camp-1787395668466",
+      "recipientPhone": "8086166091",
+      "recipientName": "habeeb",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg2MTY2MDkxFQIAERgSRDZFRENCN0M0MzU2MDUwRjMzAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T10:47:49.340Z"
+    },
+    {
+      "id": "log-1787395637776-0",
+      "campaignId": "camp-1787395636423",
+      "recipientPhone": "8086166091",
+      "recipientName": "habeeb",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg2MTY2MDkxFQIAERgSRkIzQTY2MkQxOUU4ODBGNTM4AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T10:47:17.776Z"
+    },
+    {
+      "id": "log-1787392907807-0",
+      "campaignId": "camp-1787392906294",
+      "recipientPhone": "8086166091",
+      "recipientName": "WhatsApp Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg2MTY2MDkxFQIAERgSNDM1MkY3OUE1RjY1RTAxNkNEAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T10:01:47.807Z"
+    },
+    {
+      "id": "log-1787392597493-0",
+      "campaignId": "camp-1787392595892",
+      "recipientPhone": "8086166091",
+      "recipientName": "habeeb test",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg2MTY2MDkxFQIAERgSNjNCMzE1QzJGMkVEMDI5REM3AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T09:56:37.493Z"
+    },
+    {
+      "id": "log-1787392046405-0",
+      "campaignId": "camp-1787392044387",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSOEE5QTkyNUU3QkRCQTE5OUFEAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T09:47:26.405Z"
+    },
+    {
+      "id": "log-1787391133276-0",
+      "campaignId": "camp-1787391131782",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNUQ2NEU0MzFDMjMzMENCQkY5AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T09:32:13.276Z"
+    },
+    {
+      "id": "log-1787391075030-0",
+      "campaignId": "camp-1787391073111",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSOTQyRjdFNjYzNEQwOTAwRUEwAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T09:31:15.033Z"
+    },
+    {
+      "id": "log-1787390267524-0",
+      "campaignId": "camp-1787390266129",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNkY0MTlCNDgyN0NCOTI5MTMzAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T09:17:47.526Z"
+    },
+    {
+      "id": "log-1787383984469-0",
+      "campaignId": "camp-1787383983401",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRDBFQTFFREU0NkMwREVDMzk1AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:33:04.469Z"
+    },
+    {
+      "id": "log-1787383872274-3",
+      "campaignId": "camp-1787383852763",
+      "recipientPhone": "+919895997333",
+      "recipientName": "faris",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5ODk1OTk3MzMzFQIAERgSM0M4NUE3OUZCQjQ2QzJDQTVBAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:31:12.274Z"
+    },
+    {
+      "id": "log-1787383867228-2",
+      "campaignId": "camp-1787383852763",
+      "recipientPhone": "+918089938510",
+      "recipientName": "Fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSMzg3RDQ4QzQwNjMwODc0NjY5AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:31:07.228Z"
+    },
+    {
+      "id": "log-1787383860874-1",
+      "campaignId": "camp-1787383852763",
+      "recipientPhone": "+918086166091",
+      "recipientName": "Habeeb",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg2MTY2MDkxFQIAERgSMkMyOTEyNEI4QjkyNzQ2REYxAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:31:00.874Z"
+    },
+    {
+      "id": "log-1787383854460-0",
+      "campaignId": "camp-1787383852763",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMERFNENEMzVGNUIzMkUyQjE0AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:30:54.460Z"
+    },
+    {
+      "id": "log-1787383420954-12",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMzE2RDZEN0JGQjBBQTlBODg5AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:23:40.954Z"
+    },
+    {
+      "id": "log-1787383418218-11",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMjRDMTZBQzAxOUFGODEyQzg5AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:23:38.218Z"
+    },
+    {
+      "id": "log-1787383414531-10",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNUVBN0EwNDVEQUFCQTY0NjEwAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:23:34.531Z"
+    },
+    {
+      "id": "log-1787383410849-9",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSODExODY3ODI0NEIxMUYzNTNGAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:23:30.849Z"
+    },
+    {
+      "id": "log-1787383408136-8",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSQkZDMkRFNzE3RDNDMzM4Mjk3AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:23:28.136Z"
+    },
+    {
+      "id": "log-1787383402437-7",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSRjQ0MDk0RjI5NzUyQUJBRERCAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:23:22.437Z"
+    },
+    {
+      "id": "log-1787383398727-6",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "8089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSQTZDRDc0RDBFQzFBRDA2NUQ1AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:23:18.727Z"
+    },
+    {
+      "id": "log-1787383394846-5",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNTBGNjI2M0YwRTNEREQ4MTRDAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:23:14.846Z"
+    },
+    {
+      "id": "log-1787383389065-4",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+918089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSMDFBMzZFQjExNDgzOUIyOTg1AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:23:09.065Z"
+    },
+    {
+      "id": "log-1787383384269-3",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "+919074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRDQ1RjFDMUE5MEJFNTdGNDc2AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:23:04.269Z"
+    },
+    {
+      "id": "log-1787383379471-2",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "9895997333",
+      "recipientName": "faris",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5ODk1OTk3MzMzFQIAERgSOEQ0MDZFMkU5Q0ZEMEZGQjcwAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:22:59.471Z"
+    },
+    {
+      "id": "log-1787383376741-1",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "808616609",
+      "recipientName": "habeeb",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgJODA4NjE2NjA5FQIAERgSQTRCOUVCQ0NGRDgwMTI4MjA2AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:22:56.742Z"
+    },
+    {
+      "id": "log-1787383371976-0",
+      "campaignId": "camp-1787383370786",
+      "recipientPhone": "8086166091",
+      "recipientName": "habeeb original",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg2MTY2MDkxFQIAERgSOTYwQjgwRUM4RjY4MzZCNjg0AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:22:51.976Z"
+    },
+    {
+      "id": "log-1787383321676-11",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMzQwQjAzN0Y0NDdFN0JCNDUzAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:22:01.676Z"
+    },
+    {
+      "id": "log-1787383319016-10",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSM0YzRTZBRDI4MTg5NjhFNkEwAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:21:59.016Z"
+    },
+    {
+      "id": "log-1787383312749-9",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSRDg2OTM0OEZDNTk0RkMwMTY4AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:21:52.749Z"
+    },
+    {
+      "id": "log-1787383309056-8",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNThDMEEwMjNENUU1RjJFOEIzAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:21:49.056Z"
+    },
+    {
+      "id": "log-1787383304276-7",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSNkY2Rjc5RDE5OTJBNDM4OTA4AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:21:44.276Z"
+    },
+    {
+      "id": "log-1787383299049-6",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMTE0RTMwRTAxODk1QzI4ODU5AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:21:39.049Z"
+    },
+    {
+      "id": "log-1787383295374-5",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "8089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSOUU3QTRBRjMyQjY1MEIyNTUyAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:21:35.374Z"
+    },
+    {
+      "id": "log-1787383289504-4",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSQkVCNjY5Nzc5NjQ1RkI0NDkyAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:21:29.505Z"
+    },
+    {
+      "id": "log-1787383285629-3",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+918089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSNUNEOTI0NEVCRjQwQjlGOUNGAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:21:25.629Z"
+    },
+    {
+      "id": "log-1787383281916-2",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "+919074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSOEUxQUIwRjhENTBBOTY2NUQzAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:21:21.916Z"
+    },
+    {
+      "id": "log-1787383275667-1",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "9895997333",
+      "recipientName": "faris",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5ODk1OTk3MzMzFQIAERgSQ0Y5QjExQTE2QjJDMkRBNUFDAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:21:15.667Z"
+    },
+    {
+      "id": "log-1787383269463-0",
+      "campaignId": "camp-1787383267665",
+      "recipientPhone": "808616609",
+      "recipientName": "habeeb",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgJODA4NjE2NjA5FQIAERgSODVCOUQzQTI4NjhCOThBQzJEAA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:21:09.463Z"
+    },
+    {
+      "id": "log-1787383055842-10",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMTdBNTQ0NTkzODIwMzNGQTYyAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:17:35.842Z"
+    },
+    {
+      "id": "log-1787383053041-9",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSRkRBQjI5QUZDOThGQjhDMUQ0AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:17:33.041Z"
+    },
+    {
+      "id": "log-1787383049368-8",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSMkU1MzI3NDM4NTVGQjQxQjg0AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:17:29.368Z"
+    },
+    {
+      "id": "log-1787383043479-7",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSQ0Y4MkExM0RFOTk5RDI3NURFAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:17:23.480Z"
+    },
+    {
+      "id": "log-1787383040755-6",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSREJDMERFQTFBQUVBQkE1MDQ3AA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:17:20.755Z"
+    },
+    {
+      "id": "log-1787383037511-5",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTExMjM0NTY3ODkwFQIAERgSREUwMDVEODE3NTlGMzc1RjY1AA==",
+      "latency": "5.0s",
+      "timestamp": "2026-08-22T07:17:17.512Z"
+    },
+    {
+      "id": "log-1787383031640-4",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "8089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSNzc1MDc2NzA1QjM3Q0U4OURDAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:17:11.640Z"
+    },
+    {
+      "id": "log-1787383026346-3",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNzlDOTI1MkY4N0M2RTdGRTdFAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:17:06.346Z"
+    },
+    {
+      "id": "log-1787383022512-2",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+918089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSOEI2RUM3QjZFMTEwOTRCNjFCAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:17:02.512Z"
+    },
+    {
+      "id": "log-1787383018561-1",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "+919074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMkNEMzk3M0ExM0QxOTlENEVFAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T07:16:58.561Z"
+    },
+    {
+      "id": "log-1787383015413-0",
+      "campaignId": "camp-1787383014038",
+      "recipientPhone": "9895997333",
+      "recipientName": "faris",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5ODk1OTk3MzMzFQIAERgSRDZFRENFNzQ1ODZDRDE1RTIzAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:16:55.414Z"
+    },
+    {
+      "id": "log-1787382582252-0",
+      "campaignId": "camp-1787382580690",
+      "recipientPhone": "8089938510",
+      "recipientName": "fahir",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE4MDg5OTM4NTEwFQIAERgSMUVBRUJGRDA3QjFCQjlCMUY1AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T07:09:42.252Z"
+    },
+    {
+      "id": "log-1787382537714-0",
+      "campaignId": "camp-1787382535421",
+      "recipientPhone": "9895997333",
+      "recipientName": "Faris",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5ODk1OTk3MzMzFQIAERgSQkE0ODA5MUYwN0M2NDRDRTFFAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T07:08:57.714Z"
+    },
+    {
+      "id": "log-1787380481836-0",
+      "campaignId": "camp-1787380480478",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu G",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSOEQ4QzA2MDA2QzM3MEJBRTlCAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T06:34:41.836Z"
+    },
+    {
+      "id": "log-1787378817463-0",
+      "campaignId": "camp-1787378815988",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRDA4N0Y4MEI0OUM4QzUwREUzAA==",
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T06:06:57.463Z"
+    },
+    {
+      "id": "log-1787378650534-0",
+      "campaignId": "camp-1787378649001",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSRURFRTIwNUNGNTcxMzZCOTUxAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T06:04:10.534Z"
+    },
+    {
+      "id": "log-1787378564754-0",
+      "campaignId": "camp-1787378563584",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSODU3MzdFNDAzQTA3RDVGQzUxAA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T06:02:44.754Z"
+    },
+    {
+      "id": "log-1787378273247-0",
+      "campaignId": "camp-1787378271568",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSOUI4NUUzMDZGQzdGRkQ3MUZEAA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T05:57:53.248Z"
+    },
+    {
+      "id": "log-1787378131448-0",
+      "campaignId": "camp-1787378129859",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSMkQxQ0QxOTRCMjRFNTkyNTg5AA==",
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T05:55:31.449Z"
+    },
+    {
+      "id": "log-1787377994700-0",
+      "campaignId": "camp-1787377992563",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSNUY4QkNDRDFGRDlENEU0NkY5AA==",
+      "latency": "4.0s",
+      "timestamp": "2026-08-22T05:53:14.700Z"
+    },
+    {
+      "id": "log-1787377950318-0",
+      "campaignId": "test-campaign-1787377948658",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu",
+      "senderPhone": "+919496300233",
+      "status": "delivered",
+      "channel": "meta_cloud_api",
+      "error": null,
+      "messageId": "wamid.HBgMOTE5MDc0NjQwNDI1FQIAERgSOUNBOTkzQjgyMkM3NEU3MzIyAA==",
+      "latency": "8.0s",
+      "timestamp": "2026-08-22T05:52:30.318Z"
+    },
+    {
+      "id": "log-1787377819703-0",
+      "campaignId": "camp-1787377819603",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "3.0s",
+      "timestamp": "2026-08-22T05:50:19.703Z"
+    },
+    {
+      "id": "log-1787377699168-0",
+      "campaignId": "camp-1787377699014",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919496300233",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T05:48:19.172Z"
+    },
+    {
+      "id": "log-1787376827440-0",
+      "campaignId": "camp-1787376826599",
+      "recipientPhone": "+919074640425",
+      "recipientName": "Vishnu Line",
+      "senderPhone": "+919074640425",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "WhatsApp sender phone line is not connected. Please go to Connected Phones and scan the QR code to link your phone before sending.",
+      "messageId": null,
+      "latency": "2.0s",
+      "timestamp": "2026-08-22T05:33:47.440Z"
+    },
+    {
+      "id": "log-1787312479471-0",
+      "campaignId": "camp-1787312479286",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "9496300233",
+      "status": "failed",
+      "channel": "baileys_socket",
+      "error": "Selected sender phone \"9496300233\" is disconnected (needs QR scan). Please scan its QR code on Connected Phones or select an active online line.",
+      "messageId": null,
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T11:41:19.471Z"
+    },
+    {
+      "id": "log-1787312226058-0",
+      "campaignId": "camp-1787312224414",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0809C860C84CC3110BF",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T11:37:06.058Z"
+    },
+    {
+      "id": "log-1787312219029-5",
+      "campaignId": "camp-1787312192012",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB03EADBAC799B9CAE0F0",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T11:36:59.029Z"
+    },
+    {
+      "id": "log-1787312212409-4",
+      "campaignId": "camp-1787312192012",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0278B0220C5A234CB38",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T11:36:52.409Z"
+    },
+    {
+      "id": "log-1787312208123-3",
+      "campaignId": "camp-1787312192012",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0F586870FBB364E07C5",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T11:36:48.123Z"
+    },
+    {
+      "id": "log-1787312203883-2",
+      "campaignId": "camp-1787312192012",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0BE3D2C7B914D2284FA",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T11:36:43.883Z"
+    },
+    {
+      "id": "log-1787312198009-1",
+      "campaignId": "camp-1787312192012",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0014B4F2508E048E950",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T11:36:38.009Z"
+    },
+    {
+      "id": "log-1787312193713-0",
+      "campaignId": "camp-1787312192012",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0592A9E42502D343F23",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T11:36:33.714Z"
+    },
+    {
+      "id": "log-1787311594956-5",
+      "campaignId": "camp-1787311567429",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB06596D65D838B15809F",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T11:26:34.956Z"
+    },
+    {
+      "id": "log-1787311588703-4",
+      "campaignId": "camp-1787311567429",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0AC5B80775DD76ED1CE",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T11:26:28.703Z"
+    },
+    {
+      "id": "log-1787311582263-3",
+      "campaignId": "camp-1787311567429",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB09D702A18D09155A4DA",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T11:26:22.263Z"
+    },
+    {
+      "id": "log-1787311576935-2",
+      "campaignId": "camp-1787311567429",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0E482066F3A1DB9C90F",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T11:26:16.935Z"
+    },
+    {
+      "id": "log-1787311573620-1",
+      "campaignId": "camp-1787311567429",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB00F850CE68C64ED1CF5",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T11:26:13.620Z"
+    },
+    {
+      "id": "log-1787311569294-0",
+      "campaignId": "camp-1787311567429",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB04733D85157FA6F07A1",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T11:26:09.295Z"
+    },
+    {
+      "id": "log-1787309280163-0",
+      "campaignId": "camp-1787309278229",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0E2B9F07CA52AACFEF2",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:48:00.163Z"
+    },
+    {
+      "id": "log-1787308172608-0",
+      "campaignId": "camp-1787308170086",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0729C3D1B1660F0656C",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:29:32.608Z"
+    },
+    {
+      "id": "log-1787308101687-0",
+      "campaignId": "camp-1787308097938",
+      "recipientPhone": "+918089564046",
+      "recipientName": "WhatsApp Line",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0A18B07FE1C622D4CE5",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:28:21.688Z"
+    },
+    {
+      "id": "log-1787307725435-6",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB05CBADCBEDCE4F52A87",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:22:05.435Z"
+    },
+    {
+      "id": "log-1787307720906-5",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0E733875DC0619E3ABD",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:22:00.906Z"
+    },
+    {
+      "id": "log-1787307715357-4",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0FA20866AC44982595A",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:21:55.357Z"
+    },
+    {
+      "id": "log-1787307712819-3",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0A886B7BF935E81D17E",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:21:52.819Z"
+    },
+    {
+      "id": "log-1787307710270-2",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB091D05622DF491D58F7",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:21:50.270Z"
+    },
+    {
+      "id": "log-1787307705743-1",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0C8BDED0A28DECAF82C",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:21:45.743Z"
+    },
+    {
+      "id": "log-1787307702192-0",
+      "campaignId": "camp-1787307701763",
+      "recipientPhone": "8089564046",
+      "recipientName": "arshil",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0002D8DF58B54591A59",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:21:42.193Z"
+    },
+    {
+      "id": "log-1787307632559-0",
+      "campaignId": "camp-1787307632116",
+      "recipientPhone": "+918089564046",
+      "recipientName": "WhatsApp Line",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0E525B156FF29731235",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:20:32.559Z"
+    },
+    {
+      "id": "log-1787307561445-0",
+      "campaignId": "camp-1787307559711",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0FF9C89BE87EED36BE2",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:19:21.445Z"
+    },
+    {
+      "id": "log-1787307419756-0",
+      "campaignId": "camp-1787307418409",
+      "recipientPhone": "8089564046",
+      "recipientName": "arshil",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0DDF69B8B2FD00FA13C",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:16:59.756Z"
+    },
+    {
+      "id": "log-1787307324470-5",
+      "campaignId": "camp-1787307300722",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0B2EB84687A538FA8DB",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:15:24.471Z"
+    },
+    {
+      "id": "log-1787307320074-4",
+      "campaignId": "camp-1787307300722",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0342B4A5032DBD8920C",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:15:20.075Z"
+    },
+    {
+      "id": "log-1787307316781-3",
+      "campaignId": "camp-1787307300722",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB03B45FC835A9547ACDF",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:15:16.781Z"
+    },
+    {
+      "id": "log-1787307312439-2",
+      "campaignId": "camp-1787307300722",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB04D643D53D39F3CD640",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:15:12.439Z"
+    },
+    {
+      "id": "log-1787307308865-1",
+      "campaignId": "camp-1787307300722",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0A31C9ED138A009D152",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:15:08.865Z"
+    },
+    {
+      "id": "log-1787307302506-0",
+      "campaignId": "camp-1787307300722",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0714717E699513E8B96",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:15:02.506Z"
+    },
+    {
+      "id": "log-1787307252080-0",
+      "campaignId": "camp-1787307251677",
+      "recipientPhone": "+918089564046",
+      "recipientName": "WhatsApp Line",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB07F0390EF90FA12DB55",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:14:12.080Z"
+    },
+    {
+      "id": "log-1787307183703-5",
+      "campaignId": "camp-1787307162141",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0AEA4EB27515A984919",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:13:03.703Z"
+    },
+    {
+      "id": "log-1787307178120-4",
+      "campaignId": "camp-1787307162141",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0DAAEC8F104DE5CE98F",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:12:58.120Z"
+    },
+    {
+      "id": "log-1787307175559-3",
+      "campaignId": "camp-1787307162141",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0D7BE0D8FADDAEE8B5D",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:12:55.559Z"
+    },
+    {
+      "id": "log-1787307172020-2",
+      "campaignId": "camp-1787307162141",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0089C116A6752234302",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:12:52.020Z"
+    },
+    {
+      "id": "log-1787307167483-1",
+      "campaignId": "camp-1787307162141",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB040F22D4E766D260F32",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:12:47.483Z"
+    },
+    {
+      "id": "log-1787307162928-0",
+      "campaignId": "camp-1787307162141",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB08017F27BAB744A38DC",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:12:42.928Z"
+    },
+    {
+      "id": "log-1787307037038-5",
+      "campaignId": "camp-1787307007347",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Sneha Kulkarni",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0181367DCC66ED4E163",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:10:37.038Z"
+    },
+    {
+      "id": "log-1787307032610-4",
+      "campaignId": "camp-1787307007347",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Rahul Verma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0992CAD0BAF7A64056C",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:10:32.610Z"
+    },
+    {
+      "id": "log-1787307028305-3",
+      "campaignId": "camp-1787307007347",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ananya Iyer",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0517D7A2DD484E150A4",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:10:28.305Z"
+    },
+    {
+      "id": "log-1787307021857-2",
+      "campaignId": "camp-1787307007347",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Vikram Malhotra",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB040108E6605B4F78146",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:10:21.857Z"
+    },
+    {
+      "id": "log-1787307015345-1",
+      "campaignId": "camp-1787307007347",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Priya Sharma",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB018358E275A14A025A7",
+      "latency": "4.0s",
+      "timestamp": "2026-08-21T10:10:15.345Z"
+    },
+    {
+      "id": "log-1787307009862-0",
+      "campaignId": "camp-1787307007347",
+      "recipientPhone": "+911234567890",
+      "recipientName": "Ramesh Patel",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB08D154D3999C07690D3",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T10:10:09.862Z"
+    },
+    {
+      "id": "log-1787306592787-0",
+      "campaignId": "camp-1787306592397",
+      "recipientPhone": "+918089564046",
+      "recipientName": "WhatsApp Line",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB0A61F645EC24DDA94B7",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T10:03:12.788Z"
+    },
+    {
+      "id": "log-1787306509667-0",
+      "campaignId": "camp-1787306507049",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB05D4EA3BC1C6FAAF48E",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T10:01:49.667Z"
+    },
+    {
+      "id": "log-1787305499925-0",
+      "campaignId": "camp-1787305493049",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "+918089564046",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "error": null,
+      "messageId": "3EB03A392BA4F958ACD0DC",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T09:44:59.925Z"
+    },
+    {
+      "id": "log-1787303235262-1",
+      "campaignId": "camp-1787303229549",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "Connected Device",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T09:07:15.262Z"
+    },
+    {
+      "id": "log-1787303229970-0",
+      "campaignId": "camp-1787303229549",
+      "recipientPhone": "8089564046",
+      "recipientName": "New Customer",
+      "senderPhone": "Connected Device",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T09:07:09.970Z"
+    },
+    {
+      "id": "log-1787294832171-0",
+      "campaignId": "camp-1787294828751",
+      "recipientPhone": "8089564046",
+      "recipientName": "New Customer",
+      "senderPhone": "Connected Device",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "latency": "2.0s",
+      "timestamp": "2026-08-21T06:47:12.171Z"
+    },
+    {
+      "id": "log-1787294741785-0",
+      "campaignId": "camp-1787294741538",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "Connected Device",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "latency": "5.0s",
+      "timestamp": "2026-08-21T06:45:41.785Z"
+    },
+    {
+      "id": "log-1787294008311-0",
+      "campaignId": "camp-1787294007394",
+      "recipientPhone": "9074640425",
+      "recipientName": "vishnu",
+      "senderPhone": "Connected Device",
+      "status": "delivered",
+      "channel": "baileys_socket",
+      "latency": "3.0s",
+      "timestamp": "2026-08-21T06:33:28.311Z"
+    }
+  ],
+  "chatbotRules": [
+    {
+      "id": "rule-1",
+      "title": "Price List Auto-Reply",
+      "triggerKeywords": [
+        "price",
+        "catalog",
+        "rate"
+      ],
+      "matchType": "contains",
+      "replyText": "Hello! Here is our latest wholesale rate card catalog PDF.",
+      "mediaName": "Rate-Card-Catalog.pdf",
+      "timesTriggered": 0,
+      "isActive": true
+    },
+    {
+      "id": "rule-2",
+      "title": "Claim ₹500 Discount Auto-Responder",
+      "triggerKeywords": [
+        "claim ₹500 discount",
+        "discount",
+        "claim 500",
+        "festival offer"
+      ],
+      "matchType": "contains",
+      "replyText": "🎉 *Congratulations!* Your ₹500 discount code is: *FEST500*\n\nApply this code on your next purchase to get flat ₹500 OFF instantly!\n\n🌐 Visit Store: https://qiyam.ventures\n📞 Support: +91 94963 00233",
+      "timesTriggered": 1,
+      "isActive": true
+    }
+  ],
+  "tenants": [
+    {
+      "id": "tenant-1",
+      "businessName": "My Business Workspace",
+      "initials": "MB",
+      "ownerName": "Vishnu Admin",
+      "ownerEmail": "admin@qiyam.ventures",
+      "ownerPhone": "+91 94963 00233",
+      "tier": "professional",
+      "amount": 7999,
+      "renewalDate": "2026-09-22",
+      "activeLicenses": 1,
+      "maxLicenses": 50,
+      "status": "active",
+      "features": {
+        "multiAccount": true,
+        "botBuilder": true,
+        "interactiveButtons": true,
+        "customBranding": true
+      }
+    }
+  ],
+  "settings": {
+    "companyName": "WhatsQ",
+    "subtitle": "Business Operating System",
+    "primaryColor": "#006b53",
+    "primaryContainerColor": "#00a884",
+    "globalSafetyMinDelay": 10,
+    "emergencyStopActive": false
+  },
+  "stats": {
+    "totalSent": 149,
+    "delivered": 140,
+    "failed": 9
+  }
+}

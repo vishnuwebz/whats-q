@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 BAILEYS_GATEWAY_URL = 'http://127.0.0.1:4000'
 
-def _call_baileys_gateway(endpoint, method='GET', data=None, timeout=5):
+def _call_baileys_gateway(endpoint, method='GET', data=None, timeout=1.5):
     try:
         url = f"{BAILEYS_GATEWAY_URL}{endpoint}"
         encoded = json.dumps(data).encode('utf-8') if data is not None else None
@@ -166,14 +166,13 @@ class GroupGrabberSessionView(APIView):
             pair_res = _call_baileys_gateway('/api/accounts/pair', method='POST', data={
                 'id': token,
                 'displayName': device_name or 'QR Group Grabber'
-            })
+            }, timeout=2.5)
             qr_code = pair_res.get('qrCode')
-            pair_status = 'pairing'
+            pair_status = pair_res.get('status') or 'pairing'
             if not qr_code:
-                time.sleep(1.0)
-                qr_res = _call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET')
+                qr_res = _call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET', timeout=1.0)
                 qr_code = qr_res.get('qrCode')
-                pair_status = qr_res.get('status', 'pairing')
+                pair_status = qr_res.get('status', pair_status)
 
             return Response({
                 'success': True,

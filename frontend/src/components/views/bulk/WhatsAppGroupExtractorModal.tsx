@@ -1282,12 +1282,20 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                       {/* Left: Authentic Baileys Pairing QR Container */}
                       <div className="md:col-span-5 flex flex-col items-center justify-center p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl">
                         <div className="relative p-2.5 bg-white border-2 border-emerald-500/80 rounded-2xl shadow-md group flex items-center justify-center min-w-[220px] min-h-[220px] overflow-hidden">
-                          {baileysQrCode ? (
-                            <img
-                              src={baileysQrCode}
-                              alt="WhatsApp Web Live Pairing QR"
-                              className="w-52 h-52 object-contain rounded-lg select-none"
-                            />
+                          {(baileysQrCode || qrImgUrl) ? (
+                            <div className="relative w-52 h-52 flex items-center justify-center">
+                              <img
+                                src={baileysQrCode || qrImgUrl}
+                                alt="WhatsApp Web Live Pairing QR"
+                                className="w-52 h-52 object-contain rounded-lg select-none"
+                              />
+                              {isBaileysQrLoading && !baileysQrCode && (
+                                <div className="absolute bottom-1 right-1 px-2 py-0.5 rounded-md bg-white/95 border border-slate-200/90 shadow-xs flex items-center gap-1 text-[9px] font-bold text-emerald-700 backdrop-blur-2xs">
+                                  <RefreshCw className="w-2.5 h-2.5 animate-spin text-emerald-600" />
+                                  <span>Syncing socket...</span>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div className="w-52 h-52 flex flex-col items-center justify-center text-slate-400 p-4 text-center space-y-2">
                               <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
@@ -1840,12 +1848,20 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                   ) : (
                     <div className="relative p-3 bg-white border-2 border-dashed border-emerald-400/80 rounded-2xl shadow-md group flex items-center justify-center min-w-[224px] min-h-[224px] overflow-hidden">
                       {pairingMode === 'multidevice' ? (
-                        baileysQrCode ? (
-                          <img
-                            src={baileysQrCode}
-                            alt="WhatsApp Web Linked Devices QR"
-                            className="w-52 h-52 object-contain rounded-lg select-none"
-                          />
+                        (baileysQrCode || qrImgUrl) ? (
+                          <div className="relative w-52 h-52 flex items-center justify-center">
+                            <img
+                              src={baileysQrCode || qrImgUrl}
+                              alt="WhatsApp Web Linked Devices QR"
+                              className="w-52 h-52 object-contain rounded-lg select-none"
+                            />
+                            {isBaileysQrLoading && !baileysQrCode && (
+                              <div className="absolute bottom-1 right-1 px-2 py-0.5 rounded-md bg-white/95 border border-slate-200/90 shadow-xs flex items-center gap-1 text-[9px] font-bold text-emerald-700 backdrop-blur-2xs">
+                                <RefreshCw className="w-2.5 h-2.5 animate-spin text-emerald-600" />
+                                <span>Syncing socket...</span>
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="w-52 h-52 flex flex-col items-center justify-center text-slate-400 p-4 text-center space-y-2">
                             <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />

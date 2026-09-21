@@ -144,6 +144,40 @@ else:
 
 python manage.py collectstatic --noinput --clear
 
+# 3.5 WHATSAPP GATEWAY MICROSERVICE (PORT 4000)
+echo -e "\n${YELLOW}[3.5/5] Updating WhatsApp Gateway Microservice...${NC}"
+if [ -d "$APP_DIR/whatsapp_gateway" ]; then
+    cd "$APP_DIR/whatsapp_gateway"
+    npm install --omit=dev --silent 2>/dev/null || true
+    
+    # Configure and start systemd service for whatsq-gateway on port 4000
+    if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
+        if [ ! -f "/etc/systemd/system/whatsq-gateway.service" ]; then
+            cat << 'EOF' | $SUDO_CMD tee /etc/systemd/system/whatsq-gateway.service > /dev/null 2>&1 || true
+[Unit]
+Description=WhatsQ WhatsApp Multi-Device Gateway Microservice (Port 4000)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/whatsq/whatsapp_gateway
+ExecStart=/usr/bin/node /var/www/whatsq/whatsapp_gateway/server/index.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production PORT=4000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+            $SUDO_CMD systemctl daemon-reload 2>/dev/null || true
+            $SUDO_CMD systemctl enable whatsq-gateway 2>/dev/null || true
+        fi
+        $SUDO_CMD systemctl restart whatsq-gateway 2>/dev/null || true
+        echo -e "${GREEN}[SUCCESS] WhatsApp Gateway service running on port 4000!${NC}"
+    fi
+fi
+
 # 4. FRONTEND BUILD
 echo -e "\n${YELLOW}[4/5] Building Frontend...${NC}"
 cd "$APP_DIR/frontend"
@@ -208,5 +242,5 @@ echo -e "   Pushed By     : ${COMMIT_AUTHOR}"
 echo -e "   Commit Time   : ${COMMIT_DATE}"
 echo -e "   Updated At    : ${DATE_FORMATTED}"
 echo -e "   Auto-Backup   : ${BACKUP_FILE} (${BACKUP_SIZE})"
-echo -e "   Services      : PostgreSQL (Active) | Redis (Active) | Backend (Active) | Nginx (Active)"
+echo -e "   Services      : PostgreSQL (Active) | Redis (Active) | Backend (Active) | WhatsApp Gateway (Port 4000) | Nginx (Active)"
 echo -e "${CYAN}======================================================${NC}"

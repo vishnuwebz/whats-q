@@ -38,15 +38,23 @@ def ensure_baileys_service():
     """
     try:
         req = urllib.request.Request(f"{BAILEYS_GATEWAY_URL}/api/health", method='GET')
-        with urllib.request.urlopen(req, timeout=1.5) as res:
+        with urllib.request.urlopen(req, timeout=0.6) as res:
             if res.status == 200:
                 return True
     except Exception:
         pass
 
     try:
-        gateway_dir = r"c:\Users\vishn\OneDrive\Desktop\2026-QIYAM-VENTURES\WHATSAPP-BOT AUTOMATION"
-        if os.path.exists(gateway_dir):
+        from django.conf import settings
+        candidates = [
+            os.path.join(settings.BASE_DIR.parent, 'whatsapp_gateway'),
+            os.path.join(settings.BASE_DIR, 'whatsapp_gateway'),
+            '/var/www/whatsq/whatsapp_gateway',
+            r"c:\Users\vishn\OneDrive\Desktop\2026-QIYAM-VENTURES\WHATSAPP-BOT AUTOMATION",
+            os.path.join(settings.BASE_DIR.parent, 'WHATSAPP-BOT AUTOMATION'),
+        ]
+        gateway_dir = next((p for p in candidates if os.path.exists(p) and os.path.isdir(p)), None)
+        if gateway_dir:
             creation_flags = 0
             if os.name == 'nt':
                 creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP | 0x00000008  # DETACHED_PROCESS
@@ -56,13 +64,12 @@ def ensure_baileys_service():
                 creationflags=creation_flags,
                 shell=False
             )
-            time.sleep(2)
             return True
     except Exception as e:
         logger.warning(f"Failed to auto-launch Baileys gateway: {e}")
     return False
 
-def call_baileys_gateway(endpoint, method='GET', data=None, timeout=6):
+def call_baileys_gateway(endpoint, method='GET', data=None, timeout=1.5):
     """
     Communicates with the local WhatsApp Baileys microservice on port 4000.
     """
@@ -1111,17 +1118,15 @@ class LinkedEmployeeDeviceViewSet(viewsets.ModelViewSet):
         pair_res = call_baileys_gateway('/api/accounts/pair', method='POST', data={
             'id': token,
             'displayName': label,
-        })
+        }, timeout=2.5)
         
         qr_code = pair_res.get('qrCode')
-        pair_status = 'pairing'
+        pair_status = pair_res.get('status') or 'pairing'
         
-        # If QR not ready immediately, wait briefly and fetch from /api/accounts/qr/:id
         if not qr_code:
-            time.sleep(1.2)
-            qr_res = call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET')
+            qr_res = call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET', timeout=1.0)
             qr_code = qr_res.get('qrCode')
-            pair_status = qr_res.get('status', 'pairing')
+            pair_status = qr_res.get('status', pair_status)
 
         return Response({
             'success': True,
