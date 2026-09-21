@@ -1118,7 +1118,7 @@ class LinkedEmployeeDeviceViewSet(viewsets.ModelViewSet):
         pair_res = call_baileys_gateway('/api/accounts/pair', method='POST', data={
             'id': token,
             'displayName': label,
-        }, timeout=2.5)
+        }, timeout=3.5)
         
         qr_code = pair_res.get('qrCode')
         pair_status = pair_res.get('status') or 'pairing'

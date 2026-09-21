@@ -42,15 +42,7 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
   const [connectionState, setConnectionState] = useState<'waiting' | 'scanned' | 'connecting' | 'connected'>('waiting');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Instant direct QR code for zero-wait display
-  const instantFallbackQr = useMemo(() => {
-    const defaultPhone = (metaConfig?.business_phone_display || '+91 94963 00233').replace(/[^\d]/g, '');
-    const syncText = encodeURIComponent(`SYNC_QIYAM_EMPLOYEE_${sessionToken}`);
-    const targetUrl = `https://wa.me/${defaultPhone}?text=${syncText}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(targetUrl)}&margin=10&color=006b53`;
-  }, [metaConfig?.business_phone_display, sessionToken]);
-
-  const displayQrCode = baileysQrCode || instantFallbackQr;
+  const displayQrCode = baileysQrCode;
 
   // Request authentic Baileys pairing QR code from WhatsApp socket
   const fetchBaileysQr = async (tokenToUse: string) => {
@@ -250,7 +242,7 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
                 </div>
               )}
 
-              {/* Instant WhatsApp QR Code Display */}
+              {/* Authentic WhatsApp Linked Devices QR Code Display */}
               {displayQrCode ? (
                 <div className="relative w-full h-full flex items-center justify-center">
                   <img
@@ -258,12 +250,6 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
                     alt="WhatsApp Linked Devices QR Code"
                     className="w-full h-full object-contain rounded-lg transition-opacity duration-200"
                   />
-                  {isQrLoading && !baileysQrCode && (
-                    <div className="absolute bottom-1 right-1 px-2 py-0.5 rounded-md bg-white/95 border border-slate-200/90 shadow-xs flex items-center gap-1 text-[9px] font-bold text-emerald-700 backdrop-blur-2xs">
-                      <RefreshCw className="w-2.5 h-2.5 animate-spin text-emerald-600" />
-                      <span>Syncing socket...</span>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center text-slate-400 p-4 text-center space-y-2">
