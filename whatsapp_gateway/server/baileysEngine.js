@@ -277,6 +277,24 @@ export class BaileysEngine {
 
   async startSession(accountId, phoneNumber = '', displayName = '') {
     try {
+      const existing = this.sessions.get(accountId);
+      if (existing && existing.sock && existing.status === 'online') {
+        return {
+          success: true,
+          accountId,
+          status: 'online',
+          phoneNumber: existing.phoneNumber,
+          displayName: existing.displayName,
+          qrCode: null,
+        };
+      }
+      if (existing && existing.sock) {
+        try {
+          existing.sock.ev.removeAllListeners();
+          existing.sock.end(undefined);
+        } catch {}
+      }
+
       console.log(`[Baileys Engine] Initializing WhatsApp session for: ${accountId} (${phoneNumber || 'Auto'})`);
 
       const sessionPath = path.join(SESSIONS_DIR, accountId);
@@ -391,12 +409,12 @@ export class BaileysEngine {
 
           console.log(`[Baileys Engine] Connection closed for ${accountId}. Reason code: ${statusCode}. isLoggedOut: ${isLoggedOut}. Reconnecting: ${shouldReconnect}`);
 
-          sessionMeta.status = 'disconnected';
+          sessionMeta.status = shouldReconnect ? 'connecting' : 'disconnected';
           sessionMeta.qrCode = null;
           sessionMeta.qrRaw = null;
 
-          // Always update DB status to disconnected if phone logged out
           if (!shouldReconnect) {
+            // Phone explicitly logged out from device or unlinked
             try {
               const db = getDb();
               const acc = db.accounts.find((a) => a.id === accountId);
@@ -420,20 +438,29 @@ export class BaileysEngine {
             }
 
             this.sessions.delete(accountId);
-          }
 
-          this.emitEvent('session_disconnected', {
-            accountId,
-            statusCode,
-            isLoggedOut,
-            shouldReconnect,
-            status: 'disconnected',
-          });
+            this.emitEvent('session_disconnected', {
+              accountId,
+              statusCode,
+              isLoggedOut: true,
+              shouldReconnect: false,
+              status: 'disconnected',
+            });
+          } else {
+            console.log(`[Baileys Engine] Session ${accountId} restarting stream / reconnecting (Reason ${statusCode}). NOT a logout.`);
+            this.emitEvent('session_reconnecting', {
+              accountId,
+              statusCode,
+              isLoggedOut: false,
+              shouldReconnect: true,
+              status: 'connecting',
+            });
 
-          if (shouldReconnect) {
+            // Fast reconnect for reason 515 (stream restart required after QR scan)
+            const delay = (statusCode === DisconnectReason.restartRequired || statusCode === 515) ? 400 : 2500;
             setTimeout(() => {
               this.startSession(accountId, sessionMeta.phoneNumber, sessionMeta.displayName);
-            }, 3000);
+            }, delay);
           }
         } else if (connection === 'open') {
           console.log(`[Baileys Engine] 🎉 WhatsApp Web CONNECTED for ${accountId}! User phone is ready.`);
@@ -518,9 +545,18 @@ export class BaileysEngine {
       let qrCode = sessionMeta.qrCode;
       if (!qrCode) {
         qrCode = await new Promise((resolve) => {
-          const timeout = setTimeout(() => resolve(sessionMeta.qrCode || null), 2500);
-          const listener = (type, payload) => {
-            if (type === 'session_qr' && payload.accountId === accountId && payload.qrCode) {
+          let resolved = false;
+          let listener = null;
+          const timeout = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              if (listener) this.eventListeners.delete(listener);
+              resolve(sessionMeta.qrCode || null);
+            }
+          }, 2500);
+          listener = (type, payload) => {
+            if (!resolved && type === 'session_qr' && payload.accountId === accountId && payload.qrCode) {
+              resolved = true;
               clearTimeout(timeout);
               this.eventListeners.delete(listener);
               resolve(payload.qrCode);
@@ -821,56 +857,74 @@ export class BaileysEngine {
       throw new Error('WhatsApp device is not connected. Please scan the QR code to link your phone.');
     }
 
-    try {
-      console.log(`[Baileys Engine] 🔍 Fetching real participating groups from WhatsApp for session ${session.id} (${session.phoneNumber})...`);
-      const groupsMap = await session.sock.groupFetchAllParticipating();
-      const groupsList = [];
+    const now = Date.now();
+    if (session.cachedGroups && Array.isArray(session.cachedGroups) && session.cachedGroups.length > 0 && session.cachedGroupsTime && (now - session.cachedGroupsTime < 30000)) {
+      return session.cachedGroups;
+    }
 
-      const myRawId = session.sock.user?.id || '';
-      const myJid = myRawId ? myRawId.split(':')[0] + '@s.whatsapp.net' : '';
+    if (session._fetchingGroupsPromise) {
+      return await session._fetchingGroupsPromise;
+    }
 
-      for (const [jid, groupData] of Object.entries(groupsMap)) {
-        const rawParticipants = groupData.participants || [];
-        const members = rawParticipants.map((p) => parseParticipantMember(p, session.contacts, myJid, session.sock));
+    session._fetchingGroupsPromise = (async () => {
+      try {
+        console.log(`[Baileys Engine] 🔍 Fetching real participating groups from WhatsApp for session ${session.id} (${session.phoneNumber})...`);
+        const groupsMap = await session.sock.groupFetchAllParticipating();
+        const groupsList = [];
 
-        const amIAdmin = rawParticipants.some((p) => (p.id === myJid || (p.id && myJid && p.id.startsWith(myJid.split('@')[0]))) && Boolean(p.admin));
+        const myRawId = session.sock.user?.id || '';
+        const myJid = myRawId ? myRawId.split(':')[0] + '@s.whatsapp.net' : '';
 
-        let description = '';
-        if (typeof groupData.desc === 'string') {
-          description = groupData.desc;
-        } else if (groupData.desc && Buffer.isBuffer(groupData.desc)) {
-          description = groupData.desc.toString('utf-8');
+        for (const [jid, groupData] of Object.entries(groupsMap)) {
+          const rawParticipants = groupData.participants || [];
+          const members = rawParticipants.map((p) => parseParticipantMember(p, session.contacts, myJid, session.sock));
+
+          const amIAdmin = rawParticipants.some((p) => (p.id === myJid || (p.id && myJid && p.id.startsWith(myJid.split('@')[0]))) && Boolean(p.admin));
+
+          let description = '';
+          if (typeof groupData.desc === 'string') {
+            description = groupData.desc;
+          } else if (groupData.desc && Buffer.isBuffer(groupData.desc)) {
+            description = groupData.desc.toString('utf-8');
+          }
+
+          const groupName = groupData.subject || 'WhatsApp Group';
+
+          groupsList.push({
+            id: groupData.id,
+            jid: groupData.id,
+            name: groupName,
+            category: groupData.isCommunity ? 'WhatsApp Community' : 'Customer Community',
+            memberCount: rawParticipants.length,
+            creation: groupData.creation ? new Date(groupData.creation * 1000).toISOString() : null,
+            owner: groupData.owner ? '+' + groupData.owner.split('@')[0].split(':')[0] : '',
+            description,
+            isAdmin: amIAdmin,
+            isCommunity: Boolean(groupData.isCommunity),
+            isLiveGrabbed: true,
+            grabbedAt: new Date().toISOString(),
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(groupName)}&background=00a884&color=fff&size=128&bold=true`,
+            members,
+          });
         }
 
-        const groupName = groupData.subject || 'WhatsApp Group';
+        // Sort groups with largest member counts first
+        groupsList.sort((a, b) => b.memberCount - a.memberCount);
 
-        groupsList.push({
-          id: groupData.id,
-          jid: groupData.id,
-          name: groupName,
-          category: groupData.isCommunity ? 'WhatsApp Community' : 'Customer Community',
-          memberCount: rawParticipants.length,
-          creation: groupData.creation ? new Date(groupData.creation * 1000).toISOString() : null,
-          owner: groupData.owner ? '+' + groupData.owner.split('@')[0].split(':')[0] : '',
-          description,
-          isAdmin: amIAdmin,
-          isCommunity: Boolean(groupData.isCommunity),
-          isLiveGrabbed: true,
-          grabbedAt: new Date().toISOString(),
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(groupName)}&background=00a884&color=fff&size=128&bold=true`,
-          members,
-        });
+        session.cachedGroups = groupsList;
+        session.cachedGroupsTime = Date.now();
+
+        console.log(`[Baileys Engine] ✅ Successfully retrieved ${groupsList.length} real groups from phone!`);
+        return groupsList;
+      } catch (err) {
+        console.error('[Baileys Engine] ❌ Error fetching groups from WhatsApp socket:', err);
+        throw err;
+      } finally {
+        session._fetchingGroupsPromise = null;
       }
+    })();
 
-      // Sort groups with largest member counts first
-      groupsList.sort((a, b) => b.memberCount - a.memberCount);
-
-      console.log(`[Baileys Engine] ✅ Successfully retrieved ${groupsList.length} real groups from phone!`);
-      return groupsList;
-    } catch (err) {
-      console.error('[Baileys Engine] ❌ Error fetching groups from WhatsApp socket:', err);
-      throw err;
-    }
+    return await session._fetchingGroupsPromise;
   }
 
   async fetchGroupDetails(accountId, groupJid) {

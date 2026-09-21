@@ -123,9 +123,9 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
   // Fetch authentic QR code whenever modal opens
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || connectionState === 'connected') return;
     fetchBaileysQr(qrSessionToken);
-  }, [isOpen, qrSessionToken]);
+  }, [isOpen, qrSessionToken, connectionState]);
 
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedBookmarklet, setCopiedBookmarklet] = useState(false);
@@ -212,7 +212,6 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
           const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
           setQrSessionToken(newToken);
           setBaileysQrCode(null);
-          fetchBaileysQr(newToken);
           return 60;
         }
         return prev - 1;
@@ -243,6 +242,14 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
           const data = JSON.parse(event.data);
           if (data.type === 'session_disconnected') {
             console.log('[Modal WebSocket] Received session_disconnected event:', data.payload);
+            const { accountId, isLoggedOut, shouldReconnect } = data.payload || {};
+            // Strictly filter: only react if event is for this active modal token AND device actually logged out
+            if (accountId && accountId !== qrSessionToken) return;
+            if (isLoggedOut === false || shouldReconnect === true) {
+              console.log('[Modal WebSocket] Handshake stream restart for', accountId, '- keeping active session.');
+              return;
+            }
+
             if (connectionState === 'connected') {
               setConnectionState('unlinked');
               setSelectedGroup(null);
@@ -256,17 +263,18 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
               setQrSessionToken(newToken);
               setQrCountdown(60);
               setBaileysQrCode(null);
-              fetchBaileysQr(newToken);
               addToast('📱 WhatsApp was logged out from your phone. Re-scan QR code to reconnect.', 'warning');
             }
           } else if (data.type === 'session_ready') {
             console.log('[Modal WebSocket] Received session_ready event:', data.payload);
+            const { accountId, phoneNumber, displayName } = data.payload || {};
+            if (accountId && accountId !== qrSessionToken) return;
             if (connectionState !== 'connected') {
-              const detectedPhone = data.payload?.phoneNumber || '';
+              const detectedPhone = phoneNumber || '';
               setConnectedDevice((prev) => ({
                 ...prev,
                 phone: detectedPhone || prev.phone,
-                name: data.payload?.displayName || 'WhatsApp Linked Device',
+                name: displayName || 'WhatsApp Linked Device',
                 linkedAt: 'Just now',
               }));
               setConnectionState('connected');
@@ -344,6 +352,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
     window.addEventListener('storage', handleStorageChange);
 
     // 4. Continual Polling & Heartbeat Check (every 2 seconds)
+    let failedPollCount = 0;
     const pollInterval = setInterval(async () => {
       if (!isSubscribed) return;
       try {
@@ -353,23 +362,37 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
 
         // Check A: If currently connected, check if device was logged out from mobile WhatsApp
         if (connectionState === 'connected') {
-          if (!data.connected || data.status === 'disconnected') {
-            console.log('[Modal Heartbeat] Detected remote mobile logout! Resetting modal state.');
-            setConnectionState('unlinked');
-            setSelectedGroup(null);
-            setConnectedDevice((prev) => ({
-              ...prev,
-              phone: '',
-              name: 'WhatsApp Web Live Session',
-              linkedAt: '',
-            }));
-            const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
-            setQrSessionToken(newToken);
-            setQrCountdown(60);
-            setBaileysQrCode(null);
-            fetchBaileysQr(newToken);
-            addToast('📱 WhatsApp was logged out from your phone. Re-scan QR code to reconnect.', 'warning');
-            return;
+          if (data.status === 'disconnected' && data.connected === false) {
+            failedPollCount++;
+            if (failedPollCount >= 2) {
+              console.log('[Modal Heartbeat] Detected confirmed remote mobile logout! Resetting modal state.');
+              setConnectionState('unlinked');
+              setSelectedGroup(null);
+              setConnectedDevice((prev) => ({
+                ...prev,
+                phone: '',
+                name: 'WhatsApp Web Live Session',
+                linkedAt: '',
+              }));
+              const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+              setQrSessionToken(newToken);
+              setQrCountdown(60);
+              setBaileysQrCode(null);
+              addToast('📱 WhatsApp was logged out from your phone. Re-scan QR code to reconnect.', 'warning');
+              return;
+            }
+          } else {
+            failedPollCount = 0;
+            // Sync live groups in background if arrived
+            if (data.groups && Array.isArray(data.groups) && data.groups.length > 0 && groups.length === 0) {
+              setGroups(data.groups);
+              try {
+                localStorage.setItem('qiyam_grabbed_groups', JSON.stringify(data.groups));
+              } catch {}
+              if (!selectedGroup) {
+                setSelectedGroup(data.groups[0]);
+              }
+            }
           }
         }
 
@@ -380,7 +403,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
             setIsBaileysQrLoading(false);
           }
 
-          if (data.success && data.connected && data.phone && data.status === 'online') {
+          if (data.success && data.connected && data.phone && (data.status === 'online' || data.status === 'connected')) {
             const detectedPhone = data.phone;
             setConnectedDevice((prev) => ({
               ...prev,
@@ -402,7 +425,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
               addToast(`📱 WhatsApp device ${detectedPhone} linked successfully! Fetching groups...`, 'success');
               setTimeout(() => {
                 handleRefreshLiveGroups();
-              }, 1000);
+              }, 800);
             }
             setConnectionState('connected');
           }
