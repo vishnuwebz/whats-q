@@ -4,7 +4,7 @@ import { Header } from '@/components/layout/Header';
 import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
   Smile, Mic, CheckCheck, Clock, UserCheck, Calendar,
-  ReceiptText, Bot, Sparkles, Check, ChevronRight, Tag,
+  ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
@@ -88,6 +88,28 @@ export const ConversationsView: React.FC = () => {
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [testSimulateInput, setTestSimulateInput] = useState('');
+
+  // Chat header action buttons minimize/expand state (persisted)
+  const [isHeaderActionsMinimized, setIsHeaderActionsMinimized] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('whatsq_chat_header_actions_minimized') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+
+  const toggleHeaderActions = () => {
+    setIsHeaderActionsMinimized((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('whatsq_chat_header_actions_minimized', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const recordTimerRef = React.useRef<any>(null);
@@ -1470,41 +1492,153 @@ export const ConversationsView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  <button
-                    onClick={() => {
-                      addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
-                      window.open(`tel:${currentConv.phone_number.replace(/\s+/g, '')}`, '_self');
-                    }}
-                    className="p-1.5 sm:p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                    title={`Call ${currentConv.phone_number}`}
-                  >
-                    <Phone className="w-4 h-4" />
-                  </button>
+                  {isHeaderActionsMinimized ? (
+                    /* Minimized State: Sleek Expand Button + Quick Actions Dropdown */
+                    <div className="flex items-center gap-1.5 animate-in fade-in duration-200">
+                      <button
+                        onClick={toggleHeaderActions}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition-all shadow-2xs cursor-pointer group"
+                        title="Expand chat options bar"
+                        aria-label="Expand chat options bar"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-800 group-hover:-translate-x-0.5 transition-transform" />
+                        <span>Options</span>
+                      </button>
 
-                  {/* Active Automation Workflow Trigger & Inspector Button (Thunder symbol only) */}
-                  <button
-                    onClick={() => setIsWorkflowModalOpen(true)}
-                    className="p-1.5 sm:p-2 text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 hover:border-purple-300 rounded-lg transition-all cursor-pointer shadow-2xs group"
-                    title={`Workflow: ${currentConv.active_workflow || 'Service Booking Flow'} (Click to inspect & control)`}
-                    aria-label="Active Automation Workflow"
-                  >
-                    <Zap className={`w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform fill-purple-200 ${currentConv.active_workflow === 'Paused' ? 'opacity-50' : 'animate-pulse'}`} />
-                  </button>
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+                          className="p-1.5 sm:p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                          title="Quick Actions Menu"
+                          aria-label="Quick Actions Menu"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {isHeaderMenuOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsHeaderMenuOpen(false)} />
+                            <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                              <button
+                                onClick={() => {
+                                  setIsHeaderMenuOpen(false);
+                                  addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
+                                  window.open(`tel:${currentConv.phone_number.replace(/\s+/g, '')}`, '_self');
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left cursor-pointer"
+                              >
+                                <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold truncate">Call Customer</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{currentConv.phone_number}</p>
+                                </div>
+                              </button>
 
-                  <button
-                    onClick={() => handleQuickAction('Send Quotation')}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Send Quotation</span>
-                  </button>
-                  <button
-                    onClick={() => setConversationToDelete(currentConv)}
-                    className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                    title="Delete Conversation"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                              <button
+                                onClick={() => {
+                                  setIsHeaderMenuOpen(false);
+                                  setIsWorkflowModalOpen(true);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors text-left cursor-pointer"
+                              >
+                                <Zap className="w-4 h-4 text-purple-600 fill-purple-100 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold truncate">Automation Workflow</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{currentConv.active_workflow || 'Service Booking Flow'}</p>
+                                </div>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setIsHeaderMenuOpen(false);
+                                  handleQuickAction('Send Quotation');
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left cursor-pointer"
+                              >
+                                <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold truncate">Send Quotation</p>
+                                  <p className="text-[10px] text-slate-400">Official price quote</p>
+                                </div>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setIsHeaderMenuOpen(false);
+                                  setConversationToDelete(currentConv);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
+                                <span className="font-semibold">Delete Conversation</span>
+                              </button>
+
+                              <div className="border-t border-slate-100 my-1" />
+
+                              <button
+                                onClick={() => {
+                                  setIsHeaderMenuOpen(false);
+                                  toggleHeaderActions();
+                                }}
+                                className="w-full flex items-center gap-2 px-3.5 py-1.5 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                              >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                                <span>Expand full action bar</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Expanded State: Full Action Buttons + Minimize Button */
+                    <div className="flex items-center gap-1.5 sm:gap-2 animate-in fade-in duration-200">
+                      <button
+                        onClick={() => {
+                          addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
+                          window.open(`tel:${currentConv.phone_number.replace(/\s+/g, '')}`, '_self');
+                        }}
+                        className="p-1.5 sm:p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                        title={`Call ${currentConv.phone_number}`}
+                      >
+                        <Phone className="w-4 h-4" />
+                      </button>
+
+                      {/* Active Automation Workflow Trigger & Inspector Button (Thunder symbol only) */}
+                      <button
+                        onClick={() => setIsWorkflowModalOpen(true)}
+                        className="p-1.5 sm:p-2 text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 hover:border-purple-300 rounded-lg transition-all cursor-pointer shadow-2xs group"
+                        title={`Workflow: ${currentConv.active_workflow || 'Service Booking Flow'} (Click to inspect & control)`}
+                        aria-label="Active Automation Workflow"
+                      >
+                        <Zap className={`w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform fill-purple-200 ${currentConv.active_workflow === 'Paused' ? 'opacity-50' : 'animate-pulse'}`} />
+                      </button>
+
+                      <button
+                        onClick={() => handleQuickAction('Send Quotation')}
+                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Send Quotation</span>
+                      </button>
+                      <button
+                        onClick={() => setConversationToDelete(currentConv)}
+                        className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                        title="Delete Conversation"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      {/* Minimize Options Button */}
+                      <button
+                        onClick={toggleHeaderActions}
+                        className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition-all cursor-pointer group"
+                        title="Minimize options bar"
+                        aria-label="Minimize options bar"
+                      >
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Customer 360 info toggle for screens < xl */}
                   <button
