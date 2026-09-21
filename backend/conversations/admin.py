@@ -1,5 +1,19 @@
 from django.contrib import admin
-from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig
+from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, BulkCampaign, BulkCampaignLog
+
+@admin.register(BulkCampaign)
+class BulkCampaignAdmin(admin.ModelAdmin):
+    list_display = ('name', 'status', 'total_recipients', 'delivered_count', 'failed_count', 'cost', 'created_at')
+    list_filter = ('status', 'type', 'category')
+    search_fields = ('name', 'audience_list_name', 'template_name')
+    readonly_fields = ('created_at', 'completed_at')
+
+@admin.register(BulkCampaignLog)
+class BulkCampaignLogAdmin(admin.ModelAdmin):
+    list_display = ('phone', 'name', 'status', 'campaign', 'sent_at')
+    list_filter = ('status',)
+    search_fields = ('phone', 'name')
+
 
 @admin.register(MetaWhatsAppConfig)
 class MetaWhatsAppConfigAdmin(admin.ModelAdmin):
