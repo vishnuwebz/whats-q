@@ -232,6 +232,18 @@ export class BaileysEngine {
     return Boolean(session && session.sock && session.status === 'online');
   }
 
+  getSessionStatus(accountId) {
+    const session = this.sessions.get(accountId);
+    if (!session) return null;
+    return {
+      status: session.status || 'disconnected',
+      qrCode: session.qrCode || null,
+      phoneNumber: session.phoneNumber || '',
+      displayName: session.displayName || '',
+      startedAt: session.startedAt,
+    };
+  }
+
   emitEvent(type, payload) {
     for (const listener of this.eventListeners) {
       try {

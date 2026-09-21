@@ -185,26 +185,15 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   const [isProcessingFetch, setIsProcessingFetch] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Connected device profile
+  // Connected device profile - strictly empty until authentic WhatsApp QR scan
   const [connectedDevice, setConnectedDevice] = useState(() => ({
-    phone: activeBusinessPhone,
-    name: 'Qiyam Business Line',
+    phone: '',
+    name: '',
     platform: 'WhatsApp Multi-Device Web',
     battery: '100%',
-    linkedAt: 'Active',
+    linkedAt: '',
     encryption: 'End-to-End Encrypted (Signal Protocol)',
   }));
-
-  // Update connected device phone if activeBusinessPhone changes
-  useEffect(() => {
-    if (activeBusinessPhone) {
-      setConnectedDevice((prev) => ({
-        ...prev,
-        phone: activeBusinessPhone,
-      }));
-      setPhoneForCode(activeBusinessPhone);
-    }
-  }, [activeBusinessPhone]);
 
   // Save groups to localStorage whenever updated
   useEffect(() => {
@@ -391,8 +380,8 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
             setIsBaileysQrLoading(false);
           }
 
-          if (data.success && data.connected) {
-            const detectedPhone = data.phone || '+91 90746 40425';
+          if (data.success && data.connected && data.phone && data.status === 'online') {
+            const detectedPhone = data.phone;
             setConnectedDevice((prev) => ({
               ...prev,
               phone: detectedPhone,

@@ -92,26 +92,21 @@ class GroupGrabberSessionView(APIView):
                 'groups': []
             })
 
-        # 2. Check live online accounts on Baileys gateway
+        # 2. Check if THIS specific token is genuinely authenticated and online on Baileys gateway
         accs_res = _call_baileys_gateway('/api/accounts', method='GET')
         all_accs = accs_res.get('accounts', []) if isinstance(accs_res, dict) else []
-        online_accs = [a for a in all_accs if a.get('status') == 'online']
+        matching_acc = next((a for a in all_accs if a.get('id') == token), None)
 
-        if gw_status == 'online' or online_accs:
-            detected_phone = ''
-            label = 'WhatsApp Linked Device'
-            for acc in all_accs:
-                if acc.get('id') == token:
-                    detected_phone = acc.get('phoneNumber') or ''
-                    label = acc.get('displayName') or label
-                    break
-            if not detected_phone and online_accs:
-                detected_phone = online_accs[-1].get('phoneNumber', '')
-                label = online_accs[-1].get('displayName') or label
+        # A session is ONLY online if THIS session token was physically scanned by the user's phone
+        is_token_online = (gw_status == 'online') or (matching_acc and matching_acc.get('status') == 'online')
+
+        if is_token_online:
+            detected_phone = (matching_acc.get('phoneNumber') if matching_acc else '') or qr_info.get('phoneNumber') or ''
+            label = (matching_acc.get('displayName') if matching_acc else '') or 'WhatsApp Linked Device'
 
             session = _GRABBER_SESSIONS.get(token, {'groups': []})
             session['status'] = 'connected'
-            session['phone'] = detected_phone or '+91 90746 40425'
+            session['phone'] = detected_phone
             session['device_name'] = label
             session['updated_at'] = time.time()
 
@@ -131,12 +126,12 @@ class GroupGrabberSessionView(APIView):
                 'status': 'connected',
                 'connected': True,
                 'device_name': label,
-                'phone': session['phone'],
+                'phone': detected_phone,
                 'groups': session.get('groups', []),
                 'updated_at': session.get('updated_at')
             })
 
-        # 3. If there are NO online accounts in Baileys, session is disconnected (e.g. mobile logged out)
+        # 3. If token is not authenticated, strictly report unlinked / pairing with QR code (never fake connect)
         _GRABBER_SESSIONS.pop(token, None)
         return Response({
             'success': True,

@@ -1174,21 +1174,29 @@ class LinkedEmployeeDeviceViewSet(viewsets.ModelViewSet):
                     label = acc.get('displayName') or label
                     break
 
-            if not detected_phone and accs_res.get('accounts'):
-                online_accs = [a for a in accs_res.get('accounts', []) if a.get('status') == 'online' and a.get('phoneNumber')]
-                if online_accs:
-                    detected_phone = online_accs[-1].get('phoneNumber', '')
+            if not detected_phone and qr_info.get('phoneNumber'):
+                detected_phone = qr_info.get('phoneNumber')
 
-            device, _ = LinkedEmployeeDevice.objects.update_or_create(
-                session_token=token,
-                defaults={
-                    'device_label': label,
-                    'phone_number': detected_phone or '+91 90746 40425',
-                    'employee_name': label,
+            if detected_phone:
+                device, _ = LinkedEmployeeDevice.objects.update_or_create(
+                    session_token=token,
+                    defaults={
+                        'device_label': label,
+                        'phone_number': detected_phone,
+                        'employee_name': label,
+                        'status': 'connected',
+                        'is_active': True,
+                    }
+                )
+                return Response({
+                    'success': True,
+                    'connected': True,
                     'status': 'connected',
-                    'is_active': True,
-                }
-            )
+                    'phone': detected_phone,
+                    'device_label': label,
+                    'employee_name': label,
+                    'device': LinkedEmployeeDeviceSerializer(device).data
+                })
             return Response({
                 'success': True,
                 'connected': True,
