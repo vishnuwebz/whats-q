@@ -62,6 +62,7 @@ import { AnalyticsView } from './components/views/AnalyticsView';
 import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
 import { LandingPageView } from './components/views/LandingPageView';
+import { RolesSecurityView } from './components/views/roles/RolesSecurityView';
 
 // Bulk Messaging Views
 import { BulkOverviewView } from './components/views/bulk/BulkOverviewView';
@@ -280,6 +281,8 @@ export const App: React.FC = () => {
         return <SettingsView initialTab="backup" />;
       case 'settings-whatsapp':
         return <SettingsView initialTab="whatsapp" />;
+      case 'roles':
+        return <RolesSecurityView />;
 
       default:
         return <DashboardView />;

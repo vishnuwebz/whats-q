@@ -10,7 +10,7 @@ import {
   ShieldCheck, HelpCircle, PhoneCall, Sparkles, Plus,
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
   User, Shield, LogOut, ArrowRight, ExternalLink, Send,
-  RefreshCw, Search, Database, Globe, Ban, FileCheck
+  RefreshCw, Search, Database, Globe, Ban, FileCheck, Crown
 } from 'lucide-react';
 
 interface SidebarMenuItem {
@@ -68,6 +68,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'integrations', title: 'Integrations', category: 'Ecosystem', icon: Puzzle, keywords: 'webhooks crm zapier apps rest api meta' },
   { tab: 'settings', title: 'Workspace Settings', category: 'Settings', icon: SettingsIcon, keywords: 'workspace general preferences business brand organization profile' },
   { tab: 'settings-backup', title: 'Data Backup & Restore', category: 'Settings', icon: Database, keywords: 'backup restore data auto-backup last backup import export snapshot database disaster recovery postgresql sqlite' },
+  { tab: 'roles', title: 'Roles & Security', category: 'Settings', icon: ShieldCheck, keywords: 'roles permissions rbac security access control admin users matrix privileges superadmin' },
 ];
 
 export type AccordionSection = 'messenger' | 'crm' | 'ops' | 'finance' | 'automation' | 'ai' | null;
@@ -1507,6 +1508,49 @@ export const Sidebar: React.FC = () => {
         >
           <Puzzle className="w-4 h-4 shrink-0" />
           {!isCollapsed && <span>Integrations</span>}
+        </button>
+
+        {/* Roles, Permissions & Security */}
+        <button
+          data-tab="roles"
+          onClick={() => handleTabClick('roles')}
+          title="Roles, Permissions & Security (RBAC)"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
+            isActive('roles')
+              ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+              : 'hover:bg-[#16233B] text-slate-300'
+          }`}
+        >
+          <ShieldCheck className={`w-4 h-4 shrink-0 ${isActive('roles') ? 'text-white' : 'text-emerald-400'}`} />
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span>Roles & Security</span>
+              <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
+                isActive('roles')
+                  ? 'bg-white/20 text-white border-white/30'
+                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                RBAC
+              </span>
+            </div>
+          )}
+        </button>
+
+        {/* Platform Super Admin */}
+        <button
+          onClick={() => handleTabClick('roles')}
+          title="Platform Super Admin Role & Permission Control"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer hover:bg-[#16233B] text-amber-300/90 group`}
+        >
+          <Crown className="w-4 h-4 shrink-0 text-amber-400 group-hover:scale-110 transition-transform" />
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span className="text-xs font-semibold text-amber-200">Platform Super Admin</span>
+              <span className="text-[9px] font-extrabold bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30">
+                PRO
+              </span>
+            </div>
+          )}
         </button>
 
         {/* Settings */}

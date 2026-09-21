@@ -48,7 +48,8 @@ export type TabType =
   | 'integrations'
   | 'settings'
   | 'settings-backup'
-  | 'settings-whatsapp';
+  | 'settings-whatsapp'
+  | 'roles';
 
 export interface WhatsAppMessage {
   id: string | number;
@@ -569,6 +570,15 @@ export interface BranchItem {
   address?: string;
 }
 
+export interface BulkCampaignRecipient {
+  id?: string;
+  name: string;
+  phone: string;
+  status: 'DELIVERED' | 'READ' | 'FAILED' | 'PENDING' | 'SENT';
+  time: string;
+  errorReason?: string;
+}
+
 export interface BulkCampaign {
   id: string;
   name: string;
@@ -576,6 +586,7 @@ export interface BulkCampaign {
   type?: 'Marketing' | 'Utility' | 'Engagement' | 'Security' | string;
   category?: 'marketing' | 'utility' | 'authentication' | string;
   audienceListName: string;
+  audienceListId?: string;
   totalRecipients: number;
   recipients?: number;
   deliveredCount: number;
@@ -595,7 +606,9 @@ export interface BulkCampaign {
   completedOn?: string;
   status: 'Completed' | 'In Progress' | 'Failed' | 'Scheduled' | 'COMPLETED' | 'SENDING' | 'SCHEDULED' | 'FAILED' | 'DRAFT' | string;
   templateName: string;
+  templateId?: string;
   messageText?: string;
+  recipientsList?: BulkCampaignRecipient[];
 }
 
 export interface BulkRecipientList {
@@ -757,4 +770,24 @@ export interface SuppressionRecord {
   canResubscribe: boolean;
   source?: string;
 }
+
+export type RolePermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'execute' | 'export';
+export type RoleModule = 'crm' | 'inbox' | 'operations' | 'finance' | 'workflows' | 'campaigns' | 'analytics' | 'settings';
+export type RecordScope = 'all' | 'department' | 'team' | 'own' | 'assigned';
+
+export interface RoleDefinition {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  scope: RecordScope;
+  isSystemRole?: boolean;
+  permissions: Record<RoleModule, Record<RolePermissionAction, boolean>>;
+  assignedEmployees?: string[];
+  mfaRequired?: boolean;
+  sessionTimeoutMins?: number;
+  lastUpdated?: string;
+  updatedBy?: string;
+}
+
 

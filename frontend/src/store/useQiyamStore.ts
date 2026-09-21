@@ -7,7 +7,8 @@ import {
   MetaConfig,
   BulkCampaign, BulkContact, BulkRecipientList, BulkScheduledMessage, BulkTemplateItem,
   MetaWalletInfo, MetaWalletTransaction,
-  SuppressionRecord
+  SuppressionRecord,
+  RoleDefinition, RoleModule, RolePermissionAction, RecordScope
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -28,6 +29,12 @@ import {
   initialBulkRecipientLists,
   initialBulkScheduledMessages
 } from './bulkData';
+import {
+  getStoredRoles,
+  persistRoles,
+  getRoleDefaultPreset,
+  INITIAL_ROLES
+} from './rolesData';
 import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
 import { getInitialActiveTab, persistActiveTab } from '../utils/tabRouting';
 import {
@@ -436,6 +443,18 @@ interface QiyamState {
   suppressionList: SuppressionRecord[];
   suppressionSearchQuery: string;
   setSuppressionSearchQuery: (query: string) => void;
+
+  roles: RoleDefinition[];
+  activeRoleId: string;
+  setActiveRoleId: (roleId: string) => void;
+  updateRolePermission: (roleId: string, module: RoleModule, action: RolePermissionAction, enabled: boolean) => void;
+  updateRoleScope: (roleId: string, scope: RecordScope) => void;
+  setRoleAllPermissions: (roleId: string, enabled: boolean) => void;
+  resetRolePermissions: (roleId: string) => void;
+  addCustomRole: (role: Omit<RoleDefinition, 'id'>) => void;
+  deleteCustomRole: (roleId: string) => void;
+  assignEmployeeToRole: (employeeName: string, roleId: string) => void;
+  saveRoleChanges: (roleId: string) => void;
 
   addSuppressionRecord: (record: Partial<SuppressionRecord> & { name: string; phone: string; reason: string; type: SuppressionRecord['type'] }) => void;
   removeSuppressionRecord: (idOrPhone: string) => Promise<void> | void;
@@ -1746,6 +1765,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   bulkTemplates: initialBulkTemplates,
   suppressionList: INITIAL_SUPPRESSION_LIST,
   suppressionSearchQuery: '',
+  roles: getStoredRoles(),
+  activeRoleId: 'admin',
 
   loadInitialData: async () => {
     // Use Promise.allSettled so a single endpoint failure doesn't crash the whole app
@@ -2725,6 +2746,110 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       bulkCampaigns: [cloned, ...state.bulkCampaigns],
     }));
     get().addToast(`Duplicated campaign "${existing.name}"`, 'success');
+  },
+
+  setActiveRoleId: (roleId: string) => set({ activeRoleId: roleId }),
+
+  updateRolePermission: (roleId, module, action, enabled) => {
+    const roles = get().roles.map((r) => {
+      if (r.id !== roleId) return r;
+      const modPerms = { ...r.permissions[module], [action]: enabled };
+      return {
+        ...r,
+        permissions: {
+          ...r.permissions,
+          [module]: modPerms,
+        },
+        lastUpdated: 'Just now',
+      };
+    });
+    persistRoles(roles);
+    set({ roles });
+  },
+
+  updateRoleScope: (roleId, scope) => {
+    const roles = get().roles.map((r) => (r.id === roleId ? { ...r, scope, lastUpdated: 'Just now' } : r));
+    persistRoles(roles);
+    set({ roles });
+    get().addToast(`Updated record scope to "${scope}" for role`, 'success');
+  },
+
+  setRoleAllPermissions: (roleId, enabled) => {
+    const roles = get().roles.map((r) => {
+      if (r.id !== roleId) return r;
+      const updatedPerms = {} as any;
+      Object.keys(r.permissions).forEach((mod) => {
+        updatedPerms[mod] = {
+          view: enabled,
+          create: enabled,
+          edit: enabled,
+          delete: enabled,
+          approve: enabled,
+          execute: enabled,
+          export: enabled,
+        };
+      });
+      return { ...r, permissions: updatedPerms, lastUpdated: 'Just now' };
+    });
+    persistRoles(roles);
+    set({ roles });
+    get().addToast(enabled ? 'Granted all permissions' : 'Revoked all permissions', 'info');
+  },
+
+  resetRolePermissions: (roleId) => {
+    const defaultPreset = getRoleDefaultPreset(roleId);
+    const roles = get().roles.map((r) => (r.id === roleId ? defaultPreset : r));
+    persistRoles(roles);
+    set({ roles });
+    get().addToast(`Reset permissions to system default for "${defaultPreset.name}"`, 'success');
+  },
+
+  addCustomRole: (newRoleData) => {
+    const id = `custom-${Date.now()}`;
+    const newRole: RoleDefinition = {
+      ...newRoleData,
+      id,
+      isSystemRole: false,
+      lastUpdated: 'Just now',
+      updatedBy: 'System Administrator',
+    };
+    const roles = [...get().roles, newRole];
+    persistRoles(roles);
+    set({ roles, activeRoleId: id });
+    get().addToast(`Custom role "${newRole.name}" created successfully!`, 'success');
+  },
+
+  deleteCustomRole: (roleId) => {
+    const roleToDelete = get().roles.find((r) => r.id === roleId);
+    if (roleToDelete?.isSystemRole) {
+      get().addToast('System roles cannot be deleted', 'error');
+      return;
+    }
+    const roles = get().roles.filter((r) => r.id !== roleId);
+    persistRoles(roles);
+    set({ roles, activeRoleId: roles[0]?.id || 'admin' });
+    get().addToast(`Deleted role "${roleToDelete?.name || roleId}"`, 'info');
+  },
+
+  assignEmployeeToRole: (employeeName, roleId) => {
+    const roles = get().roles.map((r) => {
+      if (r.id === roleId) {
+        const current = r.assignedEmployees || [];
+        const exists = current.includes(employeeName);
+        const updated = exists ? current.filter((name) => name !== employeeName) : [...current, employeeName];
+        return { ...r, assignedEmployees: updated };
+      }
+      return r;
+    });
+    persistRoles(roles);
+    set({ roles });
+    get().addToast(`Updated staff assignment for role`, 'success');
+  },
+
+  saveRoleChanges: (roleId) => {
+    persistRoles(get().roles);
+    const role = get().roles.find((r) => r.id === roleId);
+    get().addToast(`Security matrix for "${role?.name || 'Role'}" saved & deployed!`, 'success');
   },
 
   createBulkTemplate: (template: any) => {
