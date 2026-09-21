@@ -119,6 +119,7 @@ export const WhatsAppChannelSettings: React.FC = () => {
     setSelectedConversationId,
     setActiveTab,
     addToast,
+    requestGeneralConfirmation,
   } = useQiyamStore();
 
   const [wabaId, setWabaId] = useState('4567067243541240');
@@ -270,11 +271,24 @@ export const WhatsAppChannelSettings: React.FC = () => {
       addToast('Cannot delete the primary active WhatsApp line', 'error');
       return;
     }
-    if (window.confirm(`Remove ${target?.phone} from registered lines?`)) {
-      const updated = numbers.filter((n) => n.id !== id);
-      persistNumbers(updated);
-      addToast('WhatsApp number removed', 'info');
-    }
+    requestGeneralConfirmation({
+      title: 'Remove Registered Line?',
+      message: `Are you sure you want to remove ${target?.phone} from registered lines?`,
+      variant: 'danger',
+      icon: 'trash',
+      confirmLabel: 'Remove Line',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: target?.displayName || 'Registered Line',
+        sublabel: target?.phone || '',
+        badgeText: 'Remove',
+      },
+      onConfirm: () => {
+        const updated = numbers.filter((n) => n.id !== id);
+        persistNumbers(updated);
+        addToast('WhatsApp number removed', 'info');
+      },
+    });
   };
 
   const handleAddNumber = (e: React.FormEvent) => {

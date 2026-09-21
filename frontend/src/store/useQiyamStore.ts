@@ -339,6 +339,23 @@ export interface SendConfirmationConfig {
   onCancel?: () => void;
 }
 
+export interface GeneralConfirmationConfig {
+  title?: string;
+  message: string;
+  description?: string;
+  variant?: 'danger' | 'warning' | 'info' | 'primary';
+  icon?: 'trash' | 'unlink' | 'alert' | 'info' | 'logout';
+  confirmLabel?: string;
+  cancelLabel?: string;
+  itemBadge?: {
+    label?: string;
+    sublabel?: string;
+    badgeText?: string;
+  };
+  onConfirm: () => void | Promise<void>;
+  onCancel?: () => void;
+}
+
 export interface QNotification {
   id: number;
   title: string;
@@ -358,6 +375,10 @@ interface QiyamState {
   sendConfirmation: SendConfirmationConfig | null;
   requestSendConfirmation: (config: SendConfirmationConfig) => void;
   closeSendConfirmation: () => void;
+
+  generalConfirmation: GeneralConfirmationConfig | null;
+  requestGeneralConfirmation: (config: GeneralConfirmationConfig) => void;
+  closeGeneralConfirmation: () => void;
 
   isSidebarCollapsed: boolean;
   toggleSidebarCollapse: () => void;
@@ -1282,6 +1303,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   sendConfirmation: null,
   requestSendConfirmation: (config) => set({ sendConfirmation: config }),
   closeSendConfirmation: () => set({ sendConfirmation: null }),
+
+  generalConfirmation: null,
+  requestGeneralConfirmation: (config) => set({ generalConfirmation: config }),
+  closeGeneralConfirmation: () => set({ generalConfirmation: null }),
 
   syncStatus: 'connected',
   setSyncStatus: (status) => set({ syncStatus: status }),

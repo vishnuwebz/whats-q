@@ -72,6 +72,7 @@ export const BulkTemplatesView: React.FC = () => {
     duplicateCampaign,
     setActiveTab,
     addToast,
+    requestGeneralConfirmation,
   } = useQiyamStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -362,13 +363,28 @@ export const BulkTemplatesView: React.FC = () => {
   };
 
   const handleDeleteTemplate = (tmpl: BulkTemplateItem) => {
-    if (confirm(`Are you sure you want to delete template "${tmpl.name}"?`)) {
-      deleteBulkTemplate(tmpl.id);
-      if (selectedTemplate?.id === tmpl.id) {
-        setIsDrawerOpen(false);
-        setSelectedTemplate(null);
-      }
-    }
+    requestGeneralConfirmation({
+      title: 'Delete WhatsApp Template?',
+      message: `Are you sure you want to delete template "${tmpl.name}"?`,
+      description: 'This template will be permanently removed from your bulk campaign library.',
+      variant: 'danger',
+      icon: 'trash',
+      confirmLabel: 'Delete Template',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: tmpl.name,
+        sublabel: `${tmpl.category || 'MARKETING'} • ${tmpl.language || 'English (US)'}`,
+        badgeText: tmpl.status || 'Template',
+      },
+      onConfirm: () => {
+        deleteBulkTemplate(tmpl.id);
+        if (selectedTemplate?.id === tmpl.id) {
+          setIsDrawerOpen(false);
+          setSelectedTemplate(null);
+        }
+        addToast(`Template "${tmpl.name}" deleted`, 'info');
+      },
+    });
   };
 
   return (

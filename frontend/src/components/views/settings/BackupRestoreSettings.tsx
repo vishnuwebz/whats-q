@@ -48,7 +48,7 @@ import {
 } from '@/utils/backupManager';
 
 export const BackupRestoreSettings: React.FC = () => {
-  const { addToast, backendOnline } = useQiyamStore();
+  const { addToast, backendOnline, requestGeneralConfirmation } = useQiyamStore();
 
   // Dynamic Database Status (Production PostgreSQL vs Local SQLite)
   const [dbInfo, setDbInfo] = useState<DatabaseInfo | null>(null);
@@ -207,11 +207,24 @@ export const BackupRestoreSettings: React.FC = () => {
 
   // Delete snapshot
   const handleDeleteSnapshot = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete snapshot "${name}"?`)) {
-      deleteStoredSnapshot(id);
-      refreshSnapshots();
-      addToast('Snapshot removed from local storage archive', 'info');
-    }
+    requestGeneralConfirmation({
+      title: 'Delete Backup Snapshot?',
+      message: `Are you sure you want to delete snapshot "${name}"?`,
+      description: 'This snapshot will be removed from your local archive.',
+      variant: 'danger',
+      icon: 'trash',
+      confirmLabel: 'Delete Snapshot',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: name,
+        badgeText: 'Snapshot',
+      },
+      onConfirm: () => {
+        deleteStoredSnapshot(id);
+        refreshSnapshots();
+        addToast('Snapshot removed from local storage archive', 'info');
+      },
+    });
   };
 
   // Handle file select or drop

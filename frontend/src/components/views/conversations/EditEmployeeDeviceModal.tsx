@@ -24,7 +24,7 @@ export const EditEmployeeDeviceModal: React.FC<EditEmployeeDeviceModalProps> = (
   onClose,
   device,
 }) => {
-  const { updateEmployeeDevice, unlinkEmployeeDevice, addToast } = useQiyamStore();
+  const { updateEmployeeDevice, unlinkEmployeeDevice, addToast, requestGeneralConfirmation } = useQiyamStore();
 
   const [deviceLabel, setDeviceLabel] = useState('');
   const [employeeName, setEmployeeName] = useState('');
@@ -61,23 +61,33 @@ export const EditEmployeeDeviceModal: React.FC<EditEmployeeDeviceModalProps> = (
     }
   };
 
-  const handleUnlink = async () => {
+  const handleUnlink = () => {
     if (!device) return;
-    if (
-      window.confirm(
-        `Are you sure you want to disconnect and unlink "${device.device_label}" (${device.phone_number})?`
-      )
-    ) {
-      setIsUnlinking(true);
-      try {
-        await unlinkEmployeeDevice(device.id);
-        setIsUnlinking(false);
-        onClose();
-      } catch (err) {
-        setIsUnlinking(false);
-        addToast('Failed to unlink device', 'error');
-      }
-    }
+    requestGeneralConfirmation({
+      title: 'Disconnect & Unlink Line?',
+      message: `Are you sure you want to disconnect and unlink "${device.device_label}" from WhatsApp?`,
+      description: 'This device will be immediately logged out from WhatsApp on the mobile phone.',
+      variant: 'danger',
+      icon: 'unlink',
+      confirmLabel: 'Disconnect & Unlink',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: device.device_label || 'WhatsApp Line',
+        sublabel: `${device.phone_number || ''}${device.employee_name ? ` • ${device.employee_name}` : ''}`,
+        badgeText: 'Will Unlink',
+      },
+      onConfirm: async () => {
+        setIsUnlinking(true);
+        try {
+          await unlinkEmployeeDevice(device.id);
+          setIsUnlinking(false);
+          onClose();
+        } catch (err) {
+          setIsUnlinking(false);
+          addToast('Failed to unlink device', 'error');
+        }
+      },
+    });
   };
 
   const labelPresets = [

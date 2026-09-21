@@ -5,6 +5,7 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { WhatsAppSimulatorModal } from './components/common/WhatsAppSimulatorModal';
 import { SystemUpdateModal } from './components/common/SystemUpdateModal';
 import { GlobalSendConfirmationModal } from './components/common/GlobalSendConfirmationModal';
+import { GlobalGeneralConfirmationModal } from './components/common/GlobalGeneralConfirmationModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { realtimeSyncManager } from './api/realtimeSync';
 import { checkAndRunAutoBackup } from './utils/backupManager';
@@ -370,6 +371,7 @@ export const App: React.FC = () => {
       <WhatsAppSimulatorModal />
       <SystemUpdateModal />
       <GlobalSendConfirmationModal />
+      <GlobalGeneralConfirmationModal />
       <ToastContainer />
     </div>
   );

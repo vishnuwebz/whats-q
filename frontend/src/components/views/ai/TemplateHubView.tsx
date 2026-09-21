@@ -25,7 +25,8 @@ export const TemplateHubView: React.FC = () => {
     testSendTemplate,
     saveMetaConfig,
     testMetaConnection,
-    addToast
+    addToast,
+    requestGeneralConfirmation,
   } = useQiyamStore();
 
   const [search, setSearch] = useState('');
@@ -401,11 +402,24 @@ export const TemplateHubView: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (confirm(`Delete template "${tmpl.name}"?`)) {
-                            await deleteMetaTemplate(tmpl.id);
-                            addToast('Template deleted', 'info');
-                          }
+                        onClick={() => {
+                          requestGeneralConfirmation({
+                            title: 'Delete Template?',
+                            message: `Are you sure you want to delete template "${tmpl.name}"?`,
+                            variant: 'danger',
+                            icon: 'trash',
+                            confirmLabel: 'Delete Template',
+                            cancelLabel: 'Cancel',
+                            itemBadge: {
+                              label: tmpl.name,
+                              sublabel: tmpl.category || 'Template',
+                              badgeText: tmpl.status || 'Meta',
+                            },
+                            onConfirm: async () => {
+                              await deleteMetaTemplate(tmpl.id);
+                              addToast('Template deleted', 'info');
+                            },
+                          });
                         }}
                         className="p-1 text-red-400 hover:text-red-600 rounded"
                         title="Delete template"

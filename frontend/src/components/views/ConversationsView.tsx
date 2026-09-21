@@ -62,6 +62,7 @@ export const ConversationsView: React.FC = () => {
     addSuppressionRecord,
     setSuppressionSearchQuery,
     requestSendConfirmation,
+    requestGeneralConfirmation,
     workflows,
     setActiveWorkflowId,
     setActiveWorkflowTitle,
@@ -2238,9 +2239,24 @@ export const ConversationsView: React.FC = () => {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (window.confirm(`Disconnect and unlink ${dev.device_label} (${dev.phone_number})?`)) {
-                                          unlinkEmployeeDevice(dev.id);
-                                        }
+                                        setIsLineSelectorOpen(false);
+                                        requestGeneralConfirmation({
+                                          title: 'Disconnect & Unlink Phone Line?',
+                                          message: `Are you sure you want to disconnect and unlink this WhatsApp phone line?`,
+                                          description: 'This will log out the session on the mobile phone and remove this line from active outbound channels.',
+                                          variant: 'danger',
+                                          icon: 'unlink',
+                                          confirmLabel: 'Disconnect & Unlink',
+                                          cancelLabel: 'Keep Connected',
+                                          itemBadge: {
+                                            label: dev.device_label || 'WhatsApp Line',
+                                            sublabel: `${dev.phone_number || ''}${dev.employee_name ? ` • ${dev.employee_name}` : ''}`,
+                                            badgeText: 'Will Unlink',
+                                          },
+                                          onConfirm: async () => {
+                                            await unlinkEmployeeDevice(dev.id);
+                                          },
+                                        });
                                       }}
                                       className="p-1 rounded-md bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/80 shadow-2xs hover:border-rose-300 transition-all cursor-pointer"
                                       title="Unlink this phone line"

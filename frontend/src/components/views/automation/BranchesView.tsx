@@ -172,6 +172,7 @@ export const BranchesView: React.FC = () => {
     addBranch,
     updateBranch,
     deleteBranch,
+    requestGeneralConfirmation,
     addToast,
     setActiveTab,
     targetHighlightId,
@@ -375,11 +376,26 @@ export const BranchesView: React.FC = () => {
   };
 
   // Delete Branch with confirmation
-  const handleDeleteBranch = async (branch: BranchItem) => {
+  const handleDeleteBranch = (branch: BranchItem) => {
     setActiveActionMenuId(null);
-    if (window.confirm(`Are you sure you want to remove the branch "${branch.name}"?`)) {
-      await deleteBranch(branch.id);
-    }
+    requestGeneralConfirmation({
+      title: 'Remove Branch Location?',
+      message: `Are you sure you want to remove the branch "${branch.name}"?`,
+      description: 'This branch will be removed from your active operations and regional routing network.',
+      variant: 'danger',
+      icon: 'trash',
+      confirmLabel: 'Remove Branch',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: branch.name,
+        sublabel: `${branch.city || ''}, ${branch.state || ''} • Code: ${branch.code || 'N/A'}`,
+        badgeText: 'Branch',
+      },
+      onConfirm: async () => {
+        await deleteBranch(branch.id);
+        addToast(`Branch "${branch.name}" removed`, 'info');
+      },
+    });
   };
 
   return (

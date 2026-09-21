@@ -30,6 +30,7 @@ export const KnowledgeBaseView: React.FC = () => {
     deleteKnowledgeArticle,
     voteHelpfulArticle,
     addToast,
+    requestGeneralConfirmation,
     targetHighlightId,
   } = useQiyamStore();
 
@@ -112,12 +113,26 @@ export const KnowledgeBaseView: React.FC = () => {
   };
 
   // Handle delete article
-  const handleDeleteArticle = async () => {
+  const handleDeleteArticle = () => {
     if (!activeArticle) return;
-    if (window.confirm(`Are you sure you want to delete "${activeArticle.title}"?`)) {
-      await deleteKnowledgeArticle(activeArticle.id);
-      setActiveArticle(null);
-    }
+    requestGeneralConfirmation({
+      title: 'Delete Knowledge Article?',
+      message: `Are you sure you want to delete "${activeArticle.title}"?`,
+      description: 'This document will be permanently removed from the AI Knowledge Base.',
+      variant: 'danger',
+      icon: 'trash',
+      confirmLabel: 'Delete Article',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: activeArticle.title,
+        sublabel: activeArticle.category || 'Knowledge Base',
+        badgeText: 'Article',
+      },
+      onConfirm: async () => {
+        await deleteKnowledgeArticle(activeArticle.id);
+        setActiveArticle(null);
+      },
+    });
   };
 
   // Handle create new article
