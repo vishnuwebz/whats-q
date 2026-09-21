@@ -22,6 +22,14 @@ def _call_baileys_gateway(endpoint, method='GET', data=None, timeout=5.0):
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
+def _ensure_service(wait=True):
+    try:
+        from .views import ensure_baileys_service
+        return ensure_baileys_service(wait_until_ready=wait)
+    except Exception as e:
+        logger.warning(f"Error ensuring baileys service from grabber: {e}")
+        return False
+
 # In-memory session registry with TTL expiration (30 minutes)
 # Format: { token: { 'status': 'pending'|'connected', 'device_name': str, 'phone': str, 'groups': list, 'updated_at': timestamp } }
 _GRABBER_SESSIONS = {}
@@ -170,17 +178,22 @@ class GroupGrabberSessionView(APIView):
         group_data = data.get('group_data') or data.get('groups')
 
         if action in ['baileys_session', 'start_session']:
+            _ensure_service(wait=True)
             # Starts authentic WhatsApp Web socket session on port 4000
             pair_res = _call_baileys_gateway('/api/accounts/pair', method='POST', data={
                 'id': token,
                 'displayName': device_name or 'QR Group Grabber'
-            }, timeout=3.5)
+            }, timeout=4.0)
             qr_code = pair_res.get('qrCode')
             pair_status = pair_res.get('status') or 'pairing'
             if not qr_code:
-                qr_res = _call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET', timeout=1.0)
-                qr_code = qr_res.get('qrCode')
-                pair_status = qr_res.get('status', pair_status)
+                for _ in range(4):
+                    time.sleep(0.4)
+                    qr_res = _call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET', timeout=1.5)
+                    qr_code = qr_res.get('qrCode')
+                    if qr_code:
+                        pair_status = qr_res.get('status', pair_status)
+                        break
 
             return Response({
                 'success': True,

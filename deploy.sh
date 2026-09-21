@@ -148,12 +148,18 @@ python manage.py collectstatic --noinput --clear
 echo -e "\n${YELLOW}[3.5/5] Updating WhatsApp Gateway Microservice...${NC}"
 if [ -d "$APP_DIR/whatsapp_gateway" ]; then
     cd "$APP_DIR/whatsapp_gateway"
-    npm install --omit=dev --silent 2>/dev/null || true
+    NODE_BIN=$(command -v node || which node || echo "/usr/bin/node")
+    NPM_BIN=$(command -v npm || which npm || echo "/usr/bin/npm")
     
-    # Configure and start systemd service for whatsq-gateway on port 4000
+    echo -e "   Node Binary: ${CYAN}${NODE_BIN}${NC}"
+    echo -e "   NPM Binary : ${CYAN}${NPM_BIN}${NC}"
+    
+    # Install dependencies (multer, p-queue, @whiskeysockets/baileys, etc.)
+    $NPM_BIN install --omit=dev --silent 2>&1 || true
+    
+    # Configure and restart systemd service for whatsq-gateway on port 4000
     if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
-        if [ ! -f "/etc/systemd/system/whatsq-gateway.service" ]; then
-            cat << 'EOF' | $SUDO_CMD tee /etc/systemd/system/whatsq-gateway.service > /dev/null 2>&1 || true
+        cat << EOF | $SUDO_CMD tee /etc/systemd/system/whatsq-gateway.service > /dev/null
 [Unit]
 Description=WhatsQ WhatsApp Multi-Device Gateway Microservice (Port 4000)
 After=network.target
@@ -162,19 +168,35 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/var/www/whatsq/whatsapp_gateway
-ExecStart=/usr/bin/node /var/www/whatsq/whatsapp_gateway/server/index.js
+ExecStart=${NODE_BIN} /var/www/whatsq/whatsapp_gateway/server/index.js
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production PORT=4000
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 [Install]
 WantedBy=multi-user.target
 EOF
-            $SUDO_CMD systemctl daemon-reload 2>/dev/null || true
-            $SUDO_CMD systemctl enable whatsq-gateway 2>/dev/null || true
-        fi
+        $SUDO_CMD systemctl daemon-reload 2>/dev/null || true
+        $SUDO_CMD systemctl enable whatsq-gateway 2>/dev/null || true
         $SUDO_CMD systemctl restart whatsq-gateway 2>/dev/null || true
-        echo -e "${GREEN}[SUCCESS] WhatsApp Gateway service running on port 4000!${NC}"
+        
+        # Verify port 4000 responds to health check
+        echo -e "${YELLOW}[GATEWAY] Verifying WhatsApp Gateway health on port 4000...${NC}"
+        GATEWAY_READY=false
+        for i in {1..15}; do
+            if curl -s -f http://127.0.0.1:4000/api/health >/dev/null 2>&1; then
+                GATEWAY_READY=true
+                break
+            fi
+            sleep 1
+        done
+        if [ "$GATEWAY_READY" = true ]; then
+            echo -e "${GREEN}[SUCCESS] WhatsApp Gateway running and healthy on port 4000!${NC}"
+        else
+            echo -e "${RED}[WARN] WhatsApp Gateway taking longer to report healthy. Checking journal...${NC}"
+            $SUDO_CMD journalctl -u whatsq-gateway -n 15 --no-pager 2>/dev/null || true
+        fi
     fi
 fi
 

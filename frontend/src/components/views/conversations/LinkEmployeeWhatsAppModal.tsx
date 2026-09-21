@@ -45,7 +45,7 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
   const displayQrCode = baileysQrCode;
 
   // Request authentic Baileys pairing QR code from WhatsApp socket
-  const fetchBaileysQr = async (tokenToUse: string) => {
+  const fetchBaileysQr = async (tokenToUse: string, retryCount = 0) => {
     setIsQrLoading(true);
     try {
       const res = await apiClient.post('/conversations/linked-devices/baileys_session/', {
@@ -55,10 +55,26 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
       if (res && res.qrCode) {
         setBaileysQrCode(res.qrCode);
         setIsQrLoading(false);
+      } else if (retryCount < 4) {
+        setTimeout(() => {
+          if (isOpen && connectionState !== 'connected') {
+            fetchBaileysQr(tokenToUse, retryCount + 1);
+          }
+        }, 1200);
+      } else {
+        setIsQrLoading(false);
       }
     } catch (err) {
       console.warn('Error requesting Baileys session:', err);
-      setIsQrLoading(false);
+      if (retryCount < 4) {
+        setTimeout(() => {
+          if (isOpen && connectionState !== 'connected') {
+            fetchBaileysQr(tokenToUse, retryCount + 1);
+          }
+        }, 1200);
+      } else {
+        setIsQrLoading(false);
+      }
     }
   };
 
@@ -257,6 +273,12 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
                   <span className="text-[11px] font-medium text-slate-500">
                     Generating WhatsApp QR...
                   </span>
+                  <button
+                    onClick={handleRefreshCode}
+                    className="text-[10px] text-emerald-600 hover:text-emerald-700 underline font-medium cursor-pointer pt-1"
+                  >
+                    Click to refresh code
+                  </button>
                 </div>
               )}
             </div>

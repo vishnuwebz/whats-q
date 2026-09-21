@@ -96,7 +96,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
 
   // Fetch authentic Baileys pairing QR code from WhatsApp socket
-  const fetchBaileysQr = async (tokenToUse: string) => {
+  const fetchBaileysQr = async (tokenToUse: string, retryCount = 0) => {
     setIsBaileysQrLoading(true);
     try {
       const res = await fetch('/api/conversations/grabber-session/', {
@@ -113,11 +113,29 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
         if (data.qrCode) {
           setBaileysQrCode(data.qrCode);
           setIsBaileysQrLoading(false);
+          return;
         }
+      }
+      if (retryCount < 4) {
+        setTimeout(() => {
+          if (isOpen && connectionState !== 'connected') {
+            fetchBaileysQr(tokenToUse, retryCount + 1);
+          }
+        }, 1200);
+      } else {
+        setIsBaileysQrLoading(false);
       }
     } catch (err) {
       console.warn('Error fetching Baileys QR for group grabber:', err);
-      setIsBaileysQrLoading(false);
+      if (retryCount < 4) {
+        setTimeout(() => {
+          if (isOpen && connectionState !== 'connected') {
+            fetchBaileysQr(tokenToUse, retryCount + 1);
+          }
+        }, 1200);
+      } else {
+        setIsBaileysQrLoading(false);
+      }
     }
   };
 
@@ -1308,6 +1326,19 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                               <span className="text-[11px] font-semibold text-slate-600">
                                 Generating WhatsApp QR...
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQrCountdown(60);
+                                  const newToken = 'qiyam_grp_' + Math.random().toString(36).substring(2, 9);
+                                  setQrSessionToken(newToken);
+                                  setBaileysQrCode(null);
+                                  fetchBaileysQr(newToken);
+                                }}
+                                className="text-[10px] text-emerald-600 hover:text-emerald-700 underline font-medium cursor-pointer pt-1"
+                              >
+                                Click to retry
+                              </button>
                             </div>
                           )}
 

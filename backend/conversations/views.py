@@ -24,6 +24,7 @@ import re
 
 import os
 import subprocess
+import shutil
 import urllib.request
 import urllib.error
 
@@ -31,10 +32,11 @@ logger = logging.getLogger(__name__)
 
 BAILEYS_GATEWAY_URL = 'http://127.0.0.1:4000'
 
-def ensure_baileys_service():
+def ensure_baileys_service(wait_until_ready=True):
     """
     Checks if Baileys gateway on port 4000 is active.
-    If not, launches it in a background process.
+    If not, launches it via systemd or in a background process,
+    and optionally waits up to 3.5 seconds until the health endpoint is healthy.
     """
     try:
         req = urllib.request.Request(f"{BAILEYS_GATEWAY_URL}/api/health", method='GET')
@@ -44,29 +46,66 @@ def ensure_baileys_service():
     except Exception:
         pass
 
+    # 1. On Linux, try systemd service first
+    if os.name != 'nt':
+        try:
+            subprocess.run(['systemctl', 'start', 'whatsq-gateway'], timeout=2, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+    # 2. Check candidate directories and launch node
     try:
         from django.conf import settings
         candidates = [
+            '/var/www/whatsq/whatsapp_gateway',
             os.path.join(settings.BASE_DIR.parent, 'whatsapp_gateway'),
             os.path.join(settings.BASE_DIR, 'whatsapp_gateway'),
-            '/var/www/whatsq/whatsapp_gateway',
             r"c:\Users\vishn\OneDrive\Desktop\2026-QIYAM-VENTURES\WHATSAPP-BOT AUTOMATION",
             os.path.join(settings.BASE_DIR.parent, 'WHATSAPP-BOT AUTOMATION'),
         ]
         gateway_dir = next((p for p in candidates if os.path.exists(p) and os.path.isdir(p)), None)
         if gateway_dir:
+            node_bin = shutil.which('node') or shutil.which('nodejs')
+            if not node_bin:
+                for candidate_bin in ['/usr/bin/node', '/usr/local/bin/node', '/bin/node', '/usr/bin/nodejs']:
+                    if os.path.exists(candidate_bin) and os.access(candidate_bin, os.X_OK):
+                        node_bin = candidate_bin
+                        break
+            if not node_bin:
+                node_bin = 'node'
+
             creation_flags = 0
             if os.name == 'nt':
                 creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP | 0x00000008  # DETACHED_PROCESS
+
+            env = os.environ.copy()
+            env['PORT'] = '4000'
+            env['NODE_ENV'] = 'production'
+            if 'PATH' not in env or '/usr/bin' not in env['PATH']:
+                env['PATH'] = f"/usr/local/bin:/usr/bin:/bin:{env.get('PATH', '')}"
+
             subprocess.Popen(
-                ["node", "server/index.js"],
+                [node_bin, "server/index.js"],
                 cwd=gateway_dir,
+                env=env,
                 creationflags=creation_flags,
                 shell=False
             )
-            return True
     except Exception as e:
         logger.warning(f"Failed to auto-launch Baileys gateway: {e}")
+
+    # 3. If wait_until_ready, poll health endpoint for up to 3.5 seconds
+    if wait_until_ready:
+        for _ in range(14):
+            time.sleep(0.25)
+            try:
+                req = urllib.request.Request(f"{BAILEYS_GATEWAY_URL}/api/health", method='GET')
+                with urllib.request.urlopen(req, timeout=0.5) as res:
+                    if res.status == 200:
+                        return True
+            except Exception:
+                pass
+
     return False
 
 def call_baileys_gateway(endpoint, method='GET', data=None, timeout=1.5):
@@ -1124,21 +1163,25 @@ class LinkedEmployeeDeviceViewSet(viewsets.ModelViewSet):
         if not token:
             token = f"emp_wa_{int(time.time() * 1000)}"
 
-        ensure_baileys_service()
+        ensure_baileys_service(wait_until_ready=True)
 
         # Request gateway to start session or obtain QR
         pair_res = call_baileys_gateway('/api/accounts/pair', method='POST', data={
             'id': token,
             'displayName': label,
-        }, timeout=3.5)
+        }, timeout=4.0)
         
         qr_code = pair_res.get('qrCode')
         pair_status = pair_res.get('status') or 'pairing'
         
         if not qr_code:
-            qr_res = call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET', timeout=1.0)
-            qr_code = qr_res.get('qrCode')
-            pair_status = qr_res.get('status', pair_status)
+            for _ in range(4):
+                time.sleep(0.4)
+                qr_res = call_baileys_gateway(f'/api/accounts/qr/{token}', method='GET', timeout=1.5)
+                qr_code = qr_res.get('qrCode')
+                if qr_code:
+                    pair_status = qr_res.get('status', pair_status)
+                    break
 
         return Response({
             'success': True,
