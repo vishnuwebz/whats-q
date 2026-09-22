@@ -839,6 +839,14 @@ export interface PdfCanvasElement {
   isBold?: boolean;
   sealType?: 'official_circle' | 'approved' | 'paid' | 'verified' | 'confidential';
   signatureType?: 'director' | 'manager' | 'custom_drawn';
+  signeeName?: string;
+  signeeRole?: string;
+  sealTitle?: string;
+  sealSubtext?: string;
+  sealBottomText?: string;
+  qrLabel?: string;
+  logoText?: string;
+  imageUrl?: string;
 }
 
 export interface PdfEditorDocument {

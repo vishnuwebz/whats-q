@@ -541,6 +541,9 @@ interface QiyamState {
   askAiCopilot: (prompt: string) => Promise<{ response: string; suggestions: string[] } | null>;
 
   updateLeadStage: (leadId: string | number, newStage: Lead['stage'], note?: string) => Promise<boolean>;
+  updateLead: (leadId: string | number, updates: Partial<Lead>) => Promise<boolean>;
+  deleteLead: (leadId: string | number) => Promise<boolean>;
+  scheduleFollowUpForLead: (leadId: string | number, followUpData: any) => Promise<boolean>;
   convertLeadToDeal: (leadId: string | number, customData?: Record<string, any>) => Promise<Deal | null>;
   convertConversationToDeal: (conversationId: string | number) => Promise<void>;
   updateJobStatus: (jobId: string | number, status: Job['status']) => Promise<void>;
@@ -3631,24 +3634,34 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   updateLeadStage: async (leadId, newStage, note) => {
-    const lead = get().leads.find((l) => l.id === leadId);
+    const lead = get().leads.find((l) => String(l.id) === String(leadId));
     if (!lead) return false;
     const updatedNotes = note
       ? (lead.notes ? `${lead.notes}\n[${new Date().toLocaleDateString()}] Stage -> ${newStage}: ${note}` : `[${new Date().toLocaleDateString()}] Stage -> ${newStage}: ${note}`)
       : lead.notes;
 
     // Optimistic store update
-    set((state) => ({
-      leads: state.leads.map((l) => (l.id === leadId ? { ...l, stage: newStage, notes: updatedNotes } : l)),
-    }));
+    set((state) => {
+      const updatedLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? { ...l, stage: newStage, notes: updatedNotes } : l));
+      persistCache('leads', updatedLeads);
+      return {
+        leads: updatedLeads,
+        selectedLead: String(state.selectedLead?.id) === String(leadId) ? { ...state.selectedLead, stage: newStage, notes: updatedNotes } : state.selectedLead,
+      };
+    });
 
     try {
       const res = await apiClient.put(`/crm/leads/${leadId}/`, { ...lead, stage: newStage, notes: updatedNotes });
       if (res && res.success !== false) {
         if (res.id) {
-          set((state) => ({
-            leads: state.leads.map((l) => (l.id === leadId ? { ...(res as Lead), stage: newStage } : l)),
-          }));
+          set((state) => {
+            const finalLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? { ...(res as Lead), stage: newStage } : l));
+            persistCache('leads', finalLeads);
+            return {
+              leads: finalLeads,
+              selectedLead: String(state.selectedLead?.id) === String(leadId) ? { ...(res as Lead), stage: newStage } : state.selectedLead,
+            };
+          });
         }
         get().addToast(`Stage updated to "${newStage.replace('_', ' ').toUpperCase()}"`, 'success');
         return true;
@@ -3662,18 +3675,136 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     }
   },
 
+  updateLead: async (leadId, updates) => {
+    const lead = get().leads.find((l) => String(l.id) === String(leadId));
+    if (!lead) return false;
+    const updatedLead: Lead = { ...lead, ...updates };
+
+    set((state) => {
+      const newLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? updatedLead : l));
+      persistCache('leads', newLeads);
+      return {
+        leads: newLeads,
+        selectedLead: String(state.selectedLead?.id) === String(leadId) ? updatedLead : state.selectedLead,
+      };
+    });
+
+    try {
+      const res = await apiClient.put(`/crm/leads/${leadId}/`, updatedLead);
+      if (res && res.id) {
+        set((state) => {
+          const finalLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? { ...(res as Lead), ...updates } : l));
+          persistCache('leads', finalLeads);
+          return {
+            leads: finalLeads,
+            selectedLead: String(state.selectedLead?.id) === String(leadId) ? { ...(res as Lead), ...updates } : state.selectedLead,
+          };
+        });
+      }
+      get().addToast(`Lead "${updatedLead.name}" updated successfully`, 'success');
+      return true;
+    } catch {
+      get().addToast(`Lead "${updatedLead.name}" updated (saved locally)`, 'info');
+      return true;
+    }
+  },
+
+  deleteLead: async (leadId) => {
+    const lead = get().leads.find((l) => String(l.id) === String(leadId));
+    const leadName = lead ? lead.name : 'Lead';
+
+    set((state) => {
+      const remaining = state.leads.filter((l) => String(l.id) !== String(leadId));
+      try {
+        localStorage.setItem('whatsq_leads_cache', JSON.stringify(remaining));
+      } catch {}
+      return {
+        leads: remaining,
+        selectedLead: String(state.selectedLead?.id) === String(leadId) ? null : state.selectedLead,
+        isLeadDrawerOpen: String(state.selectedLead?.id) === String(leadId) ? false : state.isLeadDrawerOpen,
+      };
+    });
+
+    try {
+      await apiClient.delete(`/crm/leads/${leadId}/`);
+      get().addToast(`Lead "${leadName}" deleted successfully`, 'success');
+      return true;
+    } catch {
+      get().addToast(`Lead "${leadName}" removed from local storage`, 'info');
+      return true;
+    }
+  },
+
+  scheduleFollowUpForLead: async (leadId, followUpData) => {
+    const lead = get().leads.find((l) => String(l.id) === String(leadId));
+    if (!lead) return false;
+
+    const followUpDate = followUpData.due_date || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const followUpTime = followUpData.due_time || '10:00 AM';
+
+    const updatedLead: Lead = {
+      ...lead,
+      next_follow_up_date: followUpDate,
+      next_follow_up_time: followUpTime,
+    };
+
+    const newFollowUp: FollowUp = {
+      id: Date.now(),
+      title: followUpData.title || `Follow-up with ${lead.name}`,
+      related_to: `Lead #${lead.id} - ${lead.name}`,
+      customer_name: lead.name,
+      phone: lead.phone,
+      follow_up_type: followUpData.follow_up_type || 'whatsapp',
+      assigned_to: followUpData.assigned_to || lead.owner || 'Rahul Mehta',
+      due_date: followUpDate,
+      due_time: followUpTime,
+      status: 'scheduled',
+      priority: followUpData.priority || 'high',
+      notes: followUpData.notes || '',
+    };
+
+    set((state) => {
+      const newLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? updatedLead : l));
+      persistCache('leads', newLeads);
+      const newFollowups = [newFollowUp, ...state.followups];
+      persistCache('followups', newFollowups);
+      return {
+        leads: newLeads,
+        followups: newFollowups,
+        selectedLead: String(state.selectedLead?.id) === String(leadId) ? updatedLead : state.selectedLead,
+      };
+    });
+
+    try {
+      await apiClient.put(`/crm/leads/${leadId}/`, updatedLead);
+      await apiClient.post('/crm/follow-ups/', newFollowUp);
+      get().addToast(`Follow-up scheduled for ${lead.name} on ${followUpDate}`, 'success');
+      return true;
+    } catch {
+      get().addToast(`Follow-up scheduled locally for ${lead.name}`, 'info');
+      return true;
+    }
+  },
+
   convertLeadToDeal: async (leadId, customData = {}) => {
-    const lead = get().leads.find((l) => l.id === leadId);
+    const lead = get().leads.find((l) => String(l.id) === String(leadId));
     try {
       const res = await apiClient.post(`/crm/leads/${leadId}/convert_to_deal/`, customData);
       if (res?.deal) {
         const createdDeal = res.deal as Deal;
-        set((state) => ({
-          deals: [createdDeal, ...state.deals.filter((d) => d.id !== createdDeal.id)],
-          leads: state.leads.map((l) => (l.id === leadId ? { ...l, stage: 'won' } : l)),
-          isLeadDrawerOpen: false,
-          targetHighlightId: createdDeal.id,
-        }));
+        set((state) => {
+          const updatedDeals = [createdDeal, ...state.deals.filter((d) => d.id !== createdDeal.id)];
+          const updatedLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? { ...l, stage: 'won' as const } : l));
+          persistCache('deals', updatedDeals);
+          persistCache('leads', updatedLeads);
+          return {
+            deals: updatedDeals,
+            leads: updatedLeads,
+            selectedLead: String(state.selectedLead?.id) === String(leadId) ? { ...state.selectedLead, stage: 'won' as const } : state.selectedLead,
+            isLeadDrawerOpen: false,
+            targetHighlightId: createdDeal.id,
+          };
+        });
         get().setActiveTab('crm-deals');
         get().addToast(`Successfully converted to deal "${createdDeal.deal_name}"!`, 'success');
         return createdDeal;
@@ -3698,12 +3829,19 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         tags: lead.tags || ['Converted Lead'],
         notes: customData?.notes || lead.notes || '',
       };
-      set((state) => ({
-        deals: [fallbackDeal, ...state.deals],
-        leads: state.leads.map((l) => (l.id === leadId ? { ...l, stage: 'won' } : l)),
-        isLeadDrawerOpen: false,
-        targetHighlightId: fallbackDeal.id,
-      }));
+      set((state) => {
+        const updatedDeals = [fallbackDeal, ...state.deals];
+        const updatedLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? { ...l, stage: 'won' as const } : l));
+        persistCache('deals', updatedDeals);
+        persistCache('leads', updatedLeads);
+        return {
+          deals: updatedDeals,
+          leads: updatedLeads,
+          selectedLead: String(state.selectedLead?.id) === String(leadId) ? { ...state.selectedLead, stage: 'won' as const } : state.selectedLead,
+          isLeadDrawerOpen: false,
+          targetHighlightId: fallbackDeal.id,
+        };
+      });
       get().setActiveTab('crm-deals');
       get().addToast(`Lead converted to Deal "${fallbackDeal.deal_name}"`, 'success');
       return fallbackDeal;
@@ -3940,11 +4078,19 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     try {
       const res = await apiClient.post('/crm/leads/', item);
       const created = (res?.id && res.success !== false) ? (res as Lead) : item;
-      set((state) => ({ leads: [created, ...state.leads] }));
+      set((state) => {
+        const updated = [created, ...state.leads];
+        persistCache('leads', updated);
+        return { leads: updated };
+      });
       get().addToast(`Lead "${created.name}" created successfully!`, 'success');
       return created;
     } catch {
-      set((state) => ({ leads: [item, ...state.leads] }));
+      set((state) => {
+        const updated = [item, ...state.leads];
+        persistCache('leads', updated);
+        return { leads: updated };
+      });
       get().addToast(`Lead "${item.name}" created`, 'success');
       return item;
     }
