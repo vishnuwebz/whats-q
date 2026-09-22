@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     JobViewSet, AppointmentViewSet, EmployeeViewSet,
     ScheduleShiftViewSet, AttendanceRecordViewSet,
-    TaskViewSet, RouteViewSet, InventoryItemViewSet
+    TaskViewSet, RouteViewSet, InventoryItemViewSet,
+    CustomPdfTemplateViewSet
 )
 
 router = DefaultRouter()
@@ -15,6 +16,7 @@ router.register(r'attendance', AttendanceRecordViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'routes', RouteViewSet)
 router.register(r'inventory', InventoryItemViewSet)
+router.register(r'pdf-templates', CustomPdfTemplateViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

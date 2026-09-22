@@ -61,9 +61,12 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     suppressionList,
     addSuppressionRecord,
     removeSuppressionRecord,
+    updateSuppressionRecord,
     isPhoneSuppressed,
     setSelectedConversationId,
     conversations,
+    leads,
+    customers,
     suppressionSearchQuery,
     setSuppressionSearchQuery,
   } = useQiyamStore();
@@ -504,6 +507,454 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     addToast(`Recipient list "${newListName}" created with ${count} contacts!`, 'success');
   };
 
+  // Edit Recipient List Modal State
+  const [isEditListOpen, setIsEditListOpen] = useState(false);
+  const [editingList, setEditingList] = useState<BulkRecipientList | null>(null);
+  const [editListName, setEditListName] = useState('');
+  const [editListDesc, setEditListDesc] = useState('');
+  const [editListTags, setEditListTags] = useState('');
+  const [editContacts, setEditContacts] = useState<BulkContact[]>([]);
+  const [editContactSearch, setEditContactSearch] = useState('');
+  const [isEditParsingFile, setIsEditParsingFile] = useState(false);
+  const [editUploadedFileName, setEditUploadedFileName] = useState<string | null>(null);
+  const editModalFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit Single Contact Modal State
+  const [isEditContactModalOpen, setIsEditContactModalOpen] = useState(false);
+  const [contactBeingEdited, setContactBeingEdited] = useState<BulkContact | null>(null);
+  const [editContactName, setEditContactName] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [editContactTag, setEditContactTag] = useState('');
+
+  // Add Contact Modal State (for selectedList)
+  const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
+  const [addContactName, setAddContactName] = useState('');
+  const [addContactPhone, setAddContactPhone] = useState('');
+  const [addContactTag, setAddContactTag] = useState('Member');
+
+  // Edit Suppression Record Modal State
+  const [isEditSuppressionOpen, setIsEditSuppressionOpen] = useState(false);
+  const [suppressionBeingEdited, setSuppressionBeingEdited] = useState<any>(null);
+  const [editSuppressionReason, setEditSuppressionReason] = useState('');
+  const [editSuppressionNotes, setEditSuppressionNotes] = useState('');
+
+  const handleOpenEditList = (list: BulkRecipientList) => {
+    setEditingList(list);
+    setEditListName(list.name);
+    setEditListDesc(list.description || '');
+    setEditListTags(list.tags ? list.tags.join(', ') : '');
+    setEditContacts(list.contactItems ? [...list.contactItems] : []);
+    setEditContactSearch('');
+    setEditUploadedFileName(null);
+    setIsEditListOpen(true);
+  };
+
+  const handleSaveEditList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingList) return;
+    if (!editListName.trim()) {
+      addToast('Please enter a list name', 'error');
+      return;
+    }
+
+    const tags = editListTags
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    const count = editContacts.length > 0 ? editContacts.length : editingList.contactCount;
+    const validCount = editContacts.length > 0
+      ? editContacts.filter((c) => c.validWhatsApp && !c.optedOut).length
+      : Math.round(count * 0.98);
+
+    const updates: Partial<BulkRecipientList> = {
+      name: editListName.trim(),
+      description: editListDesc.trim(),
+      tags,
+      contactCount: count,
+      validWhatsAppCount: validCount,
+      contactItems: editContacts,
+    };
+
+    updateRecipientList(editingList.id, updates);
+
+    if (selectedList && selectedList.id === editingList.id) {
+      setSelectedList({
+        ...selectedList,
+        ...updates,
+      });
+    }
+
+    setIsEditListOpen(false);
+    setEditingList(null);
+    addToast(`Recipient list "${editListName}" updated successfully!`, 'success');
+  };
+
+  // Helper to extract contacts from a list with dynamic CRM fallback
+  const getContactsForList = (list: BulkRecipientList): BulkContact[] => {
+    if (list.contactItems && list.contactItems.length > 0) {
+      return list.contactItems;
+    }
+    if (list.id === 'lst-conversations') {
+      return (conversations || []).map((conv) => ({
+        id: `c-${conv.id}`,
+        name: conv.contact_name || 'Customer',
+        phone: conv.phone_number || '',
+        email: (conv as any).email || '',
+        tag: conv.category || 'Conversation',
+        validWhatsApp: true,
+        optedOut: false,
+        lastActive: conv.last_contact_date || 'Recently',
+        source: 'WhatsApp Chat',
+      }));
+    }
+    if (list.id === 'lst-leads') {
+      return (leads || []).map((lead: any) => ({
+        id: `l-${lead.id}`,
+        name: String(lead.name || 'Lead'),
+        phone: String(lead.phone || ''),
+        email: String(lead.email || ''),
+        tag: String(lead.stage || 'Lead'),
+        validWhatsApp: true,
+        optedOut: false,
+        lastActive: String(lead.created_at_str || 'Recently'),
+        source: 'CRM Lead',
+      }));
+    }
+    if (list.id === 'lst-customers') {
+      return (customers || []).map((cust: any) => ({
+        id: `cust-${cust.id}`,
+        name: String(cust.name || 'Customer'),
+        phone: String(cust.phone || ''),
+        email: String(cust.email || ''),
+        tag: String(cust.category || 'Customer'),
+        validWhatsApp: true,
+        optedOut: false,
+        lastActive: 'Recently',
+        source: 'CRM Customer',
+      }));
+    }
+    return [];
+  };
+
+  // Export a single recipient list as a CSV backup file
+  const handleExportListCsv = (list: BulkRecipientList) => {
+    const contacts = getContactsForList(list);
+    if (!contacts || contacts.length === 0) {
+      addToast(`No contacts found in list "${list.name}" to export.`, 'warning');
+      return;
+    }
+
+    const headers = [
+      'Contact Name',
+      'Phone Number',
+      'WhatsApp Valid',
+      'Compliance Status',
+      'Opted Out',
+      'Tag / Segment',
+      'Source',
+      'Email',
+      'Last Active',
+      'List Name',
+      'List ID',
+      'Backup Timestamp'
+    ];
+
+    const escapeCsv = (val: unknown) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const dateStr = new Date().toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
+    const rows = contacts.map((c) => [
+      escapeCsv(c.name || 'Customer'),
+      escapeCsv(c.phone || ''),
+      escapeCsv(c.validWhatsApp ? 'Yes' : 'No'),
+      escapeCsv(c.optedOut ? 'Opted Out' : c.validWhatsApp ? 'Active & Valid' : 'Unverified'),
+      escapeCsv(c.optedOut ? 'Yes' : 'No'),
+      escapeCsv(c.tag || (list.tags ? list.tags.join(', ') : 'Audience')),
+      escapeCsv(c.source || list.type || 'WhatsApp CRM'),
+      escapeCsv(c.email || ''),
+      escapeCsv(c.lastActive || 'Active'),
+      escapeCsv(list.name),
+      escapeCsv(list.id),
+      escapeCsv(dateStr),
+    ]);
+
+    const csvContent = [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileDate = new Date().toISOString().split('T')[0];
+    const cleanListName = list.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+    link.href = url;
+    link.download = `whatsq-backup-${cleanListName}-${fileDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    addToast(`Exported CSV backup for "${list.name}" (${contacts.length} contacts)`, 'success');
+  };
+
+  // Export master CSV backup containing all recipient lists
+  const handleExportAllListsCsv = () => {
+    if (!bulkRecipientLists || bulkRecipientLists.length === 0) {
+      addToast('No recipient lists available to export.', 'warning');
+      return;
+    }
+
+    const headers = [
+      'List Name',
+      'List ID',
+      'List Category',
+      'Contact Name',
+      'Phone Number',
+      'WhatsApp Valid',
+      'Compliance Status',
+      'Opted Out',
+      'Tag / Segment',
+      'Source',
+      'Email',
+      'Last Active',
+      'List Created Date',
+      'Backup Timestamp'
+    ];
+
+    const escapeCsv = (val: unknown) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const dateStr = new Date().toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
+    let totalContacts = 0;
+    const allRows: string[][] = [];
+
+    bulkRecipientLists.forEach((list) => {
+      const contacts = getContactsForList(list);
+      contacts.forEach((c) => {
+        totalContacts++;
+        allRows.push([
+          escapeCsv(list.name),
+          escapeCsv(list.id),
+          escapeCsv(list.type || 'Audience'),
+          escapeCsv(c.name || 'Customer'),
+          escapeCsv(c.phone || ''),
+          escapeCsv(c.validWhatsApp ? 'Yes' : 'No'),
+          escapeCsv(c.optedOut ? 'Opted Out' : c.validWhatsApp ? 'Active & Valid' : 'Unverified'),
+          escapeCsv(c.optedOut ? 'Yes' : 'No'),
+          escapeCsv(c.tag || (list.tags ? list.tags.join(', ') : 'Audience')),
+          escapeCsv(c.source || list.type || 'WhatsApp CRM'),
+          escapeCsv(c.email || ''),
+          escapeCsv(c.lastActive || 'Active'),
+          escapeCsv(list.createdAt ? new Date(list.createdAt).toLocaleDateString('en-IN') : '-'),
+          escapeCsv(dateStr),
+        ]);
+      });
+    });
+
+    if (allRows.length === 0) {
+      addToast('No contacts found across recipient lists to export.', 'warning');
+      return;
+    }
+
+    const csvContent = [headers.map((h) => `"${h}"`).join(','), ...allRows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileDate = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.download = `whatsq-master-backup-all-recipient-lists-${fileDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    addToast(`Exported master backup of ${bulkRecipientLists.length} lists (${totalContacts} total contacts)`, 'success');
+  };
+
+  const handleEditListFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsEditParsingFile(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const newContacts = parseContactsFromCsvText(text, file.name);
+        if (newContacts.length === 0) {
+          addToast('No valid contact phone numbers found in file', 'error');
+          return;
+        }
+        setEditContacts((prev) => [...prev, ...newContacts]);
+        setEditUploadedFileName(file.name);
+        addToast(`Appended ${newContacts.length} contacts from "${file.name}"!`, 'success');
+      } catch {
+        addToast('Error reading file. Please verify CSV format.', 'error');
+      } finally {
+        setIsEditParsingFile(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleRemoveContactFromEditList = (contactId: string) => {
+    setEditContacts((prev) => prev.filter((c) => c.id !== contactId));
+  };
+
+  const filteredEditContacts = useMemo(() => {
+    const q = editContactSearch.trim().toLowerCase();
+    if (!q) return editContacts;
+    return editContacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        c.tag?.toLowerCase().includes(q)
+    );
+  }, [editContacts, editContactSearch]);
+
+  // Contacts Drawer Handlers
+  const handleOpenEditContact = (contact: BulkContact) => {
+    setContactBeingEdited(contact);
+    setEditContactName(contact.name);
+    setEditContactPhone(contact.phone);
+    setEditContactTag(contact.tag || '');
+    setIsEditContactModalOpen(true);
+  };
+
+  const handleSaveEditContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactBeingEdited || !selectedList) return;
+    if (!editContactName.trim() || !editContactPhone.trim()) {
+      addToast('Please enter contact name and phone number', 'error');
+      return;
+    }
+
+    const updatedContacts = (selectedList.contactItems || []).map((c) =>
+      c.id === contactBeingEdited.id
+        ? {
+            ...c,
+            name: editContactName.trim(),
+            phone: editContactPhone.trim(),
+            tag: editContactTag.trim() || 'Member',
+          }
+        : c
+    );
+
+    const validCount = updatedContacts.filter((c) => c.validWhatsApp && !c.optedOut).length;
+
+    updateRecipientList(selectedList.id, {
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    setSelectedList({
+      ...selectedList,
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    setIsEditContactModalOpen(false);
+    setContactBeingEdited(null);
+    addToast('Contact updated successfully!', 'success');
+  };
+
+  const handleDeleteContactFromList = (contactId: string) => {
+    if (!selectedList) return;
+    const updatedContacts = (selectedList.contactItems || []).filter((c) => c.id !== contactId);
+    const validCount = updatedContacts.filter((c) => c.validWhatsApp && !c.optedOut).length;
+
+    updateRecipientList(selectedList.id, {
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    setSelectedList({
+      ...selectedList,
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    addToast('Contact removed from list', 'info');
+  };
+
+  const handleAddContactToSelectedList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedList) return;
+    if (!addContactName.trim() || !addContactPhone.trim()) {
+      addToast('Please enter name and phone number', 'error');
+      return;
+    }
+
+    const newContact: BulkContact = {
+      id: `contact-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: addContactName.trim(),
+      phone: addContactPhone.trim(),
+      tag: addContactTag.trim() || 'Member',
+      validWhatsApp: true,
+      optedOut: false,
+      source: 'Manual Addition',
+      lastActive: 'Just now',
+    };
+
+    const currentContacts = selectedList.contactItems || [];
+    const updatedContacts = [newContact, ...currentContacts];
+    const validCount = updatedContacts.filter((c) => c.validWhatsApp && !c.optedOut).length;
+
+    updateRecipientList(selectedList.id, {
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    setSelectedList({
+      ...selectedList,
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    setIsAddContactModalOpen(false);
+    setAddContactName('');
+    setAddContactPhone('');
+    setAddContactTag('Member');
+    addToast(`Added "${newContact.name}" to list!`, 'success');
+  };
+
+  // Suppression Record Handlers
+  const handleOpenEditSuppression = (record: any) => {
+    setSuppressionBeingEdited(record);
+    setEditSuppressionReason(record.reason || '');
+    setEditSuppressionNotes(record.notes || '');
+    setIsEditSuppressionOpen(true);
+  };
+
+  const handleSaveEditSuppression = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!suppressionBeingEdited) return;
+    updateSuppressionRecord(suppressionBeingEdited.id || suppressionBeingEdited.phone, {
+      reason: editSuppressionReason.trim(),
+      notes: editSuppressionNotes.trim(),
+    });
+    setIsEditSuppressionOpen(false);
+    setSuppressionBeingEdited(null);
+  };
+
   // Drawer Contact Search & Filter State
   const [drawerContactSearch, setDrawerContactSearch] = useState('');
   const [drawerStatusFilter, setDrawerStatusFilter] = useState<'all' | 'valid' | 'opted_out'>('all');
@@ -719,7 +1170,16 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5 text-slate-500" />
-              Import CSV / Excel
+              <span>Import CSV / Excel</span>
+            </button>
+
+            <button
+              onClick={handleExportAllListsCsv}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition shadow-xs cursor-pointer"
+              title="Export all recipient lists into a consolidated CSV backup file"
+            >
+              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Export All (Backup)</span>
             </button>
 
             <button
@@ -1053,6 +1513,16 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
+                                  onClick={() => handleOpenEditSuppression(record)}
+                                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                                  title="Edit notes and reason"
+                                >
+                                  <Edit2 className="w-3 h-3 text-slate-500" />
+                                  <span>Edit</span>
+                                </button>
+
+                                <button
+                                  type="button"
                                   onClick={() => {
                                     const matchingConv = (conversations || []).find(
                                       (c) => (c.phone_number || '').replace(/\D/g, '') === (record.phone || '').replace(/\D/g, '')
@@ -1220,21 +1690,35 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                             Details
                           </button>
                           <button
+                            onClick={() => handleExportListCsv(list)}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                            title={`Export CSV backup of ${list.name}`}
+                          >
+                            <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Export CSV</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditList(list)}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                            title="Edit List & Contacts"
+                          >
+                            <Edit2 className="w-3 h-3 text-emerald-600" />
+                            <span>Edit</span>
+                          </button>
+                          <button
                             onClick={() => handleSendToList(list)}
                             className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1"
                           >
                             <Send className="w-3 h-3" />
                             Broadcast
                           </button>
-                          {!['lst-conversations', 'lst-leads', 'lst-customers'].includes(list.id) && (
-                            <button
-                              onClick={() => setListToDelete(list)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                              title="Delete List"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => setListToDelete(list)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            title="Delete List"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1261,12 +1745,32 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                   {selectedList.validWhatsAppCount.toLocaleString()} verified WhatsApp users
                 </p>
               </div>
-              <button
-                onClick={() => setIsDrawerOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleExportListCsv(selectedList)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                  title="Export List to CSV"
+                >
+                  <Download className="w-3 h-3 text-emerald-600" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditList(selectedList)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                  title="Edit List & Contacts"
+                >
+                  <Edit2 className="w-3 h-3 text-emerald-600" />
+                  <span>Edit List</span>
+                </button>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Drawer Body */}
@@ -1337,10 +1841,29 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 text-xs">Contacts in this list:</span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Showing {Math.min(filteredDrawerContacts.length, 50)} of{' '}
-                    {filteredDrawerContacts.length} records
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Showing {Math.min(filteredDrawerContacts.length, 50)} of{' '}
+                      {filteredDrawerContacts.length} records
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleExportListCsv(selectedList)}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-[10px] font-bold transition cursor-pointer shadow-2xs"
+                      title="Export this list's contacts to CSV"
+                    >
+                      <Download className="w-3 h-3 text-emerald-600" />
+                      <span>Export CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddContactModalOpen(true)}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-[10px] font-bold transition cursor-pointer shadow-2xs"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Contact</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Search & Status Filter */}
@@ -1399,19 +1922,20 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                         <th className="p-2.5">Name</th>
                         <th className="p-2.5">WhatsApp Number</th>
                         <th className="p-2.5">Tag</th>
-                        <th className="p-2.5 text-right">Status</th>
+                        <th className="p-2.5 text-center">Status</th>
+                        <th className="p-2.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredDrawerContacts.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="p-4 text-center text-slate-400 text-xs">
+                          <td colSpan={5} className="p-4 text-center text-slate-400 text-xs">
                             No contacts match current filters.
                           </td>
                         </tr>
                       ) : (
                         filteredDrawerContacts.slice(0, 50).map((c) => (
-                          <tr key={c.id}>
+                          <tr key={c.id} className="hover:bg-slate-50/80 transition">
                             <td className="p-2.5 font-medium text-slate-800">{c.name}</td>
                             <td className="p-2.5 font-mono text-[10px] text-slate-600">{c.phone}</td>
                             <td className="p-2.5">
@@ -1419,7 +1943,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                                 {c.tag || 'Member'}
                               </span>
                             </td>
-                            <td className="p-2.5 text-right">
+                            <td className="p-2.5 text-center">
                               <span
                                 className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                                   c.optedOut
@@ -1436,6 +1960,26 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                                   : 'Unverified'}
                               </span>
                             </td>
+                            <td className="p-2.5 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditContact(c)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
+                                  title="Edit Contact"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteContactFromList(c.id)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Remove from List"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -1450,22 +1994,28 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleDownloadListCsv(selectedList)}
-                  className="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                  className="px-3 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Download CSV
+                  CSV
                 </button>
 
-                {!['lst-conversations', 'lst-leads', 'lst-customers'].includes(selectedList.id) && (
-                  <button
-                    onClick={() => setListToDelete(selectedList)}
-                    className="px-3 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
-                    title="Delete List"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete
-                  </button>
-                )}
+                <button
+                  onClick={() => handleOpenEditList(selectedList)}
+                  className="px-3 py-2 border border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Edit List
+                </button>
+
+                <button
+                  onClick={() => setListToDelete(selectedList)}
+                  className="px-3 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                  title="Delete List"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
               </div>
 
               <button
@@ -2087,6 +2637,407 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                 >
                   <Ban className="w-4 h-4" />
                   <span>Add to Suppression List</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT RECIPIENT LIST MODAL */}
+      {isEditListOpen && editingList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-700/80 flex items-center justify-center">
+                  <Edit2 className="w-4 h-4 text-emerald-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm leading-tight">Edit Recipient List</h3>
+                  <p className="text-[11px] text-emerald-200">
+                    Modify list details, append new records, or manage contacts
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditListOpen(false)}
+                className="text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-emerald-700/50 cursor-pointer transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Hidden CSV file input for appending */}
+            <input
+              ref={editModalFileInputRef}
+              type="file"
+              accept=".csv,text/csv,.txt"
+              onChange={handleEditListFileUpload}
+              className="hidden"
+            />
+
+            <form onSubmit={handleSaveEditList} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              {/* Basic Details */}
+              <div className="space-y-3 bg-white p-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      List Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editListName}
+                      onChange={(e) => setEditListName(e.target.value)}
+                      placeholder="e.g. VIP Customers - Kerala"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-semibold text-slate-900"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Tags (Comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={editListTags}
+                      onChange={(e) => setEditListTags(e.target.value)}
+                      placeholder="Marketing, Q3, Retail"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-800 mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={editListDesc}
+                    onChange={(e) => setEditListDesc(e.target.value)}
+                    placeholder="Brief description of this customer segment..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden resize-none"
+                  />
+                </div>
+
+                {/* Contacts Management Section */}
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 text-xs font-semibold text-slate-800">
+                        <span>Contacts in List:</span>
+                        <strong className="text-emerald-700 font-bold">{editContacts.length}</strong>
+                      </div>
+                      {editUploadedFileName && (
+                        <span className="text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded font-semibold">
+                          Appended: {editUploadedFileName}
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => editModalFileInputRef.current?.click()}
+                      disabled={isEditParsingFile}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-emerald-500 text-xs font-bold text-slate-700 hover:text-emerald-700 bg-white transition cursor-pointer shadow-2xs"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isEditParsingFile ? 'Parsing...' : '+ Append from CSV'}</span>
+                    </button>
+                  </div>
+
+                  {/* Contacts Table in Edit Modal */}
+                  {editContacts.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={editContactSearch}
+                          onChange={(e) => setEditContactSearch(e.target.value)}
+                          placeholder="Search contacts by name, phone or tag..."
+                          className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                        />
+                      </div>
+
+                      <div className="border border-slate-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-600 uppercase z-10">
+                            <tr>
+                              <th className="p-2">Name</th>
+                              <th className="p-2">Phone Number</th>
+                              <th className="p-2">Tag</th>
+                              <th className="p-2 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredEditContacts.map((contact) => (
+                              <tr key={contact.id} className="hover:bg-slate-50/80 transition">
+                                <td className="p-2 font-medium text-slate-800">{contact.name}</td>
+                                <td className="p-2 font-mono text-[10px] text-slate-700">{contact.phone}</td>
+                                <td className="p-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[9px] font-semibold">
+                                    {contact.tag || 'Member'}
+                                  </span>
+                                </td>
+                                <td className="p-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveContactFromEditList(contact.id)}
+                                    className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition"
+                                    title="Remove Contact"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center border border-dashed border-slate-300 rounded-xl text-slate-400 text-xs">
+                      No contacts currently in this list. Click "Append from CSV" to import contacts.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditListOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Changes ({editContacts.length} Contacts)</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SINGLE CONTACT MODAL */}
+      {isEditContactModalOpen && contactBeingEdited && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-bold text-sm">Edit Contact Details</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditContactModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditContact} className="p-5 space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">Contact Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editContactName}
+                  onChange={(e) => setEditContactName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">WhatsApp Phone *</label>
+                <input
+                  type="text"
+                  required
+                  value={editContactPhone}
+                  onChange={(e) => setEditContactPhone(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">Tag / Category</label>
+                <input
+                  type="text"
+                  value={editContactTag}
+                  onChange={(e) => setEditContactTag(e.target.value)}
+                  placeholder="e.g. VIP, Retail, Lead"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditContactModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Save Contact
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD SINGLE CONTACT MODAL */}
+      {isAddContactModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-300" />
+                <h3 className="font-bold text-sm">Add Contact to {selectedList?.name || 'List'}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddContactModalOpen(false)}
+                className="text-emerald-200 hover:text-white p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddContactToSelectedList} className="p-5 space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">Contact Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={addContactName}
+                  onChange={(e) => setAddContactName(e.target.value)}
+                  placeholder="e.g. Rahul Sharma"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">WhatsApp Phone *</label>
+                <input
+                  type="text"
+                  required
+                  value={addContactPhone}
+                  onChange={(e) => setAddContactPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">Tag / Group</label>
+                <input
+                  type="text"
+                  value={addContactTag}
+                  onChange={(e) => setAddContactTag(e.target.value)}
+                  placeholder="e.g. VIP, Customer"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddContactModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Contact</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SUPPRESSION RECORD MODAL */}
+      {isEditSuppressionOpen && suppressionBeingEdited && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-rose-400" />
+                <h3 className="font-bold text-sm">Edit Suppression Record</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditSuppressionOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditSuppression} className="p-5 space-y-3.5 text-xs">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <div className="font-bold text-slate-900 text-xs">{suppressionBeingEdited.name}</div>
+                <div className="font-mono text-slate-600 text-[11px]">{suppressionBeingEdited.phone}</div>
+                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 mt-1">
+                  {suppressionBeingEdited.type === 'blocked' ? 'Blocked (Meta 131051)' : 'Opted Out'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">Reason / Trigger *</label>
+                <input
+                  type="text"
+                  required
+                  value={editSuppressionReason}
+                  onChange={(e) => setEditSuppressionReason(e.target.value)}
+                  placeholder="e.g. Replied STOP or Customer Support Request"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-800 mb-1">Compliance Notes</label>
+                <textarea
+                  rows={3}
+                  value={editSuppressionNotes}
+                  onChange={(e) => setEditSuppressionNotes(e.target.value)}
+                  placeholder="Additional context or notes..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditSuppressionOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

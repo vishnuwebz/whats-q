@@ -57,6 +57,15 @@ class Employee(models.Model):
     email = models.EmailField(default='amit.sharma@qiyam.com')
     status = models.CharField(max_length=50, default='on_duty')
     location = models.CharField(max_length=150, default='Kozhikode, Kerala')
+    branch = models.CharField(max_length=150, default='Calicut Central HQ', blank=True)
+    joining_date = models.CharField(max_length=100, default='15 March 2024', blank=True)
+    shift = models.CharField(max_length=100, default='9:00 AM – 6:00 PM', blank=True)
+    blood_group = models.CharField(max_length=10, default='O+', blank=True)
+    emergency_contact_name = models.CharField(max_length=150, default='Suresh Kumar', blank=True)
+    emergency_contact_relation = models.CharField(max_length=100, default='Family / Relative', blank=True)
+    emergency_contact_phone = models.CharField(max_length=50, default='+91 94471 10045', blank=True)
+    address = models.TextField(default='', blank=True)
+    avatar_url = models.CharField(max_length=300, default='', blank=True)
     rating = models.FloatField(default=4.8)
     jobs_completed_month = models.IntegerField(default=28)
     on_time_percent = models.IntegerField(default=96)
@@ -143,3 +152,13 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.sku})"
+
+class CustomPdfTemplate(models.Model):
+    template_type = models.CharField(max_length=50, unique=True)
+    title = models.CharField(max_length=200, default='Document Template')
+    data = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.template_type} - {self.title}"
+

@@ -53,10 +53,14 @@ export const BulkScheduledMessagesView: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDispatchingId, setIsDispatchingId] = useState<string | null>(null);
 
-  // Reschedule Modal State
+  // Reschedule & Edit Modal State
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
   const [messageToReschedule, setMessageToReschedule] = useState<BulkScheduledMessage | null>(null);
   const [newScheduledDateTime, setNewScheduledDateTime] = useState('');
+  const [editCampaignName, setEditCampaignName] = useState('');
+  const [editRecipientGroupId, setEditRecipientGroupId] = useState('');
+  const [editTemplateId, setEditTemplateId] = useState('');
+  const [editCategory, setEditCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
 
   // Delete Confirmation Modal State
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -143,6 +147,10 @@ export const BulkScheduledMessagesView: React.FC = () => {
 
   const openRescheduleModal = (msg: BulkScheduledMessage) => {
     setMessageToReschedule(msg);
+    setEditCampaignName(msg.campaignName || msg.name || '');
+    setEditRecipientGroupId(msg.recipientGroupId || bulkRecipientLists[0]?.id || '');
+    setEditTemplateId(msg.templateId || bulkTemplates[0]?.id || '');
+    setEditCategory((msg.category as any) || 'marketing');
     const d = new Date(msg.scheduledFor);
     let defaultTime = '';
     if (!isNaN(d.getTime())) {
@@ -163,28 +171,41 @@ export const BulkScheduledMessagesView: React.FC = () => {
     e.preventDefault();
     if (!messageToReschedule || !newScheduledDateTime) return;
 
+    const targetList = bulkRecipientLists.find((l) => l.id === editRecipientGroupId) || bulkRecipientLists[0];
+    const targetTemplate = bulkTemplates.find((t) => t.id === editTemplateId) || bulkTemplates[0];
+    const count = targetList?.contactCount || messageToReschedule.recipientCount || 100;
+    const rate = editCategory === 'utility' ? 0.3 : editCategory === 'authentication' ? 0.12 : 0.78;
+    const estCost = Number((count * rate).toFixed(2));
     const isoDate = new Date(newScheduledDateTime).toISOString();
-    updateScheduledMessage(messageToReschedule.id, {
+
+    const updates: Partial<BulkScheduledMessage> = {
+      campaignName: editCampaignName.trim() || messageToReschedule.campaignName,
+      name: editCampaignName.trim() || messageToReschedule.name,
+      recipientGroupId: targetList?.id,
+      recipientGroupName: targetList?.name,
+      recipientCount: count,
+      recipients: count,
+      templateId: targetTemplate?.id,
+      templateName: targetTemplate?.name,
+      messageText: targetTemplate?.bodyText || targetTemplate?.body || messageToReschedule.messageText,
+      category: editCategory,
+      estimatedCost: estCost,
       scheduledFor: isoDate,
       scheduledDateTime: newScheduledDateTime,
       status: 'QUEUED',
-    });
+    };
+
+    updateScheduledMessage(messageToReschedule.id, updates);
 
     if (selectedMessage?.id === messageToReschedule.id) {
       setSelectedMessage((prev) =>
-        prev
-          ? {
-              ...prev,
-              scheduledFor: isoDate,
-              scheduledDateTime: newScheduledDateTime,
-              status: 'QUEUED',
-            }
-          : null
+        prev ? { ...prev, ...updates } : null
       );
     }
 
     setIsRescheduleOpen(false);
     setMessageToReschedule(null);
+    addToast('Scheduled broadcast updated successfully!', 'success');
   };
 
   const openDeleteModal = (msg: BulkScheduledMessage) => {
@@ -486,17 +507,24 @@ export const BulkScheduledMessagesView: React.FC = () => {
                                 </button>
                                 <button
                                   onClick={() => openRescheduleModal(msg)}
-                                  className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition cursor-pointer"
-                                  title="Reschedule / Change Date"
+                                  className="p-1.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                                  title="Edit Broadcast Campaign"
                                 >
                                   <Edit3 className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => handleCancel(msg.id, msg.campaignName)}
-                                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition cursor-pointer"
+                                  className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 transition cursor-pointer"
                                   title="Cancel Schedule"
                                 >
                                   <XCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => openDeleteModal(msg)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Delete Broadcast"
+                                >
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                             )}
@@ -685,10 +713,18 @@ export const BulkScheduledMessagesView: React.FC = () => {
                     </button>
                     <button
                       onClick={() => openRescheduleModal(selectedMessage)}
-                      className="px-3 py-2 border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                      className="px-3 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      Reschedule
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                      Edit Broadcast
+                    </button>
+                    <button
+                      onClick={() => openDeleteModal(selectedMessage)}
+                      className="px-3 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                      title="Delete Broadcast"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
                     </button>
                   </div>
 
@@ -728,32 +764,98 @@ export const BulkScheduledMessagesView: React.FC = () => {
         </div>
       )}
 
-      {/* RESCHEDULE MODAL */}
+      {/* EDIT / RESCHEDULE MODAL */}
       {isRescheduleOpen && messageToReschedule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5" />
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Edit Scheduled Broadcast</h3>
+                  <p className="text-xs text-slate-500">Modify campaign details, audience, template, or schedule</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Reschedule Campaign</h3>
-                <p className="text-xs text-slate-500">{messageToReschedule.campaignName}</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsRescheduleOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveReschedule} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveReschedule} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  New Scheduled Date &amp; Time
-                </label>
+                <label className="block font-bold text-slate-700 mb-1">Campaign Name</label>
                 <input
-                  type="datetime-local"
-                  value={newScheduledDateTime}
-                  onChange={(e) => setNewScheduledDateTime(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-xs bg-white"
+                  type="text"
+                  value={editCampaignName}
+                  onChange={(e) => setEditCampaignName(e.target.value)}
+                  placeholder="e.g. Weekend Flash Sale"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-medium"
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Audience</label>
+                  <select
+                    value={editRecipientGroupId}
+                    onChange={(e) => setEditRecipientGroupId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                  >
+                    {bulkRecipientLists.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} ({l.contactCount} contacts)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">WhatsApp Template</label>
+                  <select
+                    value={editTemplateId}
+                    onChange={(e) => setEditTemplateId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                  >
+                    {bulkTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.category})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Category</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                  >
+                    <option value="marketing">Marketing (Promotional)</option>
+                    <option value="utility">Utility (Account / Service)</option>
+                    <option value="authentication">Authentication (OTP)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Scheduled Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={newScheduledDateTime}
+                    onChange={(e) => setNewScheduledDateTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-xs bg-white"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Quick Preset Buttons */}
@@ -814,7 +916,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition flex items-center gap-1.5"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  Confirm Reschedule
+                  Save Changes
                 </button>
               </div>
             </form>

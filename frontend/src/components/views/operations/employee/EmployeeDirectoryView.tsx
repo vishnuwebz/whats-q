@@ -27,21 +27,18 @@ export const EmployeeDirectoryView: React.FC = () => {
 
   // Add Employee Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newEmployee, setNewEmployee] = useState<{
-    name: string;
-    role: string;
-    department: string;
-    phone: string;
-    email: string;
-    location: string;
-    status: 'active' | 'on_duty';
-  }>({
+  const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({
     name: '',
     role: 'Field Technician',
     department: 'AC Services',
     phone: '+91 ',
     email: '',
     location: 'Kozhikode, Kerala',
+    branch: 'Calicut Central HQ',
+    shift: '9:00 AM – 6:00 PM',
+    blood_group: 'O+',
+    emergency_contact_name: '',
+    emergency_contact_phone: '+91 ',
     status: 'active',
   });
 
@@ -66,7 +63,7 @@ export const EmployeeDirectoryView: React.FC = () => {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmployee.name.trim()) {
+    if (!newEmployee.name?.trim()) {
       addToast('Please enter employee name', 'warning');
       return;
     }
@@ -79,9 +76,13 @@ export const EmployeeDirectoryView: React.FC = () => {
       phone: '+91 ',
       email: '',
       location: 'Kozhikode, Kerala',
+      branch: 'Calicut Central HQ',
+      shift: '9:00 AM – 6:00 PM',
+      blood_group: 'O+',
+      emergency_contact_name: '',
+      emergency_contact_phone: '+91 ',
       status: 'active',
     });
-    addToast('New staff member added successfully!', 'success');
   };
 
   return (
@@ -448,27 +449,81 @@ export const EmployeeDirectoryView: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Mobile Phone *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="+91 98765 43210"
-                  value={newEmployee.phone}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                />
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Mobile Phone *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+91 98765 43210"
+                    value={newEmployee.phone}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="staff@qiyam.com"
+                    value={newEmployee.email}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">City / Branch Location</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kozhikode, Kerala"
-                  value={newEmployee.location}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, location: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                />
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">City / Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Kozhikode, Kerala"
+                    value={newEmployee.location}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, location: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Assigned Branch HQ</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Calicut Central HQ"
+                    value={newEmployee.branch}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, branch: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Blood Group</label>
+                  <select
+                    value={newEmployee.blood_group}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, blood_group: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs font-mono font-bold focus:ring-1 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Shift Timings</label>
+                  <input
+                    type="text"
+                    placeholder="09:00 AM – 06:00 PM"
+                    value={newEmployee.shift}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, shift: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

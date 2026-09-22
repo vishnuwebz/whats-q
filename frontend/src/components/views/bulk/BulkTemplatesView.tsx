@@ -87,6 +87,22 @@ export const BulkTemplatesView: React.FC = () => {
   );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<BulkTemplateItem | null>(null);
+
+  const handleConfirmDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+    const targetId = templateToDelete.id;
+    const targetName = templateToDelete.name;
+    const success = await deleteBulkTemplate(targetId);
+    if (success) {
+      if (selectedTemplate && selectedTemplate.id === targetId) {
+        setIsDrawerOpen(false);
+        setSelectedTemplate(null);
+      }
+      setTemplateToDelete(null);
+      addToast(`Template "${targetName}" deleted successfully!`, 'success');
+    }
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -620,6 +636,13 @@ export const BulkTemplatesView: React.FC = () => {
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                     <button
+                      onClick={() => setTemplateToDelete(tmpl)}
+                      title="Delete Template"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleUseInCampaign(tmpl)}
                       disabled={!isApproved}
                       className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
@@ -858,6 +881,16 @@ export const BulkTemplatesView: React.FC = () => {
                 >
                   <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
                   Edit Template
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTemplateToDelete(selectedTemplate)}
+                  className="px-3 py-2 font-bold text-xs rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Delete Template"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  Delete
                 </button>
 
                 <button
@@ -1664,6 +1697,43 @@ export const BulkTemplatesView: React.FC = () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Template Confirmation Modal */}
+      {templateToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Delete WhatsApp Template</h3>
+                <p className="text-xs text-slate-500">Remove from library & broadcast choices</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to delete template <strong className="text-slate-900">"{templateToDelete.name}"</strong>? This will delete the template record from your system.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setTemplateToDelete(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteTemplate}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Template
+              </button>
+            </div>
           </div>
         </div>
       )}

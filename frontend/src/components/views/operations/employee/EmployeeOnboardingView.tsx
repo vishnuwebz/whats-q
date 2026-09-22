@@ -144,6 +144,28 @@ export const EmployeeOnboardingView: React.FC = () => {
     window.print();
   };
 
+  const generateJoiningLetterDoc = (emp: any) => ({
+    type: 'staff_letter' as const,
+    title: `Official Staff Joining Letter - ${emp.name}`,
+    companyName: 'QIYAM BUSINESS SOLUTIONS',
+    companyAddress: 'Cyberpark Calicut, Kozhikode, Kerala • Reg. No: KL-08-99234',
+    companyPhone: '+91 94963 00233',
+    companyEmail: 'operations@qiyam.in',
+    referenceNumber: `QIYAM/APPOINT/${emp.employee_id_str}`,
+    dateStr: emp.joining_date,
+    recipientName: emp.name,
+    recipientRole: emp.role,
+    recipientId: emp.employee_id_str,
+    subject: 'SUB: OFFICIAL LETTER OF APPOINTMENT',
+    bodyContent: `Dear ${emp.name},
+
+We are pleased to confirm your appointment with Qiyam Business Solutions as ${emp.role} effective from ${emp.joining_date}. You will be reporting to the Calicut HQ branch.
+
+Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday. All company policies, safety protocols, and attendance punch rules via WhatsApp Geo-Punch apply.
+
+Welcome aboard to the Qiyam Engineering & Operations team!`,
+  });
+
   const filtered = docsList.filter((d) => {
     const q = search.toLowerCase().trim();
     if (q) {
@@ -301,14 +323,7 @@ export const EmployeeOnboardingView: React.FC = () => {
                         </button>
                         <button
                           onClick={() => {
-                            openPdfEditor({
-                              type: 'staff_letter',
-                              title: `Official Staff Joining Letter - ${d.name}`,
-                              recipientName: d.name,
-                              recipientRole: d.role,
-                              recipientId: d.employee_id_str,
-                              dateStr: d.joining_date,
-                            });
+                            openPdfEditor(generateJoiningLetterDoc(d));
                           }}
                           className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1 border border-indigo-200 shadow-2xs"
                           title="Open in 2026 Drag & Drop PDF Studio"
@@ -473,14 +488,7 @@ export const EmployeeOnboardingView: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setIsLetterModalOpen(false);
-                  openPdfEditor({
-                    type: 'staff_letter',
-                    title: `Official Staff Joining Letter - ${selectedStaffForLetter.name}`,
-                    recipientName: selectedStaffForLetter.name,
-                    recipientRole: selectedStaffForLetter.role,
-                    recipientId: selectedStaffForLetter.employee_id_str,
-                    dateStr: selectedStaffForLetter.joining_date,
-                  });
+                  openPdfEditor(generateJoiningLetterDoc(selectedStaffForLetter));
                 }}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold cursor-pointer text-xs flex items-center gap-1.5 shadow-sm"
               >

@@ -9,7 +9,7 @@ import {
   MetaWalletInfo, MetaWalletTransaction,
   SuppressionRecord,
   RoleDefinition, RoleModule, RolePermissionAction, RecordScope,
-  LinkedEmployeeDevice, PdfEditorDocument
+  LinkedEmployeeDevice, PdfEditorDocument, PdfCanvasElement
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -38,6 +38,7 @@ import {
 } from './rolesData';
 import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
 import { getInitialActiveTab, persistActiveTab } from '../utils/tabRouting';
+import { calculateDutyHours } from '../utils/dutyHours';
 import {
   INITIAL_INVENTORY,
   INITIAL_LEADS,
@@ -489,6 +490,7 @@ interface QiyamState {
 
   addSuppressionRecord: (record: Partial<SuppressionRecord> & { name: string; phone: string; reason: string; type: SuppressionRecord['type'] }) => void;
   removeSuppressionRecord: (idOrPhone: string) => Promise<void> | void;
+  updateSuppressionRecord: (idOrPhone: string, updates: Partial<SuppressionRecord>) => void;
   isPhoneSuppressed: (phone: string) => boolean;
 
   sendBulkMessage: (params: any) => Promise<{ success: boolean; campaignId?: string | number; error?: string }> | any;
@@ -549,9 +551,24 @@ interface QiyamState {
   updateJobStatus: (jobId: string | number, status: Job['status']) => Promise<void>;
   updateApprovalStatus: (approvalId: string | number, status: 'Approved' | 'Rejected') => Promise<void>;
   toggleTaskChecklist: (taskId: string | number, checklistId: string) => Promise<void>;
-  clockInEmployee: (employeeId: string | number, targetStatus?: 'on_duty' | 'active' | 'on_leave') => Promise<void>;
+  clockInEmployee: (
+    employeeId: string | number,
+    targetStatus?: 'on_duty' | 'active' | 'on_leave',
+    options?: {
+      time?: string;
+      device?: string;
+      location?: string;
+      shift?: string;
+      punchType?: 'in' | 'out';
+      status?: 'present' | 'late' | 'absent' | 'on_leave';
+    }
+  ) => Promise<void>;
+  addAttendanceRecord: (record: Partial<AttendanceRecord>) => Promise<AttendanceRecord>;
+  updateAttendanceRecord: (id: string | number, updates: Partial<AttendanceRecord>) => Promise<void>;
+  deleteAttendanceRecord: (id: string | number) => Promise<void>;
   addEmployee: (newEmp: Partial<Employee>) => Promise<Employee>;
   updateEmployee: (employeeId: string | number, updates: Partial<Employee>) => Promise<void>;
+  deleteEmployee: (employeeId: string | number) => Promise<void>;
   saveWorkflowNodes: (workflowId: string | number, nodes: FlowNode[]) => Promise<void>;
   runWorkflowTest: (workflowId: string | number, inputMessage: string) => Promise<{ steps: string[]; duration: string }>;
   globalDateRange: string;
@@ -1176,6 +1193,27 @@ const persistCustomRecipientLists = (lists: BulkRecipientList[]) => {
   } catch {}
 };
 
+const getDeletedRecipientListIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem('whatsq_deleted_recipient_lists');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+};
+
+const addDeletedRecipientListId = (id: string) => {
+  try {
+    const list = getDeletedRecipientListIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem('whatsq_deleted_recipient_lists', JSON.stringify(list));
+    }
+  } catch {}
+};
+
 const getStoredSuppressionList = (): SuppressionRecord[] => {
   try {
     const raw = localStorage.getItem('whatsq_suppression_list');
@@ -1384,29 +1422,109 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   isPdfEditorOpen: false,
   pdfEditorDocument: null,
   openPdfEditor: (doc) => {
-    const defaultDoc: PdfEditorDocument = {
-      type: doc?.type || 'staff_letter',
-      title: doc?.title || 'Official Staff Joining Letter',
-      referenceNumber: doc?.referenceNumber || 'QIYAM/APPOINT/EMP-001',
-      dateStr: doc?.dateStr || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      recipientName: doc?.recipientName || 'Amit Sharma',
-      recipientRole: doc?.recipientRole || 'Field Technician',
-      recipientId: doc?.recipientId || 'EMP-001',
-      subject: doc?.subject || 'SUB: OFFICIAL LETTER OF APPOINTMENT',
-      bodyContent: doc?.bodyContent || 'We are pleased to confirm your appointment with Qiyam Business Solutions. You will be reporting to the Calicut HQ branch. Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday.',
-      companyName: doc?.companyName || 'QIYAM BUSINESS SOLUTIONS',
-      companyAddress: doc?.companyAddress || 'Cyberpark Calicut, Kozhikode, Kerala • Reg. No: KL-08-99234',
-      companyPhone: doc?.companyPhone || '+91 94963 00233',
-      companyEmail: doc?.companyEmail || 'hr@qiyam.com',
-      watermarkText: doc?.watermarkText || 'OFFICIAL DOCUMENT',
-      showWatermark: doc?.showWatermark ?? false,
-      watermarkOpacity: doc?.watermarkOpacity ?? 0.08,
-      elements: doc?.elements || [
+    const docType = doc?.type || 'staff_letter';
+    let defaultElements: PdfCanvasElement[] = [];
+
+    if (docType === 'id_card') {
+      defaultElements = [
+        {
+          id: 'seal-id',
+          type: 'seal',
+          x: 480,
+          y: 430,
+          sealType: 'official_circle',
+          width: 90,
+          height: 90,
+          sealTitle: '★ VERIFIED ★',
+          sealSubtext: 'STAFF IDENTITY',
+          sealBottomText: 'QIYAM OS',
+          color: '#10b981',
+        },
+        {
+          id: 'sig-id',
+          type: 'signature',
+          x: 180,
+          y: 450,
+          signatureType: 'director',
+          width: 140,
+          height: 50,
+          signeeName: 'Rahul V. Mehta',
+          signeeRole: 'Operations Director',
+        },
+      ];
+    } else if (docType === 'invoice') {
+      defaultElements = [
+        { id: 'logo-inv', type: 'logo', x: 40, y: 35, width: 60, height: 60, color: '#059669' },
+        { id: 'seal-inv', type: 'seal', x: 570, y: 780, sealType: 'paid', width: 110, height: 110, sealTitle: '★ PAID ★', sealSubtext: 'GST SETTLED', sealBottomText: 'ACCOUNTS DEPT', color: '#0284c7' },
+        { id: 'sig-inv', type: 'signature', x: 50, y: 790, signatureType: 'manager', width: 140, height: 50, signeeName: 'S. Sharma', signeeRole: 'Authorized Signatory' },
+        { id: 'qr-inv', type: 'qr', x: 640, y: 35, width: 65, height: 65, qrLabel: 'UPI PAY' },
+      ];
+    } else if (docType === 'quotation') {
+      defaultElements = [
+        { id: 'logo-quo', type: 'logo', x: 40, y: 35, width: 60, height: 60, color: '#059669' },
+        { id: 'seal-quo', type: 'seal', x: 570, y: 780, sealType: 'approved', width: 110, height: 110, sealTitle: '★ APPROVED ★', sealSubtext: 'ESTIMATE VALID', color: '#8b5cf6' },
+        { id: 'sig-quo', type: 'signature', x: 50, y: 790, signatureType: 'director', width: 140, height: 50 },
+        { id: 'qr-quo', type: 'qr', x: 640, y: 35, width: 65, height: 65, qrLabel: 'ESTIMATE' },
+      ];
+    } else if (docType === 'voucher') {
+      defaultElements = [
+        { id: 'seal-vch', type: 'seal', x: 570, y: 760, sealType: 'paid', width: 100, height: 100, sealTitle: '★ CASH PAID ★', sealSubtext: 'VOUCHER SETTLED', color: '#059669' },
+        { id: 'sig-vch', type: 'signature', x: 60, y: 770, signatureType: 'manager', width: 130, height: 50, signeeName: 'S. Sharma', signeeRole: 'Cashier / Accountant' },
+      ];
+    } else if (docType === 'staff_letter') {
+      defaultElements = [
+        { id: 'seal-1', type: 'seal', x: 580, y: 720, sealType: 'official_circle', width: 95, height: 95, sealTitle: '★ VERIFIED ★', sealSubtext: 'OFFICIAL SEAL', sealBottomText: 'QIYAM OS', color: '#10b981' },
+        { id: 'sig-1', type: 'signature', x: 55, y: 725, signatureType: 'director', width: 140, height: 48, signeeName: 'Operations Director', signeeRole: 'Authorised Signatory' },
+        { id: 'qr-1', type: 'qr', x: 635, y: 30, width: 65, height: 65, qrLabel: 'VERIFIED' },
+      ];
+    } else {
+      defaultElements = [
         { id: 'logo-1', type: 'logo', x: 40, y: 35, width: 56, height: 56 },
         { id: 'seal-1', type: 'seal', x: 580, y: 780, sealType: 'official_circle', width: 100, height: 100 },
         { id: 'sig-1', type: 'signature', x: 60, y: 790, signatureType: 'director', width: 150, height: 55 },
         { id: 'qr-1', type: 'qr', x: 640, y: 35, width: 65, height: 65 },
-      ],
+      ];
+    }
+
+    const recipientName = doc?.recipientName || 'Amit Sharma';
+    const recipientRole = doc?.recipientRole || 'Senior Operations Specialist';
+    const recipientId = doc?.recipientId || 'EMP-101';
+    const dateStr = doc?.dateStr || new Date().toISOString().split('T')[0];
+
+    const defaultDoc: PdfEditorDocument = {
+      type: docType,
+      title: doc?.title || (docType === 'id_card' ? 'Staff Identity Card' : docType === 'staff_letter' ? `Official Staff Joining Letter - ${recipientName}` : docType === 'invoice' ? 'Tax Invoice' : 'Official Document'),
+      referenceNumber: doc?.referenceNumber || (docType === 'id_card' ? recipientId : docType === 'staff_letter' ? `QIYAM/APPOINT/${recipientId}` : 'QIYAM/DOC/2026-001'),
+      dateStr: dateStr,
+      recipientName: recipientName,
+      recipientRole: recipientRole,
+      recipientId: recipientId,
+      recipientPhone: doc?.recipientPhone || '+91 90000 11123',
+      department: doc?.department || 'AC Services',
+      bloodGroup: doc?.bloodGroup || 'O+',
+      emergencyPhone: doc?.emergencyPhone || '+91 94471 10045',
+      emergencyName: doc?.emergencyName || 'Emergency Contact',
+      shift: doc?.shift || '9:00 AM – 6:00 PM',
+      branch: doc?.branch || 'Calicut Central HQ',
+      validTill: doc?.validTill || '31 Dec 2026',
+      avatarInitials: doc?.avatarInitials || recipientName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+      avatarUrl: doc?.avatarUrl || '',
+      subject: doc?.subject || (docType === 'staff_letter' ? 'SUB: OFFICIAL LETTER OF APPOINTMENT' : 'OFFICIAL DOCUMENT'),
+      bodyContent: doc?.bodyContent || (docType === 'staff_letter' ? `Dear ${recipientName},
+
+We are pleased to confirm your appointment with Qiyam Business Solutions as ${recipientRole} effective from ${dateStr}. You will be reporting to the Calicut HQ branch.
+
+Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday. All company policies, safety protocols, and attendance punch rules via WhatsApp Geo-Punch apply.
+
+Welcome aboard to the Qiyam Engineering & Operations team!` : 'This document is issued by Qiyam Business Solutions.'),
+      companyName: doc?.companyName || (docType === 'staff_letter' ? 'QIYAM BUSINESS SOLUTIONS' : 'QIYAM BUSINESS OS'),
+      companyAddress: doc?.companyAddress || 'Cyberpark Calicut, Kozhikode, Kerala • Reg. No: KL-08-99234',
+      companyPhone: doc?.companyPhone || '+91 94963 00233',
+      companyEmail: doc?.companyEmail || 'operations@qiyam.in',
+      watermarkText: doc?.watermarkText || (docType === 'id_card' ? 'QIYAM OS' : 'OFFICIAL DOCUMENT'),
+      showWatermark: doc?.showWatermark ?? false,
+      watermarkOpacity: doc?.watermarkOpacity ?? 0.08,
+      elements: doc?.elements || defaultElements,
       ...doc,
     };
     set({ isPdfEditorOpen: true, pdfEditorDocument: defaultDoc });
@@ -2231,15 +2349,28 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       });
     }
 
-    const storedCustomLists = getStoredCustomRecipientLists();
+    const deletedListIds = getDeletedRecipientListIds();
+    const activeDefaultLists = defaultRecipientLists.filter((l) => !deletedListIds.includes(l.id));
+
+    const storedCustomLists = getStoredCustomRecipientLists().filter((l) => !deletedListIds.includes(l.id));
     const existingCustomLists = [
       ...storedCustomLists,
       ...(current.bulkRecipientLists || []).filter(
-        (l) => l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-') || (!['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id))
+        (l) => !deletedListIds.includes(l.id) && (l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-') || (!['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)))
       ),
     ];
     const uniqueCustomLists = Array.from(new Map(existingCustomLists.map((l) => [l.id, l])).values());
-    const mergedRecipientLists = [...defaultRecipientLists, ...uniqueCustomLists];
+
+    // Apply any saved edits to default lists
+    const finalDefaultLists = activeDefaultLists.map((def) => {
+      const edited = storedCustomLists.find((s) => s.id === def.id);
+      return edited ? { ...def, ...edited } : def;
+    });
+
+    const mergedRecipientLists = [
+      ...finalDefaultLists,
+      ...uniqueCustomLists.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)),
+    ];
 
     set({
       backendOnline: true,
@@ -2878,10 +3009,10 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   deleteRecipientList: (listId: string) => {
+    addDeletedRecipientListId(listId);
     set((state) => {
       const updated = state.bulkRecipientLists.filter((l) => l.id !== listId);
-      const customOnly = updated.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id));
-      persistCustomRecipientLists(customOnly);
+      persistCustomRecipientLists(updated);
       return { bulkRecipientLists: updated };
     });
     get().addToast('Recipient list deleted successfully', 'success');
@@ -2892,10 +3023,23 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       const updated = state.bulkRecipientLists.map((l) =>
         l.id === listId ? { ...l, ...updates } : l
       );
-      const customOnly = updated.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id));
-      persistCustomRecipientLists(customOnly);
+      persistCustomRecipientLists(updated);
       return { bulkRecipientLists: updated };
     });
+  },
+
+  updateSuppressionRecord: (idOrPhone: string, updates: Partial<SuppressionRecord>) => {
+    set((state) => {
+      const updated = state.suppressionList.map((s) => {
+        if (s.id === idOrPhone || s.phone === idOrPhone) {
+          return { ...s, ...updates };
+        }
+        return s;
+      });
+      persistSuppressionList(updated);
+      return { suppressionList: updated };
+    });
+    get().addToast('Suppression record updated successfully', 'success');
   },
 
   addSuppressionRecord: (record) => {
@@ -3923,101 +4067,337 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     }
   },
 
-  clockInEmployee: async (employeeId, targetStatus) => {
-    const employee = get().employees.find((e) => e.id === employeeId);
+  clockInEmployee: async (employeeId, targetStatus, options) => {
+    const employee = get().employees.find(
+      (e) => String(e.id) === String(employeeId) || e.employee_id_str === String(employeeId)
+    );
     if (!employee) return;
+
     const isCurrentlyOnDuty = employee.status === 'on_duty';
-    const newStatus = targetStatus || (isCurrentlyOnDuty ? 'active' : 'on_duty');
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const isPunchOut =
+      options?.punchType === 'out' ||
+      (options?.punchType !== 'in' && isCurrentlyOnDuty && targetStatus !== 'on_duty');
 
-    // Optimistic update
-    const updatedEmployee: Employee = { ...employee, status: newStatus };
-    set((state) => ({
-      employees: state.employees.map((e) => (e.id === employeeId ? updatedEmployee : e)),
-      attendance: state.attendance.map((a) =>
-        a.employee_id_str === employee.employee_id_str
-          ? {
-              ...a,
-              ...(newStatus === 'on_duty'
-                ? { check_in: `${timeStr} (On time)`, status: 'present' }
-                : { check_out: timeStr }
-              )
-            }
-          : a
-      ),
-    }));
+    const now = new Date();
+    const timeStr =
+      options?.time ||
+      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    try {
-      const res = await apiClient.put(`/operations/employees/${employeeId}/`, {
-        ...employee,
-        status: newStatus,
-      });
-      if (res?.id && res.success !== false) {
-        set((state) => ({
-          employees: state.employees.map((e) => (e.id === employeeId ? (res as Employee) : e)),
-        }));
-      }
-    } catch (err) {
-      console.warn('Could not sync status with backend:', err);
+    let newEmpStatus: Employee['status'] = 'active';
+    let punchAction = 'punch_in';
+    let newRecordStatus: AttendanceRecord['status'] = options?.status || 'present';
+
+    if (targetStatus === 'on_leave' || options?.status === 'on_leave') {
+      newEmpStatus = 'on_leave';
+      punchAction = 'on_leave';
+      newRecordStatus = 'on_leave';
+    } else if (isPunchOut) {
+      newEmpStatus = 'active';
+      punchAction = 'punch_out';
+      newRecordStatus = 'present';
+    } else {
+      newEmpStatus = 'on_duty';
+      punchAction = 'punch_in';
+      newRecordStatus = options?.status || 'present';
     }
 
-    if (newStatus === 'on_duty') {
-      get().addToast(`${employee.name} clocked in at ${timeStr} (On Duty)`, 'success');
-    } else if (newStatus === 'on_leave') {
+    // Find existing attendance record
+    const existingRec = get().attendance.find(
+      (a) => a.employee_id_str === employee.employee_id_str || String(a.id) === String(employee.id)
+    );
+
+    let calcWorkHours = '8h 00m';
+    if (isPunchOut) {
+      const checkInTime = existingRec?.check_in || '9:00 AM';
+      calcWorkHours = calculateDutyHours(checkInTime, timeStr);
+    } else if (punchAction === 'punch_in') {
+      calcWorkHours = '0h 01m';
+    } else {
+      calcWorkHours = '0h 00m';
+    }
+
+    const updatedEmployee: Employee = { ...employee, status: newEmpStatus };
+
+    let updatedRec: AttendanceRecord;
+    if (existingRec) {
+      updatedRec = {
+        ...existingRec,
+        employee_name: employee.name,
+        department: employee.department,
+        shift: options?.shift || existingRec.shift || '9:00 AM - 6:00 PM',
+        device: options?.device || existingRec.device || 'WhatsApp Geo-Punch (Android)',
+        location: options?.location || existingRec.location || employee.location,
+        status: newRecordStatus,
+        ...(punchAction === 'punch_in'
+          ? { check_in: `${timeStr} (On time)`, check_out: undefined, work_hours: '0h 01m' }
+          : punchAction === 'punch_out'
+          ? { check_out: timeStr, work_hours: calcWorkHours }
+          : { check_in: '-', check_out: undefined, work_hours: '0h 00m', status: 'on_leave' as const }),
+      };
+    } else {
+      updatedRec = {
+        id: Date.now(),
+        employee_id_str: employee.employee_id_str,
+        employee_name: employee.name,
+        department: employee.department,
+        shift: options?.shift || '9:00 AM - 6:00 PM',
+        device: options?.device || 'WhatsApp Geo-Punch (Android)',
+        location: options?.location || employee.location,
+        status: newRecordStatus,
+        check_in: punchAction === 'punch_in' ? `${timeStr} (On time)` : '-',
+        check_out: punchAction === 'punch_out' ? timeStr : undefined,
+        work_hours: calcWorkHours,
+      };
+    }
+
+    // IMMEDIATE REACTIVE STORE UPDATE (Zero refresh needed!)
+    set((state) => {
+      const nextEmployees = state.employees.map((e) =>
+        String(e.id) === String(employee.id) ? updatedEmployee : e
+      );
+      const recIndex = state.attendance.findIndex(
+        (a) => a.employee_id_str === employee.employee_id_str || String(a.id) === String(existingRec?.id)
+      );
+      let nextAttendance: AttendanceRecord[];
+      if (recIndex >= 0) {
+        nextAttendance = state.attendance.map((a, i) => (i === recIndex ? updatedRec : a));
+      } else {
+        nextAttendance = [updatedRec, ...state.attendance];
+      }
+      persistCache('employees', nextEmployees);
+      persistCache('attendance', nextAttendance);
+      return {
+        employees: nextEmployees,
+        attendance: nextAttendance,
+      };
+    });
+
+    if (punchAction === 'punch_in') {
+      get().addToast(`${employee.name} punched in at ${timeStr} (On Duty)`, 'success');
+    } else if (punchAction === 'on_leave') {
       get().addToast(`${employee.name} marked as On Leave`, 'warning');
     } else {
-      get().addToast(`${employee.name} clocked out at ${timeStr} (Off Duty)`, 'info');
+      get().addToast(`${employee.name} punched out at ${timeStr} (Duty: ${calcWorkHours})`, 'info');
+    }
+
+    // PERSIST PERMANENTLY TO BACKEND DATABASE
+    try {
+      const punchRes = await apiClient.post('/operations/attendance/punch/', {
+        employee_id: employee.id,
+        employee_id_str: employee.employee_id_str,
+        action: punchAction,
+        time: timeStr,
+        work_hours: calcWorkHours,
+        status: newRecordStatus,
+        device: options?.device || updatedRec.device,
+        location: options?.location || updatedRec.location,
+        shift: options?.shift || updatedRec.shift,
+      });
+
+      if (punchRes?.record?.id) {
+        set((state) => {
+          const syncedAttendance = state.attendance.map((a) =>
+            a.employee_id_str === employee.employee_id_str
+              ? { ...a, id: punchRes.record.id, ...punchRes.record }
+              : a
+          );
+          persistCache('attendance', syncedAttendance);
+          return { attendance: syncedAttendance };
+        });
+      }
+    } catch (err) {
+      console.warn('[Attendance] Backend sync fallback to local cache:', err);
+    }
+  },
+
+  addAttendanceRecord: async (record) => {
+    const nextId = Date.now();
+    const newRecord: AttendanceRecord = {
+      id: nextId,
+      employee_id_str: record.employee_id_str || 'EMP-001',
+      employee_name: record.employee_name || 'Staff Member',
+      department: record.department || 'Operations',
+      shift: record.shift || '9:00 AM - 6:00 PM',
+      check_in: record.check_in || '9:00 AM',
+      check_out: record.check_out,
+      work_hours: record.work_hours || calculateDutyHours(record.check_in, record.check_out),
+      status: record.status || 'present',
+      location: record.location || 'Kozhikode, Kerala',
+      device: record.device || 'WhatsApp Geo-Punch (Android)',
+    };
+
+    set((state) => {
+      const nextAttendance = [newRecord, ...state.attendance];
+      persistCache('attendance', nextAttendance);
+      return { attendance: nextAttendance };
+    });
+
+    try {
+      const res = await apiClient.post('/operations/attendance/', newRecord);
+      if (res?.id && res.success !== false) {
+        const saved = { ...newRecord, ...res } as AttendanceRecord;
+        set((state) => {
+          const nextAttendance = state.attendance.map((a) => (a.id === nextId ? saved : a));
+          persistCache('attendance', nextAttendance);
+          return { attendance: nextAttendance };
+        });
+        get().addToast(`Attendance record saved to database`, 'success');
+        return saved;
+      }
+    } catch (err) {
+      console.warn('Attendance backend create failed:', err);
+    }
+    get().addToast(`Attendance record recorded`, 'success');
+    return newRecord;
+  },
+
+  updateAttendanceRecord: async (id, updates) => {
+    const record = get().attendance.find((a) => String(a.id) === String(id));
+    if (!record) return;
+
+    const merged: AttendanceRecord = {
+      ...record,
+      ...updates,
+      work_hours:
+        updates.work_hours ||
+        calculateDutyHours(updates.check_in || record.check_in, updates.check_out || record.check_out),
+    };
+
+    set((state) => {
+      const nextAttendance = state.attendance.map((a) => (String(a.id) === String(id) ? merged : a));
+      persistCache('attendance', nextAttendance);
+      return { attendance: nextAttendance };
+    });
+
+    // Synchronize employee status if needed
+    if (merged.employee_id_str) {
+      const emp = get().employees.find((e) => e.employee_id_str === merged.employee_id_str);
+      if (emp) {
+        let empStatus: Employee['status'] = emp.status;
+        if (merged.status === 'on_leave') empStatus = 'on_leave';
+        else if (merged.status === 'absent') empStatus = 'inactive';
+        else if (merged.check_out && merged.check_out !== '-') empStatus = 'active';
+        else if (merged.check_in && merged.check_in !== '-') empStatus = 'on_duty';
+
+        if (empStatus !== emp.status) {
+          set((state) => {
+            const nextEmployees = state.employees.map((e) =>
+              e.employee_id_str === merged.employee_id_str ? { ...e, status: empStatus } : e
+            );
+            persistCache('employees', nextEmployees);
+            return { employees: nextEmployees };
+          });
+          apiClient.put(`/operations/employees/${emp.id}/`, { ...emp, status: empStatus }).catch(() => {});
+        }
+      }
+    }
+
+    try {
+      await apiClient.put(`/operations/attendance/${id}/`, merged);
+      get().addToast(`Attendance record updated in database`, 'success');
+    } catch (err) {
+      get().addToast(`Attendance record updated`, 'info');
+    }
+  },
+
+  deleteAttendanceRecord: async (id) => {
+    const record = get().attendance.find((a) => String(a.id) === String(id));
+    set((state) => {
+      const nextAttendance = state.attendance.filter((a) => String(a.id) !== String(id));
+      persistCache('attendance', nextAttendance);
+      return { attendance: nextAttendance };
+    });
+    try {
+      await apiClient.delete(`/operations/attendance/${id}/`);
+      get().addToast(`Attendance record removed from database`, 'info');
+    } catch (err) {
+      get().addToast(`Attendance record removed`, 'info');
     }
   },
 
   addEmployee: async (newEmp) => {
     const nextId = get().employees.length + 1;
-    const empData = {
+    const empData: Employee = {
+      id: nextId,
       name: newEmp.name || 'New Staff',
       employee_id_str: newEmp.employee_id_str || `EMP-${String(nextId).padStart(3, '0')}`,
       role: newEmp.role || 'Field Technician',
       department: newEmp.department || 'AC Services',
       phone: newEmp.phone || '+91 90000 00000',
       email: newEmp.email || 'staff@qiyam.com',
-      status: newEmp.status || 'active',
+      status: (newEmp.status as any) || 'active',
       location: newEmp.location || 'Kozhikode, Kerala',
+      branch: newEmp.branch || 'Calicut Central HQ',
+      joining_date: newEmp.joining_date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+      shift: newEmp.shift || '9:00 AM – 6:00 PM',
+      blood_group: newEmp.blood_group || 'O+',
+      emergency_contact_name: newEmp.emergency_contact_name || '',
+      emergency_contact_relation: newEmp.emergency_contact_relation || 'Family / Relative',
+      emergency_contact_phone: newEmp.emergency_contact_phone || '',
+      address: newEmp.address || '',
+      avatar_url: newEmp.avatar_url || '',
       rating: newEmp.rating ?? 5.0,
-      jobs_completed_month: 0,
-      on_time_percent: 100,
-      today_schedule: [],
+      jobs_completed_month: newEmp.jobs_completed_month ?? 0,
+      on_time_percent: newEmp.on_time_percent ?? 100,
+      today_schedule: newEmp.today_schedule || [],
     };
     try {
       const res = await apiClient.post('/operations/employees/', empData);
-      const created = (res?.id && res.success !== false) ? (res as Employee) : { ...empData, id: nextId } as Employee;
-      set((state) => ({ employees: [created, ...state.employees] }));
-      get().addToast(`Employee "${created.name}" added successfully`, 'success');
+      const created = (res?.id && res.success !== false) ? ({ ...empData, ...res } as Employee) : empData;
+      set((state) => {
+        const nextEmployees = [created, ...state.employees.filter((e) => String(e.id) !== String(created.id))];
+        persistCache('employees', nextEmployees);
+        return { employees: nextEmployees };
+      });
+      get().addToast(`Employee "${created.name}" added successfully to database`, 'success');
       return created;
     } catch (e) {
-      const fallback = { ...empData, id: nextId } as Employee;
-      set((state) => ({ employees: [fallback, ...state.employees] }));
-      get().addToast(`Employee "${fallback.name}" added`, 'success');
-      return fallback;
+      set((state) => {
+        const nextEmployees = [empData, ...state.employees.filter((e) => String(e.id) !== String(empData.id))];
+        persistCache('employees', nextEmployees);
+        return { employees: nextEmployees };
+      });
+      get().addToast(`Employee "${empData.name}" added`, 'success');
+      return empData;
     }
   },
 
   updateEmployee: async (employeeId, updates) => {
-    const employee = get().employees.find((e) => e.id === employeeId);
+    const employee = get().employees.find((e) => String(e.id) === String(employeeId));
     if (!employee) return;
     const merged: Employee = { ...employee, ...updates };
-    set((state) => ({
-      employees: state.employees.map((e) => (e.id === employeeId ? merged : e)),
-    }));
+    set((state) => {
+      const nextEmployees = state.employees.map((e) => (String(e.id) === String(employeeId) ? merged : e));
+      persistCache('employees', nextEmployees);
+      return { employees: nextEmployees };
+    });
     try {
       const res = await apiClient.put(`/operations/employees/${employeeId}/`, merged);
       if (res?.id && res.success !== false) {
-        set((state) => ({
-          employees: state.employees.map((e) => (e.id === employeeId ? (res as Employee) : e)),
-        }));
+        set((state) => {
+          const updatedRecord = { ...merged, ...res } as Employee;
+          const nextEmployees = state.employees.map((e) => (String(e.id) === String(employeeId) ? updatedRecord : e));
+          persistCache('employees', nextEmployees);
+          return { employees: nextEmployees };
+        });
       }
-      get().addToast(`Profile for ${employee.name} updated`, 'success');
+      get().addToast(`Profile for ${employee.name} updated in database`, 'success');
     } catch (e) {
       get().addToast(`Updated ${employee.name} profile`, 'info');
     }
+  },
+
+  deleteEmployee: async (employeeId) => {
+    const employee = get().employees.find((e) => String(e.id) === String(employeeId));
+    set((state) => {
+      const nextEmployees = state.employees.filter((e) => String(e.id) !== String(employeeId));
+      persistCache('employees', nextEmployees);
+      return { employees: nextEmployees };
+    });
+    try {
+      await apiClient.delete(`/operations/employees/${employeeId}/`);
+    } catch {}
+    get().addToast(`Employee "${employee?.name || employeeId}" removed`, 'info');
   },
 
   saveWorkflowNodes: async (workflowId, nodes) => {

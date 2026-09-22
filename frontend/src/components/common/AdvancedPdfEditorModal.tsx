@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { PdfEditorDocument, PdfCanvasElement } from '@/types';
+import { apiClient } from '@/api/client';
 import {
   Printer, Download, X, Move, Plus, Trash2, RotateCcw,
   CheckCircle2, ShieldCheck, Award, FileText, Image as ImageIcon,
   Edit3, ZoomIn, ZoomOut, Grid, Eye, Sparkles, PenTool,
-  QrCode, Stamp, Layers, Sliders, Type, Check, RefreshCw, Copy, Upload
+  QrCode, Stamp, Layers, Sliders, Type, Check, RefreshCw, Copy, Upload,
+  User, Phone, MapPin, Building, CreditCard, Receipt
 } from 'lucide-react';
 
 const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({ initialDoc }) => {
@@ -21,10 +23,14 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
   const [isDrawingSig, setIsDrawingSig] = useState<boolean>(false);
   const [isDragOverCanvas, setIsDragOverCanvas] = useState<boolean>(false);
   const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+  const [isSavingDb, setIsSavingDb] = useState<boolean>(false);
 
-  // Logo file upload state
+  // Logo, Avatar & QR Code file upload state
   const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const qrFileInputRef = useRef<HTMLInputElement>(null);
   const [logoUploadTargetId, setLogoUploadTargetId] = useState<string | null>(null);
+  const [qrUploadTargetId, setQrUploadTargetId] = useState<string | null>(null);
 
   // Dragging state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -91,6 +97,173 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  // Avatar file upload handler for ID card
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file (PNG, JPG, SVG, WebP)', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setDoc((prev) => ({
+          ...prev,
+          avatarUrl: dataUrl,
+        }));
+        addToast('Staff photo updated on ID card!', 'success');
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // QR code image upload handler
+  const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file (PNG, JPG, SVG, WebP)', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (!dataUrl) return;
+
+      if (qrUploadTargetId) {
+        setDoc((prev) => ({
+          ...prev,
+          elements: prev.elements.map((el) =>
+            el.id === qrUploadTargetId
+              ? { ...el, imageUrl: dataUrl }
+              : el
+          ),
+        }));
+        addToast('Security QR Code image updated!', 'success');
+      } else {
+        const existingQr = doc.elements.find((el) => el.type === 'qr');
+        if (existingQr) {
+          setDoc((prev) => ({
+            ...prev,
+            elements: prev.elements.map((el) =>
+              el.id === existingQr.id
+                ? { ...el, imageUrl: dataUrl }
+                : el
+            ),
+          }));
+          setSelectedElementId(existingQr.id);
+          addToast('Security QR Code image updated!', 'success');
+        } else {
+          const newId = `qr-${Date.now()}`;
+          const newEl: PdfCanvasElement = {
+            id: newId,
+            type: 'qr',
+            imageUrl: dataUrl,
+            qrLabel: 'VERIFIED',
+            x: 635,
+            y: 30,
+            width: 65,
+            height: 65,
+          };
+          setDoc((prev) => ({ ...prev, elements: [...prev.elements, newEl] }));
+          setSelectedElementId(newId);
+          addToast('Custom Security QR Code placed on document!', 'success');
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Auto-load custom template styling, QR codes & branding from database
+  useEffect(() => {
+    let isMounted = true;
+    const loadSavedTemplate = async () => {
+      try {
+        const res: any = await apiClient.get(`/operations/pdf-templates/get_template/?type=${initialDoc.type}`);
+        if (isMounted && res && res.success && res.data) {
+          const saved = res.data;
+          setDoc((prev) => ({
+            ...prev,
+            companyName: saved.companyName || prev.companyName,
+            companyAddress: saved.companyAddress || prev.companyAddress,
+            companyPhone: saved.companyPhone || prev.companyPhone,
+            companyEmail: saved.companyEmail || prev.companyEmail,
+            watermarkText: saved.watermarkText || prev.watermarkText,
+            showWatermark: saved.showWatermark ?? prev.showWatermark,
+            watermarkOpacity: saved.watermarkOpacity ?? prev.watermarkOpacity,
+            elements: saved.elements && saved.elements.length > 0 ? saved.elements : prev.elements,
+          }));
+        }
+      } catch {
+        try {
+          const cached = localStorage.getItem(`whatsq_custom_pdf_${initialDoc.type}`);
+          if (isMounted && cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.elements) {
+              setDoc((prev) => ({
+                ...prev,
+                elements: parsed.elements || prev.elements,
+              }));
+            }
+          }
+        } catch {}
+      }
+    };
+    loadSavedTemplate();
+    return () => {
+      isMounted = false;
+    };
+  }, [initialDoc.type]);
+
+  // Line item helpers for Invoices, Quotations, Vouchers, Financial Reports
+  const handleUpdateItem = (index: number, field: string, value: any) => {
+    setDoc((prev) => {
+      const items = [...(prev.items || [])];
+      if (items[index]) {
+        items[index] = { ...items[index], [field]: value };
+        if (field === 'qty' || field === 'unitPrice') {
+          const qty = Number(items[index].qty) || 0;
+          const unitPrice = Number(items[index].unitPrice) || 0;
+          items[index].amount = qty * unitPrice;
+        }
+      }
+      const newTotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      return { ...prev, items, amount: newTotal };
+    });
+  };
+
+  const handleAddItem = () => {
+    setDoc((prev) => {
+      const items = [...(prev.items || [])];
+      items.push({
+        description: 'New Service Item / Equipment Spare',
+        qty: 1,
+        unitPrice: 1000,
+        amount: 1000,
+      });
+      const newTotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      return { ...prev, items, amount: newTotal };
+    });
+    addToast('New line item added to document.', 'info');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setDoc((prev) => {
+      const items = (prev.items || []).filter((_, idx) => idx !== index);
+      const newTotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      return { ...prev, items, amount: newTotal };
+    });
+    addToast('Line item removed.', 'info');
   };
 
   // Sync when initialDoc changes
@@ -388,6 +561,397 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
     addToast('Hand-drawn digital signature placed!', 'success');
   };
 
+  // Helper to generate print HTML body based on document type
+  const getPrintDocumentBody = (d: PdfEditorDocument): string => {
+    if (d.type === 'id_card') {
+      return `
+        <div class="id-card-sheet">
+          <div class="id-card-cut-guide">
+            <span class="cut-guide-pill">✄ OFFICIAL STAFF IDENTITY CARD • CUT ALONG GUIDELINES FOR BADGE INSERTION</span>
+          </div>
+
+          <div class="id-badge-card">
+            <div class="badge-glow"></div>
+            <div class="badge-header">
+              <div class="badge-brand">
+                <div class="badge-logo">${d.companyName ? d.companyName.charAt(0).toUpperCase() : 'Q'}</div>
+                <div>
+                  <div class="badge-corp">${d.companyName || 'QIYAM BUSINESS OS'}</div>
+                  <div class="badge-sub">STAFF IDENTITY CARD</div>
+                </div>
+              </div>
+              <div class="badge-id-pill">${d.recipientId || d.referenceNumber || 'EMP-01'}</div>
+            </div>
+
+            <div class="badge-profile">
+              <div class="badge-avatar">
+                ${d.avatarUrl ? `<img src="${d.avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" alt="Staff" />` : (d.avatarInitials || 'AS')}
+              </div>
+              <div class="badge-emp-info">
+                <div class="emp-name">${d.recipientName}</div>
+                <div class="emp-role">${d.recipientRole || 'Field Technician'}</div>
+                <div class="emp-dept">${d.department || 'Operations'} • ${d.branch || 'Calicut HQ'}</div>
+              </div>
+            </div>
+
+            <div class="badge-grid">
+              <div class="grid-cell"><span class="cell-label">Mobile:</span><span class="cell-val font-mono">${d.recipientPhone || 'N/A'}</span></div>
+              <div class="grid-cell"><span class="cell-label">Blood Group:</span><span class="cell-val font-mono blood">${d.bloodGroup || 'O+'}</span></div>
+              <div class="grid-cell"><span class="cell-label">Shift Timing:</span><span class="cell-val">${d.shift || '09:00 AM - 06:00 PM'}</span></div>
+              <div class="grid-cell"><span class="cell-label">Emergency No:</span><span class="cell-val font-mono">${d.emergencyPhone || 'N/A'}</span></div>
+              <div class="grid-cell"><span class="cell-label">Valid Till:</span><span class="cell-val font-mono valid">${d.validTill || '31 DEC 2026'}</span></div>
+              <div class="grid-cell"><span class="cell-label">Emergency Contact:</span><span class="cell-val">${d.emergencyName || 'HQ Desk'}</span></div>
+            </div>
+
+            <div class="badge-footer">
+              <div class="auth-sig">Authorised Signature: <strong>✔ Verified</strong></div>
+              <div class="branch-tag font-mono">${d.branch || 'Calicut Central HQ'}</div>
+            </div>
+          </div>
+
+          <div class="badge-terms-box">
+            <strong>OFFICIAL PROPERTY CLAUSE:</strong> This credential card is the official property of ${d.companyName || 'Qiyam Business Solutions'}. It must be prominently displayed during on-site operations and premises entry. In case of loss, contact HR immediately at ${d.companyPhone || '+91 94963 00233'}.
+          </div>
+        </div>
+      `;
+    }
+
+    if (d.type === 'invoice') {
+      const items = d.items && d.items.length > 0 ? d.items : [
+        { description: 'Professional AC Repair & Maintenance Services', qty: 1, unitPrice: Number(d.amount) || 2800, amount: Number(d.amount) || 2800 }
+      ];
+      const subtotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      const taxRate = d.taxRate !== undefined ? d.taxRate : 18;
+      const tax = Math.round((subtotal * taxRate) / 100);
+      const grandTotal = subtotal + tax;
+
+      return `
+        <div class="doc-container">
+          <div class="inv-top">
+            <div>
+              <div class="corp-name">${d.companyName}</div>
+              <div class="corp-sub">${d.companyAddress}</div>
+              <div class="corp-sub">GSTIN: 32AAACQ1234F1Z5 • Ph: ${d.companyPhone || '+91 94963 00233'}</div>
+              <div class="corp-sub">Email: ${d.companyEmail || 'accounts@qiyam.com'}</div>
+            </div>
+            <div class="meta-box">
+              <div class="doc-badge-title">TAX INVOICE</div>
+              <div class="meta-row"><span>Invoice No:</span> <strong>${d.invoiceNumber || d.referenceNumber}</strong></div>
+              <div class="meta-row"><span>Date:</span> <strong>${d.dateStr}</strong></div>
+              <div class="meta-row"><span>Due Date:</span> <strong>${d.dueDate || 'Upon Receipt'}</strong></div>
+              <div class="status-pill">${d.paymentStatus || 'PAID'}</div>
+            </div>
+          </div>
+
+          <div class="client-box">
+            <div class="client-label">BILLED TO:</div>
+            <div class="client-name">${d.recipientName}</div>
+            <div class="client-sub">Phone: ${d.recipientPhone || 'N/A'} • Site: ${d.branch || 'Calicut, Kerala'}</div>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">#</th>
+                <th>DESCRIPTION OF SERVICES &amp; PARTS</th>
+                <th style="width: 55px; text-align: center;">QTY</th>
+                <th style="width: 110px; text-align: right;">RATE (₹)</th>
+                <th style="width: 120px; text-align: right;">AMOUNT (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item, idx) => `
+                <tr>
+                  <td style="text-align: center;">${idx + 1}</td>
+                  <td><strong>${item.description}</strong></td>
+                  <td style="text-align: center;">${item.qty || 1}</td>
+                  <td style="text-align: right;">₹${(Number(item.unitPrice) || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${(Number(item.amount) || 0).toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="tf-label">Subtotal:</td>
+                <td class="tf-val">₹${subtotal.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr>
+                <td colspan="4" class="tf-label">IGST / GST (${taxRate}%):</td>
+                <td class="tf-val">₹${tax.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr class="grand-row">
+                <td colspan="4" class="tf-label grand">TOTAL AMOUNT PAYABLE:</td>
+                <td class="tf-val grand">₹${grandTotal.toLocaleString('en-IN')}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="bottom-grid">
+            <div class="panel-box">
+              <div class="panel-title">BANK &amp; UPI PAYMENT DETAILS</div>
+              <div>Bank: HDFC Bank Ltd • Branch: Cyberpark Calicut</div>
+              <div>Account No: 50200088912344 • IFSC: HDFC0001234</div>
+              <div>UPI VPA: <strong>qiyam@hdfcbank</strong></div>
+            </div>
+            <div class="panel-box">
+              <div class="panel-title">TERMS &amp; INVOICE NOTES</div>
+              <div>${d.bodyContent || '1. 90-day comprehensive guarantee on all replacements. 2. Please quote invoice number when transferring payments.'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (d.type === 'quotation') {
+      const items = d.items && d.items.length > 0 ? d.items : [
+        { description: 'Commercial Maintenance & Service Package', qty: 1, unitPrice: Number(d.amount) || 15000, amount: Number(d.amount) || 15000 }
+      ];
+      const subtotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      const taxRate = d.taxRate !== undefined ? d.taxRate : 18;
+      const tax = Math.round((subtotal * taxRate) / 100);
+      const grandTotal = subtotal + tax;
+
+      return `
+        <div class="doc-container">
+          <div class="inv-top">
+            <div>
+              <div class="corp-name">${d.companyName}</div>
+              <div class="corp-sub">${d.companyAddress}</div>
+              <div class="corp-sub">Ph: ${d.companyPhone || '+91 94963 00233'} • Email: ${d.companyEmail || 'sales@qiyam.com'}</div>
+            </div>
+            <div class="meta-box">
+              <div class="doc-badge-title" style="color: #7c3aed;">FORMAL ESTIMATE</div>
+              <div class="meta-row"><span>Quotation Ref:</span> <strong>${d.invoiceNumber || d.referenceNumber}</strong></div>
+              <div class="meta-row"><span>Date:</span> <strong>${d.dateStr}</strong></div>
+              <div class="meta-row"><span>Valid Until:</span> <strong>${d.validTill || '30 Days'}</strong></div>
+            </div>
+          </div>
+
+          <div class="client-box">
+            <div class="client-label">PREPARED FOR:</div>
+            <div class="client-name">${d.recipientName}</div>
+            <div class="client-sub">Phone: ${d.recipientPhone || 'N/A'} • Scope: ${d.branch || 'Commercial Facilities'}</div>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">#</th>
+                <th>PROPOSED SCOPE OF WORK &amp; SPECIFICATIONS</th>
+                <th style="width: 55px; text-align: center;">QTY</th>
+                <th style="width: 110px; text-align: right;">RATE (₹)</th>
+                <th style="width: 120px; text-align: right;">AMOUNT (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item, idx) => `
+                <tr>
+                  <td style="text-align: center;">${idx + 1}</td>
+                  <td><strong>${item.description}</strong></td>
+                  <td style="text-align: center;">${item.qty || 1}</td>
+                  <td style="text-align: right;">₹${(Number(item.unitPrice) || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${(Number(item.amount) || 0).toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="tf-label">Estimated Subtotal:</td>
+                <td class="tf-val">₹${subtotal.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr>
+                <td colspan="4" class="tf-label">Estimated GST (${taxRate}%):</td>
+                <td class="tf-val">₹${tax.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr class="grand-row">
+                <td colspan="4" class="tf-label grand">ESTIMATED TOTAL:</td>
+                <td class="tf-val grand" style="color: #7c3aed;">₹${grandTotal.toLocaleString('en-IN')}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="bottom-grid">
+            <div class="panel-box">
+              <div class="panel-title">DELIVERY TERMS &amp; WARRANTY</div>
+              <div>• 50% mobilization advance, 50% upon job completion.</div>
+              <div>• 100% Genuine OEM components with manufacturer warranty.</div>
+              <div>• 24/7 priority technician breakdown support included.</div>
+            </div>
+            <div class="panel-box">
+              <div class="panel-title">CLIENT APPROVAL &amp; ACCEPTANCE</div>
+              <div style="font-size: 10px; color: #64748b; margin-top: 4px;">I hereby confirm acceptance of this proposal and approve commencement of work.</div>
+              <div style="border-bottom: 1px dashed #94a3b8; height: 35px; margin-top: 10px;"></div>
+              <div style="font-size: 10px; font-weight: 700; margin-top: 4px;">Authorized Client Representative Signature</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (d.type === 'voucher') {
+      const items = d.items && d.items.length > 0 ? d.items : [
+        { description: d.bodyContent || 'Field service transit allowance and spare parts acquisition', qty: 1, unitPrice: Number(d.amount) || 1200, amount: Number(d.amount) || 1200 }
+      ];
+      const totalAmount = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+
+      return `
+        <div class="doc-container">
+          <div class="inv-top">
+            <div>
+              <div class="corp-name">${d.companyName}</div>
+              <div class="corp-sub">${d.companyAddress}</div>
+              <div class="corp-sub">Finance &amp; Accounts Division • Ph: ${d.companyPhone || '+91 94963 00233'}</div>
+            </div>
+            <div class="meta-box">
+              <div class="doc-badge-title" style="color: #059669;">PAYMENT VOUCHER</div>
+              <div class="meta-row"><span>Voucher No:</span> <strong>${d.invoiceNumber || d.referenceNumber}</strong></div>
+              <div class="meta-row"><span>Date:</span> <strong>${d.dateStr}</strong></div>
+              <div class="status-pill" style="background: #ecfdf5; color: #059669; border-color: #a7f3d0;">${d.paymentStatus || 'SETTLED &amp; DISBURSED'}</div>
+            </div>
+          </div>
+
+          <div class="client-box">
+            <div class="client-label">PAYEE / CLAIMANT:</div>
+            <div class="client-name">${d.recipientName}</div>
+            <div class="client-sub">Staff ID: ${d.recipientId || 'EMP-01'} • Role: ${d.recipientRole || 'Technician'} • Dept: ${d.department || 'Field Ops'}</div>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">#</th>
+                <th>PARTICULARS OF EXPENSE CLAIM</th>
+                <th style="width: 55px; text-align: center;">QTY</th>
+                <th style="width: 140px; text-align: right;">CLAIMED AMOUNT (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item, idx) => `
+                <tr>
+                  <td style="text-align: center;">${idx + 1}</td>
+                  <td><strong>${item.description}</strong></td>
+                  <td style="text-align: center;">${item.qty || 1}</td>
+                  <td style="text-align: right;">₹${(Number(item.amount) || 0).toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="grand-row">
+                <td colspan="3" class="tf-label grand">TOTAL DISBURSED:</td>
+                <td class="tf-val grand" style="color: #059669;">₹${totalAmount.toLocaleString('en-IN')}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="bottom-grid">
+            <div class="panel-box">
+              <div class="panel-title">DISBURSEMENT AUDIT</div>
+              <div>Method: <strong>Company Cash Desk / UPI Remittance</strong></div>
+              <div>Claim validated against active job logs &amp; vendor bills.</div>
+            </div>
+            <div class="panel-box">
+              <div class="panel-title">VERIFICATION SIGN-OFF</div>
+              <div>Prepared by: <strong>${d.recipientName}</strong></div>
+              <div>Audited by: <strong>Accounts Officer &amp; Operations Lead</strong></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (d.type === 'financial_report') {
+      const items = d.items && d.items.length > 0 ? d.items : [
+        { description: 'Gross Operations Revenue', amount: 2485320 },
+        { description: 'Direct Operational Expenses', amount: 755130 },
+        { description: 'Salaries & Administrative Overheads', amount: 600000 },
+      ];
+      const total = Number(d.amount) || 2485320;
+
+      return `
+        <div class="doc-container">
+          <div class="inv-top">
+            <div>
+              <div class="corp-name">${d.companyName}</div>
+              <div class="corp-sub">${d.companyAddress}</div>
+              <div class="corp-sub">Executive Governance • Internal Operations Audit</div>
+            </div>
+            <div class="meta-box">
+              <div class="doc-badge-title" style="color: #0284c7;">FINANCIAL AUDIT</div>
+              <div class="meta-row"><span>Audit ID:</span> <strong>${d.referenceNumber}</strong></div>
+              <div class="meta-row"><span>Period:</span> <strong>${d.dateStr}</strong></div>
+              <div class="status-pill" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">AUDITED STATEMENT</div>
+            </div>
+          </div>
+
+          <div class="client-box">
+            <div class="client-label">SUBMITTED TO:</div>
+            <div class="client-name">${d.recipientName || 'Board of Directors & Stakeholders'}</div>
+            <div class="client-sub">Enterprise Scope: Calicut HQ &amp; Statewide Service Hubs</div>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">#</th>
+                <th>FINANCIAL CATEGORY / REVENUE STREAM</th>
+                <th style="width: 160px; text-align: right;">REPORTED VALUE (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item, idx) => `
+                <tr>
+                  <td style="text-align: center;">${idx + 1}</td>
+                  <td><strong>${item.description}</strong></td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 700;">₹${(Number(item.amount) || 0).toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr class="grand-row">
+                <td colspan="2" class="tf-label grand">NET FINANCIAL POSITION:</td>
+                <td class="tf-val grand" style="color: #0284c7;">₹${total.toLocaleString('en-IN')}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="panel-box" style="margin-top: 25px;">
+            <div class="panel-title">AUDITOR &amp; STATUTORY COMPLIANCE STATEMENT</div>
+            <div>This statement has been prepared in accordance with GAAP standards and certified internal ledger records. All balances have been reconciled against actual transaction feeds.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Default: staff_letter / letterhead
+    return `
+      <div class="letterhead">
+        <div class="company-name">${d.companyName}</div>
+        <div class="company-sub">${d.companyAddress} • Ph: ${d.companyPhone || '+91 94963 00233'}</div>
+      </div>
+      <div class="ref-bar">
+        <span>Ref: ${d.referenceNumber}</span>
+        <span>Date: ${d.dateStr}</span>
+      </div>
+      <div class="recipient">
+        <div>To,</div>
+        <div class="recipient-name">${d.recipientName}</div>
+        <div>${d.recipientRole || 'Employee'}</div>
+        ${d.recipientId ? `<div>Employee ID: ${d.recipientId}</div>` : ''}
+      </div>
+      <div class="subject">${d.subject || 'OFFICIAL LETTER'}</div>
+      <div class="body-text">${d.bodyContent}</div>
+      <div style="margin-top: 36px; padding-top: 16px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px;">
+        <div>
+          <div style="font-weight: 700; color: #0f172a;">Authorised Signatory</div>
+          <div style="color: #64748b;">Operations Director</div>
+        </div>
+        <div style="text-align: right; color: #059669; font-weight: 700;">
+          ✔ Verified Digital Seal
+        </div>
+      </div>
+    `;
+  };
+
   // Print & PDF Export
   const handlePrintPdf = () => {
     const printWindow = window.open('', '_blank', 'width=900,height=1100');
@@ -404,7 +968,36 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
           <title>${doc.title} - ${doc.referenceNumber}</title>
           <style>
             @page { size: A4; margin: 0; }
-            body { margin: 0; padding: 40px 50px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; position: relative; background: #fff; box-sizing: border-box; width: 794px; min-height: 1123px; }
+            body {
+              margin: 0;
+              padding: 40px 50px;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              color: #0f172a;
+              position: relative;
+              background: #fff;
+              box-sizing: border-box;
+              width: 794px;
+              min-height: 1123px;
+            }
+            .canvas-element { position: absolute; }
+            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+            /* Watermark */
+            .watermark {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(-35deg);
+              font-size: 70px;
+              font-weight: 900;
+              color: rgba(15, 23, 42, ${doc.watermarkOpacity || 0.08});
+              pointer-events: none;
+              z-index: 0;
+              text-transform: uppercase;
+              white-space: nowrap;
+            }
+
+            /* Letterhead Styles */
             .letterhead { border-bottom: 2px solid #cbd5e1; padding-bottom: 18px; margin-bottom: 25px; text-align: center; }
             .company-name { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: #0b1528; }
             .company-sub { font-size: 11px; color: #64748b; margin-top: 3px; }
@@ -413,28 +1006,75 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
             .recipient-name { font-weight: 700; font-size: 14px; }
             .subject { font-size: 14px; font-weight: 800; text-align: center; text-decoration: underline; margin-bottom: 25px; letter-spacing: 0.5px; }
             .body-text { font-size: 13px; line-height: 1.8; color: #1e293b; margin-bottom: 30px; white-space: pre-wrap; }
-            .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg); font-size: 70px; font-weight: 900; color: rgba(15, 23, 42, ${doc.watermarkOpacity || 0.08}); pointer-events: none; z-index: 0; text-transform: uppercase; white-space: nowrap; }
-            .canvas-element { position: absolute; }
-            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+            /* Digital ID Card Badge Styles */
+            .id-card-sheet { max-width: 560px; margin: 20px auto; position: relative; }
+            .id-card-cut-guide { border-top: 1px dashed #94a3b8; margin-bottom: 20px; text-align: center; }
+            .cut-guide-pill { display: inline-block; background: #fff; padding: 0 12px; font-size: 9px; color: #64748b; font-family: monospace; letter-spacing: 0.5px; }
+            .id-badge-card {
+              background: linear-gradient(135deg, #0f172a 0%, #0b1528 50%, #020617 100%);
+              color: #fff;
+              border-radius: 24px;
+              padding: 26px;
+              border: 2px solid #334155;
+              box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.35);
+              position: relative;
+              overflow: hidden;
+            }
+            .badge-glow { position: absolute; top: -20px; right: -20px; width: 140px; height: 140px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; filter: blur(30px); pointer-events: none; }
+            .badge-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 14px; margin-bottom: 18px; position: relative; z-index: 2; }
+            .badge-brand { display: flex; align-items: center; gap: 10px; }
+            .badge-logo { width: 36px; height: 36px; background: linear-gradient(135deg, #059669, #10b981); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; }
+            .badge-corp { font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
+            .badge-sub { font-size: 9px; color: #34d399; font-family: monospace; letter-spacing: 1.5px; }
+            .badge-id-pill { font-size: 11px; font-family: monospace; background: #1e293b; color: #34d399; padding: 4px 10px; border-radius: 8px; border: 1px solid #475569; font-weight: 700; }
+            .badge-profile { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; position: relative; z-index: 2; }
+            .badge-avatar { width: 72px; height: 72px; border-radius: 18px; background: linear-gradient(135deg, #059669, #14b8a6); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; color: #fff; border: 2px solid rgba(255,255,255,0.2); }
+            .emp-name { font-size: 20px; font-weight: 800; color: #f8fafc; }
+            .emp-role { font-size: 12px; color: #34d399; font-weight: 600; margin-top: 2px; }
+            .emp-dept { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+            .badge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: rgba(30, 41, 59, 0.75); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; position: relative; z-index: 2; }
+            .grid-cell { font-size: 11px; }
+            .cell-label { display: block; color: #94a3b8; font-size: 10px; margin-bottom: 2px; }
+            .cell-val { color: #f1f5f9; font-weight: 600; }
+            .cell-val.font-mono { font-family: monospace; }
+            .cell-val.blood { color: #f87171; font-weight: 800; }
+            .cell-val.valid { color: #34d399; font-weight: 700; }
+            .badge-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 12px; font-size: 10px; color: #94a3b8; position: relative; z-index: 2; }
+            .branch-tag { color: #34d399; font-weight: 700; }
+            .badge-terms-box { margin-top: 20px; padding: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 10px; color: #475569; line-height: 1.5; }
+
+            /* Invoices, Quotations, Vouchers Styles */
+            .doc-container { width: 100%; }
+            .inv-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #cbd5e1; padding-bottom: 18px; margin-bottom: 20px; }
+            .corp-name { font-size: 20px; font-weight: 800; color: #0b1528; letter-spacing: 0.5px; }
+            .corp-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+            .meta-box { text-align: right; }
+            .doc-badge-title { font-size: 20px; font-weight: 900; color: #059669; letter-spacing: 1px; margin-bottom: 5px; }
+            .meta-row { font-size: 11px; color: #475569; margin-bottom: 2px; }
+            .status-pill { display: inline-block; margin-top: 5px; font-size: 10px; font-weight: 800; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 6px; }
+            .client-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+            .client-label { font-size: 9px; font-weight: 800; color: #94a3b8; letter-spacing: 0.5px; margin-bottom: 3px; }
+            .client-name { font-size: 14px; font-weight: 800; color: #0f172a; }
+            .client-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+            .data-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+            .data-table th { background: #f1f5f9; border-bottom: 2px solid #cbd5e1; padding: 8px 10px; font-size: 11px; font-weight: 800; color: #334155; text-align: left; }
+            .data-table td { border-bottom: 1px solid #e2e8f0; padding: 10px; font-size: 12px; color: #1e293b; }
+            .tf-label { text-align: right; font-size: 11px; font-weight: 700; color: #475569; padding: 6px 10px; }
+            .tf-val { text-align: right; font-size: 12px; font-weight: 700; color: #0f172a; padding: 6px 10px; }
+            .grand-row td { border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; background: #f8fafc; }
+            .tf-label.grand { font-size: 13px; font-weight: 900; color: #0f172a; }
+            .tf-val.grand { font-size: 14px; font-weight: 900; color: #059669; }
+            .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+            .panel-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 11px; color: #475569; line-height: 1.6; }
+            .panel-title { font-size: 10px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
           </style>
         </head>
         <body>
           ${doc.showWatermark ? `<div class="watermark">${doc.watermarkText || 'OFFICIAL'}</div>` : ''}
-          <div class="letterhead">
-            <div class="company-name">${doc.companyName}</div>
-            <div class="company-sub">${doc.companyAddress} • Ph: ${doc.companyPhone || '+91 94963 00233'}</div>
-          </div>
-          <div class="ref-bar">
-            <span>Ref: ${doc.referenceNumber}</span>
-            <span>Date: ${doc.dateStr}</span>
-          </div>
-          <div class="recipient">
-            <div>To,</div>
-            <div class="recipient-name">${doc.recipientName}</div>
-            <div>${doc.recipientRole || 'Employee'} (${doc.recipientId || ''})</div>
-          </div>
-          <div class="subject">${doc.subject || 'OFFICIAL LETTER'}</div>
-          <div class="body-text">${doc.bodyContent}</div>
+
+          <!-- Dynamic Document Layout Body -->
+          ${getPrintDocumentBody(doc)}
 
           <!-- Absolute positioned elements -->
           ${doc.elements
@@ -480,6 +1120,14 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                 `;
               }
               if (el.type === 'qr') {
+                if (el.imageUrl) {
+                  return `
+                    <div class="canvas-element" style="left: ${el.x}px; top: ${el.y}px; width: ${el.width}px; height: ${el.height}px; border: 1px solid #cbd5e1; padding: 2px; border-radius: 8px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;">
+                      <img src="${el.imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="QR Code" />
+                      ${el.qrLabel ? `<div style="font-size: 7px; font-weight: 700; color: #059669; margin-top: 1px;">${el.qrLabel}</div>` : ''}
+                    </div>
+                  `;
+                }
                 return `
                   <div class="canvas-element" style="left: ${el.x}px; top: ${el.y}px; width: ${el.width}px; height: ${el.height}px; border: 1px solid #cbd5e1; padding: 4px; border-radius: 8px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                     <div style="font-size: 28px; line-height: 1;">▦</div>
@@ -510,12 +1158,26 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
     addToast('PDF ready for printing & high-res download!', 'success');
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
+    setIsSavingDb(true);
     try {
       localStorage.setItem(`whatsq_custom_pdf_${doc.type}`, JSON.stringify(doc));
-      addToast('Document design saved successfully!', 'success');
-    } catch {
-      addToast('Design saved to active session', 'success');
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+
+    try {
+      await apiClient.post('/operations/pdf-templates/save_template/', {
+        type: doc.type,
+        title: doc.title || `Template ${doc.type}`,
+        ...doc,
+      });
+      addToast('Document design & QR codes saved to database successfully!', 'success');
+    } catch (err) {
+      console.error('Save to database error:', err);
+      addToast('Saved to local storage (offline cache)', 'info');
+    } finally {
+      setIsSavingDb(false);
     }
   };
 
@@ -530,6 +1192,25 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
         className="hidden"
       />
 
+      {/* Hidden file input for uploading staff photo / avatar */}
+      <input
+        type="file"
+        ref={avatarFileInputRef}
+        onChange={handleAvatarFileUpload}
+        accept="image/png, image/jpeg, image/jpg, image/svg+xml, image/webp"
+        className="hidden"
+      />
+
+      {/* Hidden file input for uploading custom QR code image */}
+      <input
+        type="file"
+        ref={qrFileInputRef}
+        onChange={handleQrFileUpload}
+        accept="image/png, image/jpeg, image/jpg, image/svg+xml, image/webp"
+        className="hidden"
+      />
+
+
       {/* Top Studio Control Bar */}
       <div className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 gap-3 select-none">
         <div className="flex items-center gap-3">
@@ -539,6 +1220,19 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-white">Official Document &amp; PDF Studio</span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/30">
+                {doc.type === 'id_card'
+                  ? 'STAFF ID BADGE'
+                  : doc.type === 'invoice'
+                  ? 'TAX INVOICE'
+                  : doc.type === 'quotation'
+                  ? 'COMMERCIAL QUOTE'
+                  : doc.type === 'voucher'
+                  ? 'EXPENSE VOUCHER'
+                  : doc.type === 'financial_report'
+                  ? 'FINANCIAL AUDIT'
+                  : 'OFFICIAL LETTER'}
+              </span>
               {isPreviewMode ? (
                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1 shadow-sm">
                   <Eye className="w-3 h-3 text-blue-400" />
@@ -631,10 +1325,16 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
 
           <button
             onClick={handleSaveTemplate}
+            disabled={isSavingDb}
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700 cursor-pointer transition-all"
+            title="Save custom layout, signatures & QR codes to database"
           >
-            <Check className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Save Design</span>
+            {isSavingDb ? (
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+            ) : (
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            <span>{isSavingDb ? 'Saving to DB...' : 'Save to DB'}</span>
           </button>
 
           <button
@@ -924,34 +1624,49 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
               </div>
 
               {/* Security QR Code */}
-              <div
-                draggable={true}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    'application/pdf-element',
-                    JSON.stringify({
-                      type: 'qr',
-                      qrLabel: 'VERIFIED',
-                      width: 65,
-                      height: 65,
-                      label: 'Security QR Code',
-                    })
-                  );
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-                onClick={handleAddQr}
-                className="w-full p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 flex items-center justify-between text-left cursor-grab active:cursor-grabbing transition-all hover:border-teal-500 hover:scale-[1.01] group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
-                    <QrCode className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1.5 hover:border-teal-500 transition-colors">
+                <div
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      'application/pdf-element',
+                      JSON.stringify({
+                        type: 'qr',
+                        qrLabel: 'VERIFIED',
+                        width: 65,
+                        height: 65,
+                        label: 'Security QR Code',
+                      })
+                    );
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onClick={handleAddQr}
+                  className="flex items-center justify-between text-left cursor-grab active:cursor-grabbing group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                      <QrCode className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-200 group-hover:text-teal-300 transition-colors">Security QR Code</div>
+                      <div className="text-[10px] text-slate-400">Digital verification badge</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold text-slate-200 group-hover:text-teal-300 transition-colors">Security QR Code</div>
-                    <div className="text-[10px] text-slate-400">Digital verification badge</div>
-                  </div>
+                  <Move className="w-3.5 h-3.5 text-slate-500 group-hover:text-teal-400 transition-colors" />
                 </div>
-                <Move className="w-3.5 h-3.5 text-slate-500 group-hover:text-teal-400 transition-colors" />
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setQrUploadTargetId(null);
+                    qrFileInputRef.current?.click();
+                  }}
+                  className="w-full py-1.5 px-2 bg-teal-600/30 hover:bg-teal-600/50 border border-teal-500/40 hover:border-teal-400 text-teal-200 hover:text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>Upload QR Image (PNG/JPG/SVG)</span>
+                </button>
               </div>
 
               {/* Custom Text Block */}
@@ -1004,27 +1719,51 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                   e.dataTransfer.setData(
                     'application/pdf-template',
                     JSON.stringify({
-                      type: 'staff_letter',
-                      title: 'Official Staff Joining Letter',
-                      subject: 'SUB: OFFICIAL LETTER OF APPOINTMENT',
-                      bodyContent:
-                        'We are pleased to confirm your appointment with Qiyam Business Solutions as Field Technician. You will be reporting to the Calicut HQ branch. Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday.',
+                      type: 'id_card',
+                      title: 'Official Digital ID Card',
+                      referenceNumber: 'EMP-01',
+                      recipientName: 'Muhammed Nihal',
+                      recipientRole: 'Senior HVAC Technician',
+                      recipientId: 'EMP-01',
+                      recipientPhone: '+91 98470 12345',
+                      department: 'MEP Operations',
+                      bloodGroup: 'B+ve',
+                      emergencyPhone: '+91 94963 00233',
+                      emergencyName: 'HQ Desk',
+                      shift: '09:00 AM - 06:00 PM',
+                      branch: 'Calicut Central HQ',
+                      validTill: '31 Dec 2026',
+                      avatarInitials: 'MN',
+                      companyName: 'QIYAM BUSINESS OS',
+                      companyAddress: 'Cyberpark Calicut, Kerala',
                     })
                   );
                 }}
                 onClick={() =>
                   setDoc({
                     ...doc,
-                    type: 'staff_letter',
-                    title: 'Official Staff Joining Letter',
-                    subject: 'SUB: OFFICIAL LETTER OF APPOINTMENT',
-                    bodyContent:
-                      'We are pleased to confirm your appointment with Qiyam Business Solutions as Field Technician. You will be reporting to the Calicut HQ branch. Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday.',
+                    type: 'id_card',
+                    title: 'Official Digital ID Card',
+                    referenceNumber: 'EMP-01',
+                    recipientName: 'Muhammed Nihal',
+                    recipientRole: 'Senior HVAC Technician',
+                    recipientId: 'EMP-01',
+                    recipientPhone: '+91 98470 12345',
+                    department: 'MEP Operations',
+                    bloodGroup: 'B+ve',
+                    emergencyPhone: '+91 94963 00233',
+                    emergencyName: 'HQ Desk',
+                    shift: '09:00 AM - 06:00 PM',
+                    branch: 'Calicut Central HQ',
+                    validTill: '31 Dec 2026',
+                    avatarInitials: 'MN',
+                    companyName: 'QIYAM BUSINESS OS',
+                    companyAddress: 'Cyberpark Calicut, Kerala',
                   })
                 }
                 className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 text-left cursor-grab active:cursor-grabbing hover:border hover:border-emerald-500 transition-all"
               >
-                Joining Letter
+                Staff ID Card
               </button>
               <button
                 type="button"
@@ -1036,6 +1775,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                       type: 'invoice',
                       title: 'Tax Invoice & GST Bill',
                       referenceNumber: 'INV-2024-0521',
+                      invoiceNumber: 'INV-2024-0521',
                       subject: 'TAX INVOICE - COMMERCIAL SERVICES',
                       bodyContent:
                         'Invoice for Air Conditioning Maintenance & System Overhaul. Payment terms: 100% advance or same-day UPI transfer upon job completion.',
@@ -1048,6 +1788,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     type: 'invoice',
                     title: 'Tax Invoice & GST Bill',
                     referenceNumber: 'INV-2024-0521',
+                    invoiceNumber: 'INV-2024-0521',
                     subject: 'TAX INVOICE - COMMERCIAL SERVICES',
                     bodyContent:
                       'Invoice for Air Conditioning Maintenance & System Overhaul. Payment terms: 100% advance or same-day UPI transfer upon job completion.',
@@ -1067,6 +1808,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                       type: 'quotation',
                       title: 'Commercial Quotation',
                       referenceNumber: 'QUO-2024-0112',
+                      invoiceNumber: 'QUO-2024-0112',
                       subject: 'ESTIMATE & PRICE QUOTATION',
                       bodyContent:
                         'Formal proposal and quotation for annual MEP facilities maintenance, parts replacement warranty, and priority 24/7 breakdown support.',
@@ -1079,6 +1821,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     type: 'quotation',
                     title: 'Commercial Quotation',
                     referenceNumber: 'QUO-2024-0112',
+                    invoiceNumber: 'QUO-2024-0112',
                     subject: 'ESTIMATE & PRICE QUOTATION',
                     bodyContent:
                       'Formal proposal and quotation for annual MEP facilities maintenance, parts replacement warranty, and priority 24/7 breakdown support.',
@@ -1098,6 +1841,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                       type: 'voucher',
                       title: 'Expense Reimbursement Voucher',
                       referenceNumber: 'EXP-VOUCHER-088',
+                      invoiceNumber: 'EXP-VOUCHER-088',
                       subject: 'PETROL & TOOL REIMBURSEMENT VOUCHER',
                       bodyContent:
                         'Approved reimbursement for field service expenses, vehicle fuel allowance, and authorized spare part acquisitions.',
@@ -1110,6 +1854,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     type: 'voucher',
                     title: 'Expense Reimbursement Voucher',
                     referenceNumber: 'EXP-VOUCHER-088',
+                    invoiceNumber: 'EXP-VOUCHER-088',
                     subject: 'PETROL & TOOL REIMBURSEMENT VOUCHER',
                     bodyContent:
                       'Approved reimbursement for field service expenses, vehicle fuel allowance, and authorized spare part acquisitions.',
@@ -1118,6 +1863,68 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                 className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 text-left cursor-grab active:cursor-grabbing hover:border hover:border-amber-500 transition-all"
               >
                 Expense Slip
+              </button>
+              <button
+                type="button"
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    'application/pdf-template',
+                    JSON.stringify({
+                      type: 'staff_letter',
+                      title: 'Official Staff Joining Letter',
+                      subject: 'SUB: OFFICIAL LETTER OF APPOINTMENT',
+                      bodyContent:
+                        'We are pleased to confirm your appointment with Qiyam Business Solutions as Field Technician. You will be reporting to the Calicut HQ branch. Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday.',
+                    })
+                  );
+                }}
+                onClick={() =>
+                  setDoc({
+                    ...doc,
+                    type: 'staff_letter',
+                    title: 'Official Staff Joining Letter',
+                    subject: 'SUB: OFFICIAL LETTER OF APPOINTMENT',
+                    bodyContent:
+                      'We are pleased to confirm your appointment with Qiyam Business Solutions as Field Technician. You will be reporting to the Calicut HQ branch. Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday.',
+                  })
+                }
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 text-left cursor-grab active:cursor-grabbing hover:border hover:border-teal-500 transition-all"
+              >
+                Joining Letter
+              </button>
+              <button
+                type="button"
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    'application/pdf-template',
+                    JSON.stringify({
+                      type: 'financial_report',
+                      title: 'Executive Financial Audit Statement',
+                      referenceNumber: 'AUD-2024-Q2',
+                      amount: 2485320,
+                      subject: 'QUARTERLY FINANCIAL AUDIT & RECONCILIATION',
+                      bodyContent:
+                        'Reconciled financial operations report covering regional client accounts, field labor costs, and capital expenditures.',
+                    })
+                  );
+                }}
+                onClick={() =>
+                  setDoc({
+                    ...doc,
+                    type: 'financial_report',
+                    title: 'Executive Financial Audit Statement',
+                    referenceNumber: 'AUD-2024-Q2',
+                    amount: 2485320,
+                    subject: 'QUARTERLY FINANCIAL AUDIT & RECONCILIATION',
+                    bodyContent:
+                      'Reconciled financial operations report covering regional client accounts, field labor costs, and capital expenditures.',
+                  })
+                }
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 text-left cursor-grab active:cursor-grabbing hover:border hover:border-cyan-500 transition-all"
+              >
+                Financial Audit
               </button>
             </div>
           </div>
@@ -1208,138 +2015,1192 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
               </div>
             )}
 
-            {/* Document Header / Letterhead */}
-            {isPreviewMode ? (
-              <div className="border-b-2 border-slate-300 pb-5 text-center relative z-10">
-                <div className="font-extrabold text-xl text-slate-900 tracking-wider text-center">{doc.companyName}</div>
-                <div className="text-xs text-slate-500 text-center mt-1">
-                  {doc.companyAddress} • Ph: {doc.companyPhone || '+91 94963 00233'}
-                </div>
-              </div>
-            ) : (
-              <div className="border-b-2 border-slate-300 pb-5 text-center relative z-10 group/sec rounded-lg transition-all hover:bg-slate-50/50 p-2">
-                <div className="absolute -top-3 right-2 opacity-60 group-hover/sec:opacity-100 flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 transition-all pointer-events-none">
-                  <Edit3 className="w-2.5 h-2.5 text-emerald-600" />
-                  <span>Editable Header</span>
-                </div>
-                <input
-                  type="text"
-                  value={doc.companyName}
-                  onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
-                  className="font-extrabold text-xl text-slate-900 tracking-wider text-center w-full focus:bg-slate-50 focus:outline-none rounded px-2 hover:bg-slate-50/50 transition-colors"
-                  title="Click to edit Company Name"
-                />
-                <input
-                  type="text"
-                  value={doc.companyAddress}
-                  onChange={(e) => setDoc({ ...doc, companyAddress: e.target.value })}
-                  className="text-xs text-slate-500 text-center w-full focus:bg-slate-50 focus:outline-none rounded px-2 mt-1 hover:bg-slate-50/50 transition-colors"
-                  title="Click to edit Company Address & Contact"
-                />
-              </div>
-            )}
+            {/* Dynamic Multi-Document Canvas Body */}
+            {(() => {
+              if (doc.type === 'id_card') {
+                return (
+                  <div className="relative z-10 w-full">
+                    {/* Top Badge Sheet Guide */}
+                    <div className="text-center mb-6 pb-3 border-b border-slate-200">
+                      <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold flex items-center justify-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Official Staff Photo Identification Card • Qiyam Business Solutions</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Standard Credentials • Valid Across All Regional Service Hubs &amp; Client Sites
+                      </div>
+                    </div>
 
-            {/* Ref Number & Date */}
-            {isPreviewMode ? (
-              <div className="flex justify-between items-center text-xs text-slate-600 mt-6 mb-6 relative z-10">
-                <div>
-                  <span className="font-semibold text-slate-400 mr-1">Ref:</span>
-                  <span className="font-mono font-bold text-slate-800">{doc.referenceNumber}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-400 mr-1">Date:</span>
-                  <span className="font-bold text-slate-800">{doc.dateStr}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-between items-center text-xs text-slate-600 mt-6 mb-6 relative z-10">
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold text-slate-400">Ref:</span>
-                  <input
-                    type="text"
-                    value={doc.referenceNumber}
-                    onChange={(e) => setDoc({ ...doc, referenceNumber: e.target.value })}
-                    className="font-mono font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-52 hover:bg-slate-50/50 transition-colors"
-                    title="Click to edit Reference Number"
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold text-slate-400">Date:</span>
-                  <input
-                    type="text"
-                    value={doc.dateStr}
-                    onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
-                    className="font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-32 text-right hover:bg-slate-50/50 transition-colors"
-                    title="Click to edit Date"
-                  />
-                </div>
-              </div>
-            )}
+                    {/* The Official Digital ID Card */}
+                    <div className="w-[580px] mx-auto bg-gradient-to-br from-slate-900 via-[#0B1528] to-slate-900 text-white rounded-3xl p-7 shadow-2xl border-2 border-slate-700 space-y-5 relative overflow-hidden select-none">
+                      {/* Background Glow */}
+                      <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Recipient Details */}
-            {isPreviewMode ? (
-              <div className="text-xs space-y-1 mb-6 relative z-10 text-slate-800">
-                <div className="text-slate-500">To,</div>
-                <div className="font-bold text-sm text-slate-900">{doc.recipientName}</div>
-                <div className="text-slate-600">{doc.recipientRole || 'Employee'} ({doc.recipientId || ''})</div>
-              </div>
-            ) : (
-              <div className="text-xs space-y-1 mb-6 relative z-10">
-                <div className="text-slate-500">To,</div>
-                <input
-                  type="text"
-                  value={doc.recipientName}
-                  onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
-                  className="font-bold text-sm text-slate-900 focus:bg-slate-50 focus:outline-none rounded px-1 w-full block hover:bg-slate-50/50 transition-colors"
-                  title="Click to edit Recipient Name"
-                />
-                <input
-                  type="text"
-                  value={doc.recipientRole || ''}
-                  onChange={(e) => setDoc({ ...doc, recipientRole: e.target.value })}
-                  className="text-slate-600 focus:bg-slate-50 focus:outline-none rounded px-1 w-full block text-xs hover:bg-slate-50/50 transition-colors"
-                  title="Click to edit Recipient Designation & ID"
-                />
-              </div>
-            )}
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-slate-700/80 pb-4 relative z-10">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-base shadow-md">
+                            {doc.companyName ? doc.companyName.charAt(0).toUpperCase() : 'Q'}
+                          </div>
+                          <div>
+                            {isPreviewMode ? (
+                              <div className="font-extrabold text-sm tracking-wider text-white">{doc.companyName}</div>
+                            ) : (
+                              <input
+                                type="text"
+                                value={doc.companyName}
+                                onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                                className="font-extrabold text-sm tracking-wider text-white bg-transparent hover:bg-slate-800/80 focus:bg-slate-800 rounded px-1.5 py-0.5 focus:outline-none border border-transparent focus:border-slate-600 transition-colors"
+                                title="Click to edit Company Name"
+                              />
+                            )}
+                            <div className="text-[10px] text-emerald-400 font-mono tracking-widest">STAFF IDENTITY CARD</div>
+                          </div>
+                        </div>
+                        {isPreviewMode ? (
+                          <span className="text-xs font-mono bg-slate-800 text-emerald-400 px-3 py-1 rounded-lg border border-slate-700 font-bold">
+                            {doc.recipientId || doc.referenceNumber || 'EMP-01'}
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
+                            <span className="text-[10px] text-slate-400 font-mono">ID:</span>
+                            <input
+                              type="text"
+                              value={doc.recipientId || doc.referenceNumber || ''}
+                              onChange={(e) => setDoc({ ...doc, recipientId: e.target.value, referenceNumber: e.target.value })}
+                              className="text-xs font-mono text-emerald-400 font-bold bg-transparent w-20 focus:outline-none"
+                              title="Click to edit Employee ID"
+                            />
+                          </div>
+                        )}
+                      </div>
 
-            {/* Subject Line */}
-            {isPreviewMode ? (
-              <div className="mb-6 relative z-10 text-center">
-                <div className="font-extrabold text-sm text-slate-900 underline tracking-wide inline-block">{doc.subject || 'OFFICIAL LETTER'}</div>
-              </div>
-            ) : (
-              <div className="mb-6 relative z-10">
-                <input
-                  type="text"
-                  value={doc.subject || ''}
-                  onChange={(e) => setDoc({ ...doc, subject: e.target.value })}
-                  className="font-extrabold text-sm text-slate-900 text-center underline tracking-wide w-full focus:bg-slate-50 focus:outline-none rounded px-2 hover:bg-slate-50/50 transition-colors"
-                  title="Click to edit Subject"
-                />
-              </div>
-            )}
+                      {/* Profile Row */}
+                      <div className="flex items-center gap-5 py-1 relative z-10">
+                        <div className="relative group">
+                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-bold text-3xl text-white shadow-xl ring-2 ring-white/20 overflow-hidden">
+                            {doc.avatarUrl ? (
+                              <img src={doc.avatarUrl} alt="Staff Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              <span>{doc.avatarInitials || 'AS'}</span>
+                            )}
+                          </div>
+                          {!isPreviewMode && (
+                            <button
+                              type="button"
+                              onClick={() => avatarFileInputRef.current?.click()}
+                              className="absolute -bottom-1 -right-1 p-1.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-full shadow-lg border border-slate-600 cursor-pointer transition-colors"
+                              title="Upload / Change Staff Photo"
+                            >
+                              <Upload className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
 
-            {/* Body Content */}
-            {isPreviewMode ? (
-              <div className="relative z-10 mb-8 text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">
-                {doc.bodyContent}
-              </div>
-            ) : (
-              <div className="relative z-10 mb-8 group/body rounded-lg transition-all hover:bg-slate-50/30 p-1 border border-transparent hover:border-slate-300">
-                <div className="absolute -top-3 right-2 opacity-60 group-hover/body:opacity-100 flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 transition-all pointer-events-none">
-                  <Edit3 className="w-2.5 h-2.5 text-emerald-600" />
-                  <span>Editable Body Text</span>
+                        <div className="flex-1 space-y-1">
+                          {isPreviewMode ? (
+                            <div className="font-extrabold text-xl text-white">{doc.recipientName}</div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.recipientName}
+                              onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                              className="font-extrabold text-xl text-white bg-transparent hover:bg-slate-800/80 focus:bg-slate-800 rounded px-1.5 py-0.5 focus:outline-none border border-transparent focus:border-slate-600 w-full transition-colors"
+                              title="Click to edit Staff Name"
+                            />
+                          )}
+                          {isPreviewMode ? (
+                            <div className="text-sm text-emerald-400 font-semibold">{doc.recipientRole || 'Field Technician'}</div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.recipientRole || ''}
+                              onChange={(e) => setDoc({ ...doc, recipientRole: e.target.value })}
+                              className="text-sm text-emerald-400 font-semibold bg-transparent hover:bg-slate-800/80 focus:bg-slate-800 rounded px-1.5 py-0.5 focus:outline-none border border-transparent focus:border-slate-600 w-full transition-colors"
+                              title="Click to edit Staff Role / Designation"
+                            />
+                          )}
+                          {isPreviewMode ? (
+                            <div className="text-xs text-slate-400">
+                              {doc.department || 'Operations'} • {doc.branch || 'Calicut Central HQ'}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-xs text-slate-400">
+                              <input
+                                type="text"
+                                value={doc.department || ''}
+                                onChange={(e) => setDoc({ ...doc, department: e.target.value })}
+                                className="bg-transparent hover:bg-slate-800/80 focus:bg-slate-800 rounded px-1 py-0.5 focus:outline-none border border-transparent focus:border-slate-600 w-32 text-slate-300"
+                                title="Click to edit Department"
+                              />
+                              <span>•</span>
+                              <input
+                                type="text"
+                                value={doc.branch || ''}
+                                onChange={(e) => setDoc({ ...doc, branch: e.target.value })}
+                                className="bg-transparent hover:bg-slate-800/80 focus:bg-slate-800 rounded px-1 py-0.5 focus:outline-none border border-transparent focus:border-slate-600 flex-1 text-slate-300"
+                                title="Click to edit Branch"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-3 text-xs bg-slate-800/70 p-4 rounded-2xl border border-slate-700/60 relative z-10">
+                        <div>
+                          <span className="text-slate-400 text-[10px] block font-medium">Mobile:</span>
+                          {isPreviewMode ? (
+                            <span className="font-mono text-slate-200 font-semibold">{doc.recipientPhone || 'N/A'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.recipientPhone || ''}
+                              onChange={(e) => setDoc({ ...doc, recipientPhone: e.target.value })}
+                              className="font-mono text-slate-200 font-semibold bg-transparent hover:bg-slate-700/60 focus:bg-slate-700 rounded px-1 py-0.5 focus:outline-none w-full"
+                              title="Click to edit Mobile Phone"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block font-medium">Blood Group:</span>
+                          {isPreviewMode ? (
+                            <span className="text-red-400 font-bold font-mono">{doc.bloodGroup || 'O+'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.bloodGroup || ''}
+                              onChange={(e) => setDoc({ ...doc, bloodGroup: e.target.value })}
+                              className="text-red-400 font-bold font-mono bg-transparent hover:bg-slate-700/60 focus:bg-slate-700 rounded px-1 py-0.5 focus:outline-none w-20"
+                              title="Click to edit Blood Group"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block font-medium">Shift Timing:</span>
+                          {isPreviewMode ? (
+                            <span className="text-slate-200 font-medium">{doc.shift || '09:00 AM - 06:00 PM'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.shift || ''}
+                              onChange={(e) => setDoc({ ...doc, shift: e.target.value })}
+                              className="text-slate-200 font-medium bg-transparent hover:bg-slate-700/60 focus:bg-slate-700 rounded px-1 py-0.5 focus:outline-none w-full"
+                              title="Click to edit Shift Hours"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block font-medium">Emergency No:</span>
+                          {isPreviewMode ? (
+                            <span className="font-mono text-slate-200">{doc.emergencyPhone || 'N/A'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.emergencyPhone || ''}
+                              onChange={(e) => setDoc({ ...doc, emergencyPhone: e.target.value })}
+                              className="font-mono text-slate-200 bg-transparent hover:bg-slate-700/60 focus:bg-slate-700 rounded px-1 py-0.5 focus:outline-none w-full"
+                              title="Click to edit Emergency Phone"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block font-medium">Valid Till:</span>
+                          {isPreviewMode ? (
+                            <span className="font-mono text-emerald-400 font-semibold">{doc.validTill || '31 DEC 2026'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.validTill || ''}
+                              onChange={(e) => setDoc({ ...doc, validTill: e.target.value })}
+                              className="font-mono text-emerald-400 font-semibold bg-transparent hover:bg-slate-700/60 focus:bg-slate-700 rounded px-1 py-0.5 focus:outline-none w-full"
+                              title="Click to edit Card Validity"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block font-medium">Emergency Contact:</span>
+                          {isPreviewMode ? (
+                            <span className="text-slate-200">{doc.emergencyName || 'HQ Desk'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.emergencyName || ''}
+                              onChange={(e) => setDoc({ ...doc, emergencyName: e.target.value })}
+                              className="text-slate-200 bg-transparent hover:bg-slate-700/60 focus:bg-slate-700 rounded px-1 py-0.5 focus:outline-none w-full"
+                              title="Click to edit Emergency Contact Person"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Footer */}
+                      <div className="pt-2 flex items-center justify-between border-t border-slate-700/80 text-[11px] text-slate-400 relative z-10">
+                        <span>Authorised Signature: <strong className="text-emerald-400">✔ Verified</strong></span>
+                        <span className="font-mono text-emerald-400 font-bold">{doc.branch || 'Calicut Central HQ'}</span>
+                      </div>
+                    </div>
+
+                    {/* Cardholder Cut Guide & Legal Note */}
+                    <div className="w-[580px] mx-auto mt-6 space-y-3 text-center">
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 justify-center">
+                        <div className="h-px bg-slate-300 flex-1 border-dashed border-b border-slate-400" />
+                        <span>✄ Cut along guide for standard ID badge holder insertion</span>
+                        <div className="h-px bg-slate-300 flex-1 border-dashed border-b border-slate-400" />
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[10px] text-slate-500 leading-relaxed text-left">
+                        <strong>OFFICIAL PROPERTY CLAUSE:</strong> This credential card is the official property of {doc.companyName}. It must be prominently displayed during on-site operations and premises entry. In case of loss, contact HR immediately at {doc.companyPhone || '+91 94963 00233'}.
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (doc.type === 'invoice') {
+                const items = doc.items && doc.items.length > 0 ? doc.items : [
+                  { description: 'Professional AC Repair & Maintenance Services', qty: 1, unitPrice: Number(doc.amount) || 2800, amount: Number(doc.amount) || 2800 }
+                ];
+                const subtotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+                const taxRate = doc.taxRate !== undefined ? doc.taxRate : 18;
+                const tax = Math.round((subtotal * taxRate) / 100);
+                const grandTotal = subtotal + tax;
+
+                return (
+                  <div className="relative z-10 w-full space-y-6">
+                    {/* Top Invoice Header */}
+                    <div className="flex justify-between items-start border-b-2 border-slate-300 pb-5">
+                      <div className="space-y-1">
+                        {isPreviewMode ? (
+                          <div className="font-extrabold text-2xl text-slate-900 tracking-wider">{doc.companyName}</div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.companyName}
+                            onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                            className="font-extrabold text-2xl text-slate-900 tracking-wider focus:bg-slate-50 focus:outline-none rounded px-1.5"
+                          />
+                        )}
+                        <div className="text-xs text-slate-500">{doc.companyAddress}</div>
+                        <div className="text-xs text-slate-500">GSTIN: 32AAACQ1234F1Z5 • Ph: {doc.companyPhone || '+91 94963 00233'}</div>
+                        <div className="text-xs text-slate-500">Email: {doc.companyEmail || 'accounts@qiyam.com'}</div>
+                      </div>
+
+                      <div className="text-right space-y-1">
+                        <div className="font-black text-2xl text-emerald-600 tracking-wide">TAX INVOICE</div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Invoice No:</span>
+                          {isPreviewMode ? (
+                            <span className="font-mono font-bold text-slate-800">{doc.invoiceNumber || doc.referenceNumber}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.invoiceNumber || doc.referenceNumber}
+                              onChange={(e) => setDoc({ ...doc, invoiceNumber: e.target.value, referenceNumber: e.target.value })}
+                              className="font-mono font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-32 text-right"
+                            />
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Date:</span>
+                          {isPreviewMode ? (
+                            <span className="font-bold text-slate-800">{doc.dateStr}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.dateStr}
+                              onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                              className="font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-28 text-right"
+                            />
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Due Date:</span>
+                          {isPreviewMode ? (
+                            <span className="font-semibold text-slate-700">{doc.dueDate || 'Upon Receipt'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.dueDate || 'Upon Receipt'}
+                              onChange={(e) => setDoc({ ...doc, dueDate: e.target.value })}
+                              className="font-semibold text-slate-700 focus:bg-slate-50 focus:outline-none rounded px-1 w-28 text-right"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                            {doc.paymentStatus || 'PAID'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bill To Box */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">BILLED TO:</div>
+                      {isPreviewMode ? (
+                        <div className="font-bold text-slate-900 text-sm">{doc.recipientName}</div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={doc.recipientName}
+                          onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                          className="font-bold text-slate-900 text-sm focus:bg-white focus:outline-none rounded px-1 w-full"
+                        />
+                      )}
+                      <div className="text-xs text-slate-600 mt-1">
+                        <span>Contact: </span>
+                        {isPreviewMode ? (
+                          <span className="font-mono">{doc.recipientPhone || 'N/A'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.recipientPhone || ''}
+                            onChange={(e) => setDoc({ ...doc, recipientPhone: e.target.value })}
+                            className="font-mono focus:bg-white focus:outline-none rounded px-1 w-44"
+                          />
+                        )}
+                        <span className="mx-2">•</span>
+                        <span>Location: {doc.branch || 'Calicut, Kerala'}</span>
+                      </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                          <tr>
+                            <th className="p-2.5 text-center w-10">#</th>
+                            <th className="p-2.5 text-left">DESCRIPTION OF SERVICES &amp; SPARES</th>
+                            <th className="p-2.5 text-center w-16">QTY</th>
+                            <th className="p-2.5 text-right w-28">RATE (₹)</th>
+                            <th className="p-2.5 text-right w-32">AMOUNT (₹)</th>
+                            {!isPreviewMode && <th className="p-2.5 text-center w-12"></th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {items.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="p-2.5 text-center text-slate-400">{idx + 1}</td>
+                              <td className="p-2.5 font-semibold text-slate-800">
+                                {isPreviewMode ? (
+                                  item.description
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => handleUpdateItem(idx, 'description', e.target.value)}
+                                    className="w-full focus:bg-white focus:outline-none rounded px-1 font-semibold text-slate-800"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                {isPreviewMode ? (
+                                  item.qty || 1
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.qty || 1}
+                                    onChange={(e) => handleUpdateItem(idx, 'qty', Number(e.target.value))}
+                                    className="w-12 text-center focus:bg-white focus:outline-none rounded px-1"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-right font-mono">
+                                {isPreviewMode ? (
+                                  `₹${(Number(item.unitPrice) || 0).toLocaleString('en-IN')}`
+                                ) : (
+                                  <input
+                                    type="number"
+                                    value={item.unitPrice || 0}
+                                    onChange={(e) => handleUpdateItem(idx, 'unitPrice', Number(e.target.value))}
+                                    className="w-24 text-right focus:bg-white focus:outline-none rounded px-1 font-mono"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                                ₹{(Number(item.amount) || 0).toLocaleString('en-IN')}
+                              </td>
+                              {!isPreviewMode && (
+                                <td className="p-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(idx)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+                                    title="Delete line item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-50 border-t border-slate-200">
+                          <tr>
+                            <td colSpan={3} className="p-2 text-right font-semibold text-slate-600">Subtotal:</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2 text-right font-mono font-bold text-slate-800">
+                              ₹{subtotal.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="p-2 text-right font-semibold text-slate-600">IGST / GST ({taxRate}%):</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2 text-right font-mono font-bold text-slate-800">
+                              ₹{tax.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                          <tr className="border-t-2 border-slate-900 bg-slate-100">
+                            <td colSpan={3} className="p-2.5 text-right font-extrabold text-slate-900 text-sm">TOTAL AMOUNT PAYABLE:</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2.5 text-right font-mono font-black text-emerald-600 text-base">
+                              ₹{grandTotal.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {!isPreviewMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer border border-slate-300 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>+ Add Line Item</span>
+                      </button>
+                    )}
+
+                    {/* Payment Information & Notes */}
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2">
+                          Bank &amp; UPI Remittance Details
+                        </div>
+                        <div className="text-slate-600">Bank: <span className="font-semibold text-slate-800">HDFC Bank Ltd</span></div>
+                        <div className="text-slate-600">A/C No: <span className="font-mono font-semibold text-slate-800">50200088912344</span></div>
+                        <div className="text-slate-600">IFSC Code: <span className="font-mono font-semibold text-slate-800">HDFC0001234</span></div>
+                        <div className="text-slate-600">UPI Handle: <span className="font-mono font-bold text-emerald-600">qiyam@hdfcbank</span></div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2">
+                          Terms &amp; Invoice Notes
+                        </div>
+                        {isPreviewMode ? (
+                          <div className="text-slate-600 leading-relaxed whitespace-pre-wrap">{doc.bodyContent}</div>
+                        ) : (
+                          <textarea
+                            rows={3}
+                            value={doc.bodyContent}
+                            onChange={(e) => setDoc({ ...doc, bodyContent: e.target.value })}
+                            className="w-full text-xs text-slate-600 leading-relaxed focus:bg-white focus:outline-none rounded p-1 border border-transparent hover:border-slate-300 resize-none"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (doc.type === 'quotation') {
+                const items = doc.items && doc.items.length > 0 ? doc.items : [
+                  { description: 'Commercial Maintenance & Service Package', qty: 1, unitPrice: Number(doc.amount) || 15000, amount: Number(doc.amount) || 15000 }
+                ];
+                const subtotal = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+                const taxRate = doc.taxRate !== undefined ? doc.taxRate : 18;
+                const tax = Math.round((subtotal * taxRate) / 100);
+                const grandTotal = subtotal + tax;
+
+                return (
+                  <div className="relative z-10 w-full space-y-6">
+                    {/* Top Quotation Header */}
+                    <div className="flex justify-between items-start border-b-2 border-slate-300 pb-5">
+                      <div className="space-y-1">
+                        {isPreviewMode ? (
+                          <div className="font-extrabold text-2xl text-slate-900 tracking-wider">{doc.companyName}</div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.companyName}
+                            onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                            className="font-extrabold text-2xl text-slate-900 tracking-wider focus:bg-slate-50 focus:outline-none rounded px-1.5"
+                          />
+                        )}
+                        <div className="text-xs text-slate-500">{doc.companyAddress}</div>
+                        <div className="text-xs text-slate-500">Ph: {doc.companyPhone || '+91 94963 00233'} • Email: {doc.companyEmail || 'sales@qiyam.com'}</div>
+                      </div>
+
+                      <div className="text-right space-y-1">
+                        <div className="font-black text-2xl text-purple-600 tracking-wide">FORMAL ESTIMATE</div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Quotation Ref:</span>
+                          {isPreviewMode ? (
+                            <span className="font-mono font-bold text-slate-800">{doc.invoiceNumber || doc.referenceNumber}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.invoiceNumber || doc.referenceNumber}
+                              onChange={(e) => setDoc({ ...doc, invoiceNumber: e.target.value, referenceNumber: e.target.value })}
+                              className="font-mono font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-32 text-right"
+                            />
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Date:</span>
+                          {isPreviewMode ? (
+                            <span className="font-bold text-slate-800">{doc.dateStr}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.dateStr}
+                              onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                              className="font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-28 text-right"
+                            />
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Valid Until:</span>
+                          {isPreviewMode ? (
+                            <span className="font-semibold text-purple-700">{doc.validTill || '30 Days'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.validTill || '30 Days'}
+                              onChange={(e) => setDoc({ ...doc, validTill: e.target.value })}
+                              className="font-semibold text-purple-700 focus:bg-slate-50 focus:outline-none rounded px-1 w-28 text-right"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Client Box */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">PREPARED FOR:</div>
+                      {isPreviewMode ? (
+                        <div className="font-bold text-slate-900 text-sm">{doc.recipientName}</div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={doc.recipientName}
+                          onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                          className="font-bold text-slate-900 text-sm focus:bg-white focus:outline-none rounded px-1 w-full"
+                        />
+                      )}
+                      <div className="text-xs text-slate-600 mt-1">
+                        <span>Contact: </span>
+                        {isPreviewMode ? (
+                          <span className="font-mono">{doc.recipientPhone || 'N/A'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.recipientPhone || ''}
+                            onChange={(e) => setDoc({ ...doc, recipientPhone: e.target.value })}
+                            className="font-mono focus:bg-white focus:outline-none rounded px-1 w-44"
+                          />
+                        )}
+                        <span className="mx-2">•</span>
+                        <span>Facility Scope: {doc.branch || 'Commercial Facilities'}</span>
+                      </div>
+                    </div>
+
+                    {/* Scope Table */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                          <tr>
+                            <th className="p-2.5 text-center w-10">#</th>
+                            <th className="p-2.5 text-left">PROPOSED SCOPE OF WORK &amp; DELIVERABLES</th>
+                            <th className="p-2.5 text-center w-16">QTY</th>
+                            <th className="p-2.5 text-right w-28">EST. RATE (₹)</th>
+                            <th className="p-2.5 text-right w-32">AMOUNT (₹)</th>
+                            {!isPreviewMode && <th className="p-2.5 text-center w-12"></th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {items.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="p-2.5 text-center text-slate-400">{idx + 1}</td>
+                              <td className="p-2.5 font-semibold text-slate-800">
+                                {isPreviewMode ? (
+                                  item.description
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => handleUpdateItem(idx, 'description', e.target.value)}
+                                    className="w-full focus:bg-white focus:outline-none rounded px-1 font-semibold text-slate-800"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                {isPreviewMode ? (
+                                  item.qty || 1
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.qty || 1}
+                                    onChange={(e) => handleUpdateItem(idx, 'qty', Number(e.target.value))}
+                                    className="w-12 text-center focus:bg-white focus:outline-none rounded px-1"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-right font-mono">
+                                {isPreviewMode ? (
+                                  `₹${(Number(item.unitPrice) || 0).toLocaleString('en-IN')}`
+                                ) : (
+                                  <input
+                                    type="number"
+                                    value={item.unitPrice || 0}
+                                    onChange={(e) => handleUpdateItem(idx, 'unitPrice', Number(e.target.value))}
+                                    className="w-24 text-right focus:bg-white focus:outline-none rounded px-1 font-mono"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                                ₹{(Number(item.amount) || 0).toLocaleString('en-IN')}
+                              </td>
+                              {!isPreviewMode && (
+                                <td className="p-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(idx)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+                                    title="Delete line item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-50 border-t border-slate-200">
+                          <tr>
+                            <td colSpan={3} className="p-2 text-right font-semibold text-slate-600">Estimated Subtotal:</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2 text-right font-mono font-bold text-slate-800">
+                              ₹{subtotal.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="p-2 text-right font-semibold text-slate-600">Applicable GST ({taxRate}%):</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2 text-right font-mono font-bold text-slate-800">
+                              ₹{tax.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                          <tr className="border-t-2 border-slate-900 bg-slate-100">
+                            <td colSpan={3} className="p-2.5 text-right font-extrabold text-slate-900 text-sm">TOTAL ESTIMATED VALUE:</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2.5 text-right font-mono font-black text-purple-600 text-base">
+                              ₹{grandTotal.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {!isPreviewMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer border border-slate-300 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-purple-600" />
+                        <span>+ Add Scope Item</span>
+                      </button>
+                    )}
+
+                    {/* Proposal Terms & Signoff */}
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2">
+                          Commercial Terms &amp; Warranties
+                        </div>
+                        <div className="text-slate-600">• 50% mobilization advance, 50% upon satisfactory sign-off.</div>
+                        <div className="text-slate-600">• Genuine OEM spares with comprehensive manufacturer guarantee.</div>
+                        <div className="text-slate-600">• Priority 24/7 on-call technician dispatch included.</div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-1">
+                          Client Acceptance
+                        </div>
+                        <div className="text-[10px] text-slate-500">I confirm acceptance of this proposal and approve commencement of work.</div>
+                        <div className="border-b border-dashed border-slate-400 h-8"></div>
+                        <div className="text-[10px] font-bold text-slate-700 mt-1">Authorized Client Signature</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (doc.type === 'voucher') {
+                const items = doc.items && doc.items.length > 0 ? doc.items : [
+                  { description: doc.bodyContent || 'Field service fuel allowance and emergency spare parts purchase', qty: 1, unitPrice: Number(doc.amount) || 1200, amount: Number(doc.amount) || 1200 }
+                ];
+                const totalAmount = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+
+                return (
+                  <div className="relative z-10 w-full space-y-6">
+                    {/* Top Voucher Header */}
+                    <div className="flex justify-between items-start border-b-2 border-slate-300 pb-5">
+                      <div className="space-y-1">
+                        {isPreviewMode ? (
+                          <div className="font-extrabold text-2xl text-slate-900 tracking-wider">{doc.companyName}</div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.companyName}
+                            onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                            className="font-extrabold text-2xl text-slate-900 tracking-wider focus:bg-slate-50 focus:outline-none rounded px-1.5"
+                          />
+                        )}
+                        <div className="text-xs text-slate-500">{doc.companyAddress}</div>
+                        <div className="text-xs text-slate-500">Finance &amp; Accounts Division • Ph: {doc.companyPhone || '+91 94963 00233'}</div>
+                      </div>
+
+                      <div className="text-right space-y-1">
+                        <div className="font-black text-2xl text-emerald-600 tracking-wide">PAYMENT VOUCHER</div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Voucher No:</span>
+                          {isPreviewMode ? (
+                            <span className="font-mono font-bold text-slate-800">{doc.invoiceNumber || doc.referenceNumber}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.invoiceNumber || doc.referenceNumber}
+                              onChange={(e) => setDoc({ ...doc, invoiceNumber: e.target.value, referenceNumber: e.target.value })}
+                              className="font-mono font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-32 text-right"
+                            />
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Date:</span>
+                          {isPreviewMode ? (
+                            <span className="font-bold text-slate-800">{doc.dateStr}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={doc.dateStr}
+                              onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                              className="font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-28 text-right"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                            {doc.paymentStatus || 'SETTLED & DISBURSED'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payee Box */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">PAYEE / CLAIMANT:</div>
+                      {isPreviewMode ? (
+                        <div className="font-bold text-slate-900 text-sm">{doc.recipientName}</div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={doc.recipientName}
+                          onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                          className="font-bold text-slate-900 text-sm focus:bg-white focus:outline-none rounded px-1 w-full"
+                        />
+                      )}
+                      <div className="text-xs text-slate-600 mt-1">
+                        <span>Staff ID: {doc.recipientId || 'EMP-01'}</span>
+                        <span className="mx-2">•</span>
+                        <span>Role: {doc.recipientRole || 'Field Staff'}</span>
+                        <span className="mx-2">•</span>
+                        <span>Dept: {doc.department || 'Field Operations'}</span>
+                      </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                          <tr>
+                            <th className="p-2.5 text-center w-10">#</th>
+                            <th className="p-2.5 text-left">PARTICULARS OF CLAIM &amp; PURPOSE</th>
+                            <th className="p-2.5 text-center w-16">QTY</th>
+                            <th className="p-2.5 text-right w-32">CLAIMED AMOUNT (₹)</th>
+                            {!isPreviewMode && <th className="p-2.5 text-center w-12"></th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {items.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="p-2.5 text-center text-slate-400">{idx + 1}</td>
+                              <td className="p-2.5 font-semibold text-slate-800">
+                                {isPreviewMode ? (
+                                  item.description
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => handleUpdateItem(idx, 'description', e.target.value)}
+                                    className="w-full focus:bg-white focus:outline-none rounded px-1 font-semibold text-slate-800"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                {isPreviewMode ? (
+                                  item.qty || 1
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.qty || 1}
+                                    onChange={(e) => handleUpdateItem(idx, 'qty', Number(e.target.value))}
+                                    className="w-12 text-center focus:bg-white focus:outline-none rounded px-1"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                                {isPreviewMode ? (
+                                  `₹${(Number(item.amount) || 0).toLocaleString('en-IN')}`
+                                ) : (
+                                  <input
+                                    type="number"
+                                    value={item.amount || 0}
+                                    onChange={(e) => handleUpdateItem(idx, 'amount', Number(e.target.value))}
+                                    className="w-28 text-right focus:bg-white focus:outline-none rounded px-1 font-mono font-bold text-slate-900"
+                                  />
+                                )}
+                              </td>
+                              {!isPreviewMode && (
+                                <td className="p-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(idx)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+                                    title="Delete line item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-100 border-t-2 border-slate-900">
+                          <tr>
+                            <td colSpan={3} className="p-2.5 text-right font-extrabold text-slate-900 text-sm">TOTAL DISBURSED AMOUNT:</td>
+                            <td colSpan={!isPreviewMode ? 2 : 1} className="p-2.5 text-right font-mono font-black text-emerald-600 text-base">
+                              ₹{totalAmount.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {!isPreviewMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer border border-slate-300 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>+ Add Expense Row</span>
+                      </button>
+                    )}
+
+                    {/* Audit & Approvals */}
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2">
+                          Disbursement Record
+                        </div>
+                        <div className="text-slate-600">Disbursement Method: <span className="font-semibold text-slate-800">Cash / UPI Transfer</span></div>
+                        <div className="text-slate-600">Transaction Status: <span className="text-emerald-700 font-semibold">Settled &amp; Reconciled</span></div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                        <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2">
+                          Internal Accounting Audit
+                        </div>
+                        <div className="text-slate-600">Claimant: <span className="font-semibold text-slate-800">{doc.recipientName}</span></div>
+                        <div className="text-slate-600">Verified by: <span className="font-semibold text-slate-800">Accounts &amp; Field Lead</span></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (doc.type === 'financial_report') {
+                const items = doc.items && doc.items.length > 0 ? doc.items : [
+                  { description: 'Gross Operations Revenue (MEP & HVAC Contracts)', amount: 2485320 },
+                  { description: 'Direct Operational Expenses & Equipment Spares', amount: 755130 },
+                  { description: 'Salaries, Allowances & Facility Overheads', amount: 600000 },
+                ];
+                const total = Number(doc.amount) || 2485320;
+
+                return (
+                  <div className="relative z-10 w-full space-y-6">
+                    {/* Top Report Header */}
+                    <div className="flex justify-between items-start border-b-2 border-slate-300 pb-5">
+                      <div className="space-y-1">
+                        {isPreviewMode ? (
+                          <div className="font-extrabold text-2xl text-slate-900 tracking-wider">{doc.companyName}</div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.companyName}
+                            onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                            className="font-extrabold text-2xl text-slate-900 tracking-wider focus:bg-slate-50 focus:outline-none rounded px-1.5"
+                          />
+                        )}
+                        <div className="text-xs text-slate-500">{doc.companyAddress}</div>
+                        <div className="text-xs text-slate-500">Executive Financial Audit &amp; Enterprise Governance</div>
+                      </div>
+
+                      <div className="text-right space-y-1">
+                        <div className="font-black text-2xl text-blue-600 tracking-wide">FINANCIAL AUDIT</div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Audit Ref:</span>
+                          <span className="font-mono font-bold text-slate-800">{doc.referenceNumber}</span>
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          <span className="text-slate-400 mr-1">Period:</span>
+                          <span className="font-bold text-slate-800">{doc.dateStr}</span>
+                        </div>
+                        <div>
+                          <span className="inline-block px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
+                            AUDITED STATEMENT
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scope Box */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">SUBMITTED TO:</div>
+                      <div className="font-bold text-slate-900 text-sm">{doc.recipientName || 'Board of Directors & Stakeholders'}</div>
+                      <div className="text-xs text-slate-600 mt-1">Scope: Central Kerala Operations &amp; Calicut HQ</div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                          <tr>
+                            <th className="p-2.5 text-center w-10">#</th>
+                            <th className="p-2.5 text-left">FINANCIAL CATEGORY / REVENUE STREAM</th>
+                            <th className="p-2.5 text-right w-44">REPORTED VALUE (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {items.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="p-2.5 text-center text-slate-400">{idx + 1}</td>
+                              <td className="p-2.5 font-semibold text-slate-800">{item.description}</td>
+                              <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                                ₹{(Number(item.amount) || 0).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-100 border-t-2 border-slate-900">
+                          <tr>
+                            <td colSpan={2} className="p-2.5 text-right font-extrabold text-slate-900 text-sm">NET REPORTED POSITION:</td>
+                            <td className="p-2.5 text-right font-mono font-black text-blue-600 text-base">
+                              ₹{total.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 leading-relaxed">
+                      <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-1 mb-2">
+                        Statutory Compliance &amp; Reconciliation Statement
+                      </div>
+                      <div>
+                        This audit statement reflects verified general ledger figures, tax accounts, and operational banking records. Issued with authorization from the executive board.
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Default: staff_letter / Letterhead
+              return (
+                <div className="relative z-10 w-full">
+                  {/* Document Header / Letterhead */}
+                  {isPreviewMode ? (
+                    <div className="border-b-2 border-slate-300 pb-5 text-center">
+                      <div className="font-extrabold text-xl text-slate-900 tracking-wider text-center">{doc.companyName}</div>
+                      <div className="text-xs text-slate-500 text-center mt-1">
+                        {doc.companyAddress} • Ph: {doc.companyPhone || '+91 94963 00233'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-b-2 border-slate-300 pb-5 text-center group/sec rounded-lg transition-all hover:bg-slate-50/50 p-2">
+                      <div className="absolute -top-3 right-2 opacity-60 group-hover/sec:opacity-100 flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 transition-all pointer-events-none">
+                        <Edit3 className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>Editable Header</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={doc.companyName}
+                        onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                        className="font-extrabold text-xl text-slate-900 tracking-wider text-center w-full focus:bg-slate-50 focus:outline-none rounded px-2 hover:bg-slate-50/50 transition-colors"
+                        title="Click to edit Company Name"
+                      />
+                      <input
+                        type="text"
+                        value={doc.companyAddress}
+                        onChange={(e) => setDoc({ ...doc, companyAddress: e.target.value })}
+                        className="text-xs text-slate-500 text-center w-full focus:bg-slate-50 focus:outline-none rounded px-2 mt-1 hover:bg-slate-50/50 transition-colors"
+                        title="Click to edit Company Address & Contact"
+                      />
+                    </div>
+                  )}
+
+                  {/* Ref Number & Date */}
+                  {isPreviewMode ? (
+                    <div className="flex justify-between items-center text-xs text-slate-600 mt-6 mb-6">
+                      <div>
+                        <span className="font-semibold text-slate-400 mr-1">Ref:</span>
+                        <span className="font-mono font-bold text-slate-800">{doc.referenceNumber}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-slate-400 mr-1">Date:</span>
+                        <span className="font-bold text-slate-800">{doc.dateStr}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center text-xs text-slate-600 mt-6 mb-6">
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold text-slate-400">Ref:</span>
+                        <input
+                          type="text"
+                          value={doc.referenceNumber}
+                          onChange={(e) => setDoc({ ...doc, referenceNumber: e.target.value })}
+                          className="font-mono font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-52 hover:bg-slate-50/50 transition-colors"
+                          title="Click to edit Reference Number"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold text-slate-400">Date:</span>
+                        <input
+                          type="text"
+                          value={doc.dateStr}
+                          onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                          className="font-bold text-slate-800 focus:bg-slate-50 focus:outline-none rounded px-1 w-32 text-right hover:bg-slate-50/50 transition-colors"
+                          title="Click to edit Date"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recipient Details */}
+                  {isPreviewMode ? (
+                    <div className="text-xs space-y-1 mb-6 text-slate-800">
+                      <div className="text-slate-500">To,</div>
+                      <div className="font-bold text-sm text-slate-900">{doc.recipientName}</div>
+                      <div className="text-slate-600">{doc.recipientRole || 'Employee'}</div>
+                      {doc.recipientId && (
+                        <div className="text-slate-500 font-mono">Employee ID: {doc.recipientId}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs space-y-1 mb-6">
+                      <div className="text-slate-500">To,</div>
+                      <input
+                        type="text"
+                        value={doc.recipientName}
+                        onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                        className="font-bold text-sm text-slate-900 focus:bg-slate-50 focus:outline-none rounded px-1 w-full block hover:bg-slate-50/50 transition-colors"
+                        title="Click to edit Recipient Name"
+                      />
+                      <input
+                        type="text"
+                        value={doc.recipientRole || ''}
+                        onChange={(e) => setDoc({ ...doc, recipientRole: e.target.value })}
+                        className="text-slate-600 focus:bg-slate-50 focus:outline-none rounded px-1 w-full block text-xs hover:bg-slate-50/50 transition-colors"
+                        title="Click to edit Recipient Role / Designation"
+                      />
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <span className="text-slate-400 text-xs">Employee ID:</span>
+                        <input
+                          type="text"
+                          value={doc.recipientId || ''}
+                          onChange={(e) => setDoc({ ...doc, recipientId: e.target.value })}
+                          className="text-slate-600 font-mono font-medium focus:bg-slate-50 focus:outline-none rounded px-1 text-xs hover:bg-slate-50/50 transition-colors w-40"
+                          title="Click to edit Employee ID"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Subject Line */}
+                  {isPreviewMode ? (
+                    <div className="mb-6 text-center">
+                      <div className="font-extrabold text-sm text-slate-900 underline tracking-wide inline-block">{doc.subject || 'OFFICIAL LETTER'}</div>
+                    </div>
+                  ) : (
+                    <div className="mb-6">
+                      <input
+                        type="text"
+                        value={doc.subject || ''}
+                        onChange={(e) => setDoc({ ...doc, subject: e.target.value })}
+                        className="font-extrabold text-sm text-slate-900 text-center underline tracking-wide w-full focus:bg-slate-50 focus:outline-none rounded px-2 hover:bg-slate-50/50 transition-colors"
+                        title="Click to edit Subject"
+                      />
+                    </div>
+                  )}
+
+                  {/* Body Content */}
+                  {isPreviewMode ? (
+                    <div className="mb-6 text-xs text-slate-800 leading-relaxed whitespace-pre-wrap font-sans">
+                      {doc.bodyContent}
+                    </div>
+                  ) : (
+                    <div className="mb-6 group/body rounded-lg transition-all hover:bg-slate-50/30 p-1 border border-transparent hover:border-slate-300">
+                      <div className="absolute -top-3 right-2 opacity-60 group-hover/body:opacity-100 flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 transition-all pointer-events-none">
+                        <Edit3 className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>Editable Body Text</span>
+                      </div>
+                      <textarea
+                        rows={8}
+                        value={doc.bodyContent}
+                        onChange={(e) => setDoc({ ...doc, bodyContent: e.target.value })}
+                        className="w-full text-xs text-slate-800 leading-relaxed focus:bg-slate-50 focus:outline-none rounded-lg p-2 resize-y border border-transparent hover:border-slate-200 transition-colors"
+                        title="Click to edit Document Body Text"
+                      />
+                    </div>
+                  )}
+
+                  {/* Signatory Footer Block */}
+                  {isPreviewMode ? (
+                    <div className="pt-6 border-t border-slate-300 flex justify-between items-end font-sans text-xs mt-8">
+                      <div>
+                        <div className="font-bold text-slate-900">Authorised Signatory</div>
+                        <div className="text-slate-500">Operations Director</div>
+                      </div>
+                      <div className="text-right text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
+                        <span>Verified Digital Seal</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-6 border-t border-slate-300 flex justify-between items-end font-sans text-xs mt-8 group/foot rounded-lg p-1.5 hover:bg-slate-50/50">
+                      <div>
+                        <div className="font-bold text-slate-900">Authorised Signatory</div>
+                        <div className="text-slate-500">Operations Director</div>
+                      </div>
+                      <div className="text-right text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
+                        <span>Verified Digital Seal</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <textarea
-                  rows={6}
-                  value={doc.bodyContent}
-                  onChange={(e) => setDoc({ ...doc, bodyContent: e.target.value })}
-                  className="w-full text-xs text-slate-800 leading-relaxed focus:bg-slate-50 focus:outline-none rounded-lg p-2 resize-y border border-transparent hover:border-slate-200 transition-colors"
-                  title="Click to edit Document Body Text"
-                />
-              </div>
-            )}
+              );
+            })()}
 
             {/* Absolute Draggable Elements Layer */}
             {doc.elements.map((el) => {
@@ -1415,6 +3276,22 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                         </button>
                       )}
 
+                      {el.type === 'qr' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQrUploadTargetId(el.id);
+                            qrFileInputRef.current?.click();
+                          }}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold cursor-pointer transition-all shadow-xs"
+                          title="Upload custom QR code image (PNG, JPG, SVG)"
+                        >
+                          <Upload className="w-3 h-3" />
+                          <span>Upload QR</span>
+                        </button>
+                      )}
+
                       <div className="w-px h-3.5 bg-slate-700 mx-0.5" />
                       <button
                         type="button"
@@ -1482,10 +3359,19 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                   )}
 
                   {el.type === 'qr' && (
-                    <div className="w-full h-full p-2 bg-white rounded-xl border border-slate-300 shadow-xs flex flex-col items-center justify-center pointer-events-none select-none">
-                      <div className="text-3xl leading-none">▦</div>
-                      <span className="text-[7px] font-bold text-emerald-600 mt-1">{el.qrLabel || 'VERIFIED'}</span>
-                    </div>
+                    el.imageUrl ? (
+                      <div className="w-full h-full p-1 bg-white rounded-xl border border-slate-300 shadow-xs flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden">
+                        <img src={el.imageUrl} alt="Security QR Code" className="w-full h-full object-contain" />
+                        {el.qrLabel && (
+                          <span className="text-[7px] font-bold text-emerald-600 mt-0.5">{el.qrLabel}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full p-2 bg-white rounded-xl border border-slate-300 shadow-xs flex flex-col items-center justify-center pointer-events-none select-none">
+                        <div className="text-3xl leading-none">▦</div>
+                        <span className="text-[7px] font-bold text-emerald-600 mt-1">{el.qrLabel || 'VERIFIED'}</span>
+                      </div>
+                    )
                   )}
 
                   {el.type === 'text' && (
@@ -1849,7 +3735,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
 
                   {/* QR-Specific Properties */}
                   {selectedElement.type === 'qr' && (
-                    <div className="space-y-2 pt-2 border-t border-slate-700">
+                    <div className="space-y-3 pt-2 border-t border-slate-700">
                       <div>
                         <label className="text-slate-400 block mb-1">Verification Label</label>
                         <input
@@ -1858,6 +3744,49 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                           onChange={(e) => updateSelectedElement({ qrLabel: e.target.value })}
                           className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
                         />
+                      </div>
+
+                      <div>
+                        <label className="text-slate-400 block mb-1">QR Code Image</label>
+                        {selectedElement.imageUrl ? (
+                          <div className="space-y-2">
+                            <div className="w-20 h-20 bg-white rounded-lg p-1 border border-slate-600 flex items-center justify-center overflow-hidden">
+                              <img src={selectedElement.imageUrl} alt="Uploaded QR" className="w-full h-full object-contain" />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQrUploadTargetId(selectedElement.id);
+                                  qrFileInputRef.current?.click();
+                                }}
+                                className="px-2.5 py-1 bg-teal-600 hover:bg-teal-500 text-white rounded text-[11px] font-semibold cursor-pointer flex items-center gap-1"
+                              >
+                                <Upload className="w-3 h-3" />
+                                <span>Replace Image</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSelectedElement({ imageUrl: undefined })}
+                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-semibold cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQrUploadTargetId(selectedElement.id);
+                              qrFileInputRef.current?.click();
+                            }}
+                            className="w-full py-2 px-3 bg-teal-600/30 hover:bg-teal-600/50 border border-teal-500/50 text-teal-200 hover:text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload QR Image (PNG/JPG)</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1912,9 +3841,14 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
           ) : (
             /* Document Details Tab */
             <div className="space-y-3 bg-slate-800/80 p-3.5 rounded-xl border border-slate-700">
-              <span className="font-bold text-emerald-400 uppercase text-[11px] flex items-center gap-1.5 border-b border-slate-700 pb-2">
-                <FileText className="w-3.5 h-3.5" />
-                <span>Document Details</span>
+              <span className="font-bold text-emerald-400 uppercase text-[11px] flex items-center justify-between border-b border-slate-700 pb-2">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Document Details</span>
+                </span>
+                <span className="text-[9px] font-mono bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+                  {doc.type.toUpperCase()}
+                </span>
               </span>
 
               <div>
@@ -1927,65 +3861,340 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                 />
               </div>
 
-              <div>
-                <label className="text-slate-400 block mb-1">Company Letterhead Name</label>
-                <input
-                  type="text"
-                  value={doc.companyName}
-                  onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
-                />
-              </div>
+              {/* ID Card Specific Inspector Fields */}
+              {doc.type === 'id_card' && (
+                <div className="space-y-3 pt-2 border-t border-slate-700/80">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-400">Staff Credentials</span>
+                    <button
+                      type="button"
+                      onClick={() => avatarFileInputRef.current?.click()}
+                      className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Upload Photo</span>
+                    </button>
+                  </div>
 
-              <div>
-                <label className="text-slate-400 block mb-1">Company Address</label>
-                <input
-                  type="text"
-                  value={doc.companyAddress}
-                  onChange={(e) => setDoc({ ...doc, companyAddress: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
-                />
-              </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Staff Full Name</label>
+                    <input
+                      type="text"
+                      value={doc.recipientName}
+                      onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs font-semibold"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-400 block mb-1">Ref Number</label>
-                  <input
-                    type="text"
-                    value={doc.referenceNumber}
-                    onChange={(e) => setDoc({ ...doc, referenceNumber: e.target.value })}
-                    className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Staff ID</label>
+                      <input
+                        type="text"
+                        value={doc.recipientId || doc.referenceNumber || ''}
+                        onChange={(e) => setDoc({ ...doc, recipientId: e.target.value, referenceNumber: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 font-mono text-xs font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Blood Group</label>
+                      <input
+                        type="text"
+                        value={doc.bloodGroup || ''}
+                        onChange={(e) => setDoc({ ...doc, bloodGroup: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-red-400 font-mono text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Role / Designation</label>
+                    <input
+                      type="text"
+                      value={doc.recipientRole || ''}
+                      onChange={(e) => setDoc({ ...doc, recipientRole: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Department</label>
+                      <input
+                        type="text"
+                        value={doc.department || ''}
+                        onChange={(e) => setDoc({ ...doc, department: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Branch HQ</label>
+                      <input
+                        type="text"
+                        value={doc.branch || ''}
+                        onChange={(e) => setDoc({ ...doc, branch: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Mobile Phone</label>
+                      <input
+                        type="text"
+                        value={doc.recipientPhone || ''}
+                        onChange={(e) => setDoc({ ...doc, recipientPhone: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Shift Timing</label>
+                      <input
+                        type="text"
+                        value={doc.shift || ''}
+                        onChange={(e) => setDoc({ ...doc, shift: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Emergency Contact</label>
+                      <input
+                        type="text"
+                        value={doc.emergencyName || ''}
+                        onChange={(e) => setDoc({ ...doc, emergencyName: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Emergency Phone</label>
+                      <input
+                        type="text"
+                        value={doc.emergencyPhone || ''}
+                        onChange={(e) => setDoc({ ...doc, emergencyPhone: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Card Valid Till</label>
+                    <input
+                      type="text"
+                      value={doc.validTill || ''}
+                      onChange={(e) => setDoc({ ...doc, validTill: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 font-mono text-xs"
+                    />
+                  </div>
                 </div>
+              )}
+
+              {/* Invoice & Quotation Specific Inspector Fields */}
+              {(doc.type === 'invoice' || doc.type === 'quotation') && (
+                <div className="space-y-3 pt-2 border-t border-slate-700/80">
+                  <span className="text-xs font-bold text-blue-400 block">
+                    {doc.type === 'invoice' ? 'Billing & Customer Info' : 'Estimate & Client Info'}
+                  </span>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Client / Customer Name</label>
+                    <input
+                      type="text"
+                      value={doc.recipientName}
+                      onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Ref / Doc Number</label>
+                      <input
+                        type="text"
+                        value={doc.invoiceNumber || doc.referenceNumber}
+                        onChange={(e) => setDoc({ ...doc, invoiceNumber: e.target.value, referenceNumber: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Date</label>
+                      <input
+                        type="text"
+                        value={doc.dateStr}
+                        onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">
+                        {doc.type === 'invoice' ? 'Due Date' : 'Valid Until'}
+                      </label>
+                      <input
+                        type="text"
+                        value={doc.dueDate || doc.validTill || ''}
+                        onChange={(e) => setDoc({ ...doc, dueDate: e.target.value, validTill: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Payment Status</label>
+                      <input
+                        type="text"
+                        value={doc.paymentStatus || 'PAID'}
+                        onChange={(e) => setDoc({ ...doc, paymentStatus: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-300">Line Items ({doc.items?.length || 0})</span>
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[10px] font-semibold flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Row</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Voucher Specific Inspector Fields */}
+              {doc.type === 'voucher' && (
+                <div className="space-y-3 pt-2 border-t border-slate-700/80">
+                  <span className="text-xs font-bold text-emerald-400 block">Voucher &amp; Payee Record</span>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Payee Name</label>
+                    <input
+                      type="text"
+                      value={doc.recipientName}
+                      onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Voucher No</label>
+                      <input
+                        type="text"
+                        value={doc.invoiceNumber || doc.referenceNumber}
+                        onChange={(e) => setDoc({ ...doc, invoiceNumber: e.target.value, referenceNumber: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Staff ID</label>
+                      <input
+                        type="text"
+                        value={doc.recipientId || ''}
+                        onChange={(e) => setDoc({ ...doc, recipientId: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Disbursed Amount (₹)</label>
+                      <input
+                        type="number"
+                        value={doc.amount || 0}
+                        onChange={(e) => setDoc({ ...doc, amount: Number(e.target.value) })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 font-mono text-xs font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Status</label>
+                      <input
+                        type="text"
+                        value={doc.paymentStatus || 'SETTLED & DISBURSED'}
+                        onChange={(e) => setDoc({ ...doc, paymentStatus: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Letterhead Fields */}
+              {(doc.type === 'staff_letter' || doc.type === 'custom') && (
+                <div className="space-y-3 pt-2 border-t border-slate-700/80">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Ref Number</label>
+                      <input
+                        type="text"
+                        value={doc.referenceNumber}
+                        onChange={(e) => setDoc({ ...doc, referenceNumber: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Date</label>
+                      <input
+                        type="text"
+                        value={doc.dateStr}
+                        onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Recipient Name</label>
+                    <input
+                      type="text"
+                      value={doc.recipientName}
+                      onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                      className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Subject</label>
+                    <input
+                      type="text"
+                      value={doc.subject || ''}
+                      onChange={(e) => setDoc({ ...doc, subject: e.target.value })}
+                      className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Company Info Common Section */}
+              <div className="pt-2 border-t border-slate-700/80 space-y-2">
+                <span className="text-[11px] font-bold text-slate-300 block">Company Letterhead Info</span>
                 <div>
-                  <label className="text-slate-400 block mb-1">Date</label>
+                  <label className="text-slate-400 block mb-1 text-[10px]">Company Name</label>
                   <input
                     type="text"
-                    value={doc.dateStr}
-                    onChange={(e) => setDoc({ ...doc, dateStr: e.target.value })}
+                    value={doc.companyName}
+                    onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
                     className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Recipient Name</label>
-                <input
-                  type="text"
-                  value={doc.recipientName}
-                  onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Subject</label>
-                <input
-                  type="text"
-                  value={doc.subject || ''}
-                  onChange={(e) => setDoc({ ...doc, subject: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
-                />
+                <div>
+                  <label className="text-slate-400 block mb-1 text-[10px]">Address &amp; Contact</label>
+                  <input
+                    type="text"
+                    value={doc.companyAddress}
+                    onChange={(e) => setDoc({ ...doc, companyAddress: e.target.value })}
+                    className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                  />
+                </div>
               </div>
 
               {/* Watermark Controls */}
@@ -2471,6 +4680,54 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800">
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    QR Code Image (PNG / JPG / SVG)
+                  </label>
+                  {editingElement.imageUrl ? (
+                    <div className="flex items-center gap-3 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+                      <div className="w-14 h-14 bg-white rounded-lg p-1 flex items-center justify-center overflow-hidden shrink-0">
+                        <img src={editingElement.imageUrl} alt="QR" className="w-full h-full object-contain" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <div className="text-xs font-bold text-slate-200">Custom QR Image Uploaded</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQrUploadTargetId(editingElement.id);
+                              qrFileInputRef.current?.click();
+                            }}
+                            className="px-2.5 py-1 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                          >
+                            <Upload className="w-3 h-3" />
+                            <span>Replace</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateEditingElement({ imageUrl: undefined })}
+                            className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-[10px] font-semibold cursor-pointer"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQrUploadTargetId(editingElement.id);
+                        qrFileInputRef.current?.click();
+                      }}
+                      className="w-full py-2 px-3 bg-teal-600/30 hover:bg-teal-600/50 border border-teal-500/50 text-teal-200 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload QR Code Image (PNG/JPG)</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
