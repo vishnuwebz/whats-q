@@ -2529,7 +2529,7 @@ class BulkCampaignSerializer(serializers.ModelSerializer):
         ]
 
     def get_recipient_logs(self, obj):
-        logs = obj.logs.all()[:50]  # cap at 50 for performance
+        logs = obj.logs.all()[:200]  # cap at 200 for detailed audit
         return [
             {
                 'id': log.id,
@@ -2537,7 +2537,7 @@ class BulkCampaignSerializer(serializers.ModelSerializer):
                 'phone': log.phone,
                 'status': log.status,
                 'errorReason': log.error_reason,
-                'time': log.sent_at.strftime('%I:%M %p') if log.sent_at else '',
+                'time': log.sent_at.strftime('%d %b, %I:%M %p') if log.sent_at else '',
             }
             for log in logs
         ]
@@ -2546,13 +2546,58 @@ class BulkCampaignSerializer(serializers.ModelSerializer):
 class BulkCampaignViewSet(viewsets.ModelViewSet):
     """
     Real Campaign API. Stores every broadcast to DB so history is persistent.
-    - GET  /api/conversations/bulk-campaigns/         → list real campaigns
-    - POST /api/conversations/bulk-campaigns/launch/  → start a new broadcast
-    - POST /api/conversations/bulk-campaigns/{id}/update_status/ → gateway callback
+    - GET    /api/conversations/bulk-campaigns/               → list real campaigns (auto-syncs active)
+    - POST   /api/conversations/bulk-campaigns/launch/        → start a new broadcast
+    - POST   /api/conversations/bulk-campaigns/{id}/update_status/ → gateway callback
+    - POST   /api/conversations/bulk-campaigns/{id}/retry_failed/  → retry failed recipients
+    - GET    /api/conversations/bulk-campaigns/{id}/logs/          → all recipient logs
+    - DELETE /api/conversations/bulk-campaigns/{id}/          → delete campaign & logs
     """
     queryset = BulkCampaign.objects.all()
     serializer_class = BulkCampaignSerializer
     http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def list(self, request, *args, **kwargs):
+        # Auto-sync active/queued campaigns with WhatsApp Gateway
+        self._sync_active_campaigns()
+        return super().list(request, *args, **kwargs)
+
+    def _sync_active_campaigns(self):
+        active_campaigns = BulkCampaign.objects.filter(status__in=['QUEUED', 'RUNNING'])
+        if not active_campaigns.exists():
+            return
+        try:
+            req = urllib.request.Request(
+                f'{BAILEYS_GATEWAY_URL}/api/campaigns',
+                headers={'Content-Type': 'application/json'},
+                method='GET',
+            )
+            with urllib.request.urlopen(req, timeout=2) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                gw_campaigns = {c.get('id'): c for c in data.get('campaigns', [])}
+
+                for camp in active_campaigns:
+                    gw_id = camp.gateway_campaign_id or f'camp-{camp.id}'
+                    gw_camp = gw_campaigns.get(gw_id)
+                    if gw_camp:
+                        gw_status = str(gw_camp.get('status', '')).upper()
+                        if gw_status in ['COMPLETED', 'PAUSED', 'FAILED', 'RUNNING']:
+                            camp.status = gw_status
+                        camp.delivered_count = int(gw_camp.get('deliveredCount', camp.delivered_count))
+                        camp.failed_count = int(gw_camp.get('failedCount', camp.failed_count))
+                        if gw_status == 'COMPLETED' and not camp.completed_at:
+                            import datetime as dt
+                            camp.completed_at = dt.datetime.now(dt.timezone.utc)
+                        camp.save()
+        except Exception as e:
+            logger.debug(f'[BulkCampaign] Gateway status sync skipped: {e}')
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        campaign_name = instance.name
+        self.perform_destroy(instance)
+        logger.info(f'[BulkCampaign] Deleted campaign {instance.id} "{campaign_name}"')
+        return Response({'success': True, 'message': f'Campaign "{campaign_name}" deleted successfully.'})
 
     @action(detail=False, methods=['post'])
     def launch(self, request):
@@ -2681,3 +2726,95 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
 
         campaign.save()
         return Response({'success': True, 'campaign': BulkCampaignSerializer(campaign).data})
+
+    @action(detail=True, methods=['post'])
+    def retry_failed(self, request, pk=None):
+        """
+        Retries all failed recipients of this campaign by re-dispatching to WhatsApp gateway.
+        """
+        try:
+            campaign = self.get_object()
+        except BulkCampaign.DoesNotExist:
+            return Response({'error': 'Campaign not found'}, status=404)
+
+        failed_logs = campaign.logs.filter(status='FAILED')
+        if not failed_logs.exists():
+            return Response({'success': False, 'message': 'No failed recipients found for this campaign.'}, status=400)
+
+        contacts = [{'name': l.name, 'phone': l.phone} for l in failed_logs]
+        failed_count = len(contacts)
+
+        # Reset failed logs to QUEUED
+        failed_logs.update(status='QUEUED', error_reason='')
+        campaign.status = 'RUNNING'
+        campaign.failed_count = max(0, campaign.failed_count - failed_count)
+        campaign.save(update_fields=['status', 'failed_count'])
+
+        # Dispatch retry to gateway
+        try:
+            ensure_baileys_service(wait_until_ready=True)
+            import time
+            payload = json.dumps({
+                'id': f'camp-{campaign.id}-retry-{int(time.time())}',
+                'name': f'{campaign.name} (Retry)',
+                'template': {
+                    'messageText': campaign.message_text,
+                    'templateName': campaign.template_name,
+                },
+                'targetContacts': contacts,
+                'minDelay': 3,
+                'maxDelay': 6,
+                'batchSize': 20,
+                'sleepSeconds': 15,
+            }).encode('utf-8')
+
+            gw_req = urllib.request.Request(
+                f'{BAILEYS_GATEWAY_URL}/api/campaigns/start',
+                data=payload,
+                headers={'Content-Type': 'application/json'},
+                method='POST',
+            )
+            urllib.request.urlopen(gw_req, timeout=15)
+        except Exception as e:
+            logger.error(f'[BulkCampaign] Retry failed to gateway: {e}')
+            return Response({'success': False, 'error': f'Gateway error: {str(e)}'}, status=500)
+
+        return Response({
+            'success': True,
+            'message': f'Retrying {failed_count} failed recipients.',
+            'campaign': BulkCampaignSerializer(campaign).data,
+        })
+
+    @action(detail=True, methods=['get'])
+    def logs(self, request, pk=None):
+        """
+        Returns all recipient logs for a campaign, with optional filtering by status and search.
+        """
+        try:
+            campaign = self.get_object()
+        except BulkCampaign.DoesNotExist:
+            return Response({'error': 'Campaign not found'}, status=404)
+
+        logs_qs = campaign.logs.all()
+
+        status_filter = request.query_params.get('status')
+        if status_filter and status_filter.upper() != 'ALL':
+            logs_qs = logs_qs.filter(status=status_filter.upper())
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            from django.db.models import Q
+            logs_qs = logs_qs.filter(Q(name__icontains=search) | Q(phone__icontains=search))
+
+        data = [
+            {
+                'id': log.id,
+                'name': log.name,
+                'phone': log.phone,
+                'status': log.status,
+                'errorReason': log.error_reason,
+                'time': log.sent_at.strftime('%d %b, %I:%M %p') if log.sent_at else '',
+            }
+            for log in logs_qs
+        ]
+        return Response({'logs': data, 'total': len(data)})

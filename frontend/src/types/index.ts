@@ -17,6 +17,18 @@ export type TabType =
   | 'ops-jobs'
   | 'ops-appointments'
   | 'ops-employees'
+  | 'ops-emp-directory'
+  | 'ops-emp-profiles'
+  | 'ops-emp-attendance'
+  | 'ops-emp-leaves'
+  | 'ops-emp-monitoring'
+  | 'ops-emp-breaks'
+  | 'ops-emp-performance'
+  | 'ops-emp-productivity'
+  | 'ops-emp-rewards'
+  | 'ops-emp-vouchers'
+  | 'ops-emp-overtime'
+  | 'ops-emp-onboarding'
   | 'ops-schedule'
   | 'ops-attendance'
   | 'ops-tasks'
@@ -590,7 +602,7 @@ export interface BulkCampaignRecipient {
   id?: string;
   name: string;
   phone: string;
-  status: 'DELIVERED' | 'READ' | 'FAILED' | 'PENDING' | 'SENT';
+  status: 'DELIVERED' | 'READ' | 'FAILED' | 'PENDING' | 'SENT' | 'QUEUED' | string;
   time: string;
   errorReason?: string;
 }
@@ -806,6 +818,41 @@ export interface RoleDefinition {
   sessionTimeoutMins?: number;
   lastUpdated?: string;
   updatedBy?: string;
+}
+
+export interface PdfCanvasElement {
+  id: string;
+  type: 'logo' | 'seal' | 'signature' | 'text' | 'watermark' | 'qr' | 'table';
+  x: number;
+  y: number;
+  content?: string;
+  width?: number;
+  height?: number;
+  fontSize?: number;
+  color?: string;
+  isBold?: boolean;
+  sealType?: 'official_circle' | 'approved' | 'paid' | 'verified' | 'confidential';
+  signatureType?: 'director' | 'manager' | 'custom_drawn';
+}
+
+export interface PdfEditorDocument {
+  type: 'staff_letter' | 'invoice' | 'quotation' | 'id_card' | 'voucher' | 'financial_report' | 'custom';
+  title: string;
+  referenceNumber: string;
+  dateStr: string;
+  recipientName: string;
+  recipientRole?: string;
+  recipientId?: string;
+  subject?: string;
+  bodyContent: string;
+  companyName: string;
+  companyAddress: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  watermarkText?: string;
+  showWatermark?: boolean;
+  watermarkOpacity?: number;
+  elements: PdfCanvasElement[];
 }
 
 

@@ -9,7 +9,7 @@ import {
   MetaWalletInfo, MetaWalletTransaction,
   SuppressionRecord,
   RoleDefinition, RoleModule, RolePermissionAction, RecordScope,
-  LinkedEmployeeDevice
+  LinkedEmployeeDevice, PdfEditorDocument
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -459,7 +459,11 @@ interface QiyamState {
   metaWallet: MetaWalletInfo;
   walletTransactions: MetaWalletTransaction[];
   bulkCampaigns: BulkCampaign[];
+  draftCampaign: BulkCampaign | null;
+  setDraftCampaign: (campaign: BulkCampaign | null) => void;
   fetchBulkCampaigns: () => Promise<void>;
+  deleteBulkCampaign: (campaignId: string | number) => Promise<boolean>;
+  retryFailedCampaign: (campaignId: string | number) => Promise<boolean>;
   bulkRecipientLists: BulkRecipientList[];
   bulkScheduledMessages: BulkScheduledMessage[];
   bulkTemplates: BulkTemplateItem[];
@@ -552,6 +556,11 @@ interface QiyamState {
 
   isOmniSearchOpen: boolean;
   setIsOmniSearchOpen: (open: boolean) => void;
+
+  isPdfEditorOpen: boolean;
+  pdfEditorDocument: PdfEditorDocument | null;
+  openPdfEditor: (doc?: Partial<PdfEditorDocument>) => void;
+  closePdfEditor: () => void;
 
   notifications: QNotification[];
   markNotificationRead: (id: number) => void;
@@ -1311,6 +1320,38 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   requestGeneralConfirmation: (config) => set({ generalConfirmation: config }),
   closeGeneralConfirmation: () => set({ generalConfirmation: null }),
 
+  isPdfEditorOpen: false,
+  pdfEditorDocument: null,
+  openPdfEditor: (doc) => {
+    const defaultDoc: PdfEditorDocument = {
+      type: doc?.type || 'staff_letter',
+      title: doc?.title || 'Official Staff Joining Letter',
+      referenceNumber: doc?.referenceNumber || 'QIYAM/APPOINT/EMP-001',
+      dateStr: doc?.dateStr || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      recipientName: doc?.recipientName || 'Amit Sharma',
+      recipientRole: doc?.recipientRole || 'Field Technician',
+      recipientId: doc?.recipientId || 'EMP-001',
+      subject: doc?.subject || 'SUB: OFFICIAL LETTER OF APPOINTMENT',
+      bodyContent: doc?.bodyContent || 'We are pleased to confirm your appointment with Qiyam Business Solutions. You will be reporting to the Calicut HQ branch. Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday.',
+      companyName: doc?.companyName || 'QIYAM BUSINESS SOLUTIONS',
+      companyAddress: doc?.companyAddress || 'Cyberpark Calicut, Kozhikode, Kerala • Reg. No: KL-08-99234',
+      companyPhone: doc?.companyPhone || '+91 94963 00233',
+      companyEmail: doc?.companyEmail || 'hr@qiyam.com',
+      watermarkText: doc?.watermarkText || 'OFFICIAL DOCUMENT',
+      showWatermark: doc?.showWatermark ?? false,
+      watermarkOpacity: doc?.watermarkOpacity ?? 0.08,
+      elements: doc?.elements || [
+        { id: 'logo-1', type: 'logo', x: 40, y: 35, width: 56, height: 56 },
+        { id: 'seal-1', type: 'seal', x: 580, y: 780, sealType: 'official_circle', width: 100, height: 100 },
+        { id: 'sig-1', type: 'signature', x: 60, y: 790, signatureType: 'director', width: 150, height: 55 },
+        { id: 'qr-1', type: 'qr', x: 640, y: 35, width: 65, height: 65 },
+      ],
+      ...doc,
+    };
+    set({ isPdfEditorOpen: true, pdfEditorDocument: defaultDoc });
+  },
+  closePdfEditor: () => set({ isPdfEditorOpen: false, pdfEditorDocument: null }),
+
   syncStatus: 'connected',
   setSyncStatus: (status) => set({ syncStatus: status }),
   typingUsers: {},
@@ -1886,6 +1927,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   metaWallet: initialMetaWallet,
   walletTransactions: initialWalletTransactions,
   bulkCampaigns: initialBulkCampaigns,
+  draftCampaign: null,
+  setDraftCampaign: (campaign) => set({ draftCampaign: campaign }),
   bulkRecipientLists: initialBulkRecipientLists,
   bulkScheduledMessages: initialBulkScheduledMessages,
   bulkTemplates: initialBulkTemplates,
@@ -2995,7 +3038,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   duplicateCampaign: (campaignId) => {
-    const existing = get().bulkCampaigns.find((c) => c.id === campaignId);
+    const existing = get().bulkCampaigns.find((c) => String(c.id) === String(campaignId));
     if (!existing) return;
 
     const cloned: BulkCampaign = {
@@ -3020,10 +3063,39 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       pending: existing.totalRecipients || existing.recipients || 0,
     };
 
-    set((state) => ({
-      bulkCampaigns: [cloned, ...state.bulkCampaigns],
-    }));
-    get().addToast(`Duplicated campaign "${existing.name}"`, 'success');
+    set({ draftCampaign: cloned });
+    get().addToast(`Duplicated "${existing.name}" — ready to review and send!`, 'success');
+  },
+
+  deleteBulkCampaign: async (campaignId) => {
+    try {
+      await apiClient.delete(`/conversations/bulk-campaigns/${campaignId}/`);
+      set((state) => ({
+        bulkCampaigns: state.bulkCampaigns.filter((c) => String(c.id) !== String(campaignId)),
+      }));
+      get().addToast('Campaign deleted successfully', 'success');
+      return true;
+    } catch (err: any) {
+      get().addToast(`Failed to delete campaign: ${err?.message || 'Unknown error'}`, 'error');
+      return false;
+    }
+  },
+
+  retryFailedCampaign: async (campaignId) => {
+    try {
+      const res = await apiClient.post(`/conversations/bulk-campaigns/${campaignId}/retry_failed/`, {});
+      if (res && res.success !== false) {
+        get().addToast(res.message || 'Retrying failed recipients...', 'success');
+        await get().fetchBulkCampaigns();
+        return true;
+      } else {
+        get().addToast(res?.error || res?.message || 'Failed to retry recipients', 'error');
+        return false;
+      }
+    } catch (err: any) {
+      get().addToast(`Retry failed: ${err?.message || 'Unknown error'}`, 'error');
+      return false;
+    }
   },
 
   setActiveRoleId: (roleId: string) => set({ activeRoleId: roleId }),

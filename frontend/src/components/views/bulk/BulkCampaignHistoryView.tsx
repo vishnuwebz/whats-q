@@ -19,7 +19,11 @@ import {
   ShieldAlert,
   Send,
   CheckCheck,
+  Check,
   Loader2,
+  Trash2,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkCampaign } from '../../../types';
@@ -27,16 +31,34 @@ import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 
 export const BulkCampaignHistoryView: React.FC = () => {
-  const { bulkCampaigns, fetchBulkCampaigns, duplicateCampaign, setActiveTab, addToast } = useQiyamStore();
+  const {
+    bulkCampaigns,
+    fetchBulkCampaigns,
+    deleteBulkCampaign,
+    retryFailedCampaign,
+    duplicateCampaign,
+    setActiveTab,
+    addToast,
+  } = useQiyamStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCampaign, setSelectedCampaign] = useState<BulkCampaign | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'preview' | 'recipients' | 'errors'>(
     'overview'
   );
+
+  // Drawer Recipients Filter & Search
+  const [recipientSearch, setRecipientSearch] = useState('');
+  const [recipientStatusFilter, setRecipientStatusFilter] = useState('ALL');
+
+  // Deletion Modal State
+  const [campaignToDelete, setCampaignToDelete] = useState<BulkCampaign | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch real campaign history from backend on mount
   useEffect(() => {
@@ -44,25 +66,50 @@ export const BulkCampaignHistoryView: React.FC = () => {
     fetchBulkCampaigns().finally(() => setIsLoading(false));
   }, []);
 
+  // Keep selectedCampaign in sync when bulkCampaigns updates
+  useEffect(() => {
+    if (selectedCampaign) {
+      const updated = bulkCampaigns.find((c) => String(c.id) === String(selectedCampaign.id));
+      if (updated) {
+        setSelectedCampaign(updated);
+      }
+    }
+  }, [bulkCampaigns]);
+
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchBulkCampaigns();
+      addToast('Campaign history updated from database', 'success');
+    } catch {
+      addToast('Failed to refresh campaigns', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
     return bulkCampaigns.filter((camp) => {
       const matchesSearch =
         camp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        camp.audienceListName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        camp.templateName.toLowerCase().includes(searchQuery.toLowerCase());
+        (camp.audienceListName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (camp.templateName || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus =
-        statusFilter === 'all' || camp.status.toLowerCase() === statusFilter.toLowerCase();
+        statusFilter === 'all' ||
+        camp.status.toLowerCase() === statusFilter.toLowerCase() ||
+        (statusFilter === 'running' && camp.status.toLowerCase() === 'sending');
       return matchesSearch && matchesStatus;
     });
   }, [bulkCampaigns, searchQuery, statusFilter]);
 
   // Aggregate Metrics — all real from DB
   const totalCampaigns = bulkCampaigns.length;
-  const totalMessagesSent = bulkCampaigns.reduce((acc, c) => acc + c.totalRecipients, 0);
-  const totalDelivered = bulkCampaigns.reduce((acc, c) => acc + c.deliveredCount, 0);
+  const totalMessagesSent = bulkCampaigns.reduce((acc, c) => acc + (c.totalRecipients || 0), 0);
+  const totalDelivered = bulkCampaigns.reduce((acc, c) => acc + (c.deliveredCount || 0), 0);
   const avgDeliveryRate = totalMessagesSent > 0 ? (totalDelivered / totalMessagesSent) * 100 : 0;
-  const totalMetaSpend = bulkCampaigns.reduce((acc, c) => acc + c.cost, 0);
+  const totalMetaSpend = bulkCampaigns.reduce((acc, c) => acc + (c.cost || 0), 0);
 
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -74,45 +121,131 @@ export const BulkCampaignHistoryView: React.FC = () => {
 
   const handleRepeatCampaign = (camp: BulkCampaign) => {
     duplicateCampaign(camp.id);
-    addToast(`Duplicated "${camp.name}" into a new campaign!`, 'success');
     setActiveTab('bulk-send');
   };
 
   const handleExportCSV = () => {
-    const headers = ['Campaign ID', 'Name', 'Template', 'Audience List', 'Status', 'Total Recipients', 'Delivered', 'Read', 'Failed', 'Cost (INR)', 'Sent At'];
+    if (filteredCampaigns.length === 0) {
+      addToast('No campaigns to export.', 'info');
+      return;
+    }
+    const headers = [
+      'Campaign ID',
+      'Name',
+      'Category',
+      'Template',
+      'Audience List',
+      'Status',
+      'Total Recipients',
+      'Delivered',
+      'Read',
+      'Failed',
+      'Cost (INR)',
+      'Created At',
+      'Completed At',
+    ];
     const rows = filteredCampaigns.map((c) => [
       c.id,
       `"${(c.name || '').replace(/"/g, '""')}"`,
+      `"${(c.category || c.type || '').replace(/"/g, '""')}"`,
       `"${(c.templateName || '').replace(/"/g, '""')}"`,
       `"${(c.audienceListName || '').replace(/"/g, '""')}"`,
       c.status,
-      c.totalRecipients,
-      c.deliveredCount,
-      c.readCount,
-      c.failedCount,
-      c.cost,
+      c.totalRecipients || 0,
+      c.deliveredCount || 0,
+      c.readCount || 0,
+      c.failedCount || 0,
+      c.cost || 0,
       `"${c.createdAt || c.createdOn || ''}"`,
+      `"${c.completedOn || ''}"`,
     ]);
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Campaign_History_Audit_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `Campaign_History_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    addToast('Campaign history audit exported as CSV successfully!', 'success');
+    addToast('Campaign history exported as CSV successfully!', 'success');
   };
 
-  // Mock recipients for campaign details tab 3
-  const sampleRecipients = [
-    { name: 'Dr. Faisal Al-Zahrani', phone: '+966 50 123 4567', status: 'READ', time: '10:46 AM' },
-    { name: 'Ananya Sharma', phone: '+91 98765 43210', status: 'READ', time: '10:45 AM' },
-    { name: 'Mohammed Tariq', phone: '+971 55 987 6543', status: 'DELIVERED', time: '10:45 AM' },
-    { name: 'Pooja Varma', phone: '+91 98200 11223', status: 'READ', time: '10:48 AM' },
-    { name: 'Kareem Mansour', phone: '+966 54 888 7766', status: 'DELIVERED', time: '10:47 AM' },
-    { name: 'Invalid Contact 104', phone: '+91 90000 00000', status: 'FAILED', time: '10:45 AM' },
-  ];
+  // Export individual campaign recipient log CSV
+  const handleExportRecipientLogsCSV = (camp: BulkCampaign) => {
+    const list = camp.recipientsList || [];
+    if (list.length === 0) {
+      addToast('No recipient logs available to export.', 'info');
+      return;
+    }
+    const headers = ['Contact Name', 'Phone Number', 'Delivery Status', 'Error Reason', 'Sent Time'];
+    const rows = list.map((r) => [
+      `"${(r.name || '').replace(/"/g, '""')}"`,
+      `"${(r.phone || '').replace(/"/g, '""')}"`,
+      r.status,
+      `"${(r.errorReason || '').replace(/"/g, '""')}"`,
+      `"${r.time || ''}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Recipients_${camp.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addToast('Recipient dispatch logs exported as CSV successfully!', 'success');
+  };
+
+  // Handle Retry Failed Recipients
+  const handleRetryFailed = async (camp: BulkCampaign) => {
+    setIsRetrying(true);
+    try {
+      await retryFailedCampaign(camp.id);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  // Handle Delete Confirmation
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return;
+    setIsDeleting(true);
+    try {
+      const ok = await deleteBulkCampaign(campaignToDelete.id);
+      if (ok) {
+        if (selectedCampaign?.id === campaignToDelete.id) {
+          setIsDrawerOpen(false);
+          setSelectedCampaign(null);
+        }
+        setCampaignToDelete(null);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Filtered recipient logs for drawer tab 3
+  const drawerRecipients = useMemo(() => {
+    if (!selectedCampaign) return [];
+    const list = selectedCampaign.recipientsList || [];
+    return list.filter((r) => {
+      const matchesSearch =
+        (r.name || '').toLowerCase().includes(recipientSearch.toLowerCase()) ||
+        (r.phone || '').includes(recipientSearch);
+      const matchesStatus =
+        recipientStatusFilter === 'ALL' ||
+        r.status.toUpperCase() === recipientStatusFilter.toUpperCase();
+      return matchesSearch && matchesStatus;
+    });
+  }, [selectedCampaign, recipientSearch, recipientStatusFilter]);
+
+  // Failed recipients list for drawer tab 4
+  const drawerFailedRecipients = useMemo(() => {
+    if (!selectedCampaign) return [];
+    return (selectedCampaign.recipientsList || []).filter(
+      (r) => r.status === 'FAILED'
+    );
+  }, [selectedCampaign]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
@@ -127,16 +260,26 @@ export const BulkCampaignHistoryView: React.FC = () => {
                   Campaign History
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  AUDIT LOGS
+                  REAL AUDIT LOGS
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Track broadcast performance, delivery rates, read rates, and cost analytics
+                Track real WhatsApp broadcast performance, delivery rates, read rates, and cost analytics
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer disabled:opacity-60"
+              title="Refresh campaign statuses from database"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+
             <button
               onClick={handleExportCSV}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer"
@@ -169,7 +312,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
             </div>
             <div className="text-2xl font-black text-slate-900 mt-1">{totalCampaigns}</div>
             <div className="text-[10px] text-emerald-700 mt-0.5 font-semibold">
-              All-time broadcast logs
+              Persisted broadcast logs
             </div>
           </div>
 
@@ -195,7 +338,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
               {avgDeliveryRate.toFixed(1)}%
             </div>
             <div className="text-[10px] text-emerald-700 mt-0.5 font-semibold">
-              High tier deliverability
+              {totalDelivered.toLocaleString()} confirmed delivered
             </div>
           </div>
 
@@ -208,7 +351,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
               {formatMoney(totalMetaSpend)}
             </div>
             <div className="text-[10px] text-purple-700 mt-0.5 font-semibold">
-              Cloud API deductions
+              Official conversation charges
             </div>
           </div>
         </div>
@@ -221,7 +364,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by campaign name, audience list, template..."
+              placeholder="Search by campaign name, audience, template..."
               className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
             />
           </div>
@@ -234,8 +377,9 @@ export const BulkCampaignHistoryView: React.FC = () => {
             >
               <option value="all">All Statuses</option>
               <option value="completed">Completed</option>
-              <option value="sending">Sending</option>
-              <option value="scheduled">Scheduled</option>
+              <option value="running">Running / Sending</option>
+              <option value="queued">Queued</option>
+              <option value="paused">Paused</option>
               <option value="failed">Failed</option>
             </select>
           </div>
@@ -249,7 +393,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
                 <tr>
                   <th className="p-4">Campaign Name</th>
                   <th className="p-4">Audience</th>
-                  <th className="p-4">Template</th>
+                  <th className="p-4">Template / Message</th>
                   <th className="p-4 text-center">Recipients</th>
                   <th className="p-4">Delivery Rate</th>
                   <th className="p-4">Status</th>
@@ -263,7 +407,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
                     <td colSpan={8} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                        <span className="text-sm text-slate-500">Loading campaign history...</span>
+                        <span className="text-sm text-slate-500">Loading campaign history from database...</span>
                       </div>
                     </td>
                   </tr>
@@ -275,11 +419,11 @@ export const BulkCampaignHistoryView: React.FC = () => {
                           <Send className="w-7 h-7 text-slate-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-700">No campaigns yet</p>
+                          <p className="text-sm font-semibold text-slate-700">No campaigns found</p>
                           <p className="text-xs text-slate-400 mt-1">
                             {searchQuery || statusFilter !== 'all'
-                              ? 'No campaigns match your filter.'
-                              : 'Launch your first WhatsApp broadcast to see results here.'}
+                              ? 'No campaigns match your search or filter.'
+                              : 'Launch your first real WhatsApp broadcast to view delivery performance and recipient logs.'}
                           </p>
                         </div>
                         {!searchQuery && statusFilter === 'all' && (
@@ -293,90 +437,133 @@ export const BulkCampaignHistoryView: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ) : filteredCampaigns.map((camp) => {
-                  const delRate = camp.totalRecipients > 0
-                    ? ((camp.deliveredCount / camp.totalRecipients) * 100).toFixed(1)
-                    : '0.0';
-                  const readRate = camp.totalRecipients > 0
-                    ? ((camp.readCount / camp.totalRecipients) * 100).toFixed(1)
-                    : '0.0';
-                  const isCompleted = camp.status === 'COMPLETED';
-                  const isSending = camp.status === 'SENDING' || camp.status === 'RUNNING';
-                  return (
-                    <tr key={camp.id} className="hover:bg-slate-50/60 transition">
-                      <td className="p-4">
-                        <div className="font-bold text-slate-900">{camp.name}</div>
-                        <div className="text-[10px] text-slate-400">
-                          {new Date(camp.createdAt).toLocaleDateString('en-IN', {
-                            dateStyle: 'medium',
-                          })}
-                        </div>
-                      </td>
-                      <td className="p-4 text-slate-700 font-medium">{camp.audienceListName}</td>
-                      <td className="p-4">
-                        <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                          {camp.templateName}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center font-semibold text-slate-800">
-                        {camp.totalRecipients.toLocaleString()}
-                      </td>
-                      <td className="p-4 min-w-[140px]">
-                        <div className="flex items-center justify-between text-[10px] mb-1">
-                          <span className="font-bold text-emerald-700">{delRate}%</span>
-                          <span className="text-slate-400">({readRate}% read)</span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex">
-                          <div
-                            style={{ width: `${delRate}%` }}
-                            className="bg-emerald-500 h-full"
-                          ></div>
-                          <div
-                            style={{ width: `${(camp.failedCount / camp.totalRecipients) * 100}%` }}
-                            className="bg-rose-400 h-full"
-                          ></div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            isCompleted
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : isSending
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {camp.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right font-bold text-slate-900">
-                        {formatMoney(camp.cost)}
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => {
-                              setSelectedCampaign(camp);
-                              setIsDrawerOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                            title="View Details"
+                ) : (
+                  filteredCampaigns.map((camp) => {
+                    const totalRec = camp.totalRecipients || 0;
+                    const deliveredCount = camp.deliveredCount || 0;
+                    const readCount = camp.readCount || 0;
+                    const failedCount = camp.failedCount || 0;
+
+                    const delRate = totalRec > 0
+                      ? ((deliveredCount / totalRec) * 100).toFixed(1)
+                      : '0.0';
+                    const readRate = totalRec > 0
+                      ? ((readCount / totalRec) * 100).toFixed(1)
+                      : '0.0';
+
+                    const statusUpper = (camp.status || 'QUEUED').toUpperCase();
+                    const isCompleted = statusUpper === 'COMPLETED';
+                    const isRunning = statusUpper === 'RUNNING' || statusUpper === 'SENDING';
+                    const isQueued = statusUpper === 'QUEUED';
+                    const isPaused = statusUpper === 'PAUSED';
+                    const isFailed = statusUpper === 'FAILED';
+
+                    return (
+                      <tr key={camp.id} className="hover:bg-slate-50/60 transition">
+                        <td className="p-4">
+                          <div className="font-bold text-slate-900">{camp.name}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            {camp.createdAt
+                              ? new Date(camp.createdAt).toLocaleDateString('en-IN', {
+                                  dateStyle: 'medium',
+                                }) +
+                                ' ' +
+                                new Date(camp.createdAt).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : camp.createdOn || '—'}
+                          </div>
+                        </td>
+                        <td className="p-4 text-slate-700 font-medium">
+                          {camp.audienceListName || 'Custom Audience'}
+                        </td>
+                        <td className="p-4">
+                          {camp.templateName ? (
+                            <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              {camp.templateName}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-500 italic">
+                              Freeform text message
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4 text-center font-semibold text-slate-800">
+                          {totalRec.toLocaleString()}
+                        </td>
+                        <td className="p-4 min-w-[140px]">
+                          <div className="flex items-center justify-between text-[10px] mb-1">
+                            <span className="font-bold text-emerald-700">{delRate}%</span>
+                            <span className="text-slate-400">({readRate}% read)</span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex">
+                            <div
+                              style={{ width: `${delRate}%` }}
+                              className="bg-emerald-500 h-full"
+                            ></div>
+                            <div
+                              style={{ width: `${totalRec > 0 ? (failedCount / totalRec) * 100 : 0}%` }}
+                              className="bg-rose-400 h-full"
+                            ></div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              isCompleted
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : isRunning
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : isQueued
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : isPaused
+                                ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                                : 'bg-rose-100 text-rose-800 border border-rose-200'
+                            }`}
                           >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleRepeatCampaign(camp)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition cursor-pointer"
-                            title="Repeat Campaign"
-                          >
-                            <Repeat className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                            {isRunning && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                            {statusUpper}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right font-bold text-slate-900">
+                          {formatMoney(camp.cost || 0)}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setIsDrawerOpen(true);
+                                setDrawerTab('overview');
+                                setRecipientSearch('');
+                                setRecipientStatusFilter('ALL');
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                              title="View Full Audit Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRepeatCampaign(camp)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition cursor-pointer"
+                              title="Repeat Campaign"
+                            >
+                              <Repeat className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setCampaignToDelete(camp)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Delete Campaign"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -386,14 +573,24 @@ export const BulkCampaignHistoryView: React.FC = () => {
       {/* SLIDEOUT 4-TAB DETAILS DRAWER */}
       {isDrawerOpen && selectedCampaign && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg h-full shadow-2xl border-l border-slate-200 flex flex-col">
+          <div className="bg-white w-full max-w-xl h-full shadow-2xl border-l border-slate-200 flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">{selectedCampaign.name}</h3>
-                <p className="text-[10px] text-slate-500">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">{selectedCampaign.name}</h3>
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                    {selectedCampaign.category || selectedCampaign.type || 'Marketing'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
                   ID: {selectedCampaign.id} • Created{' '}
-                  {new Date(selectedCampaign.createdAt).toLocaleDateString()}
+                  {selectedCampaign.createdAt
+                    ? new Date(selectedCampaign.createdAt).toLocaleString('en-IN', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })
+                    : selectedCampaign.createdOn}
                 </p>
               </div>
               <button
@@ -408,7 +605,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
             <div className="flex border-b border-slate-200 px-4 pt-2 bg-slate-50 gap-2 text-xs font-semibold">
               <button
                 onClick={() => setDrawerTab('overview')}
-                className={`pb-2 px-2.5 border-b-2 transition ${
+                className={`pb-2 px-2.5 border-b-2 transition cursor-pointer ${
                   drawerTab === 'overview'
                     ? 'border-emerald-600 text-emerald-700 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -418,7 +615,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
               </button>
               <button
                 onClick={() => setDrawerTab('preview')}
-                className={`pb-2 px-2.5 border-b-2 transition ${
+                className={`pb-2 px-2.5 border-b-2 transition cursor-pointer ${
                   drawerTab === 'preview'
                     ? 'border-emerald-600 text-emerald-700 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -428,23 +625,23 @@ export const BulkCampaignHistoryView: React.FC = () => {
               </button>
               <button
                 onClick={() => setDrawerTab('recipients')}
-                className={`pb-2 px-2.5 border-b-2 transition ${
+                className={`pb-2 px-2.5 border-b-2 transition cursor-pointer ${
                   drawerTab === 'recipients'
                     ? 'border-emerald-600 text-emerald-700 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Recipients Log
+                Recipients Log ({selectedCampaign.totalRecipients || (selectedCampaign.recipientsList || []).length})
               </button>
               <button
                 onClick={() => setDrawerTab('errors')}
-                className={`pb-2 px-2.5 border-b-2 transition ${
+                className={`pb-2 px-2.5 border-b-2 transition cursor-pointer ${
                   drawerTab === 'errors'
                     ? 'border-emerald-600 text-emerald-700 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Errors ({selectedCampaign.failedCount})
+                Errors ({selectedCampaign.failedCount || drawerFailedRecipients.length})
               </button>
             </div>
 
@@ -459,27 +656,25 @@ export const BulkCampaignHistoryView: React.FC = () => {
                         Delivered
                       </span>
                       <div className="text-xl font-black text-emerald-950 mt-0.5">
-                        {selectedCampaign.deliveredCount.toLocaleString()}
+                        {(selectedCampaign.deliveredCount || 0).toLocaleString()}
                       </div>
-                      <span className="text-[10px] text-emerald-700">
-                        {(
-                          (selectedCampaign.deliveredCount / selectedCampaign.totalRecipients) *
-                          100
-                        ).toFixed(1)}
-                        % rate
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        {selectedCampaign.totalRecipients > 0
+                          ? ((selectedCampaign.deliveredCount / selectedCampaign.totalRecipients) * 100).toFixed(1)
+                          : '0.0'}
+                        % delivery rate
                       </span>
                     </div>
 
                     <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
                       <span className="text-[10px] text-blue-800 uppercase font-semibold">Read</span>
                       <div className="text-xl font-black text-blue-950 mt-0.5">
-                        {selectedCampaign.readCount.toLocaleString()}
+                        {(selectedCampaign.readCount || 0).toLocaleString()}
                       </div>
-                      <span className="text-[10px] text-blue-700">
-                        {(
-                          (selectedCampaign.readCount / selectedCampaign.totalRecipients) *
-                          100
-                        ).toFixed(1)}
+                      <span className="text-[10px] text-blue-700 font-semibold">
+                        {selectedCampaign.totalRecipients > 0
+                          ? ((selectedCampaign.readCount / selectedCampaign.totalRecipients) * 100).toFixed(1)
+                          : '0.0'}
                         % open rate
                       </span>
                     </div>
@@ -489,13 +684,12 @@ export const BulkCampaignHistoryView: React.FC = () => {
                         Replies
                       </span>
                       <div className="text-xl font-black text-purple-950 mt-0.5">
-                        {selectedCampaign.repliedCount.toLocaleString()}
+                        {(selectedCampaign.repliedCount || 0).toLocaleString()}
                       </div>
-                      <span className="text-[10px] text-purple-700">
-                        {(
-                          (selectedCampaign.repliedCount / selectedCampaign.totalRecipients) *
-                          100
-                        ).toFixed(1)}
+                      <span className="text-[10px] text-purple-700 font-semibold">
+                        {selectedCampaign.totalRecipients > 0
+                          ? ((selectedCampaign.repliedCount / selectedCampaign.totalRecipients) * 100).toFixed(1)
+                          : '0.0'}
                         % response rate
                       </span>
                     </div>
@@ -505,31 +699,53 @@ export const BulkCampaignHistoryView: React.FC = () => {
                         Failed
                       </span>
                       <div className="text-xl font-black text-rose-950 mt-0.5">
-                        {selectedCampaign.failedCount}
+                        {selectedCampaign.failedCount || 0}
                       </div>
-                      <span className="text-[10px] text-rose-700">Non-WhatsApp / DND</span>
+                      <span className="text-[10px] text-rose-700 font-semibold">
+                        Non-WhatsApp / DND / Network
+                      </span>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-[11px]">
-                    <div className="flex justify-between">
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5 text-[11px]">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500">Audience Group:</span>
                       <span className="font-semibold text-slate-800">
-                        {selectedCampaign.audienceListName}
+                        {selectedCampaign.audienceListName || 'Custom Recipients'}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500">Template Used:</span>
                       <span className="font-mono text-slate-800">
-                        {selectedCampaign.templateName}
+                        {selectedCampaign.templateName || 'None (Freeform Text)'}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500">Meta Wallet Charged:</span>
                       <span className="font-bold text-slate-900">
-                        {formatMoney(selectedCampaign.cost)}
+                        {formatMoney(selectedCampaign.cost || 0)}
                       </span>
                     </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Campaign Status:</span>
+                      <span className="font-bold text-slate-900">
+                        {selectedCampaign.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Launched By:</span>
+                      <span className="font-semibold text-slate-700">
+                        {selectedCampaign.createdBy || 'Admin'}
+                      </span>
+                    </div>
+                    {selectedCampaign.completedOn && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Completed On:</span>
+                        <span className="font-semibold text-slate-700">
+                          {selectedCampaign.completedOn}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -542,17 +758,38 @@ export const BulkCampaignHistoryView: React.FC = () => {
                   </span>
                   <div className="bg-[#ECE5DD] p-4 rounded-2xl border border-slate-300">
                     <div className="bg-white rounded-xl shadow-xs p-3.5 space-y-2 text-slate-800 border border-slate-200/80">
-                      <div className="font-semibold text-xs text-slate-900 leading-relaxed">
-                        Hello Valued Customer, our Diwali Super Saver is live! Use code FESTIVE30 to
-                        get 30% OFF on all services until Sunday Midnight. Tap below to claim.
+                      <div className="font-normal text-xs text-slate-900 leading-relaxed whitespace-pre-wrap">
+                        {selectedCampaign.messageText ||
+                          (selectedCampaign.templateName
+                            ? `[WhatsApp Template: ${selectedCampaign.templateName}]`
+                            : selectedCampaign.description || 'No message text available')}
                       </div>
-                      <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-100">
-                        Reply STOP to unsubscribe
+                      <div className="flex items-center justify-end gap-1 text-[9px] text-slate-400 pt-1 border-t border-slate-100">
+                        <span>
+                          {selectedCampaign.createdAt
+                            ? new Date(selectedCampaign.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '10:45 AM'}
+                        </span>
+                        {selectedCampaign.status === 'COMPLETED' || (selectedCampaign.deliveredCount || 0) > 0 ? (
+                          <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                        ) : selectedCampaign.status === 'QUEUED' ? (
+                          <Clock className="w-3 h-3 text-slate-400" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5 text-slate-400" />
+                        )}
                       </div>
-                      <div className="flex items-center justify-end gap-1 text-[9px] text-slate-400">
-                        <span>10:45 AM</span>
-                        <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
-                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
+                    <div className="text-slate-500">
+                      <strong>Template Name:</strong> {selectedCampaign.templateName || 'None (Direct Text)'}
+                    </div>
+                    <div className="text-slate-500">
+                      <strong>Category:</strong> {selectedCampaign.category || selectedCampaign.type || 'Marketing'}
                     </div>
                   </div>
                 </div>
@@ -560,43 +797,97 @@ export const BulkCampaignHistoryView: React.FC = () => {
 
               {/* TAB 3: RECIPIENTS LOG */}
               {drawerTab === 'recipients' && (
-                <div className="space-y-2">
-                  <span className="font-bold text-slate-800 text-[11px]">
-                    Individual Contact Dispatch Log:
-                  </span>
+                <div className="space-y-3">
+                  {/* Search and Filters */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div className="relative w-full sm:w-60">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={recipientSearch}
+                        onChange={(e) => setRecipientSearch(e.target.value)}
+                        placeholder="Search contact or phone..."
+                        className="w-full pl-8 pr-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                      <select
+                        value={recipientStatusFilter}
+                        onChange={(e) => setRecipientStatusFilter(e.target.value)}
+                        className="px-2.5 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg bg-white focus:outline-hidden"
+                      >
+                        <option value="ALL">All Status</option>
+                        <option value="DELIVERED">Delivered</option>
+                        <option value="READ">Read</option>
+                        <option value="SENT">Sent</option>
+                        <option value="QUEUED">Queued</option>
+                        <option value="FAILED">Failed</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleExportRecipientLogsCSV(selectedCampaign)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                        title="Export this campaign's recipient logs"
+                      >
+                        <Download className="w-3 h-3 text-slate-500" />
+                        CSV
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
                     <table className="w-full text-left text-[11px]">
-                      <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">
+                      <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase border-b border-slate-200">
                         <tr>
-                          <th className="p-2">Name</th>
-                          <th className="p-2">Phone</th>
-                          <th className="p-2">Status</th>
-                          <th className="p-2 text-right">Time</th>
+                          <th className="p-2.5">Name</th>
+                          <th className="p-2.5">Phone</th>
+                          <th className="p-2.5">Status</th>
+                          <th className="p-2.5 text-right">Time</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {sampleRecipients.map((rec, i) => (
-                          <tr key={i}>
-                            <td className="p-2 font-medium text-slate-800">{rec.name}</td>
-                            <td className="p-2 text-slate-500 font-mono text-[10px]">
-                              {rec.phone}
+                        {drawerRecipients.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="p-6 text-center text-slate-400">
+                              {(selectedCampaign.recipientsList || []).length === 0
+                                ? 'No individual recipient logs recorded for this campaign.'
+                                : 'No recipients match the current filter.'}
                             </td>
-                            <td className="p-2">
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                  rec.status === 'READ'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : rec.status === 'DELIVERED'
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : 'bg-rose-100 text-rose-800'
-                                }`}
-                              >
-                                {rec.status}
-                              </span>
-                            </td>
-                            <td className="p-2 text-right text-slate-400">{rec.time}</td>
                           </tr>
-                        ))}
+                        ) : (
+                          drawerRecipients.map((rec, i) => (
+                            <tr key={rec.id || i} className="hover:bg-slate-50/50">
+                              <td className="p-2.5 font-medium text-slate-800">
+                                {rec.name || 'WhatsApp User'}
+                              </td>
+                              <td className="p-2.5 text-slate-500 font-mono text-[10px]">
+                                {rec.phone}
+                              </td>
+                              <td className="p-2.5">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                    rec.status === 'READ'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : rec.status === 'DELIVERED'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : rec.status === 'SENT'
+                                      ? 'bg-cyan-100 text-cyan-800'
+                                      : rec.status === 'QUEUED'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-rose-100 text-rose-800'
+                                  }`}
+                                  title={rec.errorReason || ''}
+                                >
+                                  {rec.status}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-right text-slate-400 font-mono text-[10px]">
+                                {rec.time || '—'}
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -605,30 +896,82 @@ export const BulkCampaignHistoryView: React.FC = () => {
 
               {/* TAB 4: ERRORS */}
               {drawerTab === 'errors' && (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-[11px] leading-relaxed flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong>{selectedCampaign.failedCount} messages</strong> could not be delivered
-                      due to invalid WhatsApp accounts or recipient DND preferences.
+                <div className="space-y-4">
+                  {drawerFailedRecipients.length === 0 && (selectedCampaign.failedCount || 0) === 0 ? (
+                    <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <h4 className="font-bold text-emerald-900 text-sm">100% Deliverability</h4>
+                      <p className="text-xs text-emerald-700">
+                        Zero delivery failures were recorded for this broadcast. All recipients were reached successfully!
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-[11px] leading-relaxed flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>
+                              {selectedCampaign.failedCount || drawerFailedRecipients.length} messages
+                            </strong>{' '}
+                            failed to deliver due to invalid WhatsApp numbers, DND opt-outs, or network failures.
+                          </div>
+                        </div>
 
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
-                    <div className="font-semibold text-slate-800">Failure Breakdown:</div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Recipient number not on WhatsApp:</span>
-                      <span className="font-bold text-slate-800">
-                        {Math.floor(selectedCampaign.failedCount * 0.7)}
-                      </span>
+                        <button
+                          onClick={() => handleRetryFailed(selectedCampaign)}
+                          disabled={isRetrying}
+                          className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer shrink-0 inline-flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          {isRetrying ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Repeat className="w-3.5 h-3.5" />
+                          )}
+                          Retry Failed
+                        </button>
+                      </div>
+
+                      {drawerFailedRecipients.length > 0 ? (
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                          <table className="w-full text-left text-[11px]">
+                            <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase border-b border-slate-200">
+                              <tr>
+                                <th className="p-2.5">Contact</th>
+                                <th className="p-2.5">Phone</th>
+                                <th className="p-2.5">Error Reason</th>
+                                <th className="p-2.5 text-right">Time</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {drawerFailedRecipients.map((rec, i) => (
+                                <tr key={rec.id || i} className="hover:bg-rose-50/40">
+                                  <td className="p-2.5 font-medium text-slate-800">
+                                    {rec.name || 'Unknown Contact'}
+                                  </td>
+                                  <td className="p-2.5 text-slate-500 font-mono text-[10px]">
+                                    {rec.phone}
+                                  </td>
+                                  <td className="p-2.5 text-rose-700 font-medium">
+                                    {rec.errorReason || 'Number not registered on WhatsApp or unreachable'}
+                                  </td>
+                                  <td className="p-2.5 text-right text-slate-400 font-mono text-[10px]">
+                                    {rec.time || '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
+                          {selectedCampaign.failedCount} failures reported by gateway. Individual failed contact logs not available.
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>User opted out (STOP):</span>
-                      <span className="font-bold text-slate-800">
-                        {Math.ceil(selectedCampaign.failedCount * 0.3)}
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -636,17 +979,65 @@ export const BulkCampaignHistoryView: React.FC = () => {
             {/* Drawer Footer */}
             <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
               <button
-                onClick={() => setIsDrawerOpen(false)}
-                className="px-4 py-2 text-slate-600 font-semibold hover:bg-slate-200 rounded-xl"
+                onClick={() => setCampaignToDelete(selectedCampaign)}
+                className="px-3.5 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
               >
-                Close
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Campaign
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="px-4 py-2 text-slate-600 font-semibold hover:bg-slate-200 rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => handleRepeatCampaign(selectedCampaign)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Repeat className="w-3.5 h-3.5" />
+                  Repeat Broadcast
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {campaignToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Delete Campaign Audit Record?
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Are you sure you want to delete <strong>"{campaignToDelete.name}"</strong>? This will permanently remove its dispatch logs, delivery metrics, and audit history from the database.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setCampaignToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Cancel
               </button>
               <button
-                onClick={() => handleRepeatCampaign(selectedCampaign)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                onClick={confirmDeleteCampaign}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
               >
-                <Repeat className="w-3.5 h-3.5" />
-                Repeat Broadcast
+                {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete Permanently
               </button>
             </div>
           </div>

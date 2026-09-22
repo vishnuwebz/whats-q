@@ -52,6 +52,8 @@ export const BulkSendMessageView: React.FC = () => {
     addToast,
     setActiveTab,
     requestSendConfirmation,
+    draftCampaign,
+    setDraftCampaign,
   } = useQiyamStore();
 
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
@@ -66,6 +68,36 @@ export const BulkSendMessageView: React.FC = () => {
   );
   const [selectedTags, setSelectedTags] = useState<string>('');
   const [excludeOptOuts, setExcludeOptOuts] = useState<boolean>(true);
+
+  // Auto-populate when repeating/duplicating an existing campaign
+  React.useEffect(() => {
+    if (draftCampaign) {
+      if (draftCampaign.name) setCampaignName(draftCampaign.name);
+      if (draftCampaign.category) {
+        const cat = draftCampaign.category.toLowerCase();
+        if (cat === 'marketing' || cat === 'utility' || cat === 'authentication') {
+          setCategory(cat as any);
+        }
+      }
+      if (draftCampaign.templateName) {
+        setMessageType('template');
+        const foundTmpl = bulkTemplates.find(
+          (t) => t.name.toLowerCase() === draftCampaign.templateName?.toLowerCase()
+        );
+        if (foundTmpl) setSelectedTemplateId(foundTmpl.id);
+      } else if (draftCampaign.messageText) {
+        setMessageType('freeform');
+        setFreeformText(draftCampaign.messageText);
+      }
+      if (draftCampaign.audienceListName) {
+        const foundList = bulkRecipientLists.find(
+          (l) => l.name.toLowerCase() === draftCampaign.audienceListName?.toLowerCase()
+        );
+        if (foundList) setSelectedListId(foundList.id);
+      }
+      setDraftCampaign(null);
+    }
+  }, [draftCampaign, bulkTemplates, bulkRecipientLists, setDraftCampaign]);
 
   // Contacts Selection & Exclusion Modal states
   const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
