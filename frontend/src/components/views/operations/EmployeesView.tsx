@@ -7,8 +7,11 @@ import {
   Star, CheckCircle2, Clock, Calendar, Award, X,
   LogOut, MessageSquare, ExternalLink, ShieldCheck,
   Briefcase, Smartphone, Edit3, Check, ChevronRight,
-  TrendingUp, AlertCircle
+  TrendingUp, AlertCircle, Coffee, Target, Sparkles,
+  ReceiptText, Timer, FileCheck, Navigation, ArrowRight,
+  User, Zap, Fuel, Gift
 } from 'lucide-react';
+import { EMPLOYEE_NAV_TABS } from './employee/EmployeeSharedHeader';
 
 export const EmployeesView: React.FC = () => {
   const {
@@ -127,6 +130,25 @@ export const EmployeesView: React.FC = () => {
     ? attendance.find((a) => a.employee_id_str === activeEmployee.employee_id_str)
     : null;
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const activeButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (activeButtonRef.current) {
+      activeButtonRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+    }
+  }, []);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0 && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans relative">
       <Header
@@ -136,7 +158,456 @@ export const EmployeesView: React.FC = () => {
         onPrimaryAction={() => setIsAddModalOpen(true)}
       />
 
-      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Horizontal Sub-Navigation Bar for all 12 modules */}
+      <div
+        ref={scrollContainerRef}
+        onWheel={handleWheel}
+        className="bg-white border-b border-slate-200 px-4 sm:px-6 bg-slate-50/70 overflow-x-auto scrollbar-none sticky top-0 z-20 shadow-2xs select-none"
+      >
+        <div className="flex items-center gap-1.5 py-2 min-w-max">
+          {EMPLOYEE_NAV_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isCurrent = tab.id === 'ops-employees';
+
+            return (
+              <button
+                key={tab.id}
+                ref={isCurrent ? activeButtonRef : undefined}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  isCurrent
+                    ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80 font-bold scale-[1.02]'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+                title={tab.simpleDesc}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isCurrent ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="p-3 sm:p-6 space-y-5 sm:space-y-6">
+        {/* 12 Quick Shortcuts & Daily Actions Section */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <span>Quick Shortcuts & Daily Actions</span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                1-click shortcuts for all 12 employee management modules. Click any card to open its dedicated page.
+              </p>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 self-start sm:self-auto">
+              12 Modules Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {/* 1. Employee Directory */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <Users className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  {employees.length} Staff
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Employee Directory
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Staff list & contacts</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer"
+                >
+                  + Add Staff
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-directory')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Employee Profiles */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <User className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  Digital ID
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Employee Profiles
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Staff details & ID cards</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-profiles')}
+                  className="text-blue-700 hover:text-blue-800 font-semibold cursor-pointer"
+                >
+                  Print ID Card
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-profiles')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Attendance & Work Hours */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  {employees.filter((e) => e.status === 'on_duty' || e.status === 'active').length} Present
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Attendance & Hours
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Daily duty & punch logs</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-attendance')}
+                  className="text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer"
+                >
+                  Quick Punch
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-attendance')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 4. Leave Management */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  {employees.filter((e) => e.status === 'on_leave').length} on Leave
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Leave Management
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Chutti requests & balance</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-leaves')}
+                  className="text-amber-700 hover:text-amber-800 font-semibold cursor-pointer"
+                >
+                  Apply Chutti
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-leaves')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 5. Employee Monitoring */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                  <Navigation className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                  {employees.filter((e) => e.status === 'on_duty').length} On Field
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Employee Monitoring
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Live duty & location tracking</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-monitoring')}
+                  className="text-purple-700 hover:text-purple-800 font-semibold cursor-pointer"
+                >
+                  Live Radar
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-monitoring')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 6. Work Breaks & Alerts */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
+                  <Coffee className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                  Tea / Lunch
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Work Breaks & Alerts
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Break timer & duty alert</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-breaks')}
+                  className="text-orange-700 hover:text-orange-800 font-semibold cursor-pointer"
+                >
+                  Start Break
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-breaks')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 7. Performance & Reviews */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <Award className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  4.8 ⭐ Avg
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Performance & Reviews
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Star ratings & feedback</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-performance')}
+                  className="text-amber-700 hover:text-amber-800 font-semibold cursor-pointer"
+                >
+                  Add Review
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-performance')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 8. Goals & Productivity */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+                  <Target className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                  86% Achieved
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Goals & Productivity
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Monthly targets & quotas</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-productivity')}
+                  className="text-teal-700 hover:text-teal-800 font-semibold cursor-pointer"
+                >
+                  Set Target
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-productivity')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 9. Rewards & Perks */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  Star Worker
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Rewards & Perks
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Bonuses, gifts & fuel</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-rewards')}
+                  className="text-amber-700 hover:text-amber-800 font-semibold cursor-pointer"
+                >
+                  Give Bonus
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-rewards')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 10. Voucher Claims */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                  <ReceiptText className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                  ₹2,300 Due
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Voucher Claims
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Petrol & tool expense bills</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-vouchers')}
+                  className="text-indigo-700 hover:text-indigo-800 font-semibold cursor-pointer"
+                >
+                  Claim Bill
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-vouchers')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 11. Extra Work / Overtime */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                  <Timer className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                  14h Extra Work
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Extra Work / Overtime
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">OT hours & ₹150/hr pay</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-overtime')}
+                  className="text-rose-700 hover:text-rose-800 font-semibold cursor-pointer"
+                >
+                  Log OT
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-overtime')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 12. Onboarding & Documents */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
+              <div className="flex items-start justify-between">
+                <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold">
+                  <FileCheck className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">
+                  5/6 Verified
+                </span>
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Onboarding & Documents
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Aadhaar, PAN & joining</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
+                <button
+                  onClick={() => setActiveTab('ops-emp-onboarding')}
+                  className="text-cyan-700 hover:text-cyan-800 font-semibold cursor-pointer"
+                >
+                  Verify ID
+                </button>
+                <button
+                  onClick={() => setActiveTab('ops-emp-onboarding')}
+                  className="text-slate-500 hover:text-slate-900 font-medium flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* KPI Strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">

@@ -24,7 +24,8 @@ import {
   ArrowUpDown,
   Tag,
   Sparkles,
-  Wallet
+  Wallet,
+  PenTool
 } from 'lucide-react';
 import { Expense } from '@/types';
 import { exportTableToCsv } from '@/utils/exportCsv';
@@ -99,6 +100,7 @@ export const ExpensesView: React.FC = () => {
     deleteExpense,
     addToast,
     globalFilter,
+    openPdfEditor,
   } = store;
 
   // Filter & Search States
@@ -913,6 +915,28 @@ export const ExpensesView: React.FC = () => {
                               <ReceiptRupee className="w-4 h-4" />
                             </button>
 
+                            {/* Edit Voucher in 2026 PDF Editor */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openPdfEditor({
+                                  type: 'voucher',
+                                  title: `Payment Voucher - ${exp.reference_no || `EXP-${exp.id}`}`,
+                                  recipientName: exp.vendor,
+                                  amount: Number(exp.amount),
+                                  dateStr: exp.date_str,
+                                  invoiceNumber: exp.reference_no || `EXP-${exp.id}`,
+                                  items: [
+                                    { description: exp.description, qty: 1, unitPrice: Number(exp.amount), amount: Number(exp.amount) }
+                                  ],
+                                });
+                              }}
+                              className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Voucher in 2026 PDF Editor"
+                            >
+                              <PenTool className="w-4 h-4" />
+                            </button>
+
                             {/* Edit Expense */}
                             <button
                               type="button"
@@ -1562,14 +1586,37 @@ export const ExpensesView: React.FC = () => {
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => handlePrintVoucher(selectedExpense)}
-                className="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                <span>Print PDF</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVoucherModalOpen(false);
+                    openPdfEditor({
+                      type: 'voucher',
+                      title: `Payment Voucher - ${selectedExpense.reference_no || `EXP-${selectedExpense.id}`}`,
+                      recipientName: selectedExpense.vendor,
+                      amount: Number(selectedExpense.amount),
+                      dateStr: selectedExpense.date_str,
+                      invoiceNumber: selectedExpense.reference_no || `EXP-${selectedExpense.id}`,
+                      items: [
+                        { description: selectedExpense.description, qty: 1, unitPrice: Number(selectedExpense.amount), amount: Number(selectedExpense.amount) }
+                      ],
+                    });
+                  }}
+                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <PenTool className="w-3.5 h-3.5" />
+                  <span>✏️ Edit in PDF Editor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintVoucher(selectedExpense)}
+                  className="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Print PDF</span>
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"

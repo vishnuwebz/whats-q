@@ -842,7 +842,11 @@ export interface PdfEditorDocument {
   dateStr: string;
   recipientName: string;
   recipientRole?: string;
+  recipientPhone?: string;
   recipientId?: string;
+  amount?: number | string;
+  invoiceNumber?: string;
+  items?: any[];
   subject?: string;
   bodyContent: string;
   companyName: string;

@@ -5,6 +5,7 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { WhatsAppSimulatorModal } from './components/common/WhatsAppSimulatorModal';
 import { GlobalSendConfirmationModal } from './components/common/GlobalSendConfirmationModal';
 import { GlobalGeneralConfirmationModal } from './components/common/GlobalGeneralConfirmationModal';
+import { AdvancedPdfEditorModal } from './components/common/AdvancedPdfEditorModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { realtimeSyncManager } from './api/realtimeSync';
 import { checkAndRunAutoBackup } from './utils/backupManager';
@@ -25,6 +26,18 @@ import { CustomersView } from './components/views/crm/CustomersView';
 import { JobsView } from './components/views/operations/JobsView';
 import { AppointmentsView } from './components/views/operations/AppointmentsView';
 import { EmployeesView } from './components/views/operations/EmployeesView';
+import { EmployeeDirectoryView } from './components/views/operations/employee/EmployeeDirectoryView';
+import { EmployeeProfilesView } from './components/views/operations/employee/EmployeeProfilesView';
+import { EmployeeAttendanceView } from './components/views/operations/employee/EmployeeAttendanceView';
+import { EmployeeLeavesView } from './components/views/operations/employee/EmployeeLeavesView';
+import { EmployeeMonitoringView } from './components/views/operations/employee/EmployeeMonitoringView';
+import { EmployeeBreaksView } from './components/views/operations/employee/EmployeeBreaksView';
+import { EmployeePerformanceView } from './components/views/operations/employee/EmployeePerformanceView';
+import { EmployeeProductivityView } from './components/views/operations/employee/EmployeeProductivityView';
+import { EmployeeRewardsView } from './components/views/operations/employee/EmployeeRewardsView';
+import { EmployeeVouchersView } from './components/views/operations/employee/EmployeeVouchersView';
+import { EmployeeOvertimeView } from './components/views/operations/employee/EmployeeOvertimeView';
+import { EmployeeOnboardingView } from './components/views/operations/employee/EmployeeOnboardingView';
 import { ScheduleView } from './components/views/operations/ScheduleView';
 import { AttendanceView } from './components/views/operations/AttendanceView';
 import { TasksView } from './components/views/operations/TasksView';
@@ -208,6 +221,30 @@ export const App: React.FC = () => {
         return <AppointmentsView />;
       case 'ops-employees':
         return <EmployeesView />;
+      case 'ops-emp-directory':
+        return <EmployeeDirectoryView />;
+      case 'ops-emp-profiles':
+        return <EmployeeProfilesView />;
+      case 'ops-emp-attendance':
+        return <EmployeeAttendanceView />;
+      case 'ops-emp-leaves':
+        return <EmployeeLeavesView />;
+      case 'ops-emp-monitoring':
+        return <EmployeeMonitoringView />;
+      case 'ops-emp-breaks':
+        return <EmployeeBreaksView />;
+      case 'ops-emp-performance':
+        return <EmployeePerformanceView />;
+      case 'ops-emp-productivity':
+        return <EmployeeProductivityView />;
+      case 'ops-emp-rewards':
+        return <EmployeeRewardsView />;
+      case 'ops-emp-vouchers':
+        return <EmployeeVouchersView />;
+      case 'ops-emp-overtime':
+        return <EmployeeOvertimeView />;
+      case 'ops-emp-onboarding':
+        return <EmployeeOnboardingView />;
       case 'ops-schedule':
         return <ScheduleView />;
       case 'ops-attendance':
@@ -357,6 +394,7 @@ export const App: React.FC = () => {
       <WhatsAppSimulatorModal />
       <GlobalSendConfirmationModal />
       <GlobalGeneralConfirmationModal />
+      <AdvancedPdfEditorModal />
       <ToastContainer />
     </div>
   );

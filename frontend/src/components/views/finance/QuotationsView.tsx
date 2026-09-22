@@ -7,7 +7,7 @@ import {
   FileCheck, Search, Plus, Download, MessageSquare,
   Clock, ArrowRight, Eye, X, Trash2, Calendar,
   Building2, Percent, CheckCircle2, AlertCircle, ExternalLink,
-  ChevronRight, RefreshCw, Layers
+  ChevronRight, RefreshCw, Layers, PenTool
 } from 'lucide-react';
 
 export const QuotationsView: React.FC = () => {
@@ -23,6 +23,7 @@ export const QuotationsView: React.FC = () => {
     openConversationForContact,
     targetHighlightId,
     globalFilter,
+    openPdfEditor,
   } = useQiyamStore();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -846,6 +847,30 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                               </button>
                             )}
 
+                            {/* Edit in 2026 PDF Editor */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPdfEditor({
+                                  type: 'quotation',
+                                  title: `Formal Estimate - ${quo.quotation_number}`,
+                                  recipientName: quo.customer_name,
+                                  recipientPhone: quo.customer_phone,
+                                  amount: quo.amount,
+                                  dateStr: quo.quotation_date,
+                                  invoiceNumber: quo.quotation_number,
+                                  items: quo.items || [
+                                    { description: 'Commercial Maintenance & Service Package', qty: 1, unitPrice: quo.amount, amount: quo.amount }
+                                  ],
+                                });
+                              }}
+                              className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold text-[11px] flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-2xs"
+                              title="Edit Quotation in 2026 PDF Editor"
+                            >
+                              <PenTool className="w-3 h-3" />
+                              <span className="hidden sm:inline">Edit PDF</span>
+                            </button>
+
                             {/* PDF Button */}
                             <button
                               onClick={(e) => {
@@ -1024,6 +1049,27 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                 </button>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      openPdfEditor({
+                        type: 'quotation',
+                        title: `Formal Estimate - ${selectedQuotation.quotation_number}`,
+                        recipientName: selectedQuotation.customer_name,
+                        recipientPhone: selectedQuotation.customer_phone,
+                        amount: selectedQuotation.amount,
+                        dateStr: selectedQuotation.quotation_date,
+                        invoiceNumber: selectedQuotation.quotation_number,
+                        items: selectedQuotation.items || [
+                          { description: 'Commercial Maintenance & Service Package', qty: 1, unitPrice: selectedQuotation.amount, amount: selectedQuotation.amount }
+                        ],
+                      });
+                    }}
+                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                    <span>✏️ Edit in PDF Editor</span>
+                  </button>
+
                   <button
                     onClick={() => handleDownloadPdf(selectedQuotation)}
                     className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer"

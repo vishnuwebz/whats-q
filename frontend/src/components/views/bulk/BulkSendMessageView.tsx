@@ -54,6 +54,8 @@ export const BulkSendMessageView: React.FC = () => {
     requestSendConfirmation,
     draftCampaign,
     setDraftCampaign,
+    selectedBroadcastListId,
+    setSelectedBroadcastListId,
   } = useQiyamStore();
 
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
@@ -68,6 +70,14 @@ export const BulkSendMessageView: React.FC = () => {
   );
   const [selectedTags, setSelectedTags] = useState<string>('');
   const [excludeOptOuts, setExcludeOptOuts] = useState<boolean>(true);
+
+  // Auto-populate when selecting a list from /bulk/recipients
+  React.useEffect(() => {
+    if (selectedBroadcastListId) {
+      setSelectedListId(selectedBroadcastListId);
+      setSelectedBroadcastListId(null);
+    }
+  }, [selectedBroadcastListId, setSelectedBroadcastListId]);
 
   // Auto-populate when repeating/duplicating an existing campaign
   React.useEffect(() => {

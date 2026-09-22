@@ -5,7 +5,7 @@ import { Invoice } from '@/types';
 import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   FileText, Search, Filter, Plus, Download, MessageSquare,
-  CheckCircle2, AlertCircle, Clock, Send, Eye, X
+  CheckCircle2, AlertCircle, Clock, Send, Eye, X, PenTool
 } from 'lucide-react';
 import { ConfirmShareInvoiceModal } from './ConfirmShareInvoiceModal';
 
@@ -19,6 +19,7 @@ export const InvoicesView: React.FC = () => {
     targetHighlightId,
     globalFilter,
     globalDateInterval,
+    openPdfEditor,
   } = useQiyamStore();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -432,6 +433,28 @@ Please feel free to ask if you have any questions or require an itemized breakdo
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              openPdfEditor({
+                                type: 'invoice',
+                                title: `Tax Invoice - ${inv.invoice_number}`,
+                                recipientName: inv.customer_name,
+                                recipientPhone: inv.customer_phone,
+                                amount: inv.amount,
+                                dateStr: inv.invoice_date,
+                                invoiceNumber: inv.invoice_number,
+                                items: inv.items || [
+                                  { description: 'Professional AC Repair & Maintenance Services', qty: 1, unitPrice: inv.amount, amount: inv.amount }
+                                ],
+                              });
+                            }}
+                            className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold text-[11px] flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-2xs"
+                            title="Edit Invoice in 2026 PDF Editor"
+                          >
+                            <PenTool className="w-3 h-3" />
+                            <span>Edit PDF</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setConfirmInvoice({
                                 invoice: inv,
                                 mode: 'reminder',
@@ -675,6 +698,26 @@ Please feel free to ask if you have any questions or require an itemized breakdo
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+              <button
+                onClick={() => {
+                  openPdfEditor({
+                    type: 'invoice',
+                    title: `Tax Invoice - ${selectedInvoice.invoice_number}`,
+                    recipientName: selectedInvoice.customer_name,
+                    recipientPhone: selectedInvoice.customer_phone,
+                    amount: selectedInvoice.amount,
+                    dateStr: selectedInvoice.invoice_date,
+                    invoiceNumber: selectedInvoice.invoice_number,
+                    items: selectedInvoice.items || [
+                      { description: 'Professional AC Repair & Maintenance Services', qty: 1, unitPrice: selectedInvoice.amount, amount: selectedInvoice.amount }
+                    ],
+                  });
+                }}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                <span>✏️ Edit in PDF Editor</span>
+              </button>
               <button
                 onClick={() => handleDownloadPdf(selectedInvoice)}
                 className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer"

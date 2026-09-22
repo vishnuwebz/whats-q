@@ -465,6 +465,10 @@ interface QiyamState {
   deleteBulkCampaign: (campaignId: string | number) => Promise<boolean>;
   retryFailedCampaign: (campaignId: string | number) => Promise<boolean>;
   bulkRecipientLists: BulkRecipientList[];
+  selectedBroadcastListId: string | null;
+  setSelectedBroadcastListId: (listId: string | null) => void;
+  deleteRecipientList: (listId: string) => void;
+  updateRecipientList: (listId: string, updates: Partial<BulkRecipientList>) => void;
   bulkScheduledMessages: BulkScheduledMessage[];
   bulkTemplates: BulkTemplateItem[];
   suppressionList: SuppressionRecord[];
@@ -1148,6 +1152,40 @@ export const INITIAL_SUPPRESSION_LIST: SuppressionRecord[] = [
     notes: 'Replied to marketing broadcast requesting removal.',
   },
 ];
+
+const getStoredCustomRecipientLists = (): BulkRecipientList[] => {
+  try {
+    const raw = localStorage.getItem('whatsq_custom_recipient_lists');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+};
+
+const persistCustomRecipientLists = (lists: BulkRecipientList[]) => {
+  try {
+    localStorage.setItem('whatsq_custom_recipient_lists', JSON.stringify(lists));
+  } catch {}
+};
+
+const getStoredSuppressionList = (): SuppressionRecord[] => {
+  try {
+    const raw = localStorage.getItem('whatsq_suppression_list');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return INITIAL_SUPPRESSION_LIST;
+};
+
+const persistSuppressionList = (list: SuppressionRecord[]) => {
+  try {
+    localStorage.setItem('whatsq_suppression_list', JSON.stringify(list));
+  } catch {}
+};
 
 export const DEFAULT_META_CONFIG: MetaConfig = {
   phone_number_id: '1307178355804150',
@@ -1929,10 +1967,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   bulkCampaigns: initialBulkCampaigns,
   draftCampaign: null,
   setDraftCampaign: (campaign) => set({ draftCampaign: campaign }),
-  bulkRecipientLists: initialBulkRecipientLists,
+  bulkRecipientLists: getStoredCustomRecipientLists(),
+  selectedBroadcastListId: null,
+  setSelectedBroadcastListId: (listId) => set({ selectedBroadcastListId: listId }),
   bulkScheduledMessages: initialBulkScheduledMessages,
   bulkTemplates: initialBulkTemplates,
-  suppressionList: INITIAL_SUPPRESSION_LIST,
+  suppressionList: getStoredSuppressionList(),
   suppressionSearchQuery: '',
   roles: getStoredRoles(),
   activeRoleId: 'admin',
@@ -2168,11 +2208,15 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       });
     }
 
-    const existingCustomLists = (current.bulkRecipientLists || []).filter(
-      (l) => l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-')
-    );
-
-    const mergedRecipientLists = [...defaultRecipientLists, ...existingCustomLists];
+    const storedCustomLists = getStoredCustomRecipientLists();
+    const existingCustomLists = [
+      ...storedCustomLists,
+      ...(current.bulkRecipientLists || []).filter(
+        (l) => l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-') || (!['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id))
+      ),
+    ];
+    const uniqueCustomLists = Array.from(new Map(existingCustomLists.map((l) => [l.id, l])).values());
+    const mergedRecipientLists = [...defaultRecipientLists, ...uniqueCustomLists];
 
     set({
       backendOnline: true,
@@ -2798,13 +2842,37 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       createdOn: nowStr,
       createdAt: new Date().toISOString(),
       status: 'Active',
-      sources: list.sources || { manual: 60, website: 20, csv: 15, other: 5 },
-      contactItems: list.contactItems,
+      sources: list.sources,
+      contactItems: list.contactItems || [],
     };
-    set((state) => ({
-      bulkRecipientLists: [newList, ...state.bulkRecipientLists],
-    }));
+    set((state) => {
+      const updated = [newList, ...state.bulkRecipientLists];
+      const customOnly = updated.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id));
+      persistCustomRecipientLists(customOnly);
+      return { bulkRecipientLists: updated };
+    });
     get().addToast(`Recipient list "${list.name}" created with ${count} contacts`, 'success');
+  },
+
+  deleteRecipientList: (listId: string) => {
+    set((state) => {
+      const updated = state.bulkRecipientLists.filter((l) => l.id !== listId);
+      const customOnly = updated.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id));
+      persistCustomRecipientLists(customOnly);
+      return { bulkRecipientLists: updated };
+    });
+    get().addToast('Recipient list deleted successfully', 'success');
+  },
+
+  updateRecipientList: (listId: string, updates: Partial<BulkRecipientList>) => {
+    set((state) => {
+      const updated = state.bulkRecipientLists.map((l) =>
+        l.id === listId ? { ...l, ...updates } : l
+      );
+      const customOnly = updated.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id));
+      persistCustomRecipientLists(customOnly);
+      return { bulkRecipientLists: updated };
+    });
   },
 
   addSuppressionRecord: (record) => {
@@ -2831,35 +2899,39 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       source: record.source || 'Manual Compliance Entry',
       notes: record.notes,
     };
-    set((state) => ({
-      suppressionList: [newRecord, ...state.suppressionList.filter((s) => s.phone !== record.phone)],
-      conversations: state.conversations.map((c) => {
-        const cPhone = c.phone_number.replace(/[^0-9]/g, '');
-        const rPhone = record.phone.replace(/[^0-9]/g, '');
-        if (cPhone && rPhone && (cPhone.endsWith(rPhone.slice(-10)) || rPhone.endsWith(cPhone.slice(-10)))) {
-          return {
-            ...c,
-            is_blocked: record.type === 'blocked',
-            is_opted_out: record.type !== 'blocked',
-            suppression_reason: record.reason,
-            suppression_date: dateStr,
-          };
-        }
-        return c;
-      }),
-      notifications: [
-        {
-          id: Date.now(),
-          title: record.type === 'blocked' ? '⛔ Number Blocked by Customer' : '🛑 Customer Unsubscribed / STOP',
-          text: `${record.name} (${record.phone}) added to Suppression List: ${record.reason}`,
-          time: 'Just now',
-          unread: true,
-          target: 'bulk-recipients',
-          itemType: 'conversation',
-        },
-        ...state.notifications,
-      ],
-    }));
+    set((state) => {
+      const updatedSuppression = [newRecord, ...state.suppressionList.filter((s) => s.phone !== record.phone)];
+      persistSuppressionList(updatedSuppression);
+      return {
+        suppressionList: updatedSuppression,
+        conversations: state.conversations.map((c) => {
+          const cPhone = c.phone_number.replace(/[^0-9]/g, '');
+          const rPhone = record.phone.replace(/[^0-9]/g, '');
+          if (cPhone && rPhone && (cPhone.endsWith(rPhone.slice(-10)) || rPhone.endsWith(cPhone.slice(-10)))) {
+            return {
+              ...c,
+              is_blocked: record.type === 'blocked',
+              is_opted_out: record.type !== 'blocked',
+              suppression_reason: record.reason,
+              suppression_date: dateStr,
+            };
+          }
+          return c;
+        }),
+        notifications: [
+          {
+            id: Date.now(),
+            title: record.type === 'blocked' ? '⛔ Number Blocked by Customer' : '🛑 Customer Unsubscribed / STOP',
+            text: `${record.name} (${record.phone}) added to Suppression List: ${record.reason}`,
+            time: 'Just now',
+            unread: true,
+            target: 'bulk-recipients',
+            itemType: 'conversation',
+          },
+          ...state.notifications,
+        ],
+      };
+    });
     get().addToast(`Added ${record.phone} to Suppression List`, 'warning');
   },
 
@@ -2885,8 +2957,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     const targetName = existingItem?.name;
 
     // 1. Optimistically update local store: remove from suppressionList & clear flags from conversations
-    set((state) => ({
-      suppressionList: state.suppressionList.filter((s) => {
+    set((state) => {
+      const updatedSuppression = state.suppressionList.filter((s) => {
         if (s.id === rawTarget) return false;
         if (existingItem && s.id === existingItem.id) return false;
         const sDigits = (s.phone || '').replace(/\D/g, '');
@@ -2895,8 +2967,11 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
           return false;
         }
         return true;
-      }),
-      conversations: state.conversations.map((c) => {
+      });
+      persistSuppressionList(updatedSuppression);
+      return {
+        suppressionList: updatedSuppression,
+        conversations: state.conversations.map((c) => {
         const cDigits = (c.phone_number || '').replace(/\D/g, '');
         const cSuffix = cDigits.length >= 10 ? cDigits.slice(-10) : cDigits;
         const matchesPhone = Boolean(phoneSuffix && cSuffix && (cSuffix === phoneSuffix || cDigits.endsWith(phoneSuffix) || digitsOnly.endsWith(cSuffix)));
@@ -2917,7 +2992,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         }
         return c;
       }),
-    }));
+    };
+  });
 
     get().addToast(`Consent verified! ${targetName ? `${targetName} (${targetPhone})` : targetPhone} re-subscribed.`, 'success');
 

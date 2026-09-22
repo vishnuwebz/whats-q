@@ -36,10 +36,10 @@ import {
   UserX,
   ShieldAlert,
   MessageSquare,
+  AlertTriangle,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkRecipientList, BulkContact } from '../../../types';
-import { getSampleContactsForList } from '../../../store/bulkData';
 import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { WhatsAppGroupExtractorModal } from './WhatsAppGroupExtractorModal';
@@ -52,12 +52,16 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
   const {
     bulkRecipientLists,
     createRecipientList,
+    deleteRecipientList,
+    updateRecipientList,
+    setSelectedBroadcastListId,
     setActiveTab,
     activeTab,
     addToast,
     suppressionList,
     addSuppressionRecord,
     removeSuppressionRecord,
+    isPhoneSuppressed,
     setSelectedConversationId,
     conversations,
     suppressionSearchQuery,
@@ -500,23 +504,156 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     addToast(`Recipient list "${newListName}" created with ${count} contacts!`, 'success');
   };
 
+  // Drawer Contact Search & Filter State
+  const [drawerContactSearch, setDrawerContactSearch] = useState('');
+  const [drawerStatusFilter, setDrawerStatusFilter] = useState<'all' | 'valid' | 'opted_out'>('all');
+
+  // Delete List Confirmation Modal State
+  const [listToDelete, setListToDelete] = useState<BulkRecipientList | null>(null);
+
   const handleSendToList = (list: BulkRecipientList) => {
-    addToast(`Selected list "${list.name}" for broadcasting!`, 'info');
+    setSelectedBroadcastListId(list.id);
+    addToast(`Selected list "${list.name}" (${list.contactCount} contacts) for broadcasting!`, 'info');
     setActiveTab('bulk-send');
   };
 
+  // Real WhatsApp Phone & Suppression List Validation
   const handleCleanList = () => {
-    addToast('Contact numbers validated against Meta WhatsApp Phone API!', 'success');
+    if (!selectedList) return;
+    const contacts = selectedList.contactItems || [];
+    if (contacts.length === 0) {
+      addToast('No individual contact records available to validate.', 'info');
+      return;
+    }
+
+    let validCount = 0;
+    let optedOutCount = 0;
+
+    const updatedContacts: BulkContact[] = contacts.map((c) => {
+      const isSuppressed = isPhoneSuppressed(c.phone);
+      const digits = c.phone.replace(/\D/g, '');
+      const isValidFormat = digits.length >= 10;
+      const validWhatsApp = isValidFormat && !isSuppressed;
+      const optedOut = isSuppressed || !isValidFormat;
+
+      if (validWhatsApp) validCount++;
+      if (optedOut) optedOutCount++;
+
+      return {
+        ...c,
+        validWhatsApp,
+        optedOut,
+      };
+    });
+
+    updateRecipientList(selectedList.id, {
+      contactItems: updatedContacts,
+      validWhatsAppCount: validCount,
+    });
+
+    setSelectedList((prev) =>
+      prev
+        ? {
+            ...prev,
+            contactItems: updatedContacts,
+            validWhatsAppCount: validCount,
+          }
+        : null
+    );
+
+    addToast(
+      `Validation complete: ${validCount} active WhatsApp numbers, ${optedOutCount} suppressed/invalid.`,
+      'success'
+    );
   };
 
-  // Contacts for the drawer
-  const currentDrawerContacts = useMemo(() => {
-    if (!selectedList) return [];
-    if (selectedList.contactItems && selectedList.contactItems.length > 0) {
-      return selectedList.contactItems;
+  // Real CSV Export for Recipient List
+  const handleDownloadListCsv = (list: BulkRecipientList) => {
+    const contacts = list.contactItems || [];
+    if (contacts.length === 0) {
+      addToast('No contacts available to export.', 'info');
+      return;
     }
-    return [];
+    const headers = ['Name', 'Phone Number', 'Tag', 'WhatsApp Valid', 'Opted Out', 'Source', 'Last Active'];
+    const rows = contacts.map((c) => [
+      `"${(c.name || '').replace(/"/g, '""')}"`,
+      `"${c.phone}"`,
+      `"${(c.tag || '').replace(/"/g, '""')}"`,
+      c.validWhatsApp ? 'Yes' : 'No',
+      c.optedOut ? 'Yes' : 'No',
+      `"${(c.source || '').replace(/"/g, '""')}"`,
+      `"${(c.lastActive || '').replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Recipient_List_${list.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addToast(`Exported ${contacts.length} contacts to CSV successfully!`, 'success');
+  };
+
+  // Dynamic Contact Source Breakdown computed from real contacts
+  const sourceBreakdown = useMemo(() => {
+    if (!selectedList) return [];
+    const items = selectedList.contactItems || [];
+    if (items.length === 0) {
+      return [
+        {
+          name: selectedList.type || 'Audience Contacts',
+          count: selectedList.contactCount,
+          pct: 100,
+          color: '#059669',
+        },
+      ];
+    }
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      const src = item.source || 'Direct Import';
+      counts[src] = (counts[src] || 0) + 1;
+    });
+    const colors = ['#059669', '#2563eb', '#d97706', '#9333ea', '#e11d48', '#0891b2'];
+    const total = items.length;
+    return Object.entries(counts).map(([name, count], i) => ({
+      name,
+      count,
+      pct: Number(((count / total) * 100).toFixed(1)),
+      color: colors[i % colors.length],
+    }));
   }, [selectedList]);
+
+  // Dynamic Conic Gradient for Donut Chart
+  const conicGradient = useMemo(() => {
+    if (sourceBreakdown.length === 0) return 'conic-gradient(#059669 0% 100%)';
+    let acc = 0;
+    const parts = sourceBreakdown.map((s) => {
+      const start = acc;
+      acc += s.pct;
+      return `${s.color} ${start}% ${acc}%`;
+    });
+    return `conic-gradient(${parts.join(', ')})`;
+  }, [sourceBreakdown]);
+
+  // Filtered contacts for the drawer
+  const filteredDrawerContacts = useMemo(() => {
+    if (!selectedList) return [];
+    const list = selectedList.contactItems && selectedList.contactItems.length > 0
+      ? selectedList.contactItems
+      : [];
+    return list.filter((c) => {
+      const matchesSearch =
+        (c.name || '').toLowerCase().includes(drawerContactSearch.toLowerCase()) ||
+        (c.phone || '').includes(drawerContactSearch) ||
+        (c.tag || '').toLowerCase().includes(drawerContactSearch.toLowerCase());
+      const matchesStatus =
+        drawerStatusFilter === 'all' ||
+        (drawerStatusFilter === 'valid' && c.validWhatsApp && !c.optedOut) ||
+        (drawerStatusFilter === 'opted_out' && c.optedOut);
+      return matchesSearch && matchesStatus;
+    });
+  }, [selectedList, drawerContactSearch, drawerStatusFilter]);
 
 
   return (
@@ -1089,6 +1226,15 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                             <Send className="w-3 h-3" />
                             Broadcast
                           </button>
+                          {!['lst-conversations', 'lst-leads', 'lst-customers'].includes(list.id) && (
+                            <button
+                              onClick={() => setListToDelete(list)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Delete List"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1137,43 +1283,32 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
 
                 {/* Donut representation */}
                 <div className="flex items-center gap-5 pt-1">
-                  {/* Visual CSS Donut */}
-                  <div className="relative w-20 h-20 rounded-full bg-[conic-gradient(#059669_0%_42%,#2563eb_42%_70%,#d97706_70%_88%,#9333ea_88%_100%)] flex items-center justify-center shrink-0 shadow-xs">
+                  {/* Dynamic CSS Donut */}
+                  <div
+                    className="relative w-20 h-20 rounded-full flex items-center justify-center shrink-0 shadow-xs"
+                    style={{ background: conicGradient }}
+                  >
                     <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center font-bold text-[11px] text-slate-800">
                       100%
                     </div>
                   </div>
 
                   {/* Donut Legends */}
-                  <div className="space-y-1 text-[11px] flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-600">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                        CRM Leads
-                      </span>
-                      <span className="font-bold text-slate-900">42%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-600">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                        Website Signups
-                      </span>
-                      <span className="font-bold text-slate-900">28%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-600">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                        Manual Import (CSV)
-                      </span>
-                      <span className="font-bold text-slate-900">18%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-600">
-                        <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-                        POS Billing Sync
-                      </span>
-                      <span className="font-bold text-slate-900">12%</span>
-                    </div>
+                  <div className="space-y-1.5 text-[11px] flex-1">
+                    {sourceBreakdown.map((s, idx) => (
+                      <div key={idx} className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-slate-600 truncate max-w-[140px]">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: s.color }}
+                          ></span>
+                          <span className="truncate">{s.name}</span>
+                        </span>
+                        <span className="font-bold text-slate-900 ml-2">
+                          {s.pct}% <span className="text-slate-400 font-normal">({s.count})</span>
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1199,13 +1334,62 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               </div>
 
               {/* Contacts in this list */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 text-xs">Contacts in this list:</span>
                   <span className="text-[10px] text-slate-500 font-medium">
-                    Showing {Math.min(currentDrawerContacts.length, 12)} of{' '}
-                    {selectedList.contactCount} records
+                    Showing {Math.min(filteredDrawerContacts.length, 50)} of{' '}
+                    {filteredDrawerContacts.length} records
                   </span>
+                </div>
+
+                {/* Search & Status Filter */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={drawerContactSearch}
+                      onChange={(e) => setDrawerContactSearch(e.target.value)}
+                      placeholder="Search contacts..."
+                      className="w-full pl-8 pr-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-emerald-500 bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-[10px] font-semibold shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setDrawerStatusFilter('all')}
+                      className={`px-2 py-1 rounded-md transition cursor-pointer ${
+                        drawerStatusFilter === 'all'
+                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawerStatusFilter('valid')}
+                      className={`px-2 py-1 rounded-md transition cursor-pointer ${
+                        drawerStatusFilter === 'valid'
+                          ? 'bg-white text-emerald-700 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Valid
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawerStatusFilter('opted_out')}
+                      className={`px-2 py-1 rounded-md transition cursor-pointer ${
+                        drawerStatusFilter === 'opted_out'
+                          ? 'bg-white text-rose-700 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Suppressed
+                    </button>
+                  </div>
                 </div>
 
                 <div className="border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
@@ -1219,34 +1403,42 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {currentDrawerContacts.slice(0, 12).map((c) => (
-                        <tr key={c.id}>
-                          <td className="p-2.5 font-medium text-slate-800">{c.name}</td>
-                          <td className="p-2.5 font-mono text-[10px] text-slate-600">{c.phone}</td>
-                          <td className="p-2.5">
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-semibold">
-                              {c.tag || 'Member'}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-right">
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                c.optedOut
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : c.validWhatsApp
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              {c.optedOut
-                                ? 'Opted-Out'
-                                : c.validWhatsApp
-                                ? 'Verified'
-                                : 'Unverified'}
-                            </span>
+                      {filteredDrawerContacts.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-4 text-center text-slate-400 text-xs">
+                            No contacts match current filters.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredDrawerContacts.slice(0, 50).map((c) => (
+                          <tr key={c.id}>
+                            <td className="p-2.5 font-medium text-slate-800">{c.name}</td>
+                            <td className="p-2.5 font-mono text-[10px] text-slate-600">{c.phone}</td>
+                            <td className="p-2.5">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-semibold">
+                                {c.tag || 'Member'}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                  c.optedOut
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : c.validWhatsApp
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {c.optedOut
+                                  ? 'Opted-Out'
+                                  : c.validWhatsApp
+                                  ? 'Verified'
+                                  : 'Unverified'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1254,14 +1446,27 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <button
-                onClick={() => addToast('Exporting cleaned recipient sheet (.csv)...', 'info')}
-                className="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download CSV
-              </button>
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDownloadListCsv(selectedList)}
+                  className="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download CSV
+                </button>
+
+                {!['lst-conversations', 'lst-leads', 'lst-customers'].includes(selectedList.id) && (
+                  <button
+                    onClick={() => setListToDelete(selectedList)}
+                    className="px-3 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition"
+                    title="Delete List"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => handleSendToList(selectedList)}
@@ -1885,6 +2090,52 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete List Confirmation Modal */}
+      {listToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Delete Recipient List</h3>
+                <p className="text-xs text-slate-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to delete <strong className="text-slate-900">"{listToDelete.name}"</strong>? 
+              This list contains <strong>{listToDelete.contactCount.toLocaleString()}</strong> contacts.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setListToDelete(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteRecipientList(listToDelete.id);
+                  if (selectedList?.id === listToDelete.id) {
+                    setIsDrawerOpen(false);
+                    setSelectedList(null);
+                  }
+                  setListToDelete(null);
+                  addToast(`List "${listToDelete.name}" deleted successfully!`, 'success');
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete List
+              </button>
+            </div>
           </div>
         </div>
       )}
