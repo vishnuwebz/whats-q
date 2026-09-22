@@ -92,7 +92,7 @@ const PATH_ALIASES: Record<string, TabType> = {
   '/directory': 'ops-emp-directory',
   '/profiles': 'ops-emp-profiles',
   '/leaves': 'ops-emp-leaves',
-  '/chutti': 'ops-emp-leaves',
+  '/leave-requests': 'ops-emp-leaves',
   '/monitoring': 'ops-emp-monitoring',
   '/breaks': 'ops-emp-breaks',
   '/performance': 'ops-emp-performance',

@@ -459,8 +459,8 @@ interface QiyamState {
   metaWallet: MetaWalletInfo;
   walletTransactions: MetaWalletTransaction[];
   bulkCampaigns: BulkCampaign[];
-  draftCampaign: BulkCampaign | null;
-  setDraftCampaign: (campaign: BulkCampaign | null) => void;
+  draftCampaign: Partial<BulkCampaign> | null;
+  setDraftCampaign: (campaign: Partial<BulkCampaign> | null) => void;
   fetchBulkCampaigns: () => Promise<void>;
   deleteBulkCampaign: (campaignId: string | number) => Promise<boolean>;
   retryFailedCampaign: (campaignId: string | number) => Promise<boolean>;
@@ -496,8 +496,11 @@ interface QiyamState {
   addWalletFunds: (amount: number, note?: string) => void;
   createRecipientList: (params: any) => void;
   createScheduledMessage: (params: any) => void;
+  updateScheduledMessage: (id: string | number, updates: Partial<BulkScheduledMessage>) => void;
+  deleteScheduledMessage: (id: string | number) => void;
   cancelScheduledMessage: (id: string | number) => void;
-  sendScheduledMessageNow: (id: string | number) => void;
+  sendScheduledMessageNow: (id: string | number) => Promise<boolean>;
+  checkAndDispatchDueScheduledMessages: () => Promise<void>;
   duplicateCampaign: (campaignId: string | number) => void;
   createBulkTemplate: (params: any) => Promise<boolean>;
   updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => Promise<boolean>;
@@ -1184,6 +1187,23 @@ const getStoredSuppressionList = (): SuppressionRecord[] => {
 const persistSuppressionList = (list: SuppressionRecord[]) => {
   try {
     localStorage.setItem('whatsq_suppression_list', JSON.stringify(list));
+  } catch {}
+};
+
+const getStoredScheduledMessages = (): BulkScheduledMessage[] => {
+  try {
+    const raw = localStorage.getItem('whatsq_scheduled_messages');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return initialBulkScheduledMessages;
+};
+
+const persistScheduledMessages = (messages: BulkScheduledMessage[]) => {
+  try {
+    localStorage.setItem('whatsq_scheduled_messages', JSON.stringify(messages));
   } catch {}
 };
 
@@ -1970,7 +1990,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   bulkRecipientLists: getStoredCustomRecipientLists(),
   selectedBroadcastListId: null,
   setSelectedBroadcastListId: (listId) => set({ selectedBroadcastListId: listId }),
-  bulkScheduledMessages: initialBulkScheduledMessages,
+  bulkScheduledMessages: getStoredScheduledMessages(),
   bulkTemplates: initialBulkTemplates,
   suppressionList: getStoredSuppressionList(),
   suppressionSearchQuery: '',
@@ -3028,7 +3048,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       }) +
       ', ' +
       new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const count = msg.recipientCount || msg.recipients || 500;
+    const count = msg.recipientCount || msg.recipients || (msg.contacts ? msg.contacts.length : 0) || 500;
     const newScheduled: BulkScheduledMessage = {
       id: `sch-${Date.now()}`,
       name: msg.campaignName || msg.name,
@@ -3044,73 +3064,130 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       recipientCount: count,
       recipients: count,
       templateName: msg.templateName || msg.templateUsed || 'Offer Announcement',
+      templateId: msg.templateId,
+      messageText: msg.messageText || '',
+      contacts: msg.contacts || [],
+      mediaUrl: msg.mediaUrl,
+      mediaType: msg.mediaType,
       category: msg.category || 'marketing',
       status: 'QUEUED',
       estimatedCost: msg.estimatedCost || Number((count * 0.78).toFixed(2)),
       createdOn: nowFull,
       createdAt: new Date().toISOString(),
+      createdBy: 'Admin',
     };
-    set((state) => ({
-      bulkScheduledMessages: [newScheduled, ...state.bulkScheduledMessages],
-    }));
-    get().addToast(`Message "${newScheduled.campaignName}" scheduled successfully!`, 'success');
+    set((state) => {
+      const updated = [newScheduled, ...state.bulkScheduledMessages];
+      persistScheduledMessages(updated);
+      return { bulkScheduledMessages: updated };
+    });
+    get().addToast(`Message "${newScheduled.campaignName}" scheduled successfully for ${new Date(newScheduled.scheduledFor).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}!`, 'success');
+  },
+
+  updateScheduledMessage: (id, updates) => {
+    set((state) => {
+      const updated = state.bulkScheduledMessages.map((m) =>
+        m.id === id ? { ...m, ...updates } : m
+      );
+      persistScheduledMessages(updated);
+      return { bulkScheduledMessages: updated };
+    });
+    get().addToast('Scheduled message updated successfully!', 'success');
+  },
+
+  deleteScheduledMessage: (id) => {
+    set((state) => {
+      const updated = state.bulkScheduledMessages.filter((m) => m.id !== id);
+      persistScheduledMessages(updated);
+      return { bulkScheduledMessages: updated };
+    });
+    get().addToast('Scheduled message deleted', 'info');
   },
 
   cancelScheduledMessage: (id) => {
-    set((state) => ({
-      bulkScheduledMessages: state.bulkScheduledMessages.map((m) =>
+    set((state) => {
+      const updated = state.bulkScheduledMessages.map((m) =>
         m.id === id ? { ...m, status: 'CANCELLED' } : m
-      ),
-    }));
+      );
+      persistScheduledMessages(updated);
+      return { bulkScheduledMessages: updated };
+    });
     get().addToast('Scheduled message cancelled', 'info');
   },
 
-  sendScheduledMessageNow: (id) => {
+  sendScheduledMessageNow: async (id) => {
     const item = get().bulkScheduledMessages.find((m) => m.id === id);
-    if (!item) return;
+    if (!item) return false;
 
-    const count = item.recipientCount || item.recipients || 500;
-    const nowStr = new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    const deliveredCount = Math.round(count * 0.98);
-    const newCmp: BulkCampaign = {
-      id: `cmp-${Date.now()}`,
+    // Resolve real contacts:
+    let contacts: { name: string; phone: string }[] = item.contacts && item.contacts.length > 0
+      ? item.contacts.map((c) => ({ name: c.name || 'Customer', phone: c.phone }))
+      : [];
+
+    if (contacts.length === 0 && item.recipientGroupId) {
+      const list = get().bulkRecipientLists.find((l) => l.id === item.recipientGroupId);
+      if (list?.contactItems && list.contactItems.length > 0) {
+        contacts = list.contactItems
+          .filter((c) => c.validWhatsApp && !c.optedOut)
+          .map((c) => ({ name: c.name || 'Customer', phone: c.phone }));
+      }
+    }
+
+    if (contacts.length === 0) {
+      contacts = (get().conversations || [])
+        .filter((c) => c.phone_number && !c.is_opted_out)
+        .slice(0, item.recipientCount || 50)
+        .map((c) => ({ name: c.contact_name || 'Customer', phone: c.phone_number }));
+    }
+
+    if (contacts.length === 0) {
+      get().addToast(`Cannot launch "${item.campaignName}": No valid recipient phone numbers found.`, 'error');
+      return false;
+    }
+
+    get().addToast(`Dispatching scheduled broadcast "${item.campaignName}" to ${contacts.length} recipients...`, 'info');
+
+    const result = await get().sendBulkMessage({
       name: item.campaignName || item.name || 'Broadcast',
       description: item.description,
-      type: 'Marketing',
+      type: item.type || 'Marketing',
       category: item.category || 'marketing',
       audienceListName: item.recipientGroupName || 'All Active Customers',
-      totalRecipients: count,
-      recipients: count,
-      deliveredCount,
-      delivered: deliveredCount,
-      deliveredPercent: 98.0,
-      readCount: Math.round(count * 0.72),
-      repliedCount: Math.round(count * 0.14),
-      failedCount: count - deliveredCount,
-      failed: count - deliveredCount,
-      failedPercent: 2.0,
-      pending: 0,
-      cost: item.estimatedCost || Number((count * 0.78).toFixed(2)),
-      createdOn: nowStr,
-      createdAt: new Date().toISOString(),
-      createdBy: item.createdBy || 'Rahul Mehta',
-      completedOn: 'Just now',
-      status: 'COMPLETED',
-      templateName: item.templateName || item.templateUsed || 'Offer Announcement',
+      totalRecipients: contacts.length,
+      templateName: item.templateName || 'Offer Announcement',
       messageText: item.messageText || '',
-    };
+      contacts,
+      cost: item.estimatedCost,
+    });
 
-    set((state) => ({
-      bulkScheduledMessages: state.bulkScheduledMessages.map((m) =>
-        m.id === id ? { ...m, status: 'SENT' } : m
-      ),
-      bulkCampaigns: [newCmp, ...state.bulkCampaigns],
-    }));
-    get().addToast(`Dispatched scheduled campaign "${newCmp.name}" immediately!`, 'success');
+    if (result && result.success) {
+      set((state) => {
+        const updated = state.bulkScheduledMessages.map((m) =>
+          m.id === id ? { ...m, status: 'SENT' } : m
+        );
+        persistScheduledMessages(updated);
+        return { bulkScheduledMessages: updated };
+      });
+      get().addToast(`Scheduled campaign "${item.campaignName}" launched successfully!`, 'success');
+      return true;
+    } else {
+      get().addToast(result?.error || `Failed to dispatch scheduled campaign "${item.campaignName}"`, 'error');
+      return false;
+    }
+  },
+
+  checkAndDispatchDueScheduledMessages: async () => {
+    const now = Date.now();
+    const queued = get().bulkScheduledMessages.filter(
+      (m) => m.status === 'QUEUED' && new Date(m.scheduledFor).getTime() <= now
+    );
+    for (const msg of queued) {
+      try {
+        await get().sendScheduledMessageNow(msg.id);
+      } catch (err) {
+        console.error(`[AutoScheduler] Failed to dispatch due message ${msg.id}:`, err);
+      }
+    }
   },
 
   duplicateCampaign: (campaignId) => {

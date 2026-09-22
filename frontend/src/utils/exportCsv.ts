@@ -230,11 +230,25 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
     case 'bulk-send':
     case 'bulk-templates':
     case 'bulk-campaigns':
-    case 'bulk-recipients':
-    case 'bulk-scheduled': {
+    case 'bulk-recipients': {
       headers = ['ID', 'Campaign Name', 'Audience List', 'Category', 'Recipients', 'Status'];
       rows = (store.bulkCampaigns || []).map((c: any) => [
         c.id, c.name, c.audienceListName || 'All Contacts', c.category || 'marketing', c.totalRecipients || 0, c.status || 'completed'
+      ]);
+      break;
+    }
+    case 'bulk-scheduled': {
+      headers = ['ID', 'Campaign Name', 'Audience List', 'Scheduled For', 'Template', 'Category', 'Recipients', 'Status', 'Estimated Cost'];
+      rows = (store.bulkScheduledMessages || []).map((m: any) => [
+        m.id,
+        m.campaignName || m.name,
+        m.recipientGroupName || 'All Contacts',
+        m.scheduledFor,
+        m.templateName,
+        m.category,
+        m.recipientCount || m.recipients || 0,
+        m.status,
+        m.estimatedCost,
       ]);
       break;
     }

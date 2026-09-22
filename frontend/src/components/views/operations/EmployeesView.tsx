@@ -6,7 +6,7 @@ import {
   Users, Search, Filter, Plus, Phone, Mail, MapPin,
   Star, CheckCircle2, Clock, Calendar, Award, X,
   LogOut, MessageSquare, ExternalLink, ShieldCheck,
-  Briefcase, Smartphone, Edit3, Check, ChevronRight,
+  Briefcase, Smartphone, Edit3, Check, ChevronRight, ChevronDown, ChevronUp,
   TrendingUp, AlertCircle, Coffee, Target, Sparkles,
   ReceiptText, Timer, FileCheck, Navigation, ArrowRight,
   User, Zap, Fuel, Gift
@@ -29,6 +29,26 @@ export const EmployeesView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'on_duty' | 'active' | 'on_leave'>('all');
+
+  // Quick Shortcuts Expand / Collapse state (persisted in localStorage)
+  const [isShortcutsExpanded, setIsShortcutsExpanded] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('qiyam_emp_shortcuts_expanded');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleShortcuts = () => {
+    setIsShortcutsExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('qiyam_emp_shortcuts_expanded', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Selected employee for Profile Drawer
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | number | null>(null);
@@ -194,24 +214,61 @@ export const EmployeesView: React.FC = () => {
 
       <div className="p-3 sm:p-6 space-y-5 sm:space-y-6">
         {/* 12 Quick Shortcuts & Daily Actions Section */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span>Quick Shortcuts & Daily Actions</span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                1-click shortcuts for all 12 employee management modules. Click any card to open its dedicated page.
-              </p>
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs transition-all">
+          <div
+            onClick={toggleShortcuts}
+            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none group ${
+              isShortcutsExpanded ? 'border-b border-slate-100 pb-3.5 mb-4' : ''
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Zap className="w-5 h-5 fill-amber-500" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">
+                    Quick Shortcuts & Daily Actions
+                  </h3>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                    12 Modules Active
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isShortcutsExpanded
+                    ? '1-click shortcuts for all 12 employee management modules. Click any card to open its dedicated page.'
+                    : 'Shortcuts are collapsed to save screen space. Click to expand all 12 quick action cards.'}
+                </p>
+              </div>
             </div>
-            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 self-start sm:self-auto">
-              12 Modules Active
-            </span>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleShortcuts();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
+                  isShortcutsExpanded
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }`}
+                title={isShortcutsExpanded ? 'Collapse shortcuts to save screen space' : 'Expand all 12 shortcuts'}
+              >
+                <span>{isShortcutsExpanded ? 'Collapse' : 'Expand Shortcuts'}</span>
+                {isShortcutsExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {/* 1. Employee Directory */}
+          {isShortcutsExpanded && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-in fade-in duration-200">
+              {/* 1. Employee Directory */}
             <div className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-500 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 group">
               <div className="flex items-start justify-between">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
@@ -324,14 +381,14 @@ export const EmployeesView: React.FC = () => {
                 <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
                   Leave Management
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">Chutti requests & balance</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Staff leave requests & balance</p>
               </div>
               <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 text-[11px]">
                 <button
                   onClick={() => setActiveTab('ops-emp-leaves')}
                   className="text-amber-700 hover:text-amber-800 font-semibold cursor-pointer"
                 >
-                  Apply Chutti
+                  Apply Leave
                 </button>
                 <button
                   onClick={() => setActiveTab('ops-emp-leaves')}
@@ -607,7 +664,8 @@ export const EmployeesView: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </div>
         {/* KPI Strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">

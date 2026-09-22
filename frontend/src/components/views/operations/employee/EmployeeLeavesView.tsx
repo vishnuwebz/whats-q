@@ -155,7 +155,7 @@ export const EmployeeLeavesView: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <EmployeeSharedHeader
-        title="Leave Management (Chutti Requests)"
+        title="Leave Management"
         subtitle="Manage casual leaves, sick leaves, emergency time-off, and one-click leave approvals."
         activeSubTab="ops-emp-leaves"
         primaryActionLabel="Apply for Leave"
@@ -177,7 +177,7 @@ export const EmployeeLeavesView: React.FC = () => {
             <div className="text-2xl font-black text-blue-600 mt-1">
               {employees.filter((e) => e.status === 'on_leave').length}
             </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Approved staff chutti</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Approved staff leaves</div>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             <div className="text-xs font-semibold text-slate-500">Approved This Month</div>
@@ -264,7 +264,7 @@ export const EmployeeLeavesView: React.FC = () => {
                   <th className="p-3.5">Leave Type</th>
                   <th className="p-3.5">Duration & Dates</th>
                   <th className="p-3.5">Days</th>
-                  <th className="p-3.5">Reason for Chutti</th>
+                  <th className="p-3.5">Reason for Leave</th>
                   <th className="p-3.5">Status</th>
                   <th className="p-3.5 text-right">Approval Actions</th>
                 </tr>
@@ -387,7 +387,7 @@ export const EmployeeLeavesView: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Apply for Staff Leave (Chutti)</h3>
+              <h3 className="text-base font-bold text-slate-900">Apply for Staff Leave</h3>
               <button
                 onClick={() => setIsApplyModalOpen(false)}
                 className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"

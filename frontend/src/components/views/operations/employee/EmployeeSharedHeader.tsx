@@ -29,7 +29,7 @@ export const EMPLOYEE_NAV_TABS: {
   { id: 'ops-emp-directory', label: 'Employee Directory', shortLabel: 'Directory', icon: Users, simpleDesc: 'Staff List & Contacts' },
   { id: 'ops-emp-profiles', label: 'Employee Profiles', shortLabel: 'Profiles', icon: User, simpleDesc: 'Staff Details & ID Cards' },
   { id: 'ops-emp-attendance', label: 'Attendance & Work Hours', shortLabel: 'Attendance', icon: Clock, simpleDesc: 'Daily Duty & Punch Records' },
-  { id: 'ops-emp-leaves', label: 'Leave Management', shortLabel: 'Leaves', icon: Calendar, simpleDesc: 'Chutti Requests & Balance' },
+  { id: 'ops-emp-leaves', label: 'Leave Management', shortLabel: 'Leaves', icon: Calendar, simpleDesc: 'Leave Requests & Balance' },
   { id: 'ops-emp-monitoring', label: 'Employee Monitoring', shortLabel: 'Monitoring', icon: Navigation, simpleDesc: 'Live Duty & Location Tracking' },
   { id: 'ops-emp-breaks', label: 'Work Breaks & Alerts', shortLabel: 'Breaks', icon: Coffee, simpleDesc: 'Tea/Lunch Breaks & Alerts' },
   { id: 'ops-emp-performance', label: 'Performance & Reviews', shortLabel: 'Performance', icon: Award, simpleDesc: 'Star Ratings & Customer Reviews' },

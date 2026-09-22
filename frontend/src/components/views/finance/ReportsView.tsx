@@ -6,7 +6,7 @@ import {
   IndianRupee, ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
   ReceiptText, FileText, Calendar, Filter, CheckCircle2, AlertTriangle,
   Building2, Printer, ChevronRight, MessageSquare, Phone, ExternalLink,
-  ShieldCheck, RefreshCw, X, ArrowRight, Eye, PieChart as PieIcon, Layers
+  ShieldCheck, RefreshCw, X, ArrowRight, Eye, PieChart as PieIcon, Layers, PenTool
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
@@ -36,6 +36,7 @@ export const ReportsView: React.FC = () => {
     invoices,
     openConversationForContact,
     setActiveTab,
+    openPdfEditor,
   } = store;
 
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('pnl');
@@ -385,6 +386,26 @@ Please ignore this message if you have already completed the transfer. If you re
                 <option value="BR-004">Mumbai Commercial Center</option>
               </select>
             </div>
+            <button
+              onClick={() => {
+                openPdfEditor({
+                  type: 'financial_report',
+                  title: 'Executive Financial Audit Statement',
+                  recipientName: 'Board of Directors & Stakeholders',
+                  dateStr: 'May 2024',
+                  amount: 2485320,
+                  items: [
+                    { description: 'Gross Revenue (Operations & Field Services)', qty: 1, unitPrice: 2485320, amount: 2485320 },
+                    { description: 'Direct Operational Expenses & Spares', qty: 1, unitPrice: 755130, amount: 755130 },
+                    { description: 'Salaries, Utilities & Overheads', qty: 1, unitPrice: 600000, amount: 600000 },
+                  ],
+                });
+              }}
+              title="Edit in 2026 PDF Editor"
+              className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
+            >
+              <PenTool className="w-4 h-4" />
+            </button>
             <button
               onClick={() => handleExport('print')}
               title="Print Audited Statement"
@@ -1428,6 +1449,39 @@ Please ignore this message if you have already completed the transfer. If you re
             </div>
 
             <div className="space-y-2.5">
+              <button
+                onClick={() => {
+                  setIsExportModalOpen(false);
+                  openPdfEditor({
+                    type: 'financial_report',
+                    title: 'Executive Financial Audit Statement',
+                    recipientName: 'Board of Directors & Stakeholders',
+                    dateStr: 'May 2024',
+                    amount: 2485320,
+                    items: [
+                      { description: 'Gross Revenue (Operations & Field Services)', qty: 1, unitPrice: 2485320, amount: 2485320 },
+                      { description: 'Direct Operational Expenses & Spares', qty: 1, unitPrice: 755130, amount: 755130 },
+                      { description: 'Salaries, Utilities & Overheads', qty: 1, unitPrice: 600000, amount: 600000 },
+                    ],
+                  });
+                }}
+                className="w-full p-3 rounded-xl border border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50 hover:border-indigo-500 transition-all flex items-center justify-between group cursor-pointer shadow-xs"
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <PenTool className="w-5 h-5 text-indigo-600" />
+                  <div>
+                    <div className="font-bold text-slate-900 group-hover:text-indigo-700 flex items-center gap-1.5">
+                      <span>2026 Advanced PDF Editor Studio</span>
+                      <span className="px-1.5 py-0.2 bg-indigo-600 text-white rounded-md text-[9px] font-bold">2026+</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Visual drag-and-drop seals, signatures, corporate logo, watermark & layout edits.
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+              </button>
+
               <button
                 onClick={() => handleExport('csv')}
                 className="w-full p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all flex items-center justify-between group cursor-pointer"

@@ -108,7 +108,7 @@ export const EmployeeAttendanceView: React.FC = () => {
             <div className="text-[11px] text-red-600 mt-0.5">No punch record today</div>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="text-xs font-semibold text-slate-500">Approved Leave (Chutti)</div>
+            <div className="text-xs font-semibold text-slate-500">Approved Leave</div>
             <div className="text-2xl font-black text-blue-600 mt-1">{leaveCount}</div>
             <div className="text-[11px] text-slate-500 mt-0.5">Sanctioned time off</div>
           </div>

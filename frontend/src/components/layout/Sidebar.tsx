@@ -44,7 +44,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'ops-emp-directory', title: 'Employee Directory', category: 'Operations', icon: Users, keywords: 'employee directory staff team members roster list phone contacts' },
   { tab: 'ops-emp-profiles', title: 'Employee Profiles', category: 'Operations', icon: User, keywords: 'employee profile id card staff details emergency contact photo' },
   { tab: 'ops-emp-attendance', title: 'Attendance & Work Hours', category: 'Operations', icon: Clock, keywords: 'attendance work hours punch in check in check out shift hours daily duty' },
-  { tab: 'ops-emp-leaves', title: 'Leave Management', category: 'Operations', icon: Calendar, keywords: 'leave management chutti holidays time off casual sick leave approval balance' },
+  { tab: 'ops-emp-leaves', title: 'Leave Management', category: 'Operations', icon: Calendar, keywords: 'leave management holidays time off casual sick leave approval balance' },
   { tab: 'ops-emp-monitoring', title: 'Employee Monitoring', category: 'Operations', icon: Navigation, keywords: 'employee monitoring live duty gps field location tracking technician map' },
   { tab: 'ops-emp-breaks', title: 'Work Breaks & Alerts', category: 'Operations', icon: Clock, keywords: 'work breaks alerts tea break lunch break reminder pause duty' },
   { tab: 'ops-emp-performance', title: 'Performance & Reviews', category: 'Operations', icon: Award, keywords: 'performance reviews ratings customer feedback staff score star rating' },

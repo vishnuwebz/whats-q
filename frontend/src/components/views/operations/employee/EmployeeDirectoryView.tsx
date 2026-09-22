@@ -118,7 +118,7 @@ export const EmployeeDirectoryView: React.FC = () => {
             <div className="text-[11px] text-blue-600 mt-0.5">Support & coordination</div>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="text-xs font-semibold text-slate-500">On Chutti / Leave</div>
+            <div className="text-xs font-semibold text-slate-500">On Leave</div>
             <div className="text-2xl font-black text-amber-500 mt-1">
               {employees.filter((e) => e.status === 'on_leave').length}
             </div>

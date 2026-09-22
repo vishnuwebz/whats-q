@@ -4,7 +4,7 @@ import { EmployeeSharedHeader } from './EmployeeSharedHeader';
 import {
   ReceiptText, IndianRupee, CheckCircle2, XCircle,
   Plus, Search, Filter, Fuel, Wrench, Utensils,
-  FileText, Check, X, ChevronRight, Eye
+  FileText, Check, X, ChevronRight, Eye, PenTool
 } from 'lucide-react';
 
 interface VoucherClaim {
@@ -72,7 +72,7 @@ const INITIAL_VOUCHERS: VoucherClaim[] = [
 ];
 
 export const EmployeeVouchersView: React.FC = () => {
-  const { employees, addToast } = useQiyamStore();
+  const { employees, addToast, openPdfEditor } = useQiyamStore();
 
   const [vouchers, setVouchers] = useState<VoucherClaim[]>(INITIAL_VOUCHERS);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved_paid' | 'rejected'>('all');
@@ -298,27 +298,51 @@ export const EmployeeVouchersView: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
-                        {isPending ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleApproveAndPay(v.id)}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1 shadow-xs"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Approve & Pay</span>
-                            </button>
-                            <button
-                              onClick={() => handleRejectClaim(v.id)}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 rounded-xl text-xs font-semibold cursor-pointer border border-slate-200"
-                            >
-                              <span>Reject</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-medium text-[11px]">
-                            {isPaid ? 'Settled ✔' : 'Rejected ✖'}
-                          </span>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isPending ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveAndPay(v.id)}
+                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1 shadow-xs"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                onClick={() => handleRejectClaim(v.id)}
+                                className="px-2 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 rounded-xl text-xs font-semibold cursor-pointer border border-slate-200"
+                              >
+                                <span>Reject</span>
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 font-medium text-[11px] mr-1">
+                              {isPaid ? 'Settled ✔' : 'Rejected ✖'}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => {
+                              openPdfEditor({
+                                type: 'voucher',
+                                title: `Expense Claim Voucher - ${v.bill_number}`,
+                                recipientName: v.name,
+                                recipientRole: v.role,
+                                recipientId: v.employee_id_str,
+                                amount: v.amount,
+                                dateStr: v.date_str,
+                                invoiceNumber: v.bill_number,
+                                items: [
+                                  { description: `${v.category}: ${v.description}`, qty: 1, unitPrice: v.amount, amount: v.amount }
+                                ],
+                              });
+                            }}
+                            className="px-2 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1 border border-indigo-200 shadow-2xs"
+                            title="Edit Voucher in 2026 PDF Editor"
+                          >
+                            <PenTool className="w-3.5 h-3.5" />
+                            <span>Edit PDF</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

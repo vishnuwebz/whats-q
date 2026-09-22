@@ -105,6 +105,12 @@ export const BulkSendMessageView: React.FC = () => {
         );
         if (foundList) setSelectedListId(foundList.id);
       }
+      if (draftCampaign.sendType === 'schedule') {
+        setSendType('schedule');
+        if (draftCampaign.scheduledDateTime) {
+          setScheduledDateTime(draftCampaign.scheduledDateTime);
+        }
+      }
       setDraftCampaign(null);
     }
   }, [draftCampaign, bulkTemplates, bulkRecipientLists, setDraftCampaign]);
@@ -482,18 +488,27 @@ export const BulkSendMessageView: React.FC = () => {
         setIsSending(true);
 
         if (sendType === 'schedule') {
+          // Build real contacts list from the selected IDs
+          const selectedContacts = currentListContacts
+            .filter((c) => activeSelectedIds.has(c.id))
+            .map((c) => ({ name: c.name, phone: c.phone }));
+
           createScheduledMessage({
             campaignName,
             recipientGroupId: activeList.id,
             recipientGroupName: `${activeList.name} (${audienceCount} selected)`,
             recipientCount: audienceCount,
+            contacts: selectedContacts,
             scheduledFor: scheduledDateTime,
             templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Message',
+            templateId: messageType === 'template' ? activeTemplate.id : undefined,
+            messageText: messageType === 'template'
+              ? (activeTemplate.bodyText || activeTemplate.body || '')
+              : freeformText,
             category,
             estimatedCost,
           });
           setIsSending(false);
-          addToast(`Campaign scheduled successfully for ${scheduledDateTime}!`, 'success');
           setActiveTab('bulk-scheduled');
         } else {
           setIsSending(true);

@@ -636,6 +636,8 @@ export interface BulkCampaign {
   templateName: string;
   templateId?: string;
   messageText?: string;
+  sendType?: 'now' | 'schedule';
+  scheduledDateTime?: string;
   recipientsList?: BulkCampaignRecipient[];
 }
 
@@ -697,6 +699,10 @@ export interface BulkScheduledMessage {
   createdOn?: string;
   createdAt?: string;
   messageText?: string;
+  contacts?: Array<{ name?: string; phone: string }>;
+  templateId?: string;
+  mediaUrl?: string;
+  mediaType?: string;
 }
 
 export interface BulkTemplateItem {
