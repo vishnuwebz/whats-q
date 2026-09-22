@@ -345,18 +345,36 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     addToast(`Extracted ${contacts.length} contacts from pasted text!`, 'success');
   };
 
-  // Load Demo Contacts
-  const handleLoadDemoAudience = () => {
-    const samplePool = getSampleContactsForList('lst-new', newListName || 'New Segment');
-    setImportedContacts(samplePool);
-    setSelectedContactIds(new Set(samplePool.map((c) => c.id)));
-    setIsPreviewExpanded(true);
-    setUploadedFileName('Verified Business Pool (25 Contacts)');
-    if (!newListName.trim()) {
-      setNewListName('Qiyam VIP & High-Value Clients');
+  // Load Real Active Contacts from WhatsApp Conversations
+  const handleLoadActiveAudience = () => {
+    const realContacts: BulkContact[] = (conversations || [])
+      .filter((c) => c.phone_number)
+      .map((c) => ({
+        id: `conv-aud-${c.id}`,
+        name: c.contact_name || c.phone_number,
+        phone: c.phone_number,
+        tag: c.category || 'WhatsApp Contact',
+        validWhatsApp: true,
+        optedOut: !!c.is_opted_out,
+        lastActive: c.last_contact_date || 'Recently',
+        source: 'WhatsApp',
+      }));
+
+    if (realContacts.length === 0) {
+      addToast('No active WhatsApp conversations found in system', 'warning');
+      return;
     }
-    addToast('Loaded 25 verified business contacts with tags!', 'info');
+
+    setImportedContacts(realContacts);
+    setSelectedContactIds(new Set(realContacts.map((c) => c.id)));
+    setIsPreviewExpanded(true);
+    setUploadedFileName(`Active Conversations (${realContacts.length} Contacts)`);
+    if (!newListName.trim()) {
+      setNewListName('Active WhatsApp Contacts');
+    }
+    addToast(`Loaded ${realContacts.length} active contacts from WhatsApp conversations!`, 'info');
   };
+
 
   // Download Sample CSV
   const handleDownloadSampleCsv = () => {
@@ -497,8 +515,9 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     if (selectedList.contactItems && selectedList.contactItems.length > 0) {
       return selectedList.contactItems;
     }
-    return getSampleContactsForList(selectedList.id, selectedList.name);
+    return [];
   }, [selectedList]);
+
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
@@ -1400,7 +1419,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                     }`}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    Demo Audience
+                    Active Chats
                   </button>
                 </div>
 
@@ -1448,19 +1467,22 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                         onClick={() => createModalFileInputRef.current?.click()}
                         className="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white hover:bg-emerald-50/40 p-4 rounded-xl text-center cursor-pointer transition space-y-1.5"
                       >
-                        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center border border-emerald-200">
-                          {isParsingFile ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Upload className="w-4 h-4" />
-                          )}
+                        <input
+                          ref={createModalFileInputRef}
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleFileUploadForModal}
+                          className="hidden"
+                        />
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+                          <Upload className="w-4 h-4" />
                         </div>
-                        <div className="font-bold text-slate-800 text-xs">
-                          Click to browse CSV spreadsheet or drag &amp; drop
+                        <div className="text-xs font-bold text-slate-800">
+                          Click to upload CSV spreadsheet
                         </div>
-                        <div className="text-[10px] text-slate-500">
-                          Supports headers: Name, Phone, Tag, Email. Indian numbers automatically formatted.
-                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Supported headers: Name, Phone, Tag, Email.
+                        </p>
                       </div>
                     )}
 
@@ -1484,7 +1506,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                       rows={3}
                       value={rawTextImport}
                       onChange={(e) => setRawTextImport(e.target.value)}
-                      placeholder={'Rahul Sharma, +91 98765 43210, VIP, rahul@gmail.com\nAmina Al-Balushi, +968 9123 4567, Corporate\n+91 94470 12345'}
+                      placeholder={'Customer Name, +91 94963 00233, VIP, customer@example.com\n+91 98765 43210'}
                       className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                     />
                     <div className="flex items-center justify-between">
@@ -1502,27 +1524,27 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                   </div>
                 )}
 
-                {/* Tab 3: Demo Audience Pool */}
+                {/* Tab 3: Active WhatsApp Conversations */}
                 {importMethod === 'demo' && (
                   <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="font-bold text-slate-800 text-xs">
-                        Instant Verified Sample Audience
+                        Active WhatsApp Conversations
                       </div>
                       <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                        25 Records
+                        {conversations.length} Chats
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Populate this list with verified contacts containing varied tags (VIP, Retail, Corporate) and real Kerala / UAE / Oman phone numbers for instant test broadcasts.
+                      Populate this audience segment directly from your active WhatsApp customer chat history.
                     </p>
                     <button
                       type="button"
-                      onClick={handleLoadDemoAudience}
+                      onClick={handleLoadActiveAudience}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold rounded-lg text-xs transition cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      Load 25 Demo Contacts
+                      Load Active WhatsApp Contacts
                     </button>
                   </div>
                 )}

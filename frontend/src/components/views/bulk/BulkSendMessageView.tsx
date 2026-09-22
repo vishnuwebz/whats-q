@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkContact, BulkRecipientList, BulkTemplateItem } from '../../../types';
-import { getSampleContactsForList } from '../../../store/bulkData';
 import { MetaWalletCard } from './MetaWalletCard';
 import { WhatsAppGuidelinesModal } from './WhatsAppGuidelinesModal';
 import { SidebarToggle } from '../../layout/SidebarToggle';
@@ -44,9 +43,12 @@ export const BulkSendMessageView: React.FC = () => {
     bulkRecipientLists,
     bulkTemplates,
     metaWallet,
+    metaConfig,
     sendBulkMessage,
     createScheduledMessage,
     importContactsToRecipientList,
+    fetchBulkTemplates,
+    fetchBulkCampaigns,
     addToast,
     setActiveTab,
     requestSendConfirmation,
@@ -58,11 +60,11 @@ export const BulkSendMessageView: React.FC = () => {
   const [campaignName, setCampaignName] = useState('');
   const [category, setCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
   const [sendType, setSendType] = useState<'now' | 'schedule'>('now');
-  const [scheduledDateTime, setScheduledDateTime] = useState('2026-09-18T10:00');
+  const [scheduledDateTime, setScheduledDateTime] = useState('2026-09-25T10:00');
   const [selectedListId, setSelectedListId] = useState<string>(
-    bulkRecipientLists[0]?.id || 'lst-1'
+    bulkRecipientLists[0]?.id || ''
   );
-  const [selectedTags, setSelectedTags] = useState<string>('VIP, Loyal');
+  const [selectedTags, setSelectedTags] = useState<string>('');
   const [excludeOptOuts, setExcludeOptOuts] = useState<boolean>(true);
 
   // Contacts Selection & Exclusion Modal states
@@ -71,6 +73,13 @@ export const BulkSendMessageView: React.FC = () => {
   const [contactsSearchQuery, setContactsSearchQuery] = useState('');
   const [contactsTagFilter, setContactsTagFilter] = useState('all');
 
+  // Test Send Modal state
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testPhoneNumber, setTestPhoneNumber] = useState(
+    metaConfig?.business_phone_display || '+91 94963 00233'
+  );
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
   // CSV Import State
   const [isImportingCsv, setIsImportingCsv] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,30 +87,56 @@ export const BulkSendMessageView: React.FC = () => {
   // Content states
   const [messageType, setMessageType] = useState<'template' | 'freeform'>('template');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    bulkTemplates[0]?.id || 'tmpl-1'
+    bulkTemplates[0]?.id || ''
   );
   const [variable1, setVariable1] = useState('Valued Customer');
-  const [variable2, setVariable2] = useState('FESTIVE30');
+  const [variable2, setVariable2] = useState('OFFER2026');
   const [variable3, setVariable3] = useState('Sunday Midnight');
   const [freeformText, setFreeformText] = useState(
-    'Hello {{name}}, thank you for choosing Qiyam Ventures! Enjoy 30% off today using code FESTIVE30.'
+    'Hello {{name}}, thank you for contacting Qiyam Business Solutions! How may we assist you today?'
   );
 
   // Dispatch & safety
   const [dispatchSpeed, setDispatchSpeed] = useState<number>(60); // msgs / min
   const [isSending, setIsSending] = useState(false);
 
+  // Load real templates and campaigns on mount
+  React.useEffect(() => {
+    fetchBulkTemplates();
+    fetchBulkCampaigns();
+  }, [fetchBulkTemplates, fetchBulkCampaigns]);
+
+  // Sync selectedListId when recipient lists load
+  React.useEffect(() => {
+    if (bulkRecipientLists.length > 0) {
+      const exists = bulkRecipientLists.some((l) => l.id === selectedListId);
+      if (!selectedListId || !exists) {
+        setSelectedListId(bulkRecipientLists[0].id);
+      }
+    }
+  }, [bulkRecipientLists, selectedListId]);
+
+  // Sync selectedTemplateId when templates load
+  React.useEffect(() => {
+    if (bulkTemplates.length > 0) {
+      const exists = bulkTemplates.some((t) => t.id === selectedTemplateId);
+      if (!selectedTemplateId || !exists) {
+        setSelectedTemplateId(bulkTemplates[0].id);
+      }
+    }
+  }, [bulkTemplates, selectedTemplateId]);
+
   // Active selected list
   const activeList: BulkRecipientList = useMemo(() => {
     return (
       bulkRecipientLists.find((l) => l.id === selectedListId) ||
       bulkRecipientLists[0] || {
-        id: 'list-default',
-        name: 'All Active Contacts',
-        contactCount: 500,
-        validWhatsAppCount: 490,
-        createdAt: '2026-09-01',
-        tags: ['Active', 'General'],
+        id: '',
+        name: 'No Recipient List Selected',
+        contactCount: 0,
+        validWhatsAppCount: 0,
+        createdAt: new Date().toISOString(),
+        tags: ['General'],
         contactItems: [],
       }
     );
@@ -112,7 +147,7 @@ export const BulkSendMessageView: React.FC = () => {
     if (activeList.contactItems && activeList.contactItems.length > 0) {
       return activeList.contactItems;
     }
-    return getSampleContactsForList(activeList.id, activeList.name);
+    return [];
   }, [activeList]);
 
   // Current list's selected contact IDs
@@ -154,16 +189,11 @@ export const BulkSendMessageView: React.FC = () => {
     return (
       bulkTemplates.find((t) => t.id === selectedTemplateId) ||
       bulkTemplates[0] || {
-        id: 'tmpl-1',
-        name: 'festive_promo_v2',
+        id: '',
+        name: 'No Template Selected',
         language: 'en_US',
         category: 'marketing',
-        bodyText:
-          'Hello {{1}}, our Diwali Super Saver is live! Use code {{2}} to get 30% OFF on all services until {{3}}. Tap below to claim.',
-        headerType: 'IMAGE',
-        headerContent: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80',
-        footerText: 'Reply STOP to unsubscribe',
-        buttons: [{ type: 'URL', text: 'Shop Now' }],
+        bodyText: '',
         status: 'APPROVED',
       }
     );
@@ -296,12 +326,8 @@ export const BulkSendMessageView: React.FC = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       'Name,Phone,Tag,Email\n' +
-      'Rahul Sharma,+91 98765 43210,VIP,rahul@techcorp.in\n' +
-      'Amina Al-Balushi,+968 9123 4567,Corporate,amina@muscat.om\n' +
-      'Vikram Menon,+91 94470 12345,Retail,vikram@calicut.in\n' +
-      'Zainab Qasim,+971 52 345 6789,VIP,zainab@dubai.ae\n' +
-      'Dr. Tariq Al-Mansoor,+966 50 123 4567,Loyal,tariq@jeddah.sa\n' +
-      'Sneha Joshi,+91 98234 56789,Retail,sneha@punehomes.com\n';
+      'Customer 1,+91 94963 00233,VIP,customer1@example.com\n' +
+      'Customer 2,+91 98765 43210,Retail,customer2@example.com\n';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -460,7 +486,42 @@ export const BulkSendMessageView: React.FC = () => {
   };
 
   const handleTestSend = () => {
-    addToast('Test message dispatched to your verified admin WhatsApp number!', 'info');
+    if (!testPhoneNumber) {
+      setTestPhoneNumber(metaConfig?.business_phone_display || '+91 94963 00233');
+    }
+    setIsTestModalOpen(true);
+  };
+
+  const executeTestSend = async () => {
+    const phone = testPhoneNumber.trim();
+    if (!phone || phone.length < 10) {
+      addToast('Please enter a valid phone number with country code (e.g. +91 94963 00233)', 'error');
+      return;
+    }
+
+    setIsSendingTest(true);
+    try {
+      const res = await sendBulkMessage({
+        name: `[TEST] ${campaignName || activeTemplate.name || 'Single Test Message'}`,
+        category,
+        type: category === 'utility' ? 'Utility' : category === 'authentication' ? 'Authentication' : 'Marketing',
+        audienceListName: `Test Send to ${phone}`,
+        totalRecipients: 1,
+        templateName: messageType === 'template' ? activeTemplate.name : 'Freeform Test',
+        messageText: livePreviewBody,
+        contacts: [{ name: 'Test Recipient', phone }],
+        cost: 0,
+      });
+
+      setIsSendingTest(false);
+      if (res?.success) {
+        addToast(`Real test message sent to ${phone} via WhatsApp gateway!`, 'success');
+        setIsTestModalOpen(false);
+      }
+    } catch (err: any) {
+      setIsSendingTest(false);
+      addToast(err?.message || 'Failed to dispatch test message', 'error');
+    }
   };
 
   return (
@@ -534,7 +595,7 @@ export const BulkSendMessageView: React.FC = () => {
                     type="text"
                     value={campaignName}
                     onChange={(e) => setCampaignName(e.target.value)}
-                    placeholder="e.g. Diwali Mega Sale 2024"
+                    placeholder="e.g. Qiyam Special Broadcast 2026"
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
@@ -659,17 +720,23 @@ export const BulkSendMessageView: React.FC = () => {
                     <label className="block font-semibold text-slate-800 mb-1">
                       Recipient List
                     </label>
-                    <select
-                      value={selectedListId}
-                      onChange={(e) => setSelectedListId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                    >
-                      {bulkRecipientLists.map((list) => (
-                        <option key={list.id} value={list.id}>
-                          {list.name} ({list.validWhatsAppCount} active numbers)
-                        </option>
-                      ))}
-                    </select>
+                    {bulkRecipientLists.length > 0 ? (
+                      <select
+                        value={selectedListId}
+                        onChange={(e) => setSelectedListId(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                      >
+                        {bulkRecipientLists.map((list) => (
+                          <option key={list.id} value={list.id}>
+                            {list.name} ({list.validWhatsAppCount} active numbers)
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-600">
+                        No recipient lists found. Import CSV above or extract group contacts.
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -806,26 +873,48 @@ export const BulkSendMessageView: React.FC = () => {
                 {messageType === 'template' ? (
                   <div className="space-y-3">
                     <div>
-                      <label className="block font-semibold text-slate-800 mb-1">
-                        Select Approved Template
-                      </label>
-                      <select
-                        value={selectedTemplateId}
-                        onChange={(e) => setSelectedTemplateId(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                      >
-                        {bulkTemplates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} ({t.category.toUpperCase()} -{' '}
-                            {t.headerType === 'DOCUMENT'
-                              ? '📄 PDF'
-                              : t.headerType === 'IMAGE'
-                              ? '🖼️ IMG'
-                              : 'TEXT'}
-                            ) - {t.status}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-slate-800">
+                          Select Approved Template
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('bulk-templates')}
+                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          Manage Templates <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                      {bulkTemplates.length > 0 ? (
+                        <select
+                          value={selectedTemplateId}
+                          onChange={(e) => setSelectedTemplateId(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                        >
+                          {bulkTemplates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name} ({t.category.toUpperCase()} -{' '}
+                              {t.headerType === 'DOCUMENT'
+                                ? '📄 PDF'
+                                : t.headerType === 'IMAGE'
+                                ? '🖼️ IMG'
+                                : 'TEXT'}
+                              ) - {t.status}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
+                          <span>No approved templates found in database.</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('bulk-templates')}
+                            className="px-2.5 py-1 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 text-[11px] cursor-pointer"
+                          >
+                            Create / Sync Templates
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Attached Media Header Information */}
@@ -1494,6 +1583,85 @@ export const BulkSendMessageView: React.FC = () => {
                   Apply & Confirm ({audienceCount} Selected)
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Real Test Send Modal */}
+      {isTestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <Send className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Send Real WhatsApp Test</h3>
+                  <p className="text-xs text-slate-500">Dispatch live test message via gateway</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTestModalOpen(false)}
+                className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Recipient WhatsApp Number (with Country Code)
+                </label>
+                <input
+                  type="text"
+                  value={testPhoneNumber}
+                  onChange={(e) => setTestPhoneNumber(e.target.value)}
+                  placeholder="+91 94963 00233"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  The message will be immediately dispatched to this number via the WhatsApp gateway.
+                </p>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <div className="text-[10px] font-bold text-slate-500 uppercase">Message Preview:</div>
+                <div className="text-xs text-slate-800 font-medium whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                  {livePreviewBody || '(Empty message body)'}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/70 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTestModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 font-bold text-xs text-slate-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeTestSend}
+                disabled={isSendingTest}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                {isSendingTest ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Dispatching Test...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Send Live Test Now
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

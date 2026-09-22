@@ -2039,9 +2039,102 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       String(c.id) === String(selectedConversationId) ? { ...c, unread_count: 0 } : c
     );
 
+    // Build real recipient lists from actual store data (conversations, leads, customers)
+    const conversationContacts: BulkContact[] = sanitizedConversations
+      .filter((c) => c.phone_number)
+      .map((c) => ({
+        id: `conv-${c.id}`,
+        name: c.contact_name || c.phone_number,
+        phone: c.phone_number,
+        tag: c.category || 'WhatsApp Contact',
+        validWhatsApp: true,
+        optedOut: !!c.is_opted_out,
+        lastActive: c.last_contact_date || 'Recently',
+        source: 'WhatsApp',
+      }));
+
+    const leadContacts: BulkContact[] = (leads || [])
+      .filter((l: any) => l.phone)
+      .map((l: any) => ({
+        id: `lead-${l.id}`,
+        name: l.name,
+        phone: l.phone,
+        email: l.email,
+        tag: l.stage || 'Lead',
+        validWhatsApp: true,
+        optedOut: false,
+        lastActive: l.last_contact_str || 'Recently',
+        source: 'CRM Lead',
+      }));
+
+    const customerContacts: BulkContact[] = (customers || [])
+      .filter((c: any) => c.phone)
+      .map((c: any) => ({
+        id: `cust-${c.id}`,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        tag: 'Customer',
+        validWhatsApp: true,
+        optedOut: false,
+        lastActive: 'Recently',
+        source: 'CRM Customer',
+      }));
+
+    const defaultRecipientLists: BulkRecipientList[] = [];
+
+    if (conversationContacts.length > 0) {
+      defaultRecipientLists.push({
+        id: 'lst-conversations',
+        name: 'All WhatsApp Conversations',
+        description: `All active customer conversations (${conversationContacts.length} numbers)`,
+        type: 'Customers',
+        contactCount: conversationContacts.length,
+        validWhatsAppCount: conversationContacts.filter((c) => !c.optedOut).length,
+        tags: ['Active', 'Conversations'],
+        createdAt: new Date().toISOString(),
+        contactItems: conversationContacts,
+      });
+    }
+
+    if (leadContacts.length > 0) {
+      defaultRecipientLists.push({
+        id: 'lst-leads',
+        name: 'CRM Leads',
+        description: `Inbound and active CRM leads (${leadContacts.length} numbers)`,
+        type: 'Leads',
+        contactCount: leadContacts.length,
+        validWhatsAppCount: leadContacts.length,
+        tags: ['Leads', 'CRM'],
+        createdAt: new Date().toISOString(),
+        contactItems: leadContacts,
+      });
+    }
+
+    if (customerContacts.length > 0) {
+      defaultRecipientLists.push({
+        id: 'lst-customers',
+        name: 'CRM Customers',
+        description: `Registered CRM customers (${customerContacts.length} numbers)`,
+        type: 'Customers',
+        contactCount: customerContacts.length,
+        validWhatsAppCount: customerContacts.length,
+        tags: ['Customers', 'CRM'],
+        createdAt: new Date().toISOString(),
+        contactItems: customerContacts,
+      });
+    }
+
+    const existingCustomLists = (current.bulkRecipientLists || []).filter(
+      (l) => l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-')
+    );
+
+    const mergedRecipientLists = [...defaultRecipientLists, ...existingCustomLists];
+
     set({
       backendOnline: true,
       conversations: sanitizedConversations,
+      bulkRecipientLists: mergedRecipientLists,
       templates,
       bulkTemplates: (templates || []).map((t: any): BulkTemplateItem => {
         const metaCat = t.meta_category ? t.meta_category.toLowerCase() : (t.category || 'marketing').toLowerCase();
@@ -2108,6 +2201,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     });
 
     get().fetchLinkedDevices();
+    get().fetchBulkCampaigns();
+    get().fetchBulkTemplates();
 
     if (selectedConversationId) {
       get().markConversationAsRead(selectedConversationId);
