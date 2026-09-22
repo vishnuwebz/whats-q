@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileText,
   Plus,
@@ -25,6 +25,7 @@ import {
   Edit3,
   Pencil,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkTemplateItem } from '../../../types';
@@ -69,12 +70,15 @@ export const BulkTemplatesView: React.FC = () => {
     updateBulkTemplate,
     deleteBulkTemplate,
     updateBulkTemplateStatus,
+    fetchBulkTemplates,
+    syncBulkTemplatesWithMeta,
     duplicateCampaign,
     setActiveTab,
     addToast,
     requestGeneralConfirmation,
   } = useQiyamStore();
 
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -83,6 +87,11 @@ export const BulkTemplatesView: React.FC = () => {
   );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchBulkTemplates().finally(() => setIsLoading(false));
+  }, []);
 
   // New Template Modal state with Media Header Support
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -139,12 +148,13 @@ export const BulkTemplatesView: React.FC = () => {
     });
   }, [bulkTemplates, searchQuery, selectedCategory, selectedStatus]);
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setIsSyncing(true);
-    setTimeout(() => {
+    try {
+      await syncBulkTemplatesWithMeta();
+    } finally {
       setIsSyncing(false);
-      addToast('WhatsApp templates successfully synced with Meta Cloud API!', 'success');
-    }, 1200);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,7 +192,7 @@ export const BulkTemplatesView: React.FC = () => {
     addToast(`Selected media preset: ${preset.name}`, 'info');
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTemplateName.trim() || !newTemplateBody.trim()) {
       addToast('Please provide both template name and message body', 'error');
@@ -197,7 +207,7 @@ export const BulkTemplatesView: React.FC = () => {
       buttons.push({ type: 'QUICK_REPLY', text: button2Text.trim() });
     }
 
-    createBulkTemplate({
+    const success = await createBulkTemplate({
       name: newTemplateName.trim().toLowerCase().replace(/\s+/g, '_'),
       category: newTemplateCategory,
       language: newTemplateLang,
@@ -212,12 +222,10 @@ export const BulkTemplatesView: React.FC = () => {
       buttons,
     });
 
-    setIsCreateOpen(false);
-    setNewTemplateName('');
-    addToast(
-      'Template submitted to Meta Graph API for review! Automated review callback will approve it in ~8s.',
-      'success'
-    );
+    if (success) {
+      setIsCreateOpen(false);
+      setNewTemplateName('');
+    }
   };
 
   const handleUseInCampaign = (tmpl: BulkTemplateItem) => {
@@ -307,7 +315,7 @@ export const BulkTemplatesView: React.FC = () => {
     setEditBodyText((prev) => `${prev} ${emoji}`);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTemplate) return;
     if (!editName.trim() || !editBodyText.trim()) {
@@ -341,32 +349,27 @@ export const BulkTemplatesView: React.FC = () => {
       qualityRating: 'High',
     };
 
-    updateBulkTemplate(editingTemplate.id, updatedTemplateData);
-
-    // Update selectedTemplate if currently open in drawer
-    if (selectedTemplate && selectedTemplate.id === editingTemplate.id) {
-      setSelectedTemplate({
-        ...selectedTemplate,
-        ...updatedTemplateData,
-        status: 'PENDING',
-        meta_status: 'PENDING',
-        lastUpdated: 'Just now',
-      });
+    const success = await updateBulkTemplate(editingTemplate.id, updatedTemplateData);
+    if (success) {
+      if (selectedTemplate && selectedTemplate.id === editingTemplate.id) {
+        setSelectedTemplate({
+          ...selectedTemplate,
+          ...updatedTemplateData,
+          status: 'PENDING',
+          meta_status: 'PENDING',
+          lastUpdated: 'Just now',
+        });
+      }
+      setIsEditOpen(false);
+      setEditingTemplate(null);
     }
-
-    setIsEditOpen(false);
-    setEditingTemplate(null);
-    addToast(
-      `Template "${editName}" updated and resubmitted to Meta for review! Automated callback will approve in ~8s.`,
-      'success'
-    );
   };
 
   const handleDeleteTemplate = (tmpl: BulkTemplateItem) => {
     requestGeneralConfirmation({
       title: 'Delete WhatsApp Template?',
       message: `Are you sure you want to delete template "${tmpl.name}"?`,
-      description: 'This template will be permanently removed from your bulk campaign library.',
+      description: 'This template will be permanently removed from your bulk campaign library and database.',
       variant: 'danger',
       icon: 'trash',
       confirmLabel: 'Delete Template',
@@ -376,13 +379,12 @@ export const BulkTemplatesView: React.FC = () => {
         sublabel: `${tmpl.category || 'MARKETING'} • ${tmpl.language || 'English (US)'}`,
         badgeText: tmpl.status || 'Template',
       },
-      onConfirm: () => {
-        deleteBulkTemplate(tmpl.id);
+      onConfirm: async () => {
+        await deleteBulkTemplate(tmpl.id);
         if (selectedTemplate?.id === tmpl.id) {
           setIsDrawerOpen(false);
           setSelectedTemplate(null);
         }
-        addToast(`Template "${tmpl.name}" deleted`, 'info');
       },
     });
   };
@@ -474,7 +476,16 @@ export const BulkTemplatesView: React.FC = () => {
           </div>
         </div>
 
+        {/* Loading Spinner */}
+        {isLoading && (
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-7 h-7 text-emerald-600 animate-spin" />
+            <p className="text-xs font-semibold text-slate-600">Loading verified WhatsApp templates from database...</p>
+          </div>
+        )}
+
         {/* Templates Grid */}
+        {!isLoading && filteredTemplates.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTemplates.map((tmpl) => {
             const isApproved = tmpl.status === 'APPROVED';
@@ -626,12 +637,13 @@ export const BulkTemplatesView: React.FC = () => {
             );
           })}
         </div>
+        )}
 
-        {filteredTemplates.length === 0 && (
+        {!isLoading && filteredTemplates.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
             <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
             <h4 className="font-bold text-slate-700">No Templates Found</h4>
-            <p className="text-xs mt-1">Try adjusting your search query or filters.</p>
+            <p className="text-xs mt-1">Try adjusting your search query or filters, or create a new template.</p>
           </div>
         )}
       </div>

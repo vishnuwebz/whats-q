@@ -171,6 +171,13 @@ class WhatsAppTemplateSerializer(serializers.ModelSerializer):
         model = WhatsAppTemplate
         fields = '__all__'
 
+    def validate(self, attrs):
+        if not attrs.get('body') and attrs.get('body_text'):
+            attrs['body'] = attrs['body_text']
+        elif not attrs.get('body_text') and attrs.get('body'):
+            attrs['body_text'] = attrs['body']
+        return attrs
+
 class ConversationSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
 
@@ -1318,8 +1325,8 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'header_sample': 'AC Repair',
                     'body': 'Hello {{1}},\nYour appointment for {{2}} is confirmed for {{3}}.\nAssigned Specialist: {{4}} ({{5}}).\n\nReply RESCHEDULE if you need to pick a different date.',
                     'body_text': 'Hello {{1}},\nYour appointment for {{2}} is confirmed for {{3}}.\nAssigned Specialist: {{4}} ({{5}}).\n\nReply RESCHEDULE if you need to pick a different date.',
-                    'body_variables': {'1': 'Customer', '2': 'AC Comprehensive Service', '3': 'Tomorrow at 10:30 AM', '4': 'Rahul Mehta', '5': '+91 98471 23456'},
-                    'footer_text': 'CoolFix Quick Dispatch • 1800-QIYAM',
+                    'body_variables': {'1': 'Customer', '2': 'Comprehensive Service', '3': 'Tomorrow at 10:30 AM', '4': 'WhatsQ Specialist', '5': '+91 98471 23456'},
+                    'footer_text': 'WhatsQ Quick Dispatch • Support',
                     'buttons': [
                         {'id': 'btn_confirm', 'type': 'QUICK_REPLY', 'text': 'Confirm Slot'},
                         {'id': 'btn_reschedule', 'type': 'QUICK_REPLY', 'text': 'Reschedule Date'},
@@ -1336,10 +1343,10 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'language': 'en_US',
                     'header_type': 'IMAGE',
                     'header_url': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80',
-                    'body': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://coolfix.in/track/{{5}}',
-                    'body_text': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://coolfix.in/track/{{5}}',
-                    'body_variables': {'1': 'Customer', '2': 'Rahul Mehta', '3': '#B4821', '4': '10:30 AM', '5': 'B4821'},
-                    'footer_text': 'CoolFix Operations Support',
+                    'body': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://whatsq.qiyambusinesssolutions.com/track/{{5}}',
+                    'body_text': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://whatsq.qiyambusinesssolutions.com/track/{{5}}',
+                    'body_variables': {'1': 'Customer', '2': 'Service Specialist', '3': '#B4821', '4': '10:30 AM', '5': 'B4821'},
+                    'footer_text': 'WhatsQ Operations Support',
                     'buttons': [
                         {'id': 'btn_available', 'type': 'QUICK_REPLY', 'text': 'I am Available'},
                         {'id': 'btn_delay', 'type': 'QUICK_REPLY', 'text': 'Delay by 30 mins'}
@@ -1357,8 +1364,8 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'header_url': 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
                     'body': 'Hello {{1}},\nHere is the official quotation for {{2}}: ₹{{3}}.\n\nSummary:\n• Service: {{2}}\n• Inspection & Diagnostics: Included\n• Total Estimated Price: ₹{{3}}\n\nTo accept and lock this price, tap Approve below.',
                     'body_text': 'Hello {{1}},\nHere is the official quotation for {{2}}: ₹{{3}}.\n\nSummary:\n• Service: {{2}}\n• Inspection & Diagnostics: Included\n• Total Estimated Price: ₹{{3}}\n\nTo accept and lock this price, tap Approve below.',
-                    'body_variables': {'1': 'Customer', '2': 'Home Cleaning', '3': '1200'},
-                    'footer_text': 'CoolFix Commercial Proposals',
+                    'body_variables': {'1': 'Customer', '2': 'Facility Maintenance', '3': '1200'},
+                    'footer_text': 'WhatsQ Commercial Proposals',
                     'buttons': [
                         {'id': 'btn_approve_quote', 'type': 'QUICK_REPLY', 'text': 'Approve Quotation'},
                         {'id': 'btn_revise_quote', 'type': 'QUICK_REPLY', 'text': 'Request Revision'},
@@ -1376,10 +1383,10 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'header_type': 'NONE',
                     'body': 'Dear {{1}},\nThis is a friendly reminder that invoice #{{2}} for ₹{{3}} is pending. Due date: {{4}}.\n\nTap below to pay securely via UPI, Card, or Net Banking.',
                     'body_text': 'Dear {{1}},\nThis is a friendly reminder that invoice #{{2}} for ₹{{3}} is pending. Due date: {{4}}.\n\nTap below to pay securely via UPI, Card, or Net Banking.',
-                    'body_variables': {'1': 'Customer', '2': 'INV-2024-001', '3': '2800', '4': 'Today'},
-                    'footer_text': 'Accounts Dept • CoolFix Services',
+                    'body_variables': {'1': 'Customer', '2': 'INV-2026-001', '3': '2800', '4': 'Today'},
+                    'footer_text': 'Accounts Dept • WhatsQ Services',
                     'buttons': [
-                        {'id': 'btn_pay_now', 'type': 'URL', 'text': 'Pay Now Securely', 'url': 'https://coolfix.in/pay/{{1}}', 'url_sample': 'INV001'},
+                        {'id': 'btn_pay_now', 'type': 'URL', 'text': 'Pay Now Securely', 'url': 'https://whatsq.qiyambusinesssolutions.com/pay/{{1}}', 'url_sample': 'INV001'},
                         {'id': 'btn_already_paid', 'type': 'QUICK_REPLY', 'text': 'Already Paid'}
                     ],
                     'usage_count': 63
@@ -1393,8 +1400,8 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'language': 'en_US',
                     'header_type': 'IMAGE',
                     'header_url': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80',
-                    'body': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all AC maintenance and home appliance repairs this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
-                    'body_text': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all AC maintenance and home appliance repairs this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
+                    'body': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all services and facility solutions this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
+                    'body_text': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all services and facility solutions this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
                     'body_variables': {'1': 'Customer', '2': 'FESTIVE40'},
                     'footer_text': 'Limited Time Offer • Terms Apply',
                     'buttons': [
@@ -1412,9 +1419,9 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'meta_status': 'APPROVED',
                     'language': 'en_US',
                     'header_type': 'NONE',
-                    'body': 'Hi {{1}},\nThank you for choosing CoolFix Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
-                    'body_text': 'Hi {{1}},\nThank you for choosing CoolFix Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
-                    'body_variables': {'1': 'Customer', '2': 'Rahul Mehta'},
+                    'body': 'Hi {{1}},\nThank you for choosing WhatsQ Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
+                    'body_text': 'Hi {{1}},\nThank you for choosing WhatsQ Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
+                    'body_variables': {'1': 'Customer', '2': 'Specialist'},
                     'footer_text': 'Your feedback helps us serve you better',
                     'buttons': [
                         {'id': 'btn_rate_5', 'type': 'QUICK_REPLY', 'text': '⭐⭐⭐⭐⭐ Excellent'},
@@ -1431,10 +1438,10 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     'meta_status': 'APPROVED',
                     'language': 'en_US',
                     'header_type': 'NONE',
-                    'body': 'Welcome to CoolFix Services, {{1}}!\nWe provide top-rated HVAC, electrical, plumbing, and appliance care across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
-                    'body_text': 'Welcome to CoolFix Services, {{1}}!\nWe provide top-rated HVAC, electrical, plumbing, and appliance care across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
+                    'body': 'Welcome to WhatsQ Services, {{1}}!\nWe provide top-rated facility and enterprise solutions across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
+                    'body_text': 'Welcome to WhatsQ Services, {{1}}!\nWe provide top-rated facility and enterprise solutions across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
                     'body_variables': {'1': 'Customer'},
-                    'footer_text': 'CoolFix Business Solutions',
+                    'footer_text': 'WhatsQ Business Solutions',
                     'buttons': [
                         {'id': 'btn_book_srv', 'type': 'QUICK_REPLY', 'text': 'Book Service'},
                         {'id': 'btn_pricing', 'type': 'QUICK_REPLY', 'text': 'View Pricing'},

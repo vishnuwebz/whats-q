@@ -491,10 +491,12 @@ interface QiyamState {
   cancelScheduledMessage: (id: string | number) => void;
   sendScheduledMessageNow: (id: string | number) => void;
   duplicateCampaign: (campaignId: string | number) => void;
-  createBulkTemplate: (params: any) => void;
-  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => void;
-  deleteBulkTemplate: (templateId: string) => void;
-  updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => void;
+  createBulkTemplate: (params: any) => Promise<boolean>;
+  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => Promise<boolean>;
+  deleteBulkTemplate: (templateId: string) => Promise<boolean>;
+  updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => Promise<void>;
+  fetchBulkTemplates: () => Promise<void>;
+  syncBulkTemplatesWithMeta: () => Promise<void>;
   importContactsToRecipientList: (listName: string, contacts: BulkContact[]) => BulkRecipientList;
   saveIntegrationConfig: (id: string | number, config: Record<string, any>, status?: 'connected' | 'partially_connected' | 'not_connected') => Promise<boolean>;
   testIntegrationConnection: (id: string | number, config: Record<string, any>) => Promise<{ success: boolean; message: string; latency_ms?: number }>;
@@ -2041,6 +2043,31 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       backendOnline: true,
       conversations: sanitizedConversations,
       templates,
+      bulkTemplates: (templates || []).map((t: any): BulkTemplateItem => {
+        const metaCat = t.meta_category ? t.meta_category.toLowerCase() : (t.category || 'marketing').toLowerCase();
+        const rawStatus = (t.meta_status || t.status || 'APPROVED').toUpperCase();
+        return {
+          id: String(t.id),
+          templateId: t.meta_template_id || t.name,
+          name: t.name,
+          category: metaCat,
+          language: t.language || 'en_US',
+          status: rawStatus,
+          meta_status: rawStatus,
+          body: t.body_text || t.body || '',
+          bodyText: t.body_text || t.body || '',
+          header: t.header_type && t.header_type !== 'NONE' ? t.header_type : 'None',
+          headerType: t.header_type || 'NONE',
+          headerContent: t.header_url || t.header_text || undefined,
+          headerFileName: t.header_type === 'DOCUMENT' ? (t.header_text || 'document.pdf') : undefined,
+          footer: t.footer_text || 'None',
+          footerText: t.footer_text || '',
+          buttons: Array.isArray(t.buttons) ? t.buttons : [],
+          qualityRating: t.quality_score === 'GREEN' ? 'High' : t.quality_score === 'YELLOW' ? 'Medium' : 'Low',
+          lastUpdated: t.last_updated || (t.updated_at ? new Date(t.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
+          updatedBy: t.author || 'WhatsQ Staff',
+        };
+      }),
       metaConfig: metaConfig || getStoredMetaConfig(),
       leads,
       deals,
@@ -3008,119 +3035,169 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     get().addToast(`Security matrix for "${role?.name || 'Role'}" saved & deployed!`, 'success');
   },
 
-  createBulkTemplate: (template: any) => {
-    const nowStr = new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    const templateId = `tmpl-${Date.now()}`;
-    const newTpl: BulkTemplateItem = {
-      id: templateId,
-      templateId: `meta_waba_${Math.random().toString(36).substring(2, 9)}`,
-      name: template.name,
-      category: template.category || 'marketing',
+  fetchBulkTemplates: async () => {
+    try {
+      const res: any = await apiClient.get('/conversations/templates/');
+      if (res) {
+        const rawList = Array.isArray(res.results) ? res.results : Array.isArray(res) ? res : [];
+        const mapped = rawList.map((t: any): BulkTemplateItem => {
+          const metaCat = t.meta_category ? t.meta_category.toLowerCase() : (t.category || 'marketing').toLowerCase();
+          const rawStatus = (t.meta_status || t.status || 'APPROVED').toUpperCase();
+          return {
+            id: String(t.id),
+            templateId: t.meta_template_id || t.name,
+            name: t.name,
+            category: metaCat,
+            language: t.language || 'en_US',
+            status: rawStatus,
+            meta_status: rawStatus,
+            body: t.body_text || t.body || '',
+            bodyText: t.body_text || t.body || '',
+            header: t.header_type && t.header_type !== 'NONE' ? t.header_type : 'None',
+            headerType: t.header_type || 'NONE',
+            headerContent: t.header_url || t.header_text || undefined,
+            headerFileName: t.header_type === 'DOCUMENT' ? (t.header_text || 'document.pdf') : undefined,
+            footer: t.footer_text || 'None',
+            footerText: t.footer_text || '',
+            buttons: Array.isArray(t.buttons) ? t.buttons : [],
+            qualityRating: t.quality_score === 'GREEN' ? 'High' : t.quality_score === 'YELLOW' ? 'Medium' : 'Low',
+            lastUpdated: t.last_updated || (t.updated_at ? new Date(t.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
+            updatedBy: t.author || 'WhatsQ Staff',
+          };
+        });
+        set({ bulkTemplates: mapped });
+      }
+    } catch (err) {
+      console.warn('[fetchBulkTemplates] failed:', err);
+    }
+  },
+
+  createBulkTemplate: async (template: any) => {
+    const category = (template.category || 'marketing').toLowerCase();
+    const metaCategory = category === 'utility' ? 'UTILITY' : category === 'authentication' ? 'AUTHENTICATION' : 'MARKETING';
+    const payload = {
+      name: template.name.trim().toLowerCase().replace(/\s+/g, '_'),
+      category: template.category || 'Marketing',
+      meta_category: metaCategory,
       language: template.language || 'en_US',
-      status: 'PENDING',
+      status: 'Active',
       meta_status: 'PENDING',
-      bodyText: template.bodyText || template.body || '',
+      header_type: template.headerType || 'NONE',
+      header_text: template.headerType === 'DOCUMENT' ? (template.headerFileName || '') : (template.headerType === 'TEXT' ? template.headerContent : ''),
+      header_url: template.headerContent || '',
       body: template.bodyText || template.body || '',
-      headerType: template.headerType || 'NONE',
-      headerContent: template.headerContent,
-      headerFileName: template.headerFileName,
-      headerFileSize: template.headerFileSize,
-      footerText: template.footerText || template.footer,
-      footer: template.footerText || template.footer,
-      buttons: template.buttons || [{ type: 'URL', text: 'View Details' }],
-      qualityRating: 'High',
-      lastUpdated: nowStr,
-      updatedBy: 'Rahul Mehta',
+      body_text: template.bodyText || template.body || '',
+      footer_text: template.footerText || template.footer || '',
+      buttons: template.buttons || [],
+      author: 'Admin',
+      last_updated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     };
-    set((state) => ({
-      bulkTemplates: [newTpl, ...state.bulkTemplates],
-    }));
-    get().addToast(`Template "${template.name}" submitted to Meta for review (Status: PENDING)`, 'info');
 
-    // Automated Meta WhatsApp review & approval simulation (8 seconds)
-    setTimeout(() => {
+    try {
+      const res: any = await apiClient.post('/conversations/templates/', payload);
+      if (res && res.id) {
+        // Also trigger submission to Meta Graph API
+        await apiClient.post(`/conversations/templates/${res.id}/submit_to_meta/`, {});
+        await get().fetchBulkTemplates();
+        get().addToast(`Template "${template.name}" created and saved to database!`, 'success');
+        return true;
+      } else {
+        get().addToast(res?.error || 'Failed to create template', 'error');
+        return false;
+      }
+    } catch (err: any) {
+      get().addToast(`Template creation error: ${err.message}`, 'error');
+      return false;
+    }
+  },
+
+  updateBulkTemplate: async (templateId: string, updates: Partial<BulkTemplateItem>) => {
+    const category = updates.category ? updates.category.toLowerCase() : undefined;
+    const metaCategory = category ? (category === 'utility' ? 'UTILITY' : category === 'authentication' ? 'AUTHENTICATION' : 'MARKETING') : undefined;
+    const payload: any = {
+      last_updated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    };
+    if (updates.name) payload.name = updates.name.trim().toLowerCase().replace(/\s+/g, '_');
+    if (metaCategory) payload.meta_category = metaCategory;
+    if (updates.language) payload.language = updates.language;
+    if (updates.headerType) payload.header_type = updates.headerType;
+    if (updates.headerContent !== undefined) payload.header_url = updates.headerContent;
+    if (updates.bodyText || updates.body) {
+      payload.body = updates.bodyText || updates.body;
+      payload.body_text = updates.bodyText || updates.body;
+    }
+    if (updates.footerText !== undefined || updates.footer !== undefined) {
+      payload.footer_text = updates.footerText || updates.footer || '';
+    }
+    if (updates.buttons) payload.buttons = updates.buttons;
+
+    try {
+      const res: any = await apiClient.patch(`/conversations/templates/${templateId}/`, payload);
+      if (res && res.id) {
+        await apiClient.post(`/conversations/templates/${templateId}/submit_to_meta/`, {});
+        await get().fetchBulkTemplates();
+        get().addToast(`Template "${updates.name || templateId}" updated & saved!`, 'success');
+        return true;
+      } else {
+        get().addToast(res?.error || 'Failed to update template', 'error');
+        return false;
+      }
+    } catch (err: any) {
+      get().addToast(`Template update error: ${err.message}`, 'error');
+      return false;
+    }
+  },
+
+  deleteBulkTemplate: async (templateId: string) => {
+    try {
+      await apiClient.delete(`/conversations/templates/${templateId}/`);
+      set((state) => ({
+        bulkTemplates: state.bulkTemplates.filter((t) => t.id !== templateId),
+      }));
+      get().addToast('Template deleted successfully from database', 'info');
+      return true;
+    } catch (err: any) {
+      get().addToast(`Failed to delete template: ${err.message}`, 'error');
+      return false;
+    }
+  },
+
+  updateBulkTemplateStatus: async (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => {
+    try {
+      await apiClient.patch(`/conversations/templates/${templateId}/`, {
+        meta_status: status,
+        status: status === 'APPROVED' ? 'Active' : status,
+      });
       set((state) => ({
         bulkTemplates: state.bulkTemplates.map((t) =>
           t.id === templateId
-            ? { ...t, status: 'APPROVED', meta_status: 'APPROVED', approvedOn: 'Just now' }
+            ? {
+                ...t,
+                status,
+                meta_status: status,
+                approvedOn: status === 'APPROVED' ? 'Just now' : t.approvedOn,
+              }
             : t
         ),
       }));
-      get().addToast(`🎉 Meta WhatsApp Approved! Template "${template.name}" is now approved and ready for broadcasts!`, 'success');
-    }, 8000);
+      get().addToast(`Template status updated to ${status}`, 'success');
+    } catch (err: any) {
+      get().addToast(`Failed to update template status: ${err.message}`, 'error');
+    }
   },
 
-  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => {
-    const nowStr = new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    set((state) => ({
-      bulkTemplates: state.bulkTemplates.map((t) =>
-        t.id === templateId
-          ? {
-              ...t,
-              ...updates,
-              body: updates.bodyText || updates.body || t.body,
-              bodyText: updates.bodyText || updates.body || t.bodyText,
-              footer: updates.footerText || updates.footer || t.footer,
-              footerText: updates.footerText || updates.footer || t.footerText,
-              status: 'PENDING',
-              meta_status: 'PENDING',
-              lastUpdated: nowStr,
-              updatedBy: 'Rahul Mehta',
-            }
-          : t
-      ),
-    }));
-    get().addToast(
-      `Template "${updates.name || templateId}" updated & queued for Meta re-approval (Status: PENDING)`,
-      'info'
-    );
-
-    // Automated Meta WhatsApp re-approval simulation (8 seconds)
-    setTimeout(() => {
-      set((state) => ({
-        bulkTemplates: state.bulkTemplates.map((t) =>
-          t.id === templateId
-            ? { ...t, status: 'APPROVED', meta_status: 'APPROVED', approvedOn: 'Just now' }
-            : t
-        ),
-      }));
-      get().addToast(
-        `🎉 Meta WhatsApp Re-approved! Template "${updates.name || templateId}" is now verified & ready for broadcast!`,
-        'success'
-      );
-    }, 8000);
-  },
-
-  deleteBulkTemplate: (templateId: string) => {
-    const tmpl = get().bulkTemplates.find((t) => t.id === templateId);
-    set((state) => ({
-      bulkTemplates: state.bulkTemplates.filter((t) => t.id !== templateId),
-    }));
-    get().addToast(`Template "${tmpl?.name || templateId}" deleted successfully`, 'info');
-  },
-
-  updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => {
-    set((state) => ({
-      bulkTemplates: state.bulkTemplates.map((t) =>
-        t.id === templateId
-          ? {
-              ...t,
-              status,
-              meta_status: status,
-              approvedOn: status === 'APPROVED' ? 'Just now' : t.approvedOn,
-            }
-          : t
-      ),
-    }));
-    get().addToast(`Template status updated to ${status}`, 'success');
+  syncBulkTemplatesWithMeta: async () => {
+    try {
+      const res: any = await apiClient.post('/conversations/templates/sync_meta/', {});
+      await get().fetchBulkTemplates();
+      if (res?.message) {
+        get().addToast(res.message, 'success');
+      } else {
+        get().addToast('WhatsApp templates successfully synced with Meta Cloud API!', 'success');
+      }
+    } catch (err: any) {
+      get().addToast(`Sync failed: ${err.message}`, 'error');
+    }
   },
 
   importContactsToRecipientList: (listName: string, contacts: BulkContact[]) => {
