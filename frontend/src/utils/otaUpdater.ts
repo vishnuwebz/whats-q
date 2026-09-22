@@ -77,19 +77,12 @@ export async function forceHardRefresh(reason = 'OTA Deployment Update'): Promis
     );
   } catch { /* non-fatal */ }
 
-  // 5. Force browser navigation with unique cache-busting query parameter
+  // 5. Force browser navigation cleanly
   try {
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('_ota_refresh', Date.now().toString());
-    window.location.replace(currentUrl.toString());
+    window.location.reload();
   } catch {
-    window.location.reload();
+    window.location.href = window.location.origin + window.location.pathname;
   }
-
-  // Fallback in case location.replace does not trigger an immediate hard document reload
-  setTimeout(() => {
-    window.location.reload();
-  }, 1500);
 }
 
 // Module-level tracking variables
@@ -129,10 +122,6 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
   const store = useQiyamStore.getState();
   const cacheBuster = `_ota=${Date.now()}`;
 
-  // ── Guard: do not re-trigger if the update modal is already showing ──
-  if (store.isUpdateModalOpen) {
-    return true; // Update already detected and displayed
-  }
 
   const acknowledgedCommit = typeof window !== 'undefined' ? localStorage.getItem('whatsq_acknowledged_commit') : null;
   const lastRefreshTime = typeof window !== 'undefined' ? Number(localStorage.getItem('whatsq_last_hard_refresh_time') || '0') : 0;

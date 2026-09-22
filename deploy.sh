@@ -203,9 +203,13 @@ fi
 # 4. FRONTEND BUILD
 echo -e "\n${YELLOW}[4/5] Building Frontend...${NC}"
 cd "$APP_DIR/frontend"
-npm install --silent
-npm run build
+NODE_BIN=$(command -v node || which node || echo "/usr/bin/node")
+NPM_BIN=$(command -v npm || which npm || echo "/usr/bin/npm")
+$NPM_BIN install --silent
+$NPM_BIN run build
 cp "$APP_DIR/frontend/public/version.json" "$APP_DIR/frontend/dist/version.json" 2>/dev/null || true
+$SUDO_CMD chmod -R 755 "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
 # 5. RESTART SERVICES
 echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"

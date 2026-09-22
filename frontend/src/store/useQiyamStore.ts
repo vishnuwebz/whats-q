@@ -1655,10 +1655,8 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
 
     set({
       versionInfo: merged,
-      isUpdateModalOpen: true,
+      isUpdateModalOpen: false,
     });
-
-    startOtaCountdown(5);
   },
 
   selectedConversationId: (typeof window !== 'undefined' && localStorage.getItem('whatsq_selected_conversation_id')) || getStoredConversations()[0]?.id || '',
@@ -4762,9 +4760,8 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       }
     } catch {}
 
-    // Show modal and start countdown
-    set({ isUpdateModalOpen: true });
-    startOtaCountdown(5);
+    // Keep update modal closed — top banner will display update option
+    set({ isUpdateModalOpen: false });
   },
 
   snoozeUpdate: () => {
@@ -4890,7 +4887,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     stopOtaCountdown();
     set({
       isUpdatingSystem: true,
-      isUpdateModalOpen: true,
+      isUpdateModalOpen: false,
       updateProgressStep: '⚡ Connecting to server & starting update...',
     });
 
