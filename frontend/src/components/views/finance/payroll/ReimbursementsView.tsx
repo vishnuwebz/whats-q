@@ -118,31 +118,6 @@ export const ReimbursementsView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Top Banner Card (Screenshot 5 / Qiyam OS pattern) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
-        <div className="space-y-1.5 max-w-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600/10 text-emerald-700">
-              Expense Verification & Disbursal
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Reimbursements</h2>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium">
-            Manage employee travel, internet, client entertainment, and operational claims with fast audit controls.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
-          <div>
-            <h4 className="text-xs font-bold text-slate-900">Hassle-free Reimbursements</h4>
-            <p className="text-[11px] text-slate-500">Fast 1-click approvals and direct payroll integration.</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-emerald-600/20">
-            ₹
-          </div>
-        </div>
-      </div>
-
       {/* 5 Dynamic Metric Cards (Calculated from live reimbursements state) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1.5">

@@ -117,17 +117,11 @@ export const RunPayrollView: React.FC<Props> = ({
 
   return (
     <div className="space-y-6 text-xs font-sans">
-      {/* Top Header & Previous Runs Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Run Payroll</h2>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Process salaries, verify attendance deductions, and disburse payments in 4 simple steps.
-          </p>
-        </div>
+      {/* Quick Action Button */}
+      <div className="flex justify-end">
         <button
           onClick={onBackToDashboard}
-          className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
         >
           <Calendar className="w-3.5 h-3.5 text-slate-500" />
           <span>View Previous Payroll Runs</span>

@@ -6,7 +6,6 @@ import {
   TrendingUp, Search, Eye, Sparkles, ChevronRight, X
 } from 'lucide-react';
 import { PayrollReportItem, PayrollSubView } from '@/types';
-import { PeoplePowerProgressBadge } from './PeoplePowerProgressBadge';
 
 interface Props {
   reports: PayrollReportItem[];
@@ -176,34 +175,6 @@ export const PayrollReportsView: React.FC<Props> = ({
           <span>{notification}</span>
         </div>
       )}
-
-      {/* Top Banner Card (Screenshot 8 / Qiyam OS pattern) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
-        <div className="space-y-1.5 max-w-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600/10 text-emerald-700">
-              Analytics & Cost Intelligence
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Payroll Reports</h2>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium">
-            Analyze gross expense trends, department cost allocations, tax withholdings, and export statements.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <PeoplePowerProgressBadge />
-          <div className="hidden sm:flex items-center gap-3 bg-white/90 backdrop-blur-xs px-4 py-3 rounded-2xl border border-white/60 shadow-2xs">
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Turn Payroll Data into Decisions</h4>
-              <p className="text-[11px] text-slate-500">Live analytics for workforce planning and audit compliance.</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-emerald-600/20">
-              <BarChart3 className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Top 4 KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

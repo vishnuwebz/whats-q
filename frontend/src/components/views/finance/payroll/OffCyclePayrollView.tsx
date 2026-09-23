@@ -97,31 +97,6 @@ export const OffCyclePayrollView: React.FC<Props> = ({ payments, onAddPayment })
         </div>
       )}
 
-      {/* Top Banner Card (Screenshot 7 / Qiyam OS pattern) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
-        <div className="space-y-1.5 max-w-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600/10 text-emerald-700">
-              One-time Disbursements
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Off-cycle Payroll</h2>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium">
-            Process bonuses, sales incentives, retroactive arrears, or any one-time disbursements on demand.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
-          <div>
-            <h4 className="text-xs font-bold text-slate-900">Pay Anytime. Keep Your Team Happy.</h4>
-            <p className="text-[11px] text-slate-500">Quick and accurate off-cycle payments whenever you need.</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-amber-500/20">
-            <Zap className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
       {/* 4 Dynamic Metric Cards (Screenshot 7) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1.5">
