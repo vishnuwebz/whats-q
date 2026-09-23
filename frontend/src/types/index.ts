@@ -928,11 +928,30 @@ export interface EmployeeSalaryDetail {
   gross_salary: number;
   deductions: number;
   net_pay: number;
-  status: 'Ready' | 'Warning' | 'Processed' | 'Held';
+  status: 'Ready' | 'Warning' | 'Processed' | 'Held' | 'Pending';
   warning_reason?: string;
   bank_account?: string;
   pan_number?: string;
   uan_number?: string;
+  // Extended fields for master payroll matrix (matching media_1790147717219.jpg)
+  role?: string;
+  full_day?: number;
+  half_day?: number;
+  wfh_days?: number;
+  paid_leave?: number;
+  paid_days?: number;
+  unpaid_days?: number;
+  daily_wage?: number;
+  gross_wages?: number;
+  earned_wages?: number;
+  other_earnings?: number;
+  overtime_amount?: number;
+  extras?: number;
+  gross_earnings?: number;
+  tds?: number;
+  penalties?: number;
+  other_deductions?: number;
+  finalized_amount?: number;
 }
 
 export interface SalaryComponentItem {

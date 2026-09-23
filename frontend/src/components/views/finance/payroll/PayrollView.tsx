@@ -55,7 +55,11 @@ export const PayrollView: React.FC = () => {
 
   // Sync with store employees if available
   const [employees, setEmployees] = useState<EmployeeSalaryDetail[]>(() => {
-    const cached = getPayrollCache('employees', INITIAL_EMPLOYEE_SALARY_DETAILS);
+    let cached = getPayrollCache('employees', INITIAL_EMPLOYEE_SALARY_DETAILS);
+    if (!cached || cached.length < 32 || !cached[0]?.daily_wage) {
+      cached = INITIAL_EMPLOYEE_SALARY_DETAILS;
+      setPayrollCache('employees', INITIAL_EMPLOYEE_SALARY_DETAILS);
+    }
     if (storeEmployees && storeEmployees.length > 0) {
       // Ensure all store employees are mapped
       const existingIds = new Set(cached.map((e) => e.employee_id));
