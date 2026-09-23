@@ -1,25 +1,28 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   Users, Wallet, PieChart, Landmark, AlertTriangle, ArrowRight, Search,
   Filter, Eye, MoreVertical, CheckCircle2, ChevronLeft, ChevronRight,
   Calendar, Check, Send, AlertCircle, ArrowLeft, Download, ShieldCheck,
   Clock, IndianRupee, Settings, FileText, CheckCheck, RefreshCw, X, Info,
-  ChevronDown, SlidersHorizontal, Edit3, PauseCircle
+  ChevronDown, SlidersHorizontal, Edit3, PauseCircle, Plus, UserPlus
 } from 'lucide-react';
 import { EmployeeSalaryDetail, PayrollRunItem } from '@/types';
 import { PayslipModal } from './modals/PayslipModal';
 import { RunPayrollReviewModal } from './modals/RunPayrollReviewModal';
+import { useQiyamStore } from '@/store/useQiyamStore';
 
 interface Props {
   employees: EmployeeSalaryDetail[];
   onBackToDashboard: () => void;
   onPayrollCompleted: (newRun: PayrollRunItem) => void;
+  onAddEmployee?: (newEmp: EmployeeSalaryDetail) => void;
 }
 
 export const RunPayrollView: React.FC<Props> = ({
   employees: initialEmployees,
   onBackToDashboard,
   onPayrollCompleted,
+  onAddEmployee,
 }) => {
   // Master employee list (editable in wizard)
   const [employeesList, setEmployeesList] = useState<EmployeeSalaryDetail[]>(initialEmployees);
@@ -49,6 +52,58 @@ export const RunPayrollView: React.FC<Props> = ({
   const [editingEmployee, setEditingEmployee] = useState<EmployeeSalaryDetail | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isColumnSettingsOpen, setIsColumnSettingsOpen] = useState(false);
+
+  // Add Employee Modal state
+  const storeEmployees = useQiyamStore((state) => state.employees);
+  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
+  const [newEmpSelectedStaffId, setNewEmpSelectedStaffId] = useState<string>('custom');
+  const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpId, setNewEmpId] = useState('');
+  const [newEmpDept, setNewEmpDept] = useState('Sales');
+  const [newEmpRole, setNewEmpRole] = useState('BDE');
+  const [newEmpGross, setNewEmpGross] = useState<number>(30000);
+  const [newEmpFullDays, setNewEmpFullDays] = useState<number>(14);
+  const [newEmpHalfDays, setNewEmpHalfDays] = useState<number>(0);
+  const [newEmpWfhDays, setNewEmpWfhDays] = useState<number>(0);
+  const [newEmpPaidLeave, setNewEmpPaidLeave] = useState<number>(0);
+  const [newEmpOt, setNewEmpOt] = useState<number>(0);
+  const [newEmpExtras, setNewEmpExtras] = useState<number>(0);
+  const [newEmpTds, setNewEmpTds] = useState<number>(0);
+  const [newEmpOtherDed, setNewEmpOtherDed] = useState<number>(0);
+
+  // Horizontal Table Scroll Navigator state & mouse drag-to-scroll
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [isDraggingTable, setIsDraggingTable] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragScrollLeft, setDragScrollLeft] = useState(0);
+
+  const scrollTableBy = (px: number) => {
+    tableScrollRef.current?.scrollBy({ left: px, behavior: 'smooth' });
+  };
+
+  const scrollToSection = (px: number) => {
+    tableScrollRef.current?.scrollTo({ left: px, behavior: 'smooth' });
+  };
+
+  const handleTableMouseDown = (e: React.MouseEvent) => {
+    if (!tableScrollRef.current) return;
+    // Don't drag if clicking buttons, inputs or links
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, a, textarea')) return;
+    setIsDraggingTable(true);
+    setDragStartX(e.pageX - tableScrollRef.current.offsetLeft);
+    setDragScrollLeft(tableScrollRef.current.scrollLeft);
+  };
+
+  const handleTableMouseLeave = () => setIsDraggingTable(false);
+  const handleTableMouseUp = () => setIsDraggingTable(false);
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingTable || !tableScrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tableScrollRef.current.offsetLeft;
+    const walk = (x - dragStartX) * 1.5;
+    tableScrollRef.current.scrollLeft = dragScrollLeft - walk;
+  };
 
   // Toast / feedback message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -362,6 +417,79 @@ export const RunPayrollView: React.FC<Props> = ({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     triggerToast(`Consolidated batch payslips downloaded for all ${employeesList.length} employees!`);
+  };
+
+  // Handle picking registered staff from directory
+  const handleSelectStaff = (staffId: string) => {
+    setNewEmpSelectedStaffId(staffId);
+    if (staffId === 'custom') {
+      setNewEmpName('');
+      setNewEmpId(`EMP0${employeesList.length + 1}`);
+      return;
+    }
+    const staff = storeEmployees.find((e) => String(e.id) === staffId || e.employee_id_str === staffId);
+    if (staff) {
+      setNewEmpName(staff.name);
+      setNewEmpId(staff.employee_id_str || `EMP0${staff.id}`);
+      if (staff.department) setNewEmpDept(staff.department);
+      if (staff.role) setNewEmpRole(staff.role);
+    }
+  };
+
+  // Add new employee to active payroll run
+  const handleAddNewEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmpName.trim()) return;
+
+    const daily = Math.round(newEmpGross / 26);
+    const paid = Number(newEmpFullDays) + (Number(newEmpHalfDays) * 0.5) + Number(newEmpWfhDays) + Number(newEmpPaidLeave);
+    const unpaid = Math.max(0, 16 - paid);
+    const earned = Math.round(daily * paid);
+    const grossEarn = earned + Number(newEmpOt) + Number(newEmpExtras);
+    const totalDed = Number(newEmpTds) + Number(newEmpOtherDed);
+    const net = grossEarn - totalDed;
+
+    const newEmpRecord: EmployeeSalaryDetail = {
+      id: Date.now(),
+      employee_id: newEmpId.trim() || `EMP0${employeesList.length + 1}`,
+      name: newEmpName.trim(),
+      email: `${newEmpName.toLowerCase().replace(/\s+/g, '.')}@qiyam.com`,
+      department: newEmpDept,
+      payroll_group: `${newEmpDept} Team`,
+      role: newEmpRole,
+      gross_salary: newEmpGross,
+      gross_wages: newEmpGross,
+      daily_wage: daily,
+      full_day: Number(newEmpFullDays),
+      half_day: Number(newEmpHalfDays),
+      wfh_days: Number(newEmpWfhDays),
+      paid_leave: Number(newEmpPaidLeave),
+      paid_days: paid,
+      unpaid_days: unpaid,
+      earned_wages: earned,
+      overtime_amount: Number(newEmpOt),
+      extras: Number(newEmpExtras),
+      gross_earnings: grossEarn,
+      tds: Number(newEmpTds),
+      penalties: 0,
+      other_deductions: Number(newEmpOtherDed),
+      deductions: totalDed,
+      net_pay: net,
+      finalized_amount: net,
+      status: 'Ready',
+    };
+
+    setEmployeesList((prev) => [newEmpRecord, ...prev]);
+    setSelectedIds((prev) => [newEmpRecord.id, ...prev]);
+    if (onAddEmployee) {
+      onAddEmployee(newEmpRecord);
+    }
+    setIsAddEmployeeOpen(false);
+    triggerToast(`Added ${newEmpRecord.name} (${newEmpRecord.employee_id}) to ${selectedMonth} payroll!`);
+
+    // Reset form
+    setNewEmpName('');
+    setNewEmpId('');
   };
 
   // Quick adjust save handler
@@ -771,12 +899,101 @@ export const RunPayrollView: React.FC<Props> = ({
                 <Download className="w-3.5 h-3.5 text-slate-500" />
                 <span>Export</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNewEmpName('');
+                  setNewEmpId(`EMP0${employeesList.length + 1}`);
+                  setIsAddEmployeeOpen(true);
+                }}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Add Employee</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Modern Horizontal Scroll Navigator & Column Section Jump Bar */}
+          <div className="bg-slate-900 text-white px-4 py-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm border border-slate-800">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
+                <span>Jump To Column:</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => scrollToSection(0)}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <span>1. Employee Info</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(280)}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <span>2. Attendance Days</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(680)}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <span>3. Wages & Earnings</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(1080)}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <span>4. Deductions & TDS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(1500)}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <span>5. Net Payout & Actions</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] text-slate-400 hidden sm:inline">
+                Drag table to pan or use buttons:
+              </span>
+              <button
+                type="button"
+                onClick={() => scrollTableBy(-350)}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                title="Scroll Left (◄)"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Scroll Left</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTableBy(350)}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                title="Scroll Right (►)"
+              >
+                <span>Scroll Right</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
           {/* 4. Master 22-Column Matrix Table */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto max-w-full">
+            <div
+              ref={tableScrollRef}
+              onMouseDown={handleTableMouseDown}
+              onMouseLeave={handleTableMouseLeave}
+              onMouseUp={handleTableMouseUp}
+              onMouseMove={handleTableMouseMove}
+              className={`overflow-x-auto max-w-full ${isDraggingTable ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+            >
               <table className="w-full text-left text-xs whitespace-nowrap border-collapse min-w-[1300px]">
                 <thead className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 text-[11px]">
                   <tr>
@@ -1686,6 +1903,264 @@ export const RunPayrollView: React.FC<Props> = ({
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ADD EMPLOYEE TO ACTIVE PAYROLL RUN                                 */}
+      {/* ========================================================================= */}
+      {isAddEmployeeOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Add Employee to Payroll Run</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Include staff member, set monthly wage &amp; attendance days for {selectedMonth}.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAddEmployeeOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddNewEmployee} className="space-y-4">
+              {/* Quick Select from Store Directory */}
+              {storeEmployees && storeEmployees.length > 0 && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    Quick Select from Company Staff Directory
+                  </label>
+                  <select
+                    value={newEmpSelectedStaffId}
+                    onChange={(e) => handleSelectStaff(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none"
+                  >
+                    <option value="custom">-- Enter New Staff / Contractor Manually --</option>
+                    {storeEmployees.map((emp) => (
+                      <option key={emp.id} value={String(emp.id)}>
+                        {emp.name} ({emp.employee_id_str || `EMP0${emp.id}`}) — {emp.department} • {emp.role || 'Staff'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Name & ID */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newEmpName}
+                    onChange={(e) => setNewEmpName(e.target.value)}
+                    placeholder="e.g. Farhan Ali"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Employee ID *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newEmpId}
+                    onChange={(e) => setNewEmpId(e.target.value)}
+                    placeholder="e.g. EMP039"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Department & Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Department</label>
+                  <select
+                    value={newEmpDept}
+                    onChange={(e) => setNewEmpDept(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none"
+                  >
+                    <option>Sales</option>
+                    <option>Technology</option>
+                    <option>Operations</option>
+                    <option>Marketing</option>
+                    <option>HR</option>
+                    <option>Finance</option>
+                    <option>Management</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Role / Designation</label>
+                  <input
+                    type="text"
+                    value={newEmpRole}
+                    onChange={(e) => setNewEmpRole(e.target.value)}
+                    placeholder="e.g. HVAC Lead Technician"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Monthly Gross Wage */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Monthly Gross Wages (₹) *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                  <input
+                    type="number"
+                    required
+                    min={1000}
+                    value={newEmpGross}
+                    onChange={(e) => setNewEmpGross(Number(e.target.value))}
+                    className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Attendance Inputs */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                  Cycle Attendance Days
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Full Days</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={31}
+                      value={newEmpFullDays}
+                      onChange={(e) => setNewEmpFullDays(Number(e.target.value))}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Half Days</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={31}
+                      value={newEmpHalfDays}
+                      onChange={(e) => setNewEmpHalfDays(Number(e.target.value))}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">WFH Days</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={31}
+                      value={newEmpWfhDays}
+                      onChange={(e) => setNewEmpWfhDays(Number(e.target.value))}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">Paid Leave</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={31}
+                      value={newEmpPaidLeave}
+                      onChange={(e) => setNewEmpPaidLeave(Number(e.target.value))}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Adjustments: Overtime, Extras, TDS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">Overtime (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newEmpOt}
+                    onChange={(e) => setNewEmpOt(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">Extras / Incentive (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newEmpExtras}
+                    onChange={(e) => setNewEmpExtras(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">TDS &amp; Deductions (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newEmpTds}
+                    onChange={(e) => setNewEmpTds(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Real-time Calculation Summary Box */}
+              {(() => {
+                const daily = Math.round(newEmpGross / 26);
+                const paid = Number(newEmpFullDays) + (Number(newEmpHalfDays) * 0.5) + Number(newEmpWfhDays) + Number(newEmpPaidLeave);
+                const earned = Math.round(daily * paid);
+                const grossEarn = earned + Number(newEmpOt) + Number(newEmpExtras);
+                const net = grossEarn - (Number(newEmpTds) + Number(newEmpOtherDed));
+
+                return (
+                  <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Paid Days</span>
+                      <span className="font-bold text-emerald-700 font-mono text-sm">{paid}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Daily Wage</span>
+                      <span className="font-bold text-slate-800 font-mono text-sm">₹{daily.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Earned Wages</span>
+                      <span className="font-bold text-slate-900 font-mono text-sm">₹{earned.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-blue-700 font-bold block">Finalized Net Pay</span>
+                      <span className="font-black text-blue-800 font-mono text-sm">₹{net.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddEmployeeOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add to Payroll Run</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

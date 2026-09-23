@@ -382,6 +382,13 @@ export const PayrollView: React.FC = () => {
             employees={employees}
             onBackToDashboard={() => setCurrentView('overview')}
             onPayrollCompleted={handlePayrollCompleted}
+            onAddEmployee={(newEmp) => {
+              setEmployees((prev) => {
+                const updated = [newEmp, ...prev];
+                setPayrollCache('employees', updated);
+                return updated;
+              });
+            }}
           />
         )}
 

@@ -997,6 +997,7 @@ export interface ReimbursementItem {
   amount: number;
   submitted_on: string;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Draft';
+  department?: string;
   notes?: string;
 }
 
@@ -1014,8 +1015,13 @@ export interface EmployeeTaxCompliance {
   estimated_annual_tax?: number;
   monthly_tds?: number;
   pf_number?: string;
+  pf_rate?: string;
   esi_number?: string;
+  esi_status?: string;
   pt_number?: string;
+  pt_monthly?: number;
+  pt_state?: string;
+  verification_notes?: string;
   last_updated?: string;
 }
 

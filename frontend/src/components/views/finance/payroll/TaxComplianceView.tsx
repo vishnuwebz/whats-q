@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users, FileText, ShieldCheck, ArrowUpRight, Search, Filter,
   Download, MoreVertical, ChevronLeft, ChevronRight, X, Edit2,
@@ -21,10 +21,30 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
   const [selectedRecord, setSelectedRecord] = useState<EmployeeTaxCompliance>(
     records.find((r) => r.employee_id === 'EMP004') || records[0]
   );
+
+  // Sync selectedRecord when records list updates
+  useEffect(() => {
+    if (selectedRecord) {
+      const fresh = records.find((r) => r.id === selectedRecord.id || r.employee_id === selectedRecord.employee_id);
+      if (fresh) setSelectedRecord(fresh);
+    }
+  }, [records]);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateModalSection, setUpdateModalSection] = useState<'all' | 'tds' | 'pf' | 'esi' | 'pt'>('all');
   const [rightTab, setRightTab] = useState<'tax' | 'salary' | 'docs' | 'history'>('tax');
   const [previewDoc, setPreviewDoc] = useState<{ type: 'form16' | 'form12bb'; record: EmployeeTaxCompliance } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleOpenUpdateModal = (
+    section: 'all' | 'tds' | 'pf' | 'esi' | 'pt' = 'all',
+    recordToEdit?: EmployeeTaxCompliance
+  ) => {
+    if (recordToEdit) {
+      setSelectedRecord(recordToEdit);
+    }
+    setUpdateModalSection(section);
+    setIsUpdateModalOpen(true);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -601,61 +621,79 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                         </td>
                         <td className="py-3 px-3 font-mono font-medium text-slate-600">{r.employee_id}</td>
                         <td className="py-3 px-3 font-medium text-slate-700">{r.department}</td>
-                        <td className="py-3 px-2 text-center">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              r.tds ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                        <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUpdateModal('tds', r)}
+                            title={`Click to edit TDS parameters for ${r.employee_name}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105 ${
+                              r.tds ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
                             }`}
                           >
                             {r.tds ? 'Yes' : 'No'}
-                          </span>
+                          </button>
                         </td>
-                        <td className="py-3 px-2 text-center">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              r.pf ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                        <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUpdateModal('pf', r)}
+                            title={`Click to edit PF parameters for ${r.employee_name}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105 ${
+                              r.pf ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
                             }`}
                           >
                             {r.pf ? 'Yes' : 'No'}
-                          </span>
+                          </button>
                         </td>
-                        <td className="py-3 px-2 text-center">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              r.esi ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                        <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUpdateModal('esi', r)}
+                            title={`Click to edit ESI parameters for ${r.employee_name}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105 ${
+                              r.esi ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
                             }`}
                           >
                             {r.esi ? 'Yes' : 'No'}
-                          </span>
+                          </button>
                         </td>
-                        <td className="py-3 px-2 text-center">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              r.pt ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                        <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUpdateModal('pt', r)}
+                            title={`Click to edit PT parameters for ${r.employee_name}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105 ${
+                              r.pt ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
                             }`}
                           >
                             {r.pt ? 'Yes' : 'No'}
-                          </span>
+                          </button>
                         </td>
                         <td className="py-3 px-3">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenUpdateModal('all', r);
+                            }}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:shadow-2xs transition-colors ${
                               r.status === 'Compliant'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-amber-50 text-amber-700 border-amber-200'
                             }`}
+                            title="Click to edit compliance status"
                           >
                             {r.status}
-                          </span>
+                          </button>
                         </td>
                         <td className="py-3 px-3 text-right">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedRecord(r);
-                              setIsUpdateModalOpen(true);
+                              handleOpenUpdateModal('all', r);
                             }}
-                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                            title={`Update statutory compliance parameters for ${r.employee_name}`}
+                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -739,94 +777,169 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     {/* TDS Card */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                      <div className="flex items-center gap-1.5 text-blue-600 font-bold">
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>TDS</span>
+                    <div
+                      onClick={() => handleOpenUpdateModal('tds')}
+                      title="Click to edit TDS compliance parameters"
+                      className="p-3 bg-slate-50 hover:bg-blue-50/70 rounded-xl border border-slate-200 hover:border-blue-300 space-y-1 cursor-pointer transition-all hover:shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between text-blue-600 font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>TDS</span>
+                        </div>
+                        <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-blue-600 transition-colors" />
                       </div>
                       <div className="text-slate-500 text-[10px]">
                         {selectedRecord.tds ? 'Applicable' : 'Not Applicable'}
                       </div>
                       <div className="font-bold text-slate-900 font-mono">
-                        {selectedRecord.tds ? `₹${(selectedRecord.monthly_tds || 6500).toLocaleString()} / mo` : '₹0'}
+                        {selectedRecord.tds ? `₹${(selectedRecord.monthly_tds || 5166).toLocaleString()} / mo` : '₹0'}
                       </div>
                     </div>
 
                     {/* PF Card */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                      <div className="flex items-center gap-1.5 text-emerald-600 font-bold">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>PF</span>
+                    <div
+                      onClick={() => handleOpenUpdateModal('pf')}
+                      title="Click to edit PF / EPFO compliance parameters"
+                      className="p-3 bg-slate-50 hover:bg-emerald-50/70 rounded-xl border border-slate-200 hover:border-emerald-300 space-y-1 cursor-pointer transition-all hover:shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between text-emerald-600 font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>PF</span>
+                        </div>
+                        <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                       </div>
                       <div className="text-slate-500 text-[10px]">
                         {selectedRecord.pf ? 'Applicable' : 'Not Applicable'}
                       </div>
                       <div className="font-bold text-slate-900 font-mono text-[10px]">
-                        12% Employee + 12% Employer
+                        {selectedRecord.pf_rate || '12% Employee + 12% Employer'}
                       </div>
                     </div>
 
                     {/* ESI Card */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                      <div className="flex items-center gap-1.5 text-amber-600 font-bold">
-                        <Users className="w-3.5 h-3.5" />
-                        <span>ESI</span>
+                    <div
+                      onClick={() => handleOpenUpdateModal('esi')}
+                      title="Click to edit ESIC compliance parameters"
+                      className="p-3 bg-slate-50 hover:bg-amber-50/70 rounded-xl border border-slate-200 hover:border-amber-300 space-y-1 cursor-pointer transition-all hover:shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between text-amber-600 font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>ESI</span>
+                        </div>
+                        <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-amber-600 transition-colors" />
                       </div>
                       <div className="text-slate-500 text-[10px]">
                         {selectedRecord.esi ? 'Applicable' : 'Not Applicable'}
                       </div>
                       <div className="font-bold text-slate-900 font-mono text-[10px]">
-                        {selectedRecord.esi ? '0.75% + 3.25%' : 'Exempt (> ₹21k)'}
+                        {selectedRecord.esi_status || (selectedRecord.esi ? '0.75% + 3.25%' : 'Exempt (> ₹21k)')}
                       </div>
                     </div>
 
                     {/* PT Card */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                      <div className="flex items-center gap-1.5 text-purple-600 font-bold">
-                        <Landmark className="w-3.5 h-3.5" />
-                        <span>Professional Tax</span>
+                    <div
+                      onClick={() => handleOpenUpdateModal('pt')}
+                      title="Click to edit Professional Tax parameters"
+                      className="p-3 bg-slate-50 hover:bg-purple-50/70 rounded-xl border border-slate-200 hover:border-purple-300 space-y-1 cursor-pointer transition-all hover:shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between text-purple-600 font-bold">
+                        <div className="flex items-center gap-1.5">
+                          <Landmark className="w-3.5 h-3.5" />
+                          <span>Professional Tax</span>
+                        </div>
+                        <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-purple-600 transition-colors" />
                       </div>
                       <div className="text-slate-500 text-[10px]">
                         {selectedRecord.pt ? 'Applicable' : 'Not Applicable'}
                       </div>
-                      <div className="font-bold text-slate-900 font-mono">₹200 / month</div>
+                      <div className="font-bold text-slate-900 font-mono">
+                        ₹{(selectedRecord.pt_monthly || 200).toLocaleString()} / month
+                      </div>
                     </div>
                   </div>
 
                   {/* Compliance Details List */}
                   <div className="space-y-2 pt-2 border-t border-slate-100 text-[11px]">
-                    <div className="font-bold text-slate-800 uppercase tracking-wider">Compliance Details</div>
+                    <div className="flex items-center justify-between font-bold text-slate-800 uppercase tracking-wider">
+                      <span>Compliance Details</span>
+                      <span className="text-[10px] text-emerald-600 normal-case font-medium">Click row to edit</span>
+                    </div>
                     <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">TDS Regime</span>
+                      <div
+                        onClick={() => handleOpenUpdateModal('tds')}
+                        className="flex justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                        title="Click to edit TDS Regime"
+                      >
+                        <span className="text-slate-500 group-hover:text-blue-600 flex items-center gap-1">
+                          <span>TDS Regime</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />
+                        </span>
                         <span className="font-semibold text-slate-900">{selectedRecord.tds_regime || 'New Regime'}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Estimated Annual Tax</span>
+                      <div
+                        onClick={() => handleOpenUpdateModal('tds')}
+                        className="flex justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                        title="Click to edit Estimated Annual Tax"
+                      >
+                        <span className="text-slate-500 group-hover:text-blue-600 flex items-center gap-1">
+                          <span>Estimated Annual Tax</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />
+                        </span>
                         <span className="font-mono font-bold text-slate-900">
-                          ₹{(selectedRecord.estimated_annual_tax || 78000).toLocaleString()}
+                          ₹{(selectedRecord.estimated_annual_tax || 62000).toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">PF Number (UAN)</span>
+                      <div
+                        onClick={() => handleOpenUpdateModal('pf')}
+                        className="flex justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                        title="Click to edit PF Number / UAN"
+                      >
+                        <span className="text-slate-500 group-hover:text-emerald-600 flex items-center gap-1">
+                          <span>PF Number (UAN)</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-emerald-500 transition-opacity" />
+                        </span>
                         <span className="font-mono font-medium text-slate-900">
-                          {selectedRecord.pf_number || '1002 3456 7890'}
+                          {selectedRecord.pf_number || '1002 3456 7891'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">ESI Insurance Number</span>
+                      <div
+                        onClick={() => handleOpenUpdateModal('esi')}
+                        className="flex justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                        title="Click to edit ESI Insurance Number"
+                      >
+                        <span className="text-slate-500 group-hover:text-amber-600 flex items-center gap-1">
+                          <span>ESI Insurance Number</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-amber-500 transition-opacity" />
+                        </span>
                         <span className="font-mono font-medium text-slate-900">
                           {selectedRecord.esi_number || '4400 1234 5678'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">PT Registration</span>
+                      <div
+                        onClick={() => handleOpenUpdateModal('pt')}
+                        className="flex justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                        title="Click to edit PT Registration"
+                      >
+                        <span className="text-slate-500 group-hover:text-purple-600 flex items-center gap-1">
+                          <span>PT Registration</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-purple-500 transition-opacity" />
+                        </span>
                         <span className="font-mono font-medium text-slate-900">
-                          {selectedRecord.pt_number || 'KL/PT/1234567'}
+                          {selectedRecord.pt_number || 'KL/PT/1234501'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Last Verified</span>
+                      <div
+                        onClick={() => handleOpenUpdateModal('all')}
+                        className="flex justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
+                        title="Click to update verification date"
+                      >
+                        <span className="text-slate-500 group-hover:text-emerald-600 flex items-center gap-1">
+                          <span>Last Verified</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-emerald-500 transition-opacity" />
+                        </span>
                         <span className="font-medium text-slate-900">{selectedRecord.last_updated || '01 May 2024'}</span>
                       </div>
                     </div>
@@ -977,7 +1090,8 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
                 <button
-                  onClick={() => setIsUpdateModalOpen(true)}
+                  type="button"
+                  onClick={() => handleOpenUpdateModal('all')}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-center cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
@@ -1215,7 +1329,12 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
         isOpen={isUpdateModalOpen}
         onClose={() => setIsUpdateModalOpen(false)}
         record={selectedRecord}
-        onSave={onUpdateRecord}
+        initialSection={updateModalSection}
+        onSave={(updated) => {
+          setSelectedRecord(updated);
+          onUpdateRecord(updated);
+          showToast(`Successfully updated statutory compliance parameters for ${updated.employee_name}!`);
+        }}
       />
 
       {/* ========================================================================= */}

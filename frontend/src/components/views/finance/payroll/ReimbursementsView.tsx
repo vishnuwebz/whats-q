@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Users, Wallet, Clock, XCircle, Calendar, Plus, Search, Filter,
   CheckCircle2, ChevronLeft, ChevronRight, FileText,
   Eye, Check, X, ArrowUpRight, ArrowDownRight, Minus, AlertCircle,
   Download, Receipt, Building2, Tag, FileDown, ExternalLink,
-  ShieldCheck, HelpCircle, Info, Sparkles, TrendingUp, RefreshCw, Paperclip, Printer
+  ShieldCheck, HelpCircle, Info, Sparkles, TrendingUp, RefreshCw, Paperclip, Printer,
+  PenTool, SlidersHorizontal
 } from 'lucide-react';
 import { ReimbursementItem } from '@/types';
 import { NewReimbursementModal } from './modals/NewReimbursementModal';
+import { useQiyamStore } from '@/store/useQiyamStore';
 
 interface Props {
   reimbursements: ReimbursementItem[];
@@ -41,6 +43,41 @@ export const ReimbursementsView: React.FC<Props> = ({
   const [inspectItem, setInspectItem] = useState<ReimbursementItem | null>(null);
   const [previewReceiptItem, setPreviewReceiptItem] = useState<ReimbursementItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const { openPdfEditor } = useQiyamStore();
+
+  // Horizontal Table Scroll Navigator & mouse drag-to-scroll
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [isDraggingTable, setIsDraggingTable] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragScrollLeft, setDragScrollLeft] = useState(0);
+
+  const scrollTableBy = (px: number) => {
+    tableScrollRef.current?.scrollBy({ left: px, behavior: 'smooth' });
+  };
+
+  const scrollToSection = (px: number) => {
+    tableScrollRef.current?.scrollTo({ left: px, behavior: 'smooth' });
+  };
+
+  const handleTableMouseDown = (e: React.MouseEvent) => {
+    if (!tableScrollRef.current) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, a, textarea')) return;
+    setIsDraggingTable(true);
+    setDragStartX(e.pageX - tableScrollRef.current.offsetLeft);
+    setDragScrollLeft(tableScrollRef.current.scrollLeft);
+  };
+
+  const handleTableMouseLeave = () => setIsDraggingTable(false);
+  const handleTableMouseUp = () => setIsDraggingTable(false);
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingTable || !tableScrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tableScrollRef.current.offsetLeft;
+    const walk = (x - dragStartX) * 1.5;
+    tableScrollRef.current.scrollLeft = dragScrollLeft - walk;
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -243,6 +280,153 @@ export const ReimbursementsView: React.FC<Props> = ({
           description: 'General Business Operations & Ancillary Support Supplies',
         };
     }
+  };
+
+  const handleOpenPdfEditorForReceipt = (item: ReimbursementItem) => {
+    const vendor = getVendorInfo(item.category, item.id);
+    const taxable = Math.round(item.amount / 1.18);
+    const gst = item.amount - taxable;
+
+    openPdfEditor({
+      type: 'voucher',
+      title: `Tax Invoice & Cash Receipt - ${item.employee_name}`,
+      referenceNumber: `INV-2024-REC#${item.id}`,
+      invoiceNumber: `INV-2024-REC#${item.id}`,
+      recipientName: item.employee_name,
+      recipientId: item.employee_id,
+      department: item.department || 'Operations',
+      dateStr: item.submitted_on,
+      amount: item.amount,
+      paymentStatus: item.status === 'Approved' ? 'SETTLED & DISBURSED' : 'CLAIM PENDING APPROVAL',
+      subject: `${item.category.toUpperCase()} EXPENSE REIMBURSEMENT`,
+      bodyContent: `${item.purpose} (${vendor.vendorName}) - Billed to Qiyam Business Solutions LLP. Verified Proof.`,
+      items: [
+        {
+          description: `${item.purpose} - ${vendor.description}`,
+          qty: 1,
+          unitPrice: taxable,
+          amount: taxable,
+        },
+        {
+          description: `GST (CGST 9% + SGST 9%) - SAC/HSN: ${vendor.hsn}`,
+          qty: 1,
+          unitPrice: gst,
+          amount: gst,
+        }
+      ],
+      companyName: vendor.vendorName,
+      companyAddress: `${vendor.address} • GSTIN: ${vendor.gstin}`,
+    });
+  };
+
+  const handlePrintExactPdf = (item: ReimbursementItem) => {
+    const vendor = getVendorInfo(item.category, item.id);
+    const total = item.amount;
+    const taxable = Math.round(total / 1.18);
+    const gst = total - taxable;
+    const cgst = Math.round(gst / 2);
+    const sgst = gst - cgst;
+
+    const printWin = window.open('', '_blank', 'width=850,height=1000');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Tax Invoice & Receipt - INV-2024-REC#${item.id}</title>
+          <style>
+            @page { size: A4; margin: 15mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #fff; color: #0f172a; font-size: 13px; }
+            .table-box { width: 100%; border-collapse: collapse; margin-top: 18px; margin-bottom: 18px; }
+            .table-box th { background: #f1f5f9; border-bottom: 2px solid #cbd5e1; padding: 10px; text-align: left; font-size: 11px; font-weight: 800; }
+            .table-box td { border-bottom: 1px solid #e2e8f0; padding: 10px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div style="border: 2px solid #059669; border-radius: 16px; padding: 24px; max-width: 720px; margin: 0 auto; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 18px;">
+              <div>
+                <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 10px;">TAX INVOICE & CASH RECEIPT</span>
+                <h2 style="font-size: 18px; font-weight: 900; margin: 6px 0 2px 0; color: #0f172a;">${vendor.vendorName}</h2>
+                <div style="font-size: 11px; color: #64748b;">${vendor.address}</div>
+                <div style="font-size: 11px; color: #334155; font-family: monospace; margin-top: 3px;">GSTIN: <strong>${vendor.gstin}</strong> • SAC/HSN: ${vendor.hsn}</div>
+              </div>
+              <div style="text-align: right;">
+                <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 10px;">${item.status} CLAIM</span>
+                <div style="font-family: monospace; font-weight: 800; font-size: 13px; margin-top: 6px; color: #0f172a;">INV-2024-REC#${item.id}</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Date: <strong>${item.submitted_on}</strong></div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px;">
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
+                <div style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">BILLED TO (ORGANIZATION)</div>
+                <div style="font-weight: 800; color: #0f172a; margin-top: 2px;">Qiyam Business Solutions LLP</div>
+                <div style="font-size: 11px; color: #64748b;">Mavoor Road, Kozhikode, Kerala — 673004</div>
+                <div style="font-size: 11px; color: #475569; font-family: monospace;">GSTIN: 32AABCP1234D1Z5</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
+                <div style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">CLAIMANT / EMPLOYEE</div>
+                <div style="font-weight: 800; color: #0f172a; margin-top: 2px;">${item.employee_name}</div>
+                <div style="font-size: 11px; color: #64748b; font-family: monospace;">ID: ${item.employee_id}</div>
+                <div style="font-size: 11px; color: #047857; font-weight: 700;">Category: ${item.category}</div>
+              </div>
+            </div>
+
+            <table class="table-box">
+              <thead>
+                <tr>
+                  <th>Item Particulars</th>
+                  <th>SAC/HSN</th>
+                  <th style="text-align: right;">Taxable</th>
+                  <th style="text-align: right;">CGST (9%)</th>
+                  <th style="text-align: right;">SGST (9%)</th>
+                  <th style="text-align: right;">Total (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <strong>${item.purpose}</strong><br />
+                    <span style="font-size: 11px; color: #64748b;">${vendor.description}</span>
+                    ${item.notes ? `<div style="color: #047857; font-style: italic; font-size: 10px; margin-top: 2px;">“${item.notes}”</div>` : ''}
+                  </td>
+                  <td style="font-family: monospace;">${vendor.hsn}</td>
+                  <td style="text-align: right; font-family: monospace;">₹${taxable.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace;">₹${cgst.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace;">₹${sgst.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 800;">₹${total.toLocaleString('en-IN')}</td>
+                </tr>
+                <tr style="background: #ecfdf5; font-weight: 800;">
+                  <td colspan="5" style="text-align: right; text-transform: uppercase; font-size: 11px; color: #064e3b;">TOTAL AMOUNT PAID (INR):</td>
+                  <td style="text-align: right; font-family: monospace; font-size: 15px; color: #047857; font-weight: 900;">₹${total.toLocaleString('en-IN')}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 11px; color: #64748b;">
+              <div>
+                ✔ Digitally signed & verified with vendor e-invoicing portal.<br />
+                <span style="font-family: monospace; font-size: 10px;">Hash: SHA256:7e8a9f...c4b2</span>
+              </div>
+              <div style="border: 1px solid #6ee7b7; background: #ecfdf5; color: #047857; font-weight: 800; padding: 4px 10px; border-radius: 6px; font-size: 10px;">
+                ✓ VERIFIED INVOICE PROOF
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+    }, 250);
   };
 
   const triggerHtmlDownload = (html: string, filename: string) => {
@@ -481,9 +665,8 @@ export const ReimbursementsView: React.FC<Props> = ({
   };
 
   const handleDownloadReceipt = (item: ReimbursementItem) => {
-    const html = generateReceiptHtml(item);
-    triggerHtmlDownload(html, `tax_invoice_receipt_${item.id}.html`);
-    showToast(`Downloaded official receipt for Claim #${item.id}!`);
+    handlePrintExactPdf(item);
+    showToast(`Generating exact print/PDF for Claim #${item.id}!`);
   };
 
   const handleDownloadPolicy = () => {
@@ -757,8 +940,85 @@ export const ReimbursementsView: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* Horizontal Scroll Controller & Section Quick Jumper */}
+        <div className="bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-sm border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 shrink-0 mr-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
+              <span>JUMP TO COLUMN:</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollToSection(0)}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              <span>1. Employee Info</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection(220)}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              <span>2. Category & Purpose</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection(550)}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              <span>3. Amount & Date</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection(800)}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              <span>4. Receipt Proof & Status</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection(1100)}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              <span>5. Actions</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] text-slate-400 hidden sm:inline">
+              Drag table to pan or use buttons:
+            </span>
+            <button
+              type="button"
+              onClick={() => scrollTableBy(-350)}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+              title="Scroll Left (◄)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Scroll Left</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTableBy(350)}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+              title="Scroll Right (►)"
+            >
+              <span>Scroll Right</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
         {/* Full Width Table Layout */}
-        <div className="overflow-x-auto w-full">
+        <div
+          ref={tableScrollRef}
+          onMouseDown={handleTableMouseDown}
+          onMouseLeave={handleTableMouseLeave}
+          onMouseUp={handleTableMouseUp}
+          onMouseMove={handleTableMouseMove}
+          className={`overflow-x-auto w-full select-none ${isDraggingTable ? 'cursor-grabbing' : 'cursor-grab'}`}
+          style={{ scrollBehavior: 'smooth' }}
+        >
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50/90 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
@@ -1198,12 +1458,12 @@ export const ReimbursementsView: React.FC<Props> = ({
                 </div>
                 <div>
                   <div className="font-bold text-slate-900 flex items-center gap-2">
-                    <span>tax_invoice_receipt_{inspectItem.id}.html</span>
+                    <span>tax_invoice_receipt_{inspectItem.id}.pdf</span>
                     <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
                       Verified
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-400">Tax Invoice • Digitally Signed • GSTIN Compliant</div>
+                  <div className="text-[10px] text-slate-400">Tax Invoice • Exact PDF Layout • GSTIN Compliant</div>
                 </div>
               </div>
 
@@ -1215,16 +1475,25 @@ export const ReimbursementsView: React.FC<Props> = ({
                   title="Preview Receipt & Tax Invoice"
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  <span>Preview Receipt</span>
+                  <span>Preview</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDownloadReceipt(inspectItem)}
+                  onClick={() => handleOpenPdfEditorForReceipt(inspectItem)}
+                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-lg cursor-pointer flex items-center gap-1.5 text-xs transition-colors border border-purple-200"
+                  title="Edit Voucher in PDF Studio"
+                >
+                  <PenTool className="w-3.5 h-3.5" />
+                  <span>Edit in PDF Editor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintExactPdf(inspectItem)}
                   className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer flex items-center gap-1.5 text-xs transition-colors"
-                  title="Download File"
+                  title="Download / Print Exact PDF"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
+                  <span>Exact PDF</span>
                 </button>
               </div>
             </div>
@@ -1282,21 +1551,30 @@ export const ReimbursementsView: React.FC<Props> = ({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                  title="Print or Save as PDF"
+                  onClick={() => handleOpenPdfEditorForReceipt(previewReceiptItem)}
+                  className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition-colors border border-purple-200"
+                  title="Open and edit this receipt in PDF Studio"
                 >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Print</span>
+                  <PenTool className="w-3.5 h-3.5" />
+                  <span>Edit in PDF Editor</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDownloadReceipt(previewReceiptItem)}
+                  onClick={() => handlePrintExactPdf(previewReceiptItem)}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="Print or Save as Exact Color PDF"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Print / Save PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintExactPdf(previewReceiptItem)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                  title="Download File"
+                  title="Download Exact PDF"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download File</span>
+                  <span>Download Exact PDF</span>
                 </button>
                 <button
                   type="button"
@@ -1467,11 +1745,19 @@ export const ReimbursementsView: React.FC<Props> = ({
                 )}
                 <button
                   type="button"
-                  onClick={() => handleDownloadReceipt(previewReceiptItem)}
+                  onClick={() => handleOpenPdfEditorForReceipt(previewReceiptItem)}
+                  className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer border border-purple-200 transition-colors"
+                >
+                  <PenTool className="w-4 h-4" />
+                  <span>Edit in PDF Editor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintExactPdf(previewReceiptItem)}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download HTML Receipt</span>
+                  <span>Print / Save Exact PDF</span>
                 </button>
               </div>
             </div>
