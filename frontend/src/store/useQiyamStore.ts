@@ -1311,6 +1311,53 @@ const getStoredMetaConfig = (): MetaConfig => {
   return DEFAULT_META_CONFIG;
 };
 
+const getStoredMetaWallet = (): MetaWalletInfo => {
+  try {
+    let wabaId = DEFAULT_META_CONFIG.waba_id || '';
+    const metaConfigCached = localStorage.getItem('whatsq_meta_config');
+    if (metaConfigCached) {
+      try {
+        const parsedCfg = JSON.parse(metaConfigCached);
+        if (parsedCfg.waba_id) wabaId = parsedCfg.waba_id;
+      } catch {}
+    }
+
+    const cached = localStorage.getItem('whatsq_meta_wallet');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed === 'object') {
+        const parsedBal = Number(parsed.balance);
+        return {
+          ...initialMetaWallet,
+          ...parsed,
+          balance: !isNaN(parsedBal) ? parsedBal : 0,
+          wabaId: parsed.wabaId || wabaId || initialMetaWallet.wabaId,
+        };
+      }
+    }
+
+    return {
+      ...initialMetaWallet,
+      wabaId: wabaId || initialMetaWallet.wabaId,
+    };
+  } catch {
+    return initialMetaWallet;
+  }
+};
+
+const getStoredWalletTransactions = (): MetaWalletTransaction[] => {
+  try {
+    const cached = localStorage.getItem('whatsq_wallet_txs');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return initialWalletTransactions;
+};
+
 const INITIAL_LINKED_DEVICES: LinkedEmployeeDevice[] = [
   {
     id: 1,
@@ -2103,8 +2150,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : 'This document is 
   intentMetrics: [],
   dailyMetrics: [],
   searchResults: [],
-  metaWallet: initialMetaWallet,
-  walletTransactions: initialWalletTransactions,
+  metaWallet: getStoredMetaWallet(),
+  walletTransactions: getStoredWalletTransactions(),
   bulkCampaigns: initialBulkCampaigns,
   draftCampaign: null,
   setDraftCampaign: (campaign) => set({ draftCampaign: campaign }),
@@ -2899,28 +2946,37 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : 'This document is 
         ', ' +
         new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      set((state) => ({
-        metaWallet: {
-          ...state.metaWallet,
-          balance: newBalance,
-          lastUpdated: 'Just now',
+      const updatedWallet = {
+        ...get().metaWallet,
+        balance: newBalance,
+        lastUpdated: 'Just now',
+      };
+      const updatedTxs: MetaWalletTransaction[] = [
+        {
+          id: `tx-${Date.now()}`,
+          type: 'debit' as const,
+          category: 'Campaign Messages',
+          amount: totalCost,
+          currency: get().metaWallet.currency,
+          description: `${totalRecipients.toLocaleString()} messages for "${campaign.name}"`,
+          timestamp: nowFull,
+          balanceAfter: newBalance,
+          campaignId: String(res.campaign?.id || ''),
+          campaignName: campaign.name,
         },
-        walletTransactions: [
-          {
-            id: `tx-${Date.now()}`,
-            type: 'debit' as const,
-            category: 'Campaign Messages',
-            amount: totalCost,
-            currency: state.metaWallet.currency,
-            description: `${totalRecipients.toLocaleString()} messages for "${campaign.name}"`,
-            timestamp: nowFull,
-            balanceAfter: newBalance,
-            campaignId: String(res.campaign?.id || ''),
-            campaignName: campaign.name,
-          },
-          ...state.walletTransactions,
-        ],
-      }));
+        ...get().walletTransactions,
+      ];
+
+      try {
+        localStorage.setItem('whatsq_meta_wallet', JSON.stringify(updatedWallet));
+        localStorage.setItem('whatsq_wallet_txs', JSON.stringify(updatedTxs));
+        window.dispatchEvent(new CustomEvent('whatsq_meta_wallet_updated', { detail: updatedWallet }));
+      } catch {}
+
+      set({
+        metaWallet: updatedWallet,
+        walletTransactions: updatedTxs,
+      });
 
       // Refresh campaign list from DB
       await get().fetchBulkCampaigns();
@@ -2938,9 +2994,18 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : 'This document is 
   },
 
   updateMetaWallet: (updates) => {
-    set((state) => ({
-      metaWallet: { ...state.metaWallet, ...updates, lastUpdated: 'Just now' },
-    }));
+    const updated = {
+      ...get().metaWallet,
+      ...updates,
+      balance: updates.balance !== undefined ? Number(updates.balance) : get().metaWallet.balance,
+      lastUpdated: 'Just now',
+    };
+    try {
+      localStorage.setItem('whatsq_meta_wallet', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('whatsq_meta_wallet_updated', { detail: updated }));
+    } catch {}
+
+    set({ metaWallet: updated });
     get().addToast('Meta Wallet settings updated successfully', 'success');
   },
 
@@ -2965,14 +3030,23 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : 'This document is 
       balanceAfter: newBalance,
     };
 
-    set((state) => ({
-      metaWallet: {
-        ...state.metaWallet,
-        balance: newBalance,
-        lastUpdated: 'Just now',
-      },
-      walletTransactions: [newTx, ...state.walletTransactions],
-    }));
+    const updatedWallet = {
+      ...get().metaWallet,
+      balance: newBalance,
+      lastUpdated: 'Just now',
+    };
+    const updatedTxs = [newTx, ...get().walletTransactions];
+
+    try {
+      localStorage.setItem('whatsq_meta_wallet', JSON.stringify(updatedWallet));
+      localStorage.setItem('whatsq_wallet_txs', JSON.stringify(updatedTxs));
+      window.dispatchEvent(new CustomEvent('whatsq_meta_wallet_updated', { detail: updatedWallet }));
+    } catch {}
+
+    set({
+      metaWallet: updatedWallet,
+      walletTransactions: updatedTxs,
+    });
     get().addToast(`Added ₹${amount.toLocaleString()} to Meta Wallet balance!`, 'success');
   },
 

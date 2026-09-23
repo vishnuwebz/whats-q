@@ -23,7 +23,8 @@ export const MetaWalletModal: React.FC<MetaWalletModalProps> = ({
   onClose,
   defaultTab = 'edit',
 }) => {
-  const { metaWallet, updateMetaWallet, addWalletFunds, walletTransactions } = useQiyamStore();
+  const { metaWallet, metaConfig, updateMetaWallet, addWalletFunds, walletTransactions } = useQiyamStore();
+  const activeWaba = metaWallet.wabaId || metaConfig?.waba_id || '4567067243541240';
   const [activeTab, setActiveTab] = useState<'edit' | 'info' | 'history' | 'add_funds'>(defaultTab);
 
   // Form states
@@ -182,7 +183,7 @@ export const MetaWalletModal: React.FC<MetaWalletModalProps> = ({
                   </div>
                   <div className="text-[10px] text-emerald-700 mt-0.5 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Synced with Meta Cloud API Account (WABA: {metaWallet.wabaId})
+                    Synced with Meta Cloud API Account (WABA: {activeWaba})
                   </div>
                 </div>
                 <div className="text-right">
@@ -341,7 +342,7 @@ export const MetaWalletModal: React.FC<MetaWalletModalProps> = ({
                     {formatMoney(metaWallet.balance)}
                   </span>
                 </div>
-                <div className="text-[11px] text-emerald-700">Meta Account: {metaWallet.wabaId}</div>
+                <div className="text-[11px] text-emerald-700">Meta Account: {activeWaba}</div>
               </div>
 
               <div>

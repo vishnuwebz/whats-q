@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Send,
   Calendar,
@@ -78,6 +78,30 @@ export const BulkOverviewView: React.FC = () => {
     }
     return '+91 94963 00233';
   }, [metaConfig?.business_phone_display]);
+
+  // Listen for live wallet updates across tabs and components
+  useEffect(() => {
+    const handleWalletSync = () => {
+      try {
+        const stored = localStorage.getItem('whatsq_meta_wallet');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed.balance === 'number') {
+            useQiyamStore.setState((state) => ({
+              metaWallet: { ...state.metaWallet, ...parsed },
+            }));
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('whatsq_meta_wallet_updated', handleWalletSync);
+    window.addEventListener('storage', handleWalletSync);
+    return () => {
+      window.removeEventListener('whatsq_meta_wallet_updated', handleWalletSync);
+      window.removeEventListener('storage', handleWalletSync);
+    };
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
@@ -163,20 +187,45 @@ export const BulkOverviewView: React.FC = () => {
           </div>
 
           {/* Meta Wallet Balance */}
-          <div className="bg-gradient-to-br from-[#064E3B] to-[#042F2E] p-4 rounded-2xl border border-emerald-600/40 text-white shadow-2xs space-y-2">
+          <div
+            onClick={() => setIsWalletModalOpen(true)}
+            className="bg-gradient-to-br from-[#064E3B] to-[#042F2E] p-4 rounded-2xl border border-emerald-600/40 hover:border-emerald-400 text-white shadow-2xs space-y-2 cursor-pointer transition-all duration-200 hover:shadow-md group"
+          >
             <div className="flex items-center justify-between text-emerald-200">
-              <span className="font-semibold text-xs">Meta Wallet</span>
-              <Wallet className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-xs group-hover:text-white transition-colors">Meta Wallet</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Live Synced" />
+              </div>
+              <Wallet className="w-3.5 h-3.5 text-emerald-300 group-hover:text-white transition-colors" />
             </div>
-            <div className="text-2xl font-black text-white">
-              ₹{(metaWallet?.balance || 2450).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            <div className="text-2xl font-black text-white font-mono tracking-tight">
+              {new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: metaWallet?.currency || 'INR',
+                minimumFractionDigits: 2,
+              }).format(metaWallet?.balance ?? 0)}
             </div>
-            <button
-              onClick={() => setIsWalletModalOpen(true)}
-              className="w-full mt-1 px-2 py-1 rounded-lg bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 hover:text-white border border-emerald-400/30 font-semibold text-[11px] transition text-center cursor-pointer"
-            >
-              + Top Up Credits
-            </button>
+            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                  (metaWallet?.balance ?? 0) <= (metaWallet?.lowBalanceThreshold ?? 500)
+                    ? 'bg-amber-500/20 text-amber-200 border border-amber-400/30'
+                    : 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30'
+                }`}
+              >
+                {(metaWallet?.balance ?? 0) <= (metaWallet?.lowBalanceThreshold ?? 500) ? 'Low Balance' : 'Active Balance'}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsWalletModalOpen(true);
+                }}
+                className="px-2 py-0.5 rounded-lg bg-emerald-500/30 hover:bg-emerald-500/60 text-emerald-200 hover:text-white border border-emerald-400/30 font-semibold text-[11px] transition text-center cursor-pointer"
+              >
+                + Top Up Credits
+              </button>
+            </div>
           </div>
         </div>
 
