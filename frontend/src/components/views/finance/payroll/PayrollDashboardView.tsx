@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Users, Wallet, PieChart, Landmark, Calendar, ArrowUpRight, Play,
   FileText, Receipt, ShieldCheck, Zap, BarChart3, Settings, ChevronRight,
-  Clock, AlertCircle, Sparkles, CheckCircle2, MoreVertical, Eye,
+  Clock, AlertCircle, CheckCircle2, MoreVertical, Eye,
   ArrowRight, Shield, Award, HelpCircle
 } from 'lucide-react';
 import { PayrollRunItem, PayrollSubView } from '@/types';
@@ -472,23 +472,6 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
                 <div className="text-[10px] text-slate-400">Due: 30 Jun 2024</div>
               </div>
             </div>
-          </div>
-
-          {/* AI Payroll Assistant Card */}
-          <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/10 rounded-xl text-emerald-400">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs">AI Payroll Assistant</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/40 text-blue-200 font-bold">Beta</span>
-                </div>
-                <p className="text-[11px] text-slate-300">Ask about tax, calculations or compliance</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
           </div>
         </div>
       </div>
