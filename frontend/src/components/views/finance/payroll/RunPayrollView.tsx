@@ -570,17 +570,6 @@ export const RunPayrollView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Quick Action Top Bar */}
-      <div className="flex justify-end">
-        <button
-          onClick={onBackToDashboard}
-          className="px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
-        >
-          <Calendar className="w-3.5 h-3.5 text-slate-500" />
-          <span>View Previous Payroll Runs</span>
-        </button>
-      </div>
-
       {/* 4-Step Stepper (Connected & Freely Toggleable) */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center justify-between max-w-3xl mx-auto">
