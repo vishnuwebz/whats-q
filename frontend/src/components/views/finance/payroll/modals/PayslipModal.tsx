@@ -28,6 +28,96 @@ export const PayslipModal: React.FC<Props> = ({ isOpen, onClose, employee, month
     window.print();
   };
 
+  const handleDownloadHtml = () => {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payslip - ${employee.name} - ${month}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px; background: #f8fafc; color: #0f172a; }
+    .sheet { max-width: 680px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-radius: 16px; padding: 32px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #059669; padding-bottom: 16px; margin-bottom: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 11px; margin-bottom: 20px; }
+    .table-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+    th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-weight: 700; }
+    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    .text-right { text-align: right; }
+    .callout { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+    @media print { body { padding: 0; background: #fff; } .sheet { border: none; box-shadow: none; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="header">
+      <div>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #0f172a;">Qiyam Business Solutions LLP</h2>
+        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Mavoor Road, Kozhikode, Kerala — 673004</div>
+        <div style="font-size: 11px; color: #64748b;">GSTIN: 32AABCP1234D1Z5 • PAN: AABCP1234D</div>
+      </div>
+      <div style="text-align: right;">
+        <span style="display: inline-block; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px;">PAYSLIP</span>
+        <div style="font-weight: 800; font-size: 13px; margin-top: 6px;">${month}</div>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div><span style="color: #64748b; font-size: 10px; text-transform: uppercase;">Employee Name</span><div style="font-weight: 700;">${employee.name}</div></div>
+      <div><span style="color: #64748b; font-size: 10px; text-transform: uppercase;">Employee ID</span><div style="font-family: monospace; font-weight: 600;">${employee.employee_id}</div></div>
+      <div><span style="color: #64748b; font-size: 10px; text-transform: uppercase;">Department</span><div style="font-weight: 600;">${employee.department}</div></div>
+      <div><span style="color: #64748b; font-size: 10px; text-transform: uppercase;">Disbursement</span><div style="color: #059669; font-weight: 700;">Bank Transfer</div></div>
+    </div>
+
+    <div class="table-grid">
+      <table>
+        <thead><tr><th>Earnings</th><th class="text-right">Amount (₹)</th></tr></thead>
+        <tbody>
+          <tr><td>Basic Salary</td><td class="text-right" style="font-family: monospace;">₹${basic.toLocaleString()}</td></tr>
+          <tr><td>HRA</td><td class="text-right" style="font-family: monospace;">₹${hra.toLocaleString()}</td></tr>
+          <tr><td>Conveyance</td><td class="text-right" style="font-family: monospace;">₹${conveyance.toLocaleString()}</td></tr>
+          <tr><td>Special Allowance</td><td class="text-right" style="font-family: monospace;">₹${specialAllowance.toLocaleString()}</td></tr>
+          <tr style="background: #f8fafc; font-weight: 700;"><td>Gross Earnings</td><td class="text-right" style="font-family: monospace; color: #059669;">₹${employee.gross_salary.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th>Deductions</th><th class="text-right">Amount (₹)</th></tr></thead>
+        <tbody>
+          <tr><td>Provident Fund (PF)</td><td class="text-right" style="font-family: monospace;">₹${pf.toLocaleString()}</td></tr>
+          <tr><td>TDS (Income Tax)</td><td class="text-right" style="font-family: monospace;">₹${tds.toLocaleString()}</td></tr>
+          <tr><td>Professional Tax</td><td class="text-right" style="font-family: monospace;">₹${pt.toLocaleString()}</td></tr>
+          <tr><td>ESI</td><td class="text-right" style="font-family: monospace;">${esi > 0 ? `₹${esi.toLocaleString()}` : '—'}</td></tr>
+          <tr style="background: #f8fafc; font-weight: 700;"><td>Total Deductions</td><td class="text-right" style="font-family: monospace; color: #e11d48;">₹${totalDeductions.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <div>
+        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #047857;">Net Take-Home Pay</span>
+        <div style="font-size: 20px; font-weight: 900; font-family: monospace; color: #064e3b;">₹${netPay.toLocaleString()}</div>
+      </div>
+      <div style="text-align: right; font-size: 11px; color: #065f46;">
+        <div>Ref: SAL-${month.toUpperCase().replace(/\s+/g, '-')}-${employee.employee_id}</div>
+        <div style="font-size: 10px; color: #047857;">Credited directly to Bank Account</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `payslip_${employee.employee_id}_${month.replace(/\s+/g, '_')}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl p-6 space-y-5 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto print:p-0 print:border-none print:shadow-none">
@@ -37,6 +127,14 @@ export const PayslipModal: React.FC<Props> = ({ isOpen, onClose, employee, month
             <span className="font-bold text-sm text-slate-800">Payslip Preview — {month}</span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadHtml}
+              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Download HTML Payslip"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download</span>
+            </button>
             <button
               onClick={handlePrint}
               className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors"

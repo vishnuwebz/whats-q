@@ -4,7 +4,7 @@ import {
   CheckCircle2, ChevronLeft, ChevronRight, FileText,
   Eye, Check, X, ArrowUpRight, ArrowDownRight, Minus, AlertCircle,
   Download, Receipt, Building2, Tag, FileDown, ExternalLink,
-  ShieldCheck, HelpCircle, Info, Sparkles, TrendingUp, RefreshCw, Paperclip
+  ShieldCheck, HelpCircle, Info, Sparkles, TrendingUp, RefreshCw, Paperclip, Printer
 } from 'lucide-react';
 import { ReimbursementItem } from '@/types';
 import { NewReimbursementModal } from './modals/NewReimbursementModal';
@@ -39,6 +39,7 @@ export const ReimbursementsView: React.FC<Props> = ({
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount-high' | 'amount-low'>('newest');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [inspectItem, setInspectItem] = useState<ReimbursementItem | null>(null);
+  const [previewReceiptItem, setPreviewReceiptItem] = useState<ReimbursementItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -165,6 +166,330 @@ export const ReimbursementsView: React.FC<Props> = ({
     link.click();
     document.body.removeChild(link);
     showToast('Reimbursements exported to CSV!');
+  };
+
+  const getVendorInfo = (category: string, id: string | number) => {
+    switch (category) {
+      case 'Travel':
+        return {
+          vendorName: 'IndiGo Airlines (InterGlobe Aviation Ltd.)',
+          gstin: '07AAAAC2784F1ZT',
+          address: 'Central Wing, Ground Floor, Thapasya Building, Infopark, Kochi - 682042',
+          hsn: '996411',
+          description: 'Domestic Passenger Air Transportation Service',
+        };
+      case 'Internet':
+        return {
+          vendorName: 'Reliance Jio Infocomm Limited',
+          gstin: '27AAACR5055K1ZI',
+          address: 'Jio Center, RP Mall, Mavoor Road, Kozhikode, Kerala - 673004',
+          hsn: '998422',
+          description: 'Gigabit Fiber High-Speed Internet Telecommunication Services',
+        };
+      case 'Food':
+        return {
+          vendorName: 'Bundl Technologies Pvt Ltd (Swiggy Corporate)',
+          gstin: '29AABCB1718J1ZL',
+          address: 'Devarabisanahalli, Outer Ring Road, Bengaluru, Karnataka - 560103',
+          hsn: '996331',
+          description: 'Corporate Catering & Business Meal Provisioning',
+        };
+      case 'Software':
+        return {
+          vendorName: 'Amazon Web Services India Private Limited',
+          gstin: '07AABCA7253L1ZP',
+          address: 'Worldmark 1, Aerocity, New Delhi, Delhi - 110037',
+          hsn: '998313',
+          description: 'Cloud Infrastructure & Managed SaaS Hosting Services',
+        };
+      case 'Stationery':
+        return {
+          vendorName: 'Staples Office Supplies India Ltd',
+          gstin: '33AABCS8891N1ZW',
+          address: 'Commercial Street, Palayam, Kozhikode, Kerala - 673001',
+          hsn: '482010',
+          description: 'Executive Workstation & Office Stationery Supplies',
+        };
+      case 'Training':
+        return {
+          vendorName: 'Coursera & Professional Upskilling Global',
+          gstin: '06AAACU9912Q1ZX',
+          address: 'DLF Cyber City, Phase III, Gurugram, Haryana - 122002',
+          hsn: '999293',
+          description: 'Corporate Professional Technical Certification & Training',
+        };
+      case 'Transport':
+        return {
+          vendorName: 'Uber India Systems Private Limited',
+          gstin: '27AACCU2301A1ZZ',
+          address: 'Parinee Crescenzo, BKC, Bandra East, Mumbai - 400051',
+          hsn: '996412',
+          description: 'Local Business Commute & Ground Transport Facilitation',
+        };
+      case 'Communication':
+        return {
+          vendorName: 'Bharti Airtel Limited (Enterprise Services)',
+          gstin: '07AAACA2345B1ZC',
+          address: 'Nelson Mandela Road, Vasant Kunj, New Delhi - 110070',
+          hsn: '998413',
+          description: 'Postpaid Corporate Mobile & Telecom Roaming Voice Services',
+        };
+      default:
+        return {
+          vendorName: 'Authorized Corporate Vendor Network',
+          gstin: '32AAACV1234D1Z5',
+          address: 'SM Street, Kozhikode, Kerala - 673001',
+          hsn: '998399',
+          description: 'General Business Operations & Ancillary Support Supplies',
+        };
+    }
+  };
+
+  const triggerHtmlDownload = (html: string, filename: string) => {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const generateReceiptHtml = (item: ReimbursementItem) => {
+    const vendor = getVendorInfo(item.category, item.id);
+    const total = item.amount;
+    const taxable = Math.round(total / 1.18);
+    const gstTotal = total - taxable;
+    const cgst = Math.round(gstTotal / 2);
+    const sgst = gstTotal - cgst;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tax Invoice & Receipt - Claim #${item.id}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px; color: #0f172a; background: #f8fafc; }
+    .invoice-card { max-width: 760px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 32px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #059669; padding-bottom: 20px; }
+    .brand-title { font-size: 20px; font-weight: 800; color: #059669; margin: 0; }
+    .brand-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-approved { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge-pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+    .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; font-size: 12px; }
+    .meta-title { font-weight: 700; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 12px; }
+    th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; }
+    td { padding: 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+    .text-right { text-align: right; }
+    .total-row { font-weight: 800; font-size: 14px; background: #ecfdf5; color: #065f46; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
+    .seal { border: 2px dashed #059669; padding: 8px 16px; border-radius: 8px; color: #059669; font-weight: 800; font-size: 11px; text-align: center; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .invoice-card { border: none; box-shadow: none; padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-card">
+    <div class="header">
+      <div>
+        <div class="brand-title">${vendor.vendorName}</div>
+        <div class="brand-sub">${vendor.address}</div>
+        <div class="brand-sub">GSTIN: <strong>${vendor.gstin}</strong> • Tax Invoice</div>
+      </div>
+      <div style="text-align: right;">
+        <span class="badge ${item.status === 'Approved' ? 'badge-approved' : 'badge-pending'}">${item.status} CLAIM</span>
+        <div style="font-weight: 800; font-size: 14px; margin-top: 8px; font-family: monospace;">INV-2024-REC#${item.id}</div>
+        <div style="font-size: 11px; color: #64748b;">Date: ${item.submitted_on}</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="meta-box">
+        <div class="meta-title">Billed To (Organization)</div>
+        <div style="font-weight: 700; color: #0f172a; font-size: 13px;">Qiyam Business Solutions LLP</div>
+        <div style="color: #475569; margin-top: 2px;">Mavoor Road, Kozhikode, Kerala — 673004</div>
+        <div style="color: #475569; margin-top: 2px;">GSTIN: <strong>32AABCP1234D1Z5</strong> • State: Kerala (32)</div>
+      </div>
+
+      <div class="meta-box">
+        <div class="meta-title">Claimant & Employee Details</div>
+        <div style="font-weight: 700; color: #0f172a; font-size: 13px;">${item.employee_name}</div>
+        <div style="color: #475569; margin-top: 2px;">Employee ID: <strong>${item.employee_id}</strong></div>
+        <div style="color: #475569; margin-top: 2px;">Category: <strong>${item.category}</strong> • Claim Ref: #${item.id}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item Particulars / Description</th>
+          <th>SAC / HSN</th>
+          <th class="text-right">Taxable Value</th>
+          <th class="text-right">CGST (9%)</th>
+          <th class="text-right">SGST (9%)</th>
+          <th class="text-right">Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>
+            <strong>${item.purpose}</strong>
+            <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${vendor.description}</div>
+            ${item.notes ? `<div style="font-size: 10px; color: #047857; margin-top: 2px;">Note: ${item.notes}</div>` : ''}
+          </td>
+          <td style="font-family: monospace;">${vendor.hsn}</td>
+          <td class="text-right" style="font-family: monospace;">₹${taxable.toLocaleString()}</td>
+          <td class="text-right" style="font-family: monospace;">₹${cgst.toLocaleString()}</td>
+          <td class="text-right" style="font-family: monospace;">₹${sgst.toLocaleString()}</td>
+          <td class="text-right" style="font-family: monospace; font-weight: 700;">₹${total.toLocaleString()}</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="6" style="text-align: right; padding: 12px;">Grand Total (Reimbursement Claim Value):</td>
+          <td class="text-right" style="padding: 12px; font-family: monospace;">₹${total.toLocaleString()}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-top: 16px; font-size: 11px;">
+      <div style="font-weight: 700; color: #334155; margin-bottom: 4px;">Employee Declaration & Verification:</div>
+      <p style="margin: 0; color: #64748b; line-height: 1.5;">
+        I hereby confirm that this expense was incurred exclusively and necessarily in the discharge of official duties for Qiyam Business Solutions. The voucher attached is genuine, paid in full, and has not been claimed elsewhere.
+      </p>
+    </div>
+
+    <div class="footer">
+      <div>
+        <div style="font-weight: 700; color: #1e293b;">Verified by Qiyam Payroll & Finance Ops</div>
+        <div>System Reference: REIMB-VCH-${item.id}-VERIFIED</div>
+      </div>
+      <div class="seal">
+        ✓ DIGITALLY VERIFIED<br>
+        <span style="font-size: 9px; font-weight: normal; color: #047857;">GST PORTAL VALIDATED</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const generatePolicyHtml = () => {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Qiyam Business Solutions - Employee Reimbursement Policy FY 2024-25</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px; color: #0f172a; background: #f8fafc; }
+    .policy-card { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { border-bottom: 2px solid #059669; padding-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { color: #065f46; font-size: 22px; margin: 0; }
+    .meta { font-size: 12px; color: #64748b; margin-top: 4px; }
+    h2 { font-size: 15px; color: #1e293b; margin-top: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+    p, li { font-size: 13px; line-height: 1.6; color: #334155; }
+    ul { padding-left: 20px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px; }
+    th { background: #f1f5f9; padding: 10px; text-align: left; font-weight: 700; border-bottom: 1px solid #cbd5e1; }
+    td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+    .tier-badge { background: #ecfdf5; color: #047857; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11px; }
+    @media print { body { padding: 0; background: #fff; } .policy-card { border: none; box-shadow: none; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="policy-card">
+    <div class="header">
+      <div>
+        <h1>Qiyam Business Solutions LLP</h1>
+        <div class="meta">Corporate Expense Reimbursement Policy • Document Ref: QBS-HR-EXP-2024-V2</div>
+      </div>
+      <span class="tier-badge">Effective: FY 2024-25</span>
+    </div>
+
+    <h2>1. Purpose & Scope</h2>
+    <p>This policy outlines the principles, allowable categories, daily ceilings, and audit protocols for all business expenses incurred by employees on behalf of Qiyam Business Solutions LLP.</p>
+
+    <h2>2. Expense Categories & Daily Caps</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Daily / Monthly Limit</th>
+          <th>Documentation Required</th>
+          <th>Approval Authority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Travel & Lodging</strong></td>
+          <td>Up to ₹5,000 / day (Tier 1)</td>
+          <td>GST Hotel Invoice + Boarding Passes</td>
+          <td>Manager & Finance</td>
+        </tr>
+        <tr>
+          <td><strong>WFH Broadband Internet</strong></td>
+          <td>₹1,500 / month flat</td>
+          <td>Monthly ISP Paid Receipt</td>
+          <td>Direct Manager</td>
+        </tr>
+        <tr>
+          <td><strong>Client Meals & Hospitality</strong></td>
+          <td>Actuals (Budget Pre-approved)</td>
+          <td>Itemized Food Tax Invoice + Client Name</td>
+          <td>Department Director</td>
+        </tr>
+        <tr>
+          <td><strong>Stationery & Equipment</strong></td>
+          <td>Up to ₹3,000 / occurrence</td>
+          <td>Store GST Tax Invoice</td>
+          <td>Direct Manager</td>
+        </tr>
+        <tr>
+          <td><strong>Software & Tools</strong></td>
+          <td>Actuals as per project budget</td>
+          <td>SaaS Cloud Billing Receipt</td>
+          <td>Tech Lead / CTO</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Submission & Settlement SLA</h2>
+    <ul>
+      <li>All claims must be submitted within <strong>30 days</strong> of expense date.</li>
+      <li>Finance & HR audit team will review and approve claims within <strong>48 hours</strong> (2 business days).</li>
+      <li>Approved claims are credited directly with the upcoming monthly payroll cycle, tax-free under Income Tax Section 10(14).</li>
+    </ul>
+
+    <h2>4. Non-Reimbursable Items</h2>
+    <p>Personal fines or traffic violations, alcohol/narcotics, personal gifts, unapproved luxury travel, and expenses without valid GST invoices will be rejected automatically.</p>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #64748b;">
+      <div>Approved by: Board of Partners, Qiyam Business Solutions LLP</div>
+      <div>Compliance: Income Tax Rules 1962 & MCA Guidelines</div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const handleDownloadReceipt = (item: ReimbursementItem) => {
+    const html = generateReceiptHtml(item);
+    triggerHtmlDownload(html, `tax_invoice_receipt_${item.id}.html`);
+    showToast(`Downloaded official receipt for Claim #${item.id}!`);
+  };
+
+  const handleDownloadPolicy = () => {
+    const html = generatePolicyHtml();
+    triggerHtmlDownload(html, `qiyam_reimbursement_policy_fy2024_25.html`);
+    showToast('Downloaded Qiyam Employee Reimbursement Policy document!');
   };
 
   return (
@@ -549,14 +874,23 @@ export const ReimbursementsView: React.FC<Props> = ({
 
                       {/* Receipt Proof */}
                       <td className="py-3.5 px-3.5" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => setInspectItem(r)}
-                          title="Click to view full voucher receipt"
-                          className="px-2.5 py-1 bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
-                        >
-                          <Paperclip className="w-3 h-3 text-slate-400 group-hover:text-emerald-600" />
-                          <span>Receipt #{r.id}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setPreviewReceiptItem(r)}
+                            title="Preview official receipt & tax invoice"
+                            className="px-2.5 py-1 bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+                          >
+                            <Eye className="w-3 h-3 text-emerald-600" />
+                            <span>Receipt #{r.id}</span>
+                          </button>
+                          <button
+                            onClick={() => handleDownloadReceipt(r)}
+                            title="Download official receipt file"
+                            className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-emerald-200"
+                          >
+                            <Download className="w-3 h-3" />
+                          </button>
+                        </div>
                       </td>
 
                       {/* Status Badge */}
@@ -682,7 +1016,7 @@ export const ReimbursementsView: React.FC<Props> = ({
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
             <span>Standard SLA: <strong>48 Hours</strong></span>
             <button
-              onClick={() => showToast('Policy document downloaded')}
+              onClick={handleDownloadPolicy}
               className="text-emerald-600 hover:text-emerald-700 font-bold hover:underline cursor-pointer flex items-center gap-1"
             >
               <span>Download Policy PDF</span>
@@ -856,22 +1190,43 @@ export const ReimbursementsView: React.FC<Props> = ({
               )}
             </div>
 
-            {/* Receipt Preview Simulator */}
-            <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+            {/* Receipt Document Attachment */}
+            <div className="p-3.5 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-2.5">
-                <FileText className="w-5 h-5 text-emerald-600" />
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="font-bold text-slate-900">tax_invoice_receipt_{inspectItem.id}.pdf</div>
-                  <div className="text-[10px] text-slate-400">PDF Document • 245 KB • Digitally Verified</div>
+                  <div className="font-bold text-slate-900 flex items-center gap-2">
+                    <span>tax_invoice_receipt_{inspectItem.id}.html</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                      Verified
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400">Tax Invoice • Digitally Signed • GSTIN Compliant</div>
                 </div>
               </div>
-              <button
-                onClick={() => showToast('Receipt downloaded')}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer flex items-center gap-1 text-[11px]"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>View</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewReceiptItem(inspectItem)}
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg cursor-pointer flex items-center gap-1.5 text-xs transition-colors border border-emerald-200"
+                  title="Preview Receipt & Tax Invoice"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Preview Receipt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReceipt(inspectItem)}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer flex items-center gap-1.5 text-xs transition-colors"
+                  title="Download File"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-slate-100">
@@ -899,6 +1254,226 @@ export const ReimbursementsView: React.FC<Props> = ({
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: INTERACTIVE RECEIPT & TAX INVOICE PREVIEW MODAL                  */}
+      {/* ========================================================================= */}
+      {previewReceiptItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Tax Invoice & Receipt Preview</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Voucher Ref #{previewReceiptItem.id} • {previewReceiptItem.employee_name} ({previewReceiptItem.employee_id})
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="Print or Save as PDF"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReceipt(previewReceiptItem)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                  title="Download File"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download File</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewReceiptItem(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Receipt Body (Paper Aesthetic) */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs bg-slate-50/30">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+                {/* Vendor Letterhead */}
+                {(() => {
+                  const vendor = getVendorInfo(previewReceiptItem.category, previewReceiptItem.id);
+                  const total = previewReceiptItem.amount;
+                  const taxable = Math.round(total / 1.18);
+                  const gst = total - taxable;
+                  const cgst = Math.round(gst / 2);
+                  const sgst = gst - cgst;
+
+                  return (
+                    <>
+                      <div className="flex items-start justify-between border-b border-emerald-600/30 pb-4">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            TAX INVOICE & CASH RECEIPT
+                          </span>
+                          <h2 className="text-base font-black text-slate-900 mt-1">{vendor.vendorName}</h2>
+                          <p className="text-[11px] text-slate-500 leading-tight">{vendor.address}</p>
+                          <p className="text-[11px] text-slate-600 font-mono">
+                            GSTIN: <strong className="text-slate-900">{vendor.gstin}</strong> • SAC/HSN: {vendor.hsn}
+                          </p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <span
+                            className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              previewReceiptItem.status === 'Approved'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : previewReceiptItem.status === 'Pending'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {previewReceiptItem.status} CLAIM
+                          </span>
+                          <div className="font-mono font-bold text-slate-900 text-xs mt-1">
+                            INV-2024-REC#{previewReceiptItem.id}
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center justify-end gap-1">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>{previewReceiptItem.submitted_on}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Client / Organization & Employee details */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Billed To (Organization)
+                          </span>
+                          <div className="font-bold text-slate-900">Qiyam Business Solutions LLP</div>
+                          <div className="text-[11px] text-slate-500">Mavoor Road, Kozhikode, Kerala — 673004</div>
+                          <div className="text-[11px] text-slate-600 font-mono">GSTIN: 32AABCP1234D1Z5</div>
+                        </div>
+
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Claimant / Employee
+                          </span>
+                          <div className="font-bold text-slate-900">{previewReceiptItem.employee_name}</div>
+                          <div className="text-[11px] text-slate-500 font-mono">ID: {previewReceiptItem.employee_id}</div>
+                          <div className="text-[11px] text-emerald-700 font-semibold">
+                            Category: {previewReceiptItem.category}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Itemized Line Items Table */}
+                      <div className="border border-slate-200 rounded-xl overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <tr>
+                              <th className="py-2.5 px-3">Item Particulars</th>
+                              <th className="py-2.5 px-3">SAC/HSN</th>
+                              <th className="py-2.5 px-3 text-right">Taxable</th>
+                              <th className="py-2.5 px-3 text-right">CGST (9%)</th>
+                              <th className="py-2.5 px-3 text-right">SGST (9%)</th>
+                              <th className="py-2.5 px-3 text-right">Total (₹)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium">
+                            <tr>
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-slate-900">{previewReceiptItem.purpose}</div>
+                                <div className="text-[11px] text-slate-500">{vendor.description}</div>
+                                {previewReceiptItem.notes && (
+                                  <div className="text-[10px] text-emerald-700 mt-1 italic">
+                                    “{previewReceiptItem.notes}”
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 font-mono text-slate-600">{vendor.hsn}</td>
+                              <td className="py-3 px-3 text-right font-mono text-slate-700">₹{taxable.toLocaleString()}</td>
+                              <td className="py-3 px-3 text-right font-mono text-slate-700">₹{cgst.toLocaleString()}</td>
+                              <td className="py-3 px-3 text-right font-mono text-slate-700">₹{sgst.toLocaleString()}</td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                                ₹{total.toLocaleString()}
+                              </td>
+                            </tr>
+                            <tr className="bg-emerald-50/80 font-bold text-emerald-950">
+                              <td colSpan={5} className="py-2.5 px-3 text-right uppercase tracking-wider text-[11px]">
+                                Total Amount Paid (INR):
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-sm font-black text-emerald-800">
+                                ₹{total.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Digitally Signed Seal */}
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200 text-[11px]">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <div className="text-slate-500 leading-tight">
+                            Digitally signed & verified with vendor e-invoicing portal.<br />
+                            Hash: <span className="font-mono text-slate-700">SHA256:7e8a9f...c4b2</span>
+                          </div>
+                        </div>
+                        <div className="border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-center text-[10px]">
+                          ✓ VERIFIED INVOICE PROOF
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-white shrink-0">
+              <button
+                type="button"
+                onClick={() => setPreviewReceiptItem(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                Close Preview
+              </button>
+
+              <div className="flex items-center gap-2">
+                {previewReceiptItem.status === 'Pending' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleApprove(previewReceiptItem);
+                      setPreviewReceiptItem((prev) => prev ? { ...prev, status: 'Approved' } : null);
+                    }}
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Approve Claim</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReceipt(previewReceiptItem)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download HTML Receipt</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

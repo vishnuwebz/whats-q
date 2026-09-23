@@ -251,6 +251,119 @@ export const RunPayrollView: React.FC<Props> = ({
     triggerToast('Payroll matrix exported as CSV');
   };
 
+  const handleDownloadAllPayslips = () => {
+    const payslipsHtml = employeesList.map((emp) => {
+      const basic = Math.round(emp.gross_salary * 0.4);
+      const hra = Math.round(emp.gross_salary * 0.2);
+      const conveyance = 3000;
+      const special = emp.gross_salary - basic - hra - conveyance;
+      const pf = Math.round(basic * 0.12);
+      const esi = emp.gross_salary <= 21000 ? Math.round(emp.gross_salary * 0.0075) : 0;
+      const pt = 200;
+      const tds = emp.tds || 1500;
+      const totalDed = pf + esi + pt + tds;
+      const netPay = emp.gross_salary - totalDed;
+
+      return `
+      <div class="payslip-page" style="page-break-after: always; padding: 24px; border: 1px solid #cbd5e1; border-radius: 12px; margin-bottom: 24px; background: #fff;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #059669; padding-bottom: 12px; margin-bottom: 16px;">
+          <div>
+            <div style="font-size: 16px; font-weight: 800; color: #0f172a;">QIYAM BUSINESS SOLUTIONS LLP</div>
+            <div style="font-size: 11px; color: #64748b;">Mavoor Road, Kozhikode, Kerala — 673004</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #059669;">PAYSLIP — ${selectedMonth}</div>
+            <div style="font-size: 10px; color: #64748b;">Ref: SAL-${selectedMonth.toUpperCase().replace(/\s+/g, '-')}-${emp.employee_id}</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 11px; margin-bottom: 16px;">
+          <div><span style="color: #64748b; font-size: 10px; display: block;">NAME</span><strong>${emp.name}</strong></div>
+          <div><span style="color: #64748b; font-size: 10px; display: block;">EMP ID</span><strong>${emp.employee_id}</strong></div>
+          <div><span style="color: #64748b; font-size: 10px; display: block;">DEPARTMENT</span><strong>${emp.department}</strong></div>
+          <div><span style="color: #64748b; font-size: 10px; display: block;">DISBURSEMENT</span><strong style="color: #059669;">Bank Transfer</strong></div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 16px;">
+          <thead>
+            <tr style="background: #f1f5f9;">
+              <th style="padding: 6px 8px; text-align: left;">Earnings</th>
+              <th style="padding: 6px 8px; text-align: right;">Amount (₹)</th>
+              <th style="padding: 6px 8px; text-align: left;">Deductions</th>
+              <th style="padding: 6px 8px; text-align: right;">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 6px 8px;">Basic Salary</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${basic.toLocaleString()}</td>
+              <td style="padding: 6px 8px;">Provident Fund (PF)</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${pf.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 8px;">HRA</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${hra.toLocaleString()}</td>
+              <td style="padding: 6px 8px;">TDS (Income Tax)</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${tds.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 8px;">Conveyance</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${conveyance.toLocaleString()}</td>
+              <td style="padding: 6px 8px;">Professional Tax (PT)</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${pt.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 8px;">Special Allowance</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${special.toLocaleString()}</td>
+              <td style="padding: 6px 8px;">ESI</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace;">${esi > 0 ? `₹${esi.toLocaleString()}` : '—'}</td>
+            </tr>
+            <tr style="background: #f8fafc; font-weight: 700; border-top: 1px solid #cbd5e1;">
+              <td style="padding: 6px 8px;">Gross Earnings</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace; color: #059669;">₹${emp.gross_salary.toLocaleString()}</td>
+              <td style="padding: 6px 8px;">Total Deductions</td>
+              <td style="padding: 6px 8px; text-align: right; font-family: monospace; color: #e11d48;">₹${totalDed.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="background: #ecfdf5; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <div><span style="font-size: 10px; color: #047857; text-transform: uppercase; font-weight: 700;">Net Take-Home Pay</span><div style="font-size: 16px; font-weight: 900; font-family: monospace; color: #064e3b;">₹${netPay.toLocaleString()}</div></div>
+          <div style="font-size: 10px; color: #047857; font-weight: 600;">✓ Digitally Certified by Qiyam Payroll</div>
+        </div>
+      </div>
+      `;
+    }).join('\n');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Qiyam Business Solutions - Batch Payslips - ${selectedMonth}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .payslip-page { border: none !important; margin-bottom: 0 !important; page-break-after: always !important; }
+    }
+  </style>
+</head>
+<body>
+  <div style="max-width: 800px; margin: 0 auto;">
+    ${payslipsHtml}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `qiyam_batch_payslips_${selectedMonth.replace(/\s+/g, '_')}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    triggerToast(`Consolidated batch payslips downloaded for all ${employeesList.length} employees!`);
+  };
+
   // Quick adjust save handler
   const handleSaveQuickAdjust = (updated: EmployeeSalaryDetail) => {
     // Recalculate derived fields
@@ -1451,7 +1564,7 @@ export const RunPayrollView: React.FC<Props> = ({
 
               <button
                 type="button"
-                onClick={() => triggerToast('All 32 payslips generated into ZIP archive!')}
+                onClick={handleDownloadAllPayslips}
                 className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-left cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-3">

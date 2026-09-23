@@ -3,7 +3,7 @@ import {
   Users, FileText, ShieldCheck, ArrowUpRight, Search, Filter,
   Download, MoreVertical, ChevronLeft, ChevronRight, X, Edit2,
   CheckCircle2, AlertCircle, Building2, HelpCircle, FileDown,
-  Info, ExternalLink, Calendar, Check, Landmark, Shield
+  Info, ExternalLink, Calendar, Check, Landmark, Shield, Eye, Printer
 } from 'lucide-react';
 import { EmployeeTaxCompliance } from '@/types';
 import { TaxUpdateModal } from './modals/TaxUpdateModal';
@@ -23,6 +23,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
   );
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [rightTab, setRightTab] = useState<'tax' | 'salary' | 'docs' | 'history'>('tax');
+  const [previewDoc, setPreviewDoc] = useState<{ type: 'form16' | 'form12bb'; record: EmployeeTaxCompliance } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -75,6 +76,280 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
     link.click();
     document.body.removeChild(link);
     showToast('Tax compliance statement exported to CSV!');
+  };
+
+  const triggerHtmlDownload = (html: string, filename: string) => {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const generateForm16Html = (record: EmployeeTaxCompliance) => {
+    const grossSalary = 540000;
+    const standardDeduction = 50000;
+    const annualTds = (record.monthly_tds || 6500) * 12;
+    const pan = record.employee_id === 'EMP004' ? 'ABEPS1234D' : `ABCDE${record.employee_id.replace(/\D/g, '') || '7890'}K`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Form 16 - Certificate under Section 203 of the Income-tax Act, 1961 - ${record.employee_name}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px; color: #0f172a; background: #f8fafc; }
+    .doc-card { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid #cbd5e1; padding: 36px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+    .title { font-size: 18px; font-weight: 900; margin: 0; text-transform: uppercase; }
+    .subtitle { font-size: 12px; color: #475569; margin-top: 4px; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; font-size: 11px; }
+    .meta-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc; }
+    .meta-label { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 10px; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 11px; }
+    th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+    td { border: 1px solid #e2e8f0; padding: 8px 10px; }
+    .text-right { text-align: right; }
+    .bold { font-weight: 700; }
+    .seal-box { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 24px; border-top: 1px solid #cbd5e1; font-size: 11px; }
+    @media print { body { padding: 0; background: #fff; } .doc-card { border: none; box-shadow: none; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="doc-card">
+    <div class="header">
+      <div class="title">FORM NO. 16</div>
+      <div class="subtitle">[See rule 31(1)(a)]</div>
+      <div class="subtitle" style="font-weight: 600; margin-top: 6px;">Certificate under section 203 of the Income-tax Act, 1961 for tax deducted at source on salary</div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box">
+        <div class="meta-label">Employer Name & Address</div>
+        <div class="bold">QIYAM BUSINESS SOLUTIONS LLP</div>
+        <div>Mavoor Road, Kozhikode, Kerala — 673004</div>
+        <div style="margin-top: 4px;">PAN: <strong>AABCP1234D</strong> • TAN: <strong>CALQ12345E</strong></div>
+      </div>
+      <div class="meta-box">
+        <div class="meta-label">Employee Details</div>
+        <div class="bold">${record.employee_name}</div>
+        <div>Department: ${record.department} • ID: ${record.employee_id}</div>
+        <div style="margin-top: 4px;">PAN: <strong>${pan}</strong> • Status: Employed</div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box">
+        <div class="meta-label">Assessment Year</div>
+        <div class="bold">2024-2025</div>
+      </div>
+      <div class="meta-box">
+        <div class="meta-label">Period with Employer</div>
+        <div class="bold">01-Apr-2023 to 31-Mar-2024</div>
+      </div>
+    </div>
+
+    <div style="font-weight: 800; font-size: 12px; margin-top: 20px; text-transform: uppercase;">
+      PART B: Details of Salary Paid and any other income and tax deducted
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Particulars</th>
+          <th class="text-right">Amount (₹)</th>
+          <th class="text-right">Total (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Gross Salary under section 17(1)</td>
+          <td class="text-right">₹${grossSalary.toLocaleString()}</td>
+          <td class="text-right">₹${grossSalary.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td>2. Less: Standard Deduction under section 16(ia)</td>
+          <td class="text-right">₹${standardDeduction.toLocaleString()}</td>
+          <td class="text-right"></td>
+        </tr>
+        <tr>
+          <td>3. Less: Professional Tax under section 16(iii)</td>
+          <td class="text-right">₹2,400</td>
+          <td class="text-right">₹52,400</td>
+        </tr>
+        <tr style="background: #f8fafc;" class="bold">
+          <td>4. Income chargeable under the head 'Salaries' (1 - 2 - 3)</td>
+          <td></td>
+          <td class="text-right">₹${(grossSalary - 52400).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td>5. Deductions under Chapter VI-A (80C, 80D, 80CCD)</td>
+          <td class="text-right">₹1,50,000</td>
+          <td class="text-right">₹1,50,000</td>
+        </tr>
+        <tr style="background: #ecfdf5;" class="bold">
+          <td>6. Total Taxable Income</td>
+          <td></td>
+          <td class="text-right" style="color: #065f46;">₹${(grossSalary - 52400 - 150000).toLocaleString()}</td>
+        </tr>
+        <tr class="bold">
+          <td>7. Total Tax Deducted at Source (TDS) and deposited</td>
+          <td></td>
+          <td class="text-right">₹${annualTds.toLocaleString()}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 11px; margin-top: 16px;">
+      <strong>Verification Statement:</strong> I, Finance Controller, on behalf of Qiyam Business Solutions LLP, certify that a sum of ₹${annualTds.toLocaleString()} has been deducted and credited to the Central Government Account through Challan Ref CALQ/2024/Q4.
+    </div>
+
+    <div class="seal-box">
+      <div>
+        <div class="bold">Place: Kozhikode</div>
+        <div>Date: 15-May-2024</div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Digitally signed using ITD USB Token</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="border: 2px dashed #059669; padding: 8px 16px; border-radius: 8px; color: #059669; font-weight: 800; font-size: 11px; text-align: center; display: inline-block;">
+          ✓ DIGITALLY SIGNED<br>
+          <span style="font-size: 9px; font-weight: normal;">QIYAM BUSINESS SOLUTIONS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const generateForm12BBHtml = (record: EmployeeTaxCompliance) => {
+    const pan = record.employee_id === 'EMP004' ? 'ABEPS1234D' : `ABCDE${record.employee_id.replace(/\D/g, '') || '7890'}K`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Form 12BB Declaration - ${record.employee_name}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px; color: #0f172a; background: #f8fafc; }
+    .doc-card { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid #cbd5e1; padding: 36px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+    .title { font-size: 18px; font-weight: 900; margin: 0; text-transform: uppercase; }
+    .subtitle { font-size: 12px; color: #475569; margin-top: 4px; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; font-size: 11px; }
+    .meta-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc; }
+    .meta-label { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 10px; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 11px; }
+    th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+    td { border: 1px solid #e2e8f0; padding: 8px 10px; }
+    .text-right { text-align: right; }
+    .bold { font-weight: 700; }
+    @media print { body { padding: 0; background: #fff; } .doc-card { border: none; box-shadow: none; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="doc-card">
+    <div class="header">
+      <div class="title">FORM NO. 12BB</div>
+      <div class="subtitle">(See rule 26C)</div>
+      <div class="subtitle" style="font-weight: 600; margin-top: 6px;">Statement of claims by an employee for deduction of tax under section 192</div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box">
+        <div class="meta-label">Employee Information</div>
+        <div class="bold">${record.employee_name}</div>
+        <div>Employee ID: ${record.employee_id} • Dept: ${record.department}</div>
+        <div style="margin-top: 4px;">Permanent Account Number (PAN): <strong>${pan}</strong></div>
+      </div>
+      <div class="meta-box">
+        <div class="meta-label">Employer & Financial Year</div>
+        <div class="bold">QIYAM BUSINESS SOLUTIONS LLP</div>
+        <div>Financial Year: <strong>2023-2024</strong></div>
+        <div style="margin-top: 4px;">Assessment Year: <strong>2024-2025</strong></div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Sl.</th>
+          <th>Nature of Claim / Section</th>
+          <th>Particulars / Landlord / Policy</th>
+          <th class="text-right">Claim Amount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td class="bold">House Rent Allowance (HRA) [Sec 10(13A)]</td>
+          <td>Rent paid: ₹15,000/mo (Landlord PAN: BKMPL5582K)</td>
+          <td class="text-right font-mono">₹1,80,000</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td class="bold">Leave Travel Concession (LTC) [Sec 10(5)]</td>
+          <td>Approved domestic travel ticket receipts</td>
+          <td class="text-right font-mono">₹25,000</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td class="bold">Deduction under Section 80C</td>
+          <td>EPF Contribution + ELSS Mutual Funds + LIC Premium</td>
+          <td class="text-right font-mono">₹1,50,000</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td class="bold">Deduction under Section 80D</td>
+          <td>Mediclaim Insurance (Self, Spouse, Children & Parents)</td>
+          <td class="text-right font-mono">₹25,000</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td class="bold">Deduction under Section 80CCD(1B)</td>
+          <td>National Pension System (NPS) voluntary contribution</td>
+          <td class="text-right font-mono">₹50,000</td>
+        </tr>
+        <tr style="background: #ecfdf5;" class="bold">
+          <td colspan="3" class="text-right">Total Deductions Claimed:</td>
+          <td class="text-right font-mono text-emerald-800">₹4,30,000</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 11px; margin-top: 16px;">
+      <strong>Declaration:</strong> I, ${record.employee_name}, do hereby declare that the particulars given above are complete, true, and correct according to the best of my knowledge and belief. I have submitted supporting documentary proofs to the payroll department.
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 24px; border-top: 1px solid #cbd5e1; font-size: 11px;">
+      <div>
+        <div class="bold">Date: 12-Apr-2024</div>
+        <div>Place: Kozhikode</div>
+      </div>
+      <div style="text-align: right;">
+        <div class="bold">${record.employee_name}</div>
+        <div style="color: #64748b;">Signature of Employee (e-Signed)</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const handleDownloadForm16 = (record: EmployeeTaxCompliance) => {
+    const html = generateForm16Html(record);
+    triggerHtmlDownload(html, `Form16_FY2023_24_${record.employee_id}.html`);
+    showToast(`Form 16 downloaded for ${record.employee_name}!`);
+  };
+
+  const handleDownloadForm12BB = (record: EmployeeTaxCompliance) => {
+    const html = generateForm12BBHtml(record);
+    triggerHtmlDownload(html, `Form12BB_Declaration_${record.employee_id}.html`);
+    showToast(`Form 12BB downloaded for ${record.employee_name}!`);
   };
 
   return (
@@ -609,12 +884,24 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                         <div className="text-[10px] text-slate-400">Part A & Part B digitally signed</div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => showToast('Form 16 downloaded')}
-                      className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDoc({ type: 'form16', record: selectedRecord })}
+                        title="Preview Form 16 Certificate"
+                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadForm16(selectedRecord)}
+                        title="Download Form 16"
+                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
@@ -638,12 +925,24 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                         <div className="text-[10px] text-slate-400">80C, 80D, HRA proof submitted</div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => showToast('Form 12BB downloaded')}
-                      className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDoc({ type: 'form12bb', record: selectedRecord })}
+                        title="Preview Form 12BB Declaration"
+                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadForm12BB(selectedRecord)}
+                        title="Download Form 12BB"
+                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -918,6 +1217,276 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
         record={selectedRecord}
         onSave={onUpdateRecord}
       />
+
+      {/* ========================================================================= */}
+      {/* STATUTORY DOCUMENT PREVIEW MODAL (FORM 16 / FORM 12BB)                   */}
+      {/* ========================================================================= */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    {previewDoc.type === 'form16' ? 'Form 16 Certificate Preview (FY 2023-24)' : 'Form 12BB Declaration Preview'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {previewDoc.record.employee_name} ({previewDoc.record.employee_id}) • {previewDoc.record.department}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="Print or Save as PDF"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (previewDoc.type === 'form16') {
+                      handleDownloadForm16(previewDoc.record);
+                    } else {
+                      handleDownloadForm12BB(previewDoc.record);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                  title="Download Document"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download File</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs bg-slate-50/40">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 font-sans">
+                {previewDoc.type === 'form16' ? (
+                  <>
+                    <div className="text-center border-b border-slate-900 pb-3">
+                      <h2 className="text-base font-black text-slate-900 tracking-wider">FORM NO. 16</h2>
+                      <p className="text-[10px] text-slate-500">[See rule 31(1)(a)]</p>
+                      <p className="text-[11px] font-semibold text-slate-700 mt-1">
+                        Certificate under section 203 of the Income-tax Act, 1961 for tax deducted at source on salary
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Employer</span>
+                        <div className="font-bold text-slate-900">QIYAM BUSINESS SOLUTIONS LLP</div>
+                        <div className="text-[11px] text-slate-500">Mavoor Road, Kozhikode, Kerala — 673004</div>
+                        <div className="text-[11px] text-slate-700 font-mono">
+                          PAN: <strong>AABCP1234D</strong> • TAN: <strong>CALQ12345E</strong>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Employee</span>
+                        <div className="font-bold text-slate-900">{previewDoc.record.employee_name}</div>
+                        <div className="text-[11px] text-slate-500">
+                          {previewDoc.record.department} • {previewDoc.record.employee_id}
+                        </div>
+                        <div className="text-[11px] text-slate-700 font-mono">
+                          PAN: <strong>{previewDoc.record.employee_id === 'EMP004' ? 'ABEPS1234D' : 'BNMPK9876E'}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <span className="text-slate-500 text-[10px] block">Assessment Year</span>
+                        <span className="font-bold text-slate-900">2024-2025</span>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <span className="text-slate-500 text-[10px] block">Period Covered</span>
+                        <span className="font-bold text-slate-900">01-Apr-2023 to 31-Mar-2024</span>
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Particulars (Summary of Salary & Tax)</th>
+                            <th className="py-2.5 px-3 text-right">Amount (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr>
+                            <td className="py-2 px-3 text-slate-700">1. Gross Salary under section 17(1)</td>
+                            <td className="py-2 px-3 text-right font-mono font-medium">₹5,40,000</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 text-slate-700">2. Standard Deduction under section 16(ia)</td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-600">-₹50,000</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 text-slate-700">3. Professional Tax under section 16(iii)</td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-600">-₹2,400</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 text-slate-700">4. Deductions under Chapter VI-A (80C/80D)</td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-600">-₹1,50,000</td>
+                          </tr>
+                          <tr className="bg-emerald-50/80 font-bold text-emerald-950">
+                            <td className="py-2.5 px-3">5. Total Taxable Income</td>
+                            <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-800">₹3,37,600</td>
+                          </tr>
+                          <tr className="bg-slate-50 font-bold text-slate-900">
+                            <td className="py-2.5 px-3">6. Total Tax Deducted & Deposited (FY 2023-24)</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-emerald-700">
+                              ₹{((previewDoc.record.monthly_tds || 6500) * 12).toLocaleString()}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 text-[11px]">
+                      <div>
+                        <div className="font-bold text-slate-800">Qiyam Payroll Finance Division</div>
+                        <div className="text-slate-400">Challan Ref: CALQ/2024/Q4-NSDL-VERIFIED</div>
+                      </div>
+                      <div className="border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-center text-[10px]">
+                        ✓ DIGITALLY SIGNED CERTIFICATE
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-center border-b border-slate-900 pb-3">
+                      <h2 className="text-base font-black text-slate-900 tracking-wider">FORM NO. 12BB</h2>
+                      <p className="text-[10px] text-slate-500">(See rule 26C)</p>
+                      <p className="text-[11px] font-semibold text-slate-700 mt-1">
+                        Statement of claims by an employee for deduction of tax under section 192
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Employee Details</span>
+                        <div className="font-bold text-slate-900">{previewDoc.record.employee_name}</div>
+                        <div className="text-[11px] text-slate-500">ID: {previewDoc.record.employee_id} • {previewDoc.record.department}</div>
+                        <div className="text-[11px] text-slate-700 font-mono">
+                          PAN: <strong>{previewDoc.record.employee_id === 'EMP004' ? 'ABEPS1234D' : 'BNMPK9876E'}</strong>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Employer & Fiscal Period</span>
+                        <div className="font-bold text-slate-900">QIYAM BUSINESS SOLUTIONS LLP</div>
+                        <div className="text-[11px] text-slate-500">FY: 2023-2024 • AY: 2024-2025</div>
+                        <div className="text-[11px] text-slate-700 font-semibold">Regime: {previewDoc.record.tds_regime || 'New Regime'}</div>
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Nature of Claim / Section</th>
+                            <th className="py-2.5 px-3">Particulars & Proofs Submitted</th>
+                            <th className="py-2.5 px-3 text-right">Claim (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr>
+                            <td className="py-2 px-3 font-semibold text-slate-900">House Rent Allowance (HRA) [Sec 10(13A)]</td>
+                            <td className="py-2 px-3 text-slate-600">Rent receipts attached (Landlord PAN: BKMPL5582K)</td>
+                            <td className="py-2 px-3 text-right font-mono font-medium">₹1,80,000</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 font-semibold text-slate-900">Leave Travel Concession [Sec 10(5)]</td>
+                            <td className="py-2 px-3 text-slate-600">Approved domestic flight tickets & boarding pass</td>
+                            <td className="py-2 px-3 text-right font-mono font-medium">₹25,000</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 font-semibold text-slate-900">Section 80C Deductions</td>
+                            <td className="py-2 px-3 text-slate-600">EPF contribution, ELSS statement, Term LIC receipt</td>
+                            <td className="py-2 px-3 text-right font-mono font-medium">₹1,50,000</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 font-semibold text-slate-900">Section 80D Health Insurance</td>
+                            <td className="py-2 px-3 text-slate-600">Comprehensive Family Floater policy premium receipt</td>
+                            <td className="py-2 px-3 text-right font-mono font-medium">₹25,000</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 px-3 font-semibold text-slate-900">Section 80CCD(1B) Tier 1 NPS</td>
+                            <td className="py-2 px-3 text-slate-600">PRAN voluntary contribution statement</td>
+                            <td className="py-2 px-3 text-right font-mono font-medium">₹50,000</td>
+                          </tr>
+                          <tr className="bg-emerald-50/80 font-bold text-emerald-950">
+                            <td colSpan={2} className="py-2.5 px-3 text-right uppercase tracking-wider text-[11px]">
+                              Total Statutory Exemptions Claimed:
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-800">₹4,30,000</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 text-[11px]">
+                      <div>
+                        <div className="font-bold text-slate-800">Submitted by: {previewDoc.record.employee_name}</div>
+                        <div className="text-slate-400">e-Signature Timestamp: 12 Apr 2024, 11:42 IST</div>
+                      </div>
+                      <div className="border border-purple-300 bg-purple-50 text-purple-800 font-bold px-3 py-1.5 rounded-lg text-center text-[10px]">
+                        ✓ DECLARATION LOCKED & VERIFIED
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-white shrink-0">
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                Close Preview
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (previewDoc.type === 'form16') {
+                    handleDownloadForm16(previewDoc.record);
+                  } else {
+                    handleDownloadForm12BB(previewDoc.record);
+                  }
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>
+                  {previewDoc.type === 'form16' ? 'Download Form 16 (HTML)' : 'Download Form 12BB (HTML)'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
