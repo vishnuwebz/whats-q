@@ -68,6 +68,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'finance-accounts', title: 'Chart of Accounts', category: 'Finance', icon: Layers, keywords: 'banking general ledger assets liabilities' },
   { tab: 'finance-reports', title: 'Financial Reports', category: 'Finance', icon: BarChart3, keywords: 'p&l balance sheet cash statement' },
   { tab: 'finance-budget', title: 'Budget Planning', category: 'Finance', icon: IndianRupee, keywords: 'forecast limits quarterly targets allocation' },
+  { tab: 'finance-payroll', title: 'Payroll', category: 'Finance', icon: CreditCard, keywords: 'payroll salary payslip wages reimbursements deductions compliance tax tds pf esi off-cycle structures' },
   { tab: 'automation-builder', title: 'Workflow Builder', category: 'Automation', icon: Zap, keywords: 'no-code visual trigger node action flow' },
   { tab: 'automation-workflows', title: 'Workflows', category: 'Automation', icon: GitBranch, keywords: 'active rules automated sequences triggers' },
   { tab: 'automation-templates', title: 'Templates', category: 'Automation', icon: BookOpen, keywords: 'bot flows auto-reply recipes blueprints' },
@@ -137,6 +138,7 @@ export const getTabAccordionSection = (tab: string): AccordionSection => {
     'finance-accounts',
     'finance-reports',
     'finance-budget',
+    'finance-payroll',
   ].includes(tab)) {
     return 'finance';
   }
@@ -502,7 +504,7 @@ export const Sidebar: React.FC = () => {
   ].includes(activeTab);
   const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
   const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab);
-  const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-quotations', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget'].includes(activeTab);
+  const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-quotations', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget', 'finance-payroll'].includes(activeTab);
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
   const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
 
@@ -1297,6 +1299,26 @@ export const Sidebar: React.FC = () => {
                   >
                     <Layers className="w-3.5 h-3.5" />
                     <span>Accounts</span>
+                  </button>
+                  <button
+                    data-tab="finance-budget"
+                    onClick={() => handleTabClick('finance-budget')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                      isActive('finance-budget') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                    }`}
+                  >
+                    <IndianRupee className="w-3.5 h-3.5" />
+                    <span>Budget</span>
+                  </button>
+                  <button
+                    data-tab="finance-payroll"
+                    onClick={() => handleTabClick('finance-payroll')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                      isActive('finance-payroll') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
+                    }`}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Payroll</span>
                   </button>
                   <button
                     data-tab="finance-reports"

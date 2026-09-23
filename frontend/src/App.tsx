@@ -53,6 +53,7 @@ import { ExpensesView } from './components/views/finance/ExpensesView';
 import { PaymentsView } from './components/views/finance/PaymentsView';
 import { AccountsView } from './components/views/finance/AccountsView';
 import { ReportsView } from './components/views/finance/ReportsView';
+import { PayrollView } from './components/views/finance/payroll/PayrollView';
 
 // Automation Views
 import { WorkflowBuilderView } from './components/views/automation/WorkflowBuilderView';
@@ -274,6 +275,8 @@ export const App: React.FC = () => {
         return <AccountsView />;
       case 'finance-reports':
         return <ReportsView />;
+      case 'finance-payroll':
+        return <PayrollView />;
 
       // Automation
       case 'automation-builder':

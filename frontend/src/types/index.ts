@@ -43,6 +43,7 @@ export type TabType =
   | 'finance-accounts'
   | 'finance-reports'
   | 'finance-budget'
+  | 'finance-payroll'
   | 'automation-builder'
   | 'automation-workflows'
   | 'automation-templates'
@@ -893,6 +894,155 @@ export interface PdfEditorDocument {
   showWatermark?: boolean;
   watermarkOpacity?: number;
   elements: PdfCanvasElement[];
+}
+
+export type PayrollSubView =
+  | 'overview'
+  | 'run-payroll'
+  | 'manage-salary'
+  | 'reimbursements'
+  | 'tax-compliance'
+  | 'off-cycle'
+  | 'reports'
+  | 'settings';
+
+export interface PayrollRunItem {
+  id: string | number;
+  month: string;
+  employees_count: number;
+  gross_amount: number;
+  deductions: number;
+  net_amount: number;
+  payment_status: 'Processing' | 'Paid' | 'Pending' | 'Failed';
+  processed_on: string;
+  notes?: string;
+}
+
+export interface EmployeeSalaryDetail {
+  id: string | number;
+  employee_id: string;
+  name: string;
+  email: string;
+  department: string;
+  payroll_group: string;
+  gross_salary: number;
+  deductions: number;
+  net_pay: number;
+  status: 'Ready' | 'Warning' | 'Processed' | 'Held';
+  warning_reason?: string;
+  bank_account?: string;
+  pan_number?: string;
+  uan_number?: string;
+}
+
+export interface SalaryComponentItem {
+  name: string;
+  type: 'Fixed %' | 'Fixed Amount';
+  value: string | number;
+}
+
+export interface SalaryStructure {
+  id: string | number;
+  name: string;
+  department: string;
+  employees_count: number;
+  ctc_range: string;
+  pay_frequency: string;
+  status: 'Active' | 'Inactive';
+  components: SalaryComponentItem[];
+}
+
+export interface EmployeeSalaryAssignment {
+  id: string | number;
+  employee_name: string;
+  employee_id: string;
+  department: string;
+  salary_structure: string;
+  current_ctc: number;
+  effective_from: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface ReimbursementItem {
+  id: string | number;
+  employee_name: string;
+  employee_id: string;
+  purpose: string;
+  category: 'Travel' | 'Internet' | 'Food' | 'Stationery' | 'Training' | 'Transport' | 'Software' | 'Communication' | 'Other';
+  amount: number;
+  submitted_on: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Draft';
+  notes?: string;
+}
+
+export interface EmployeeTaxCompliance {
+  id: string | number;
+  employee_name: string;
+  employee_id: string;
+  department: string;
+  tds: boolean;
+  pf: boolean;
+  esi: boolean;
+  pt: boolean;
+  status: 'Compliant' | 'Pending' | 'Non-Compliant';
+  tds_regime?: 'Old Regime' | 'New Regime';
+  estimated_annual_tax?: number;
+  monthly_tds?: number;
+  pf_number?: string;
+  esi_number?: string;
+  pt_number?: string;
+  last_updated?: string;
+}
+
+export interface OffCyclePaymentItem {
+  id: string | number;
+  run_id: string;
+  employee_name: string;
+  employee_id: string;
+  department: string;
+  payment_type: 'Bonus' | 'Incentive' | 'Arrears' | 'Project Bonus' | 'Reimbursement' | 'Retention Bonus' | 'Overtime' | 'Commission' | 'Referral Bonus';
+  amount: number;
+  processed_on: string;
+  status: 'Paid' | 'Pending' | 'Processing';
+  notes?: string;
+}
+
+export interface PayrollReportItem {
+  id: string | number;
+  name: string;
+  type: string;
+  period: string;
+  generated_on: string;
+  generated_by: string;
+  status: 'Completed' | 'Processing' | 'Failed';
+  file_url?: string;
+}
+
+export interface PayrollSettingsState {
+  frequency: string;
+  month_start: string;
+  cutoff_date: string;
+  credit_date: string;
+  financial_year: string;
+  include_new_joinees: boolean;
+  calculate_partial_attendance: boolean;
+  round_off_salary: boolean;
+  send_payslip_email: boolean;
+  enable_payroll_approval: boolean;
+  company_name_payslip: string;
+  payslip_template: string;
+  include_company_logo: boolean;
+  include_employee_signature: boolean;
+  include_company_address: boolean;
+  include_statutory_details: boolean;
+  salary_payment_method: string;
+  default_bank: string;
+  upload_bank_file_format: string;
+  overtime_calc: string;
+  leave_deduction: string;
+  arrears_processing: string;
+  reimbursement_approval: string;
+  bonus_policy: string;
 }
 
 
