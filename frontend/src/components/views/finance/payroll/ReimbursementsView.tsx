@@ -10,6 +10,7 @@ import {
 import { ReimbursementItem } from '@/types';
 import { NewReimbursementModal } from './modals/NewReimbursementModal';
 import { useQiyamStore } from '@/store/useQiyamStore';
+import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
 
 interface Props {
   reimbursements: ReimbursementItem[];
@@ -942,46 +943,48 @@ export const ReimbursementsView: React.FC<Props> = ({
 
         {/* Modern Horizontal Scroll Controller & Section Quick Jumper */}
         <div className="bg-slate-50/80 p-2.5 px-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-1.5 flex-1 min-w-[280px] overflow-hidden">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 shrink-0 mr-1">
               <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
               <span>Jump To:</span>
             </span>
-            <button
-              type="button"
-              onClick={() => scrollToSection(0)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-            >
-              <span>1. Employee Info</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection(220)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-            >
-              <span>2. Category & Purpose</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection(550)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-            >
-              <span>3. Amount & Date</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection(800)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-            >
-              <span>4. Receipt Proof & Status</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection(1100)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-            >
-              <span>5. Actions</span>
-            </button>
+            <DraggableScrollRow showArrows={false} fadeEdges={true} className="flex-1" wheelMultiplier={1.2}>
+              <button
+                type="button"
+                onClick={() => scrollToSection(0)}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <span>1. Employee Info</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(220)}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <span>2. Category & Purpose</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(550)}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <span>3. Amount & Date</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(800)}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <span>4. Receipt Proof & Status</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection(1100)}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <span>5. Actions</span>
+              </button>
+            </DraggableScrollRow>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">

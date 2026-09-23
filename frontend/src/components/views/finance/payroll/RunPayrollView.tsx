@@ -10,6 +10,7 @@ import { EmployeeSalaryDetail, PayrollRunItem } from '@/types';
 import { PayslipModal } from './modals/PayslipModal';
 import { RunPayrollReviewModal } from './modals/RunPayrollReviewModal';
 import { useQiyamStore } from '@/store/useQiyamStore';
+import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
 
 interface Props {
   employees: EmployeeSalaryDetail[];
@@ -936,46 +937,48 @@ export const RunPayrollView: React.FC<Props> = ({
 
           {/* Modern Horizontal Scroll Navigator & Column Section Jump Bar */}
           <div className="bg-slate-50/80 p-2.5 px-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex items-center gap-1.5 flex-1 min-w-[280px] overflow-hidden">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 shrink-0 mr-1">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
                 <span>Jump To:</span>
               </span>
-              <button
-                type="button"
-                onClick={() => scrollToSection(0)}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-              >
-                <span>1. Employee Info</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection(280)}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-              >
-                <span>2. Attendance Days</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection(680)}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-              >
-                <span>3. Wages & Earnings</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection(1080)}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-              >
-                <span>4. Deductions & TDS</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection(1500)}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-              >
-                <span>5. Net Payout & Actions</span>
-              </button>
+              <DraggableScrollRow showArrows={false} fadeEdges={true} className="flex-1" wheelMultiplier={1.2}>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(0)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span>1. Employee Info</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(280)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span>2. Attendance Days</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(680)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span>3. Wages & Earnings</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(1080)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span>4. Deductions & TDS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(1500)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span>5. Net Payout & Actions</span>
+                </button>
+              </DraggableScrollRow>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -2232,78 +2235,80 @@ export const RunPayrollView: React.FC<Props> = ({
               </div>
 
               {/* Sub-Tabs Navigation */}
-              <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 border-b border-slate-100 overflow-x-auto no-scrollbar shrink-0 bg-white">
-                <button
-                  type="button"
-                  onClick={() => setQuickAdjustTab('all')}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer ${
-                    quickAdjustTab === 'all'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  All Parameters
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickAdjustTab('attendance')}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                    quickAdjustTab === 'attendance'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60'
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Attendance ({livePaidDays}d)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickAdjustTab('wages')}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                    quickAdjustTab === 'wages'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60'
-                  }`}
-                >
-                  <Wallet className="w-3.5 h-3.5" />
-                  <span>Base Wages</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickAdjustTab('additions')}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                    quickAdjustTab === 'additions'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60'
-                  }`}
-                >
-                  <IndianRupee className="w-3.5 h-3.5" />
-                  <span>Overtime & Extras</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickAdjustTab('deductions')}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                    quickAdjustTab === 'deductions'
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/60'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Deductions & TDS</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickAdjustTab('profile')}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                    quickAdjustTab === 'profile'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/60'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Profile & Bank</span>
-                </button>
+              <div className="px-4 pt-3 pb-2 border-b border-slate-100 bg-white shrink-0">
+                <DraggableScrollRow showArrows={true} fadeEdges={true} scrollAmount={180} wheelMultiplier={1.2}>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAdjustTab('all')}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer ${
+                      quickAdjustTab === 'all'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    All Parameters
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAdjustTab('attendance')}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      quickAdjustTab === 'attendance'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Attendance ({livePaidDays}d)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAdjustTab('wages')}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      quickAdjustTab === 'wages'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60'
+                    }`}
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span>Base Wages</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAdjustTab('additions')}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      quickAdjustTab === 'additions'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60'
+                    }`}
+                  >
+                    <IndianRupee className="w-3.5 h-3.5" />
+                    <span>Overtime & Extras</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAdjustTab('deductions')}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      quickAdjustTab === 'deductions'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/60'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Deductions & TDS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAdjustTab('profile')}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      quickAdjustTab === 'profile'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/60'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Profile & Bank</span>
+                  </button>
+                </DraggableScrollRow>
               </div>
 
               {/* Scrollable Form Body */}

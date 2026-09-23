@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, CheckCircle2, FileText, Users, Landmark, Calendar, Check, AlertCircle } from 'lucide-react';
 import { EmployeeTaxCompliance } from '@/types';
+import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
 
 interface Props {
   isOpen: boolean;
@@ -127,66 +128,68 @@ export const TaxUpdateModal: React.FC<Props> = ({
         </div>
 
         {/* Section Navigation Tabs */}
-        <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setActiveSection('all')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer ${
-              activeSection === 'all'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-            }`}
-          >
-            All Parameters
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection('tds')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              activeSection === 'tds'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>TDS Parameters</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection('pf')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              activeSection === 'pf'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>PF Parameters</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection('esi')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              activeSection === 'esi'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>ESI Parameters</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection('pt')}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              activeSection === 'pt'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/60'
-            }`}
-          >
-            <Landmark className="w-3.5 h-3.5" />
-            <span>Professional Tax (PT)</span>
-          </button>
+        <div className="border-b border-slate-100 pb-2">
+          <DraggableScrollRow showArrows={true} fadeEdges={true} scrollAmount={180} wheelMultiplier={1.2}>
+            <button
+              type="button"
+              onClick={() => setActiveSection('all')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer ${
+                activeSection === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+              }`}
+            >
+              All Parameters
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('tds')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                activeSection === 'tds'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>TDS Parameters</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('pf')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                activeSection === 'pf'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>PF Parameters</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('esi')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                activeSection === 'esi'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>ESI Parameters</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('pt')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                activeSection === 'pt'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/60'
+              }`}
+            >
+              <Landmark className="w-3.5 h-3.5" />
+              <span>Professional Tax (PT)</span>
+            </button>
+          </DraggableScrollRow>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
