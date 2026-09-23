@@ -1062,6 +1062,7 @@ export interface PayrollSettingsState {
   arrears_processing: string;
   reimbursement_approval: string;
   bonus_policy: string;
+  [key: string]: any;
 }
 
 
