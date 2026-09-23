@@ -560,30 +560,6 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
           </table>
         </div>
       </div>
-
-      {/* Bottom Value Banner (Matching Screenshot 4) */}
-      <div className="bg-slate-900 text-white rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="space-y-1 text-center md:text-left">
-          <h4 className="font-bold text-sm sm:text-base">Accurate Payroll. Stronger Teams.</h4>
-          <p className="text-xs text-slate-400">
-            From salary processing to tax compliance — everything you need, in one place.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-slate-300">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> 100% Compliant
-          </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Zero Manual Errors
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-emerald-400" /> Save Time
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-emerald-400" /> Grow Your Business
-          </span>
-        </div>
-      </div>
     </div>
   );
 };

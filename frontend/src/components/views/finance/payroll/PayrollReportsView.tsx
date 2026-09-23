@@ -709,36 +709,6 @@ export const PayrollReportsView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Footer Banner */}
-      <div className="bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-sky-50/60 rounded-2xl border border-blue-100 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xs">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900">Data Today. A Stronger Tomorrow.</h3>
-            <p className="text-xs text-slate-600 mt-0.5">
-              Detailed payroll reports to help you stay compliant and make better business decisions.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
-          <div className="flex items-center gap-2 bg-white/80 border border-white/60 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-blue-500" /> Accurate Insights
-          </div>
-          <div className="flex items-center gap-2 bg-white/80 border border-white/60 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Compliant Reports
-          </div>
-          <div className="flex items-center gap-2 bg-white/80 border border-white/60 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-amber-500" /> Save Time
-          </div>
-          <div className="flex items-center gap-2 bg-white/80 border border-white/60 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-purple-500" /> Better Decisions
-          </div>
-        </div>
-      </div>
-
       {/* Custom Report Builder Modal */}
       {customReportModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
