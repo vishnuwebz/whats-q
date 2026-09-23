@@ -50,6 +50,7 @@ export const RunPayrollView: React.FC<Props> = ({
   // Modals state
   const [inspectEmployee, setInspectEmployee] = useState<EmployeeSalaryDetail | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeSalaryDetail | null>(null);
+  const [quickAdjustTab, setQuickAdjustTab] = useState<'all' | 'attendance' | 'wages' | 'additions' | 'deductions' | 'profile'>('all');
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isColumnSettingsOpen, setIsColumnSettingsOpen] = useState(false);
 
@@ -495,26 +496,44 @@ export const RunPayrollView: React.FC<Props> = ({
   // Quick adjust save handler
   const handleSaveQuickAdjust = (updated: EmployeeSalaryDetail) => {
     // Recalculate derived fields
-    const daily = updated.daily_wage || Math.round((updated.gross_wages || 30000) / 26);
-    const paid = (updated.full_day || 0) + (updated.half_day ? updated.half_day * 0.5 : 0) + (updated.paid_leave || 0);
-    const earned = Math.round(daily * paid);
-    const grossEarn = earned + (updated.other_earnings || 0) + (updated.overtime_amount || 0) + (updated.extras || 0);
-    const totalDed = (updated.tds || 0) + (updated.penalties || 0) + (updated.other_deductions || 0);
+    const baseGross = Number(updated.gross_wages) || Number(updated.gross_salary) || 30000;
+    const daily = Number(updated.daily_wage) || Math.round(baseGross / 26);
+    const paid = (Number(updated.full_day) || 0) + ((Number(updated.half_day) || 0) * 0.5) + (Number(updated.paid_leave) || 0);
+    const unpaid = updated.unpaid_days !== undefined && updated.unpaid_days !== null
+      ? Number(updated.unpaid_days)
+      : Math.max(0, 16 - paid);
+    const earned = Number(updated.earned_wages) !== undefined && Number(updated.earned_wages) > 0
+      ? Number(updated.earned_wages)
+      : Math.round(daily * paid);
+    const grossEarn = earned + (Number(updated.other_earnings) || 0) + (Number(updated.overtime_amount) || 0) + (Number(updated.extras) || 0);
+    const totalDed = (Number(updated.tds) || 0) + (Number(updated.penalties) || 0) + (Number(updated.other_deductions) || 0);
     const finalized = grossEarn - totalDed;
 
     const refreshed: EmployeeSalaryDetail = {
       ...updated,
+      name: updated.name.trim() || 'Employee',
+      employee_id: updated.employee_id.trim() || 'EMP',
+      department: updated.department || 'Sales',
+      role: updated.role || 'Staff',
+      status: updated.status || 'Ready',
+      gross_wages: baseGross,
+      gross_salary: baseGross,
+      daily_wage: daily,
       paid_days: paid,
+      unpaid_days: unpaid,
       earned_wages: earned,
       gross_earnings: grossEarn,
       deductions: totalDed,
       net_pay: finalized,
       finalized_amount: finalized,
+      bank_account: updated.bank_account || '',
+      pan_number: updated.pan_number || '',
+      uan_number: updated.uan_number || '',
     };
 
     setEmployeesList((prev) => prev.map((e) => (e.id === refreshed.id ? refreshed : e)));
     setEditingEmployee(null);
-    triggerToast(`Updated attendance & wage calculations for ${refreshed.name}`);
+    triggerToast(`Updated complete parameters & calculations for ${refreshed.name}!`);
   };
 
   // Avatar background colors
@@ -2166,133 +2185,538 @@ export const RunPayrollView: React.FC<Props> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: QUICK ADJUST ATTENDANCE / WAGES                                    */}
+      {/* MODAL: COMPREHENSIVE QUICK ADJUST ATTENDANCE, WAGES & DEDUCTIONS          */}
       {/* ========================================================================= */}
-      {editingEmployee && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900">
-                  Quick Adjust — {editingEmployee.name}
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  {editingEmployee.employee_id} • {editingEmployee.department}
-                </p>
-              </div>
-              <button
-                onClick={() => setEditingEmployee(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {editingEmployee && (() => {
+        const livePaidDays = (Number(editingEmployee.full_day) || 0) + ((Number(editingEmployee.half_day) || 0) * 0.5) + (Number(editingEmployee.paid_leave) || 0);
+        const liveDailyWage = Number(editingEmployee.daily_wage) || Math.round((Number(editingEmployee.gross_wages) || 30000) / 26);
+        const liveEarnedWages = Number(editingEmployee.earned_wages) !== undefined && Number(editingEmployee.earned_wages) > 0
+          ? Number(editingEmployee.earned_wages)
+          : Math.round(liveDailyWage * livePaidDays);
+        const liveAdditions = (Number(editingEmployee.other_earnings) || 0) + (Number(editingEmployee.overtime_amount) || 0) + (Number(editingEmployee.extras) || 0);
+        const liveGrossEarnings = liveEarnedWages + liveAdditions;
+        const liveTotalDeductions = (Number(editingEmployee.tds) || 0) + (Number(editingEmployee.penalties) || 0) + (Number(editingEmployee.other_deductions) || 0);
+        const liveNetPay = liveGrossEarnings - liveTotalDeductions;
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Full Days</label>
-                <input
-                  type="number"
-                  value={editingEmployee.full_day ?? 13}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, full_day: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
-              </div>
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 text-xs">
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-sm sm:text-base text-slate-900">
+                        Adjust Payroll Values — {editingEmployee.name}
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        ₹{liveNetPay.toLocaleString()} Net
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {editingEmployee.employee_id} • {editingEmployee.department} • {editingEmployee.role || 'Staff'}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Half Days</label>
-                <input
-                  type="number"
-                  value={editingEmployee.half_day ?? 0}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, half_day: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">WFH Days</label>
-                <input
-                  type="number"
-                  value={editingEmployee.wfh_days ?? 0}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, wfh_days: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
+                <button
+                  type="button"
+                  onClick={() => setEditingEmployee(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Paid Leave Days</label>
-                <input
-                  type="number"
-                  value={editingEmployee.paid_leave ?? 0}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, paid_leave: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
+              {/* Sub-Tabs Navigation */}
+              <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 border-b border-slate-100 overflow-x-auto no-scrollbar shrink-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setQuickAdjustTab('all')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer ${
+                    quickAdjustTab === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  All Parameters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAdjustTab('attendance')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                    quickAdjustTab === 'attendance'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Attendance ({livePaidDays}d)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAdjustTab('wages')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                    quickAdjustTab === 'wages'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60'
+                  }`}
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  <span>Base Wages</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAdjustTab('additions')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                    quickAdjustTab === 'additions'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60'
+                  }`}
+                >
+                  <IndianRupee className="w-3.5 h-3.5" />
+                  <span>Overtime & Extras</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAdjustTab('deductions')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                    quickAdjustTab === 'deductions'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/60'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Deductions & TDS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAdjustTab('profile')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                    quickAdjustTab === 'profile'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/60'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Profile & Bank</span>
+                </button>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Overtime Amount (₹)</label>
-                <input
-                  type="number"
-                  value={editingEmployee.overtime_amount ?? 0}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, overtime_amount: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
+              {/* Scrollable Form Body */}
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
+                {/* SECTION 1: ATTENDANCE & DAYS */}
+                {(quickAdjustTab === 'all' || quickAdjustTab === 'attendance') && (
+                  <div className="p-4 bg-blue-50/30 rounded-2xl border border-blue-200/80 space-y-3">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-blue-100">
+                      <div className="flex items-center gap-2 text-blue-800 font-bold text-xs uppercase tracking-wider">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <span>Attendance & Work Days (Period: {selectedMonth})</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-blue-700 bg-blue-100/60 px-2 py-0.5 rounded-md border border-blue-200">
+                        Paid Days: {livePaidDays} Days
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Full Days</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.full_day ?? 13}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, full_day: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Half Days (0.5d)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.half_day ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, half_day: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">WFH Days</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.wfh_days ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, wfh_days: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Paid Leave</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.paid_leave ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, paid_leave: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Unpaid (LOP)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.unpaid_days ?? Math.max(0, 16 - livePaidDays)}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, unpaid_days: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION 2: BASE WAGES & DAILY RATES */}
+                {(quickAdjustTab === 'all' || quickAdjustTab === 'wages') && (
+                  <div className="p-4 bg-emerald-50/30 rounded-2xl border border-emerald-200/80 space-y-3">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-emerald-100">
+                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
+                        <Wallet className="w-4 h-4 text-emerald-600" />
+                        <span>Base Wages & Daily Rate Configuration</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-md border border-emerald-200">
+                        Earned: ₹{liveEarnedWages.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Base Monthly Gross Wages (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.gross_wages ?? editingEmployee.gross_salary ?? 30000}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            const newDaily = Math.round(val / 26);
+                            setEditingEmployee({
+                              ...editingEmployee,
+                              gross_wages: val,
+                              gross_salary: val,
+                              daily_wage: newDaily,
+                              earned_wages: Math.round(newDaily * livePaidDays),
+                            });
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-500 font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="font-bold text-slate-700">Daily Wage Rate (₹)</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const calc = Math.round((Number(editingEmployee.gross_wages) || 30000) / 26);
+                              setEditingEmployee({
+                                ...editingEmployee,
+                                daily_wage: calc,
+                                earned_wages: Math.round(calc * livePaidDays),
+                              });
+                            }}
+                            className="text-[10px] text-emerald-700 hover:underline font-bold cursor-pointer"
+                          >
+                            Auto (Gross / 26)
+                          </button>
+                        </div>
+                        <input
+                          type="number"
+                          value={editingEmployee.daily_wage ?? liveDailyWage}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setEditingEmployee({
+                              ...editingEmployee,
+                              daily_wage: val,
+                              earned_wages: Math.round(val * livePaidDays),
+                            });
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Earned Wages (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.earned_wages ?? liveEarnedWages}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, earned_wages: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION 3: OVERTIME & ADDITIONS */}
+                {(quickAdjustTab === 'all' || quickAdjustTab === 'additions') && (
+                  <div className="p-4 bg-amber-50/30 rounded-2xl border border-amber-200/80 space-y-3">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-amber-100">
+                      <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                        <IndianRupee className="w-4 h-4 text-amber-600" />
+                        <span>Overtime, Extras & Allowances</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-amber-700 bg-amber-100/60 px-2 py-0.5 rounded-md border border-amber-200">
+                        Additions: +₹{liveAdditions.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Overtime Earnings (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.overtime_amount ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, overtime_amount: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Extras / Incentive / Bonus (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.extras ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, extras: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Other Earnings / Fixed Allowances (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.other_earnings ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, other_earnings: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION 4: DEDUCTIONS & TDS */}
+                {(quickAdjustTab === 'all' || quickAdjustTab === 'deductions') && (
+                  <div className="p-4 bg-rose-50/30 rounded-2xl border border-rose-200/80 space-y-3">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-rose-100">
+                      <div className="flex items-center gap-2 text-rose-800 font-bold text-xs uppercase tracking-wider">
+                        <FileText className="w-4 h-4 text-rose-600" />
+                        <span>Statutory Deductions, Penalties & TDS</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-rose-700 bg-rose-100/60 px-2 py-0.5 rounded-md border border-rose-200">
+                        Deductions: -₹{liveTotalDeductions.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">TDS Deduction (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.tds ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, tds: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Penalties / Late Attendance (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.penalties ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, penalties: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Other Deductions / Advance Recovery (₹)</label>
+                        <input
+                          type="number"
+                          value={editingEmployee.other_deductions ?? 0}
+                          onChange={(e) =>
+                            setEditingEmployee({ ...editingEmployee, other_deductions: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION 5: PROFILE & BANKING IDENTIFIERS */}
+                {(quickAdjustTab === 'all' || quickAdjustTab === 'profile') && (
+                  <div className="p-4 bg-purple-50/30 rounded-2xl border border-purple-200/80 space-y-3">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-purple-100">
+                      <div className="flex items-center gap-2 text-purple-800 font-bold text-xs uppercase tracking-wider">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <span>Employee Profile & Banking Identification</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-purple-700 bg-purple-100/60 px-2 py-0.5 rounded-md border border-purple-200">
+                        {editingEmployee.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Full Name</label>
+                        <input
+                          type="text"
+                          value={editingEmployee.name}
+                          onChange={(e) => setEditingEmployee({ ...editingEmployee, name: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Employee ID</label>
+                        <input
+                          type="text"
+                          value={editingEmployee.employee_id}
+                          onChange={(e) => setEditingEmployee({ ...editingEmployee, employee_id: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Department</label>
+                        <select
+                          value={editingEmployee.department}
+                          onChange={(e) => setEditingEmployee({ ...editingEmployee, department: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="Sales">Sales</option>
+                          <option value="Marketing">Marketing</option>
+                          <option value="Operations">Operations</option>
+                          <option value="Engineering">Engineering</option>
+                          <option value="HR">HR</option>
+                          <option value="Finance">Finance</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Role / Designation</label>
+                        <input
+                          type="text"
+                          value={editingEmployee.role || ''}
+                          onChange={(e) => setEditingEmployee({ ...editingEmployee, role: e.target.value })}
+                          placeholder="BDE, Specialist..."
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Disbursal Status</label>
+                        <select
+                          value={editingEmployee.status}
+                          onChange={(e) => setEditingEmployee({ ...editingEmployee, status: e.target.value as any })}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="Ready">Ready</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Held">Held</option>
+                          <option value="Warning">Warning</option>
+                          <option value="Processed">Processed</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Bank Account # / IFSC</label>
+                        <input
+                          type="text"
+                          value={editingEmployee.bank_account || ''}
+                          onChange={(e) => setEditingEmployee({ ...editingEmployee, bank_account: e.target.value })}
+                          placeholder="A/C: 987654321098"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Extras / Incentive (₹)</label>
-                <input
-                  type="number"
-                  value={editingEmployee.extras ?? 0}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, extras: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
-              </div>
+              {/* Live Calculation Matrix & Footer */}
+              <div className="p-4 border-t border-slate-200/90 bg-slate-50/90 shrink-0 space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2.5 bg-white rounded-xl border border-slate-200 text-center">
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-semibold uppercase">Base Gross</div>
+                    <div className="font-mono font-bold text-slate-800 text-xs">
+                      ₹{(editingEmployee.gross_wages || 30000).toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-semibold uppercase">Earned Wages</div>
+                    <div className="font-mono font-bold text-emerald-700 text-xs">
+                      ₹{liveEarnedWages.toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-semibold uppercase">+ Additions</div>
+                    <div className="font-mono font-bold text-blue-700 text-xs">
+                      +₹{liveAdditions.toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-semibold uppercase">- Deductions</div>
+                    <div className="font-mono font-bold text-rose-600 text-xs">
+                      -₹{liveTotalDeductions.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1 bg-emerald-50 rounded-lg py-1 border border-emerald-200">
+                    <div className="text-[10px] text-emerald-800 font-extrabold uppercase">Finalized Net Pay</div>
+                    <div className="font-mono font-black text-emerald-800 text-sm">
+                      ₹{liveNetPay.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
 
-              <div className="space-y-1 col-span-2">
-                <label className="font-bold text-slate-700">Other Deductions (₹)</label>
-                <input
-                  type="number"
-                  value={editingEmployee.other_deductions ?? 0}
-                  onChange={(e) =>
-                    setEditingEmployee({ ...editingEmployee, other_deductions: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
-                />
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditingEmployee(null)}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-200 font-semibold rounded-xl cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveQuickAdjust(editingEmployee)}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Save Calculations & Update Wizard</span>
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingEmployee(null)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSaveQuickAdjust(editingEmployee)}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
-              >
-                Save Calculations
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL: PAYSLIP INSPECTION                                                 */}
