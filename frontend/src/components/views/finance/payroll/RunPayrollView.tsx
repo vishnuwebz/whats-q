@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users, Wallet, PieChart, Landmark, AlertTriangle, ArrowRight, Search,
   Filter, Eye, MoreVertical, CheckCircle2, ChevronLeft, ChevronRight,
-  Calendar, Check, Send, AlertCircle
+  Calendar, Check, Send, AlertCircle, ArrowLeft, Download, ShieldCheck
 } from 'lucide-react';
 import { EmployeeSalaryDetail, PayrollRunItem } from '@/types';
 import { PayslipModal } from './modals/PayslipModal';
@@ -19,34 +19,46 @@ export const RunPayrollView: React.FC<Props> = ({
   onBackToDashboard,
   onPayrollCompleted,
 }) => {
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [selectedMonth, setSelectedMonth] = useState('May 2024');
   const [selectedGroup, setSelectedGroup] = useState('All Groups');
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [selectedType, setSelectedType] = useState('Active Employees');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>(() => employees.map((e) => e.id));
   const [sendPayslips, setSendPayslips] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // Modals state
   const [inspectEmployee, setInspectEmployee] = useState<EmployeeSalaryDetail | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
-  // Stepper state
-  const [currentStep, setCurrentStep] = useState<number>(1);
-
   // Filtered employees
-  const filteredEmployees = employees.filter((emp) => {
-    if (selectedDept !== 'All Departments' && emp.department !== selectedDept) return false;
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      return (
-        emp.name.toLowerCase().includes(q) ||
-        emp.employee_id.toLowerCase().includes(q) ||
-        emp.department.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      if (selectedDept !== 'All Departments' && emp.department !== selectedDept) return false;
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        return (
+          emp.name.toLowerCase().includes(q) ||
+          emp.employee_id.toLowerCase().includes(q) ||
+          emp.department.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [employees, selectedDept, searchQuery]);
+
+  // Paginated employees for step 2
+  const totalPages = Math.ceil(filteredEmployees.length / pageSize) || 1;
+  const paginatedEmployees = filteredEmployees.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Computed summary metrics
+  const activeSelectedEmployees = employees.filter((e) => selectedIds.includes(e.id));
+  const totalGross = activeSelectedEmployees.reduce((sum, e) => sum + e.gross_salary, 0);
+  const totalDeductions = activeSelectedEmployees.reduce((sum, e) => sum + e.deductions, 0);
+  const totalNet = totalGross - totalDeductions;
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -69,25 +81,48 @@ export const RunPayrollView: React.FC<Props> = ({
     const newRun: PayrollRunItem = {
       id: Date.now(),
       month: selectedMonth,
-      employees_count: 32,
-      gross_amount: 1245000,
-      deductions: 182500,
-      net_amount: 1062500,
+      employees_count: activeSelectedEmployees.length,
+      gross_amount: totalGross,
+      deductions: totalDeductions,
+      net_amount: totalNet,
       payment_status: 'Paid',
       processed_on: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      notes: `${selectedMonth} payroll processed and paid successfully.`,
+      notes: `${selectedMonth} monthly salary cycle disbursed via HDFC Bank NEFT/RTGS batch.`,
     };
     onPayrollCompleted(newRun);
   };
 
+  const handleExportBatchCsv = () => {
+    const headers = ['#', 'Employee ID', 'Employee Name', 'Department', 'Bank Account', 'PAN', 'Gross Salary', 'Total Deductions', 'Net Payable'];
+    const rows = activeSelectedEmployees.map((e, idx) => [
+      idx + 1,
+      `"${e.employee_id}"`,
+      `"${e.name}"`,
+      `"${e.department}"`,
+      `"${e.bank_account || 'Pending'}"`,
+      `"${e.pan_number || 'Pending'}"`,
+      e.gross_salary,
+      e.deductions,
+      e.net_pay,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encoded = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encoded);
+    link.setAttribute('download', `qiyam_payroll_batch_${selectedMonth.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-xs font-sans">
       {/* Top Header & Previous Runs Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Run Payroll</h2>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Process salaries, ensure compliance and make payments — all in one place.
+            Process salaries, verify attendance deductions, and disburse payments in 4 simple steps.
           </p>
         </div>
         <button
@@ -99,449 +134,579 @@ export const RunPayrollView: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* 4-Step Stepper (Screenshot 3) */}
+      {/* 4-Step Stepper (Interactive & Connected to currentStep) */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center justify-between max-w-3xl mx-auto">
           {/* Step 1 */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-              1
+          <button
+            onClick={() => setCurrentStep(1)}
+            className="flex items-center gap-2.5 cursor-pointer text-left focus:outline-hidden"
+          >
+            <div
+              className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center transition-all ${
+                currentStep === 1
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : currentStep > 1
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}
+            >
+              {currentStep > 1 ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '1'}
             </div>
-            <span className="font-bold text-xs text-blue-700">Select Period</span>
-          </div>
-          <div className="h-0.5 flex-1 mx-3 bg-slate-200" />
+            <span className={`font-bold text-xs ${currentStep === 1 ? 'text-emerald-700' : 'text-slate-600'}`}>
+              Select Period
+            </span>
+          </button>
+          <div className={`h-0.5 flex-1 mx-3 ${currentStep > 1 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
 
           {/* Step 2 */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold text-xs flex items-center justify-center border border-slate-200">
-              2
+          <button
+            onClick={() => setCurrentStep(2)}
+            className="flex items-center gap-2.5 cursor-pointer text-left focus:outline-hidden"
+          >
+            <div
+              className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center transition-all ${
+                currentStep === 2
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : currentStep > 2
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}
+            >
+              {currentStep > 2 ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '2'}
             </div>
-            <span className="font-semibold text-xs text-slate-500">Review & Edit</span>
-          </div>
-          <div className="h-0.5 flex-1 mx-3 bg-slate-200" />
+            <span className={`font-bold text-xs ${currentStep === 2 ? 'text-emerald-700' : 'text-slate-600'}`}>
+              Verify & Adjust
+            </span>
+          </button>
+          <div className={`h-0.5 flex-1 mx-3 ${currentStep > 2 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
 
           {/* Step 3 */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold text-xs flex items-center justify-center border border-slate-200">
-              3
+          <button
+            onClick={() => setCurrentStep(3)}
+            className="flex items-center gap-2.5 cursor-pointer text-left focus:outline-hidden"
+          >
+            <div
+              className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center transition-all ${
+                currentStep === 3
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : currentStep > 3
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}
+            >
+              {currentStep > 3 ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : '3'}
             </div>
-            <span className="font-semibold text-xs text-slate-500">Confirm & Process</span>
-          </div>
-          <div className="h-0.5 flex-1 mx-3 bg-slate-200" />
+            <span className={`font-bold text-xs ${currentStep === 3 ? 'text-emerald-700' : 'text-slate-600'}`}>
+              Review Deductions
+            </span>
+          </button>
+          <div className={`h-0.5 flex-1 mx-3 ${currentStep > 3 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
 
           {/* Step 4 */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold text-xs flex items-center justify-center border border-slate-200">
+          <button
+            onClick={() => setCurrentStep(4)}
+            className="flex items-center gap-2.5 cursor-pointer text-left focus:outline-hidden"
+          >
+            <div
+              className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center transition-all ${
+                currentStep === 4
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}
+            >
               4
             </div>
-            <span className="font-semibold text-xs text-slate-500">Complete</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters Bar (Screenshot 3) */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600">Payroll Month</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none"
-            >
-              <option>May 2024</option>
-              <option>June 2024</option>
-              <option>April 2024</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600">Payroll Group</label>
-            <select
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none"
-            >
-              <option>All Groups</option>
-              <option>Operations Team</option>
-              <option>Sales Team</option>
-              <option>Technology Team</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600">Department</label>
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none"
-            >
-              <option>All Departments</option>
-              <option>Operations</option>
-              <option>Sales</option>
-              <option>Marketing</option>
-              <option>Technology</option>
-              <option>HR</option>
-              <option>Finance</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600">Employee Type</label>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none"
-            >
-              <option>Active Employees</option>
-              <option>Probation</option>
-              <option>Contractors</option>
-            </select>
-          </div>
-
-          <div>
-            <button
-              onClick={() => {}}
-              className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm shadow-blue-700/20 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <span>Load Employees</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards (Screenshot 3) */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">Total Employees</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">32</div>
-          <div className="text-[11px] text-amber-600 font-semibold flex items-center gap-1">
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span>2 with warnings</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">Total Earnings (Gross)</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">₹12,45,000</div>
-          <div className="text-[11px] text-slate-400 font-medium">Pre-deductions total</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">Total Deductions</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <PieChart className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">₹1,82,500</div>
-          <div className="text-[11px] text-slate-400 font-medium">TDS, PF, ESI, Loans</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">Net Pay</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Landmark className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">₹10,62,500</div>
-          <div className="text-[11px] text-purple-600 font-bold">Disbursement amount</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2 col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">Exceptions</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">2</div>
-          <div className="text-[11px] text-amber-600 font-bold">Needs attention</div>
-        </div>
-      </div>
-
-      {/* Main Grid: Table (Left 8 cols) & Summary Sidebar (Right 4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Employee Salary Details Table (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <h3 className="font-bold text-sm text-slate-900">Employee Salary Details</h3>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, employee ID..."
-                  className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none w-48 sm:w-60 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <button className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer">
-                <Filter className="w-3.5 h-3.5" />
-                <span>Filter</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left text-xs min-w-[750px]">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-3 w-8">
-                    <input
-                      type="checkbox"
-                      onChange={handleSelectAll}
-                      checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
-                      className="rounded text-blue-600 accent-blue-600 cursor-pointer"
-                    />
-                  </th>
-                  <th className="py-3 px-2 w-8">#</th>
-                  <th className="py-3 px-3">Employee</th>
-                  <th className="py-3 px-3">Employee ID</th>
-                  <th className="py-3 px-3">Department</th>
-                  <th className="py-3 px-3">Payroll Group</th>
-                  <th className="py-3 px-3">Gross Salary</th>
-                  <th className="py-3 px-3">Deductions</th>
-                  <th className="py-3 px-3">Net Pay</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredEmployees.map((emp, idx) => {
-                  const isChecked = selectedIds.includes(emp.id);
-                  const initials = emp.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .slice(0, 2);
-
-                  return (
-                    <tr
-                      key={emp.id}
-                      className={`hover:bg-slate-50/80 transition-colors ${
-                        isChecked ? 'bg-blue-50/30' : ''
-                      }`}
-                    >
-                      <td className="py-3 px-3">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelect(emp.id)}
-                          className="rounded text-blue-600 accent-blue-600 cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-3 px-2 font-mono text-slate-400">{idx + 1}</td>
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center shrink-0 uppercase">
-                            {initials}
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-900">{emp.name}</div>
-                            <div className="text-[10px] text-slate-400">{emp.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 font-mono font-medium text-slate-600">{emp.employee_id}</td>
-                      <td className="py-3 px-3 font-medium text-slate-700">{emp.department}</td>
-                      <td className="py-3 px-3 text-slate-500 font-medium">{emp.payroll_group}</td>
-                      <td className="py-3 px-3 font-mono font-semibold">₹{emp.gross_salary.toLocaleString()}</td>
-                      <td className="py-3 px-3 font-mono text-rose-600">₹{emp.deductions.toLocaleString()}</td>
-                      <td className="py-3 px-3 font-mono font-bold text-slate-900">₹{emp.net_pay.toLocaleString()}</td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            emp.status === 'Ready'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}
-                        >
-                          {emp.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setInspectEmployee(emp)}
-                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                          title="View Payslip"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Table Pagination */}
-          <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Showing 1 to 10 of 32 employees</span>
-            <div className="flex items-center gap-1">
-              <button className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button className="px-2.5 py-0.5 rounded bg-blue-600 text-white font-bold text-xs">1</button>
-              <button className="px-2.5 py-0.5 rounded hover:bg-slate-100 text-slate-600 font-medium text-xs">2</button>
-              <button className="px-2.5 py-0.5 rounded hover:bg-slate-100 text-slate-600 font-medium text-xs">3</button>
-              <button className="px-2.5 py-0.5 rounded hover:bg-slate-100 text-slate-600 font-medium text-xs">4</button>
-              <button className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Summary & Action Sidebar (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* Payroll Summary Card */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
-            <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Payroll Summary</h3>
-            <div className="divide-y divide-slate-100 text-xs">
-              <div className="py-2 flex justify-between">
-                <span className="text-slate-500 font-medium">Employees</span>
-                <span className="font-bold text-slate-900">32</span>
-              </div>
-              <div className="py-2 flex justify-between">
-                <span className="text-slate-500 font-medium">Gross Salary</span>
-                <span className="font-mono font-bold text-slate-900">₹12,45,000</span>
-              </div>
-              <div className="py-2 flex justify-between">
-                <span className="text-slate-500 font-medium">Total Deductions</span>
-                <span className="font-mono font-bold text-rose-600">₹1,82,500</span>
-              </div>
-              <div className="py-2 flex justify-between text-sm pt-2">
-                <span className="text-slate-800 font-bold">Net Pay</span>
-                <span className="font-mono font-black text-slate-900">₹10,62,500</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Deduction Breakdown Card */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2.5 text-xs">
-            <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Deduction Breakdown</h3>
-            <div className="space-y-1.5 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" /> Employee PF
-                </span>
-                <span className="font-bold text-slate-800 font-mono">₹62,300 (34.1%)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> TDS
-                </span>
-                <span className="font-bold text-slate-800 font-mono">₹48,500 (26.6%)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-orange-500" /> ESI
-                </span>
-                <span className="font-bold text-slate-800 font-mono">₹18,750 (10.3%)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" /> Professional Tax
-                </span>
-                <span className="font-bold text-slate-800 font-mono">₹8,600 (4.7%)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-pink-500" /> Loan / Advance
-                </span>
-                <span className="font-bold text-slate-800 font-mono">₹22,000 (12.1%)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-slate-400" /> Other Deductions
-                </span>
-                <span className="font-bold text-slate-800 font-mono">₹22,350 (12.2%)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Warnings & Exceptions Card (Screenshot 3) */}
-          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-amber-900">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Warnings & Exceptions</span>
-              </div>
-              <span className="text-[11px] font-bold text-amber-800 cursor-pointer">View All</span>
-            </div>
-            <p className="text-[11px] text-amber-700 font-medium">
-              2 employees need attention before processing:
-            </p>
-            <div className="space-y-2">
-              <div className="bg-white p-2.5 rounded-xl border border-amber-200/80 text-[11px]">
-                <div className="font-bold text-slate-900">Priya Mehta (EMP003)</div>
-                <div className="text-rose-600 font-medium">Missing bank account details</div>
-              </div>
-              <div className="bg-white p-2.5 rounded-xl border border-amber-200/80 text-[11px]">
-                <div className="font-bold text-slate-900">Devika L (EMP007)</div>
-                <div className="text-amber-700 font-medium">Salary structure not updated</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Payslip auto-send Checkbox */}
-          <label className="flex items-center gap-2 cursor-pointer bg-white p-3 rounded-xl border border-slate-200 select-none text-xs">
-            <input
-              type="checkbox"
-              checked={sendPayslips}
-              onChange={(e) => setSendPayslips(e.target.checked)}
-              className="rounded text-blue-600 accent-blue-600 cursor-pointer"
-            />
-            <span className="font-bold text-slate-800">Send payslips after processing</span>
-          </label>
-
-          {/* Big Proceed to Review Button */}
-          <button
-            onClick={() => setIsReviewModalOpen(true)}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-700/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <span>Proceed to Review</span>
-            <ArrowRight className="w-4 h-4" />
+            <span className={`font-bold text-xs ${currentStep === 4 ? 'text-emerald-700' : 'text-slate-600'}`}>
+              Disburse
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Inspect Payslip Modal */}
-      <PayslipModal
-        isOpen={inspectEmployee !== null}
-        onClose={() => setInspectEmployee(null)}
-        employee={inspectEmployee}
-        month={selectedMonth}
-      />
+      {/* STEP 1: SELECT PERIOD & SCOPE */}
+      {currentStep === 1 && (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+            <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
+              Select Payroll Scope & Calendar Month
+            </h3>
 
-      {/* Final Review & Confirmation Modal */}
-      <RunPayrollReviewModal
-        isOpen={isReviewModalOpen}
-        onClose={() => setIsReviewModalOpen(false)}
-        onConfirm={handleFinalConfirm}
-        month={selectedMonth}
-        totalEmployees={32}
-        grossAmount={1245000}
-        totalDeductions={182500}
-        netPay={1062500}
-        sendPayslips={sendPayslips}
-      />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Payroll Cycle Month</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option>May 2024</option>
+                  <option>June 2024</option>
+                  <option>April 2024</option>
+                  <option>March 2024</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Payroll Group</label>
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => setSelectedGroup(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option>All Groups</option>
+                  <option>Operations Team</option>
+                  <option>Sales Team</option>
+                  <option>Technology Team</option>
+                  <option>HR & Management</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Filter Department</label>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option>All Departments</option>
+                  <option>Operations</option>
+                  <option>Sales</option>
+                  <option>Marketing</option>
+                  <option>Technology</option>
+                  <option>HR</option>
+                  <option>Finance</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Employment Type</label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option>Active Employees</option>
+                  <option>Probation</option>
+                  <option>Contractors</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Metrics Preview */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
+              <span className="text-xs font-bold text-slate-500">Selected Staff</span>
+              <div className="text-2xl font-black text-slate-900 font-mono">{activeSelectedEmployees.length}</div>
+              <p className="text-[11px] text-slate-400">Ready for cycle verification</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
+              <span className="text-xs font-bold text-slate-500">Estimated Gross</span>
+              <div className="text-2xl font-black text-slate-900 font-mono">₹{totalGross.toLocaleString('en-IN')}</div>
+              <p className="text-[11px] text-emerald-600 font-semibold">Includes fixed + incentives</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
+              <span className="text-xs font-bold text-slate-500">Statutory Deductions</span>
+              <div className="text-2xl font-black text-rose-600 font-mono">₹{totalDeductions.toLocaleString('en-IN')}</div>
+              <p className="text-[11px] text-slate-400">TDS, PF, ESI & PT</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
+              <span className="text-xs font-bold text-slate-500">Total Net Disbursement</span>
+              <div className="text-2xl font-black text-emerald-600 font-mono">₹{totalNet.toLocaleString('en-IN')}</div>
+              <p className="text-[11px] text-slate-400">Scheduled for 30 May 2024</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <button
+              onClick={() => setCurrentStep(2)}
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer text-xs"
+            >
+              <span>Continue to Verify & Adjust</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 2: VERIFY & ADJUST EMPLOYEES */}
+      {currentStep === 2 && (
+        <div className="space-y-6">
+          {/* Filters Bar (Search & Department) */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search employee by name, ID or role..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <select
+                value={selectedDept}
+                onChange={(e) => {
+                  setSelectedDept(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+              >
+                <option>All Departments</option>
+                <option>Operations</option>
+                <option>Sales</option>
+                <option>Marketing</option>
+                <option>Technology</option>
+                <option>HR</option>
+                <option>Finance</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-semibold">
+                {selectedIds.length} of {filteredEmployees.length} staff selected
+              </span>
+              <button
+                onClick={handleExportBatchCsv}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" /> Export Batch
+              </button>
+            </div>
+          </div>
+
+          {/* Main Table + Summary Split Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Table (8 cols) */}
+            <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Employee Salary & Attendance Verification</h3>
+                  <p className="text-[11px] text-slate-500">Uncheck any employees you wish to exclude or hold from this run.</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[650px]">
+                  <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3 px-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
+                          onChange={handleSelectAll}
+                          className="rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+                        />
+                      </th>
+                      <th className="py-3 px-3">Employee</th>
+                      <th className="py-3 px-3">Dept</th>
+                      <th className="py-3 px-3">Gross</th>
+                      <th className="py-3 px-3">Deductions</th>
+                      <th className="py-3 px-3">Net Pay</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-3 text-right">Payslip</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {paginatedEmployees.map((emp) => {
+                      const isSelected = selectedIds.includes(emp.id);
+                      return (
+                        <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelect(emp.id)}
+                              className="rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-900">{emp.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{emp.employee_id} • {emp.bank_account || 'No Bank Acc'}</div>
+                          </td>
+                          <td className="py-3 px-3 font-medium text-slate-700">{emp.department}</td>
+                          <td className="py-3 px-3 font-mono font-semibold">₹{emp.gross_salary.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono text-rose-600 font-semibold">-₹{emp.deductions.toLocaleString()}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900">₹{emp.net_pay.toLocaleString()}</td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                emp.status === 'Ready'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
+                            >
+                              {emp.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setInspectEmployee(emp)}
+                              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title="View Official Payslip"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Pagination */}
+              <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>
+                  Showing {paginatedEmployees.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{' '}
+                  {Math.min(currentPage * pageSize, filteredEmployees.length)} of {filteredEmployees.length} employees
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`px-2.5 py-0.5 rounded font-bold text-xs cursor-pointer ${
+                        currentPage === i + 1
+                          ? 'bg-emerald-600 text-white'
+                          : 'hover:bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Summary Sidebar (4 cols) */}
+            <div className="lg:col-span-4 space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+                <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Payroll Summary</h3>
+                <div className="divide-y divide-slate-100 text-xs">
+                  <div className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">Selected Staff</span>
+                    <span className="font-bold text-slate-900">{activeSelectedEmployees.length}</span>
+                  </div>
+                  <div className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">Total Gross</span>
+                    <span className="font-mono font-bold text-slate-900">₹{totalGross.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">Total Deductions</span>
+                    <span className="font-mono font-bold text-rose-600">-₹{totalDeductions.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="py-2.5 flex justify-between text-sm pt-2 border-t border-slate-200">
+                    <span className="text-slate-900 font-black">Net Pay</span>
+                    <span className="font-mono font-black text-emerald-600 text-base">₹{totalNet.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warnings Card */}
+              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Warnings & Exceptions (2)</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="bg-white p-2 rounded-lg border border-amber-200 text-slate-800">
+                    <span className="font-bold">Priya Mehta:</span> Missing bank details
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-amber-200 text-slate-800">
+                    <span className="font-bold">Devika L:</span> Pending CTC increment review
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="px-4 py-2 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => setCurrentStep(3)}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer text-xs"
+                >
+                  <span>Review Deductions</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: REVIEW DEDUCTIONS & STATUTORY TAXES */}
+      {currentStep === 3 && (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">Statutory Tax & Compliance Deductions Review</h3>
+                <p className="text-[11px] text-slate-500">Auto-calculated Provident Fund (PF), TDS, ESI and Professional Tax for {selectedMonth}.</p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-400 block">Total Deductions</span>
+                <span className="text-lg font-black text-rose-600 font-mono">-₹{totalDeductions.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 block font-semibold">Provident Fund (PF 12%)</span>
+                <span className="text-lg font-black text-slate-900 font-mono">₹62,300</span>
+                <p className="text-[10px] text-slate-400 mt-0.5">Matched 100% by employer</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 block font-semibold">Income Tax TDS</span>
+                <span className="text-lg font-black text-slate-900 font-mono">₹48,500</span>
+                <p className="text-[10px] text-slate-400 mt-0.5">Under New & Old Regimes</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 block font-semibold">Employee State Insurance (ESI)</span>
+                <span className="text-lg font-black text-slate-900 font-mono">₹18,750</span>
+                <p className="text-[10px] text-slate-400 mt-0.5">Eligible employees &lt; ₹21,000</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 block font-semibold">Professional Tax (PT Kerala)</span>
+                <span className="text-lg font-black text-slate-900 font-mono">₹8,600</span>
+                <p className="text-[10px] text-slate-400 mt-0.5">Local municipality half-yearly</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => setCurrentStep(2)}
+              className="px-4 py-2 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs"
+            >
+              Back to Employee List
+            </button>
+            <button
+              onClick={() => setCurrentStep(4)}
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer text-xs"
+            >
+              <span>Continue to Final Disbursement</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 4: FINAL DISBURSEMENT & PROCESS */}
+      {currentStep === 4 && (
+        <div className="space-y-6 max-w-3xl mx-auto">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
+            <div className="text-center space-y-1 pb-4 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2 shadow-xs">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">Confirm {selectedMonth} Payroll Disbursement</h3>
+              <p className="text-xs text-slate-500">
+                All employee attendance, salary structures, and statutory deductions have been validated.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block">Total Staff</span>
+                <span className="text-xl font-black text-slate-900 font-mono">{activeSelectedEmployees.length}</span>
+              </div>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block">Payment Method</span>
+                <span className="text-sm font-bold text-slate-900">HDFC Bank NEFT/RTGS Batch</span>
+              </div>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block">Gross Payable</span>
+                <span className="text-xl font-black text-slate-900 font-mono">₹{totalGross.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block">Net Bank Disbursement</span>
+                <span className="text-xl font-black text-emerald-600 font-mono">₹{totalNet.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            {/* Email Payslips Toggle */}
+            <label className="flex items-center gap-3 cursor-pointer bg-emerald-50/60 border border-emerald-200/70 p-3.5 rounded-xl select-none">
+              <input
+                type="checkbox"
+                checked={sendPayslips}
+                onChange={(e) => setSendPayslips(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+              />
+              <div>
+                <span className="font-bold text-slate-900 text-xs block">Email PDF Payslips to Employees</span>
+                <span className="text-[11px] text-slate-500">Automatically sends password-protected salary slips to verified employee emails upon disbursement.</span>
+              </div>
+            </label>
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setCurrentStep(3)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs"
+              >
+                Back to Deductions
+              </button>
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer text-xs"
+              >
+                <span>Authorize & Disburse Payroll</span>
+                <Check className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payslip Inspection Modal */}
+      {inspectEmployee && (
+        <PayslipModal
+          isOpen={true}
+          employee={inspectEmployee}
+          onClose={() => setInspectEmployee(null)}
+          month={selectedMonth}
+        />
+      )}
+
+      {/* Run Payroll Review & Final Modal */}
+      {isReviewModalOpen && (
+        <RunPayrollReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          onConfirm={handleFinalConfirm}
+          totalEmployees={activeSelectedEmployees.length}
+          grossAmount={totalGross}
+          totalDeductions={totalDeductions}
+          netPay={totalNet}
+          month={selectedMonth}
+          sendPayslips={sendPayslips}
+        />
+      )}
     </div>
   );
 };

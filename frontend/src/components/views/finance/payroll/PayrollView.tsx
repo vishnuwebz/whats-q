@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useQiyamStore } from '@/store/useQiyamStore';
+import { Header } from '@/components/layout/Header';
 import {
   LayoutDashboard, Play, Layers, Receipt, ShieldCheck,
   Zap, BarChart3, Settings, ArrowLeft, Plus, CheckCircle2,
-  Calendar, FileText, ChevronRight, X
+  Calendar, FileText, ChevronRight, X, Users, Wallet
 } from 'lucide-react';
 import {
   PayrollSubView,
@@ -40,6 +42,9 @@ import { PayrollReportsView } from './PayrollReportsView';
 import { PayrollSettingsView } from './PayrollSettingsView';
 
 export const PayrollView: React.FC = () => {
+  const store = useQiyamStore();
+  const { addToast, employees: storeEmployees } = store;
+
   // Navigation State
   const [currentView, setCurrentView] = useState<PayrollSubView>('overview');
 
@@ -47,9 +52,39 @@ export const PayrollView: React.FC = () => {
   const [runs, setRuns] = useState<PayrollRunItem[]>(() =>
     getPayrollCache('runs', INITIAL_PAYROLL_RUNS)
   );
-  const [employees, setEmployees] = useState<EmployeeSalaryDetail[]>(() =>
-    getPayrollCache('employees', INITIAL_EMPLOYEE_SALARY_DETAILS)
-  );
+
+  // Sync with store employees if available
+  const [employees, setEmployees] = useState<EmployeeSalaryDetail[]>(() => {
+    const cached = getPayrollCache('employees', INITIAL_EMPLOYEE_SALARY_DETAILS);
+    if (storeEmployees && storeEmployees.length > 0) {
+      // Ensure all store employees are mapped
+      const existingIds = new Set(cached.map((e) => e.employee_id));
+      const newItems: EmployeeSalaryDetail[] = storeEmployees
+        .filter((se) => !existingIds.has(se.employee_id_str || `EMP-${se.id}`))
+        .map((se, idx) => ({
+          id: cached.length + idx + 1,
+          employee_id: se.employee_id_str || `EMP0${se.id}`,
+          name: se.name,
+          email: se.email || `${se.name.toLowerCase().replace(/\s+/g, '.')}@qiyam.com`,
+          department: se.department || 'Operations',
+          payroll_group: `${se.department || 'Operations'} Team`,
+          gross_salary: 35000 + (Number(se.id) * 3000),
+          deductions: 5000,
+          net_pay: 30000 + (Number(se.id) * 3000),
+          status: 'Ready',
+          bank_account: 'HDFC ••••' + (1000 + Number(se.id)),
+          pan_number: 'ABCPS' + (1000 + Number(se.id)) + 'Z',
+          uan_number: '100234567' + (100 + Number(se.id)),
+        }));
+      if (newItems.length > 0) {
+        const merged = [...cached, ...newItems];
+        setPayrollCache('employees', merged);
+        return merged;
+      }
+    }
+    return cached;
+  });
+
   const [structures, setStructures] = useState<SalaryStructure[]>(() =>
     getPayrollCache('structures', INITIAL_SALARY_STRUCTURES)
   );
@@ -75,17 +110,99 @@ export const PayrollView: React.FC = () => {
   // Inspector state for viewing past runs
   const [viewingRun, setViewingRun] = useState<PayrollRunItem | null>(null);
 
-  // Navigation tabs config
-  const navTabs: { id: PayrollSubView; label: string; icon: React.FC<{ className?: string }> }[] = [
+  // Scroll ref for horizontal tab bar
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Pending reimbursements count
+  const pendingReimbursementsCount = reimbursements.filter((r) => r.status === 'Pending').length;
+
+  // Navigation tabs config aligned with Qiyam style
+  const navTabs: {
+    id: PayrollSubView;
+    label: string;
+    icon: React.FC<{ className?: string }>;
+    badge?: number | string;
+    badgeColor?: string;
+  }[] = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'run-payroll', label: 'Run Payroll', icon: Play },
     { id: 'manage-salary', label: 'Manage Salary', icon: Layers },
-    { id: 'reimbursements', label: 'Reimbursements', icon: Receipt },
+    {
+      id: 'reimbursements',
+      label: 'Reimbursements',
+      icon: Receipt,
+      badge: pendingReimbursementsCount > 0 ? pendingReimbursementsCount : undefined,
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    },
     { id: 'tax-compliance', label: 'Tax & Compliance', icon: ShieldCheck },
     { id: 'off-cycle', label: 'Off-Cycle Payroll', icon: Zap },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  // Dynamic header actions
+  const getHeaderDetails = () => {
+    switch (currentView) {
+      case 'overview':
+        return {
+          title: 'Payroll & Compensation Management',
+          subtitle: 'Automate salary disbursements, verify attendance deductions, and maintain statutory compliance.',
+          actionLabel: 'Run Monthly Payroll',
+          onAction: () => setCurrentView('run-payroll'),
+        };
+      case 'run-payroll':
+        return {
+          title: 'Run Payroll Wizard',
+          subtitle: '4-step guided payroll calculation, employee verification, exception alerts, and batch credit.',
+          actionLabel: 'Back to Dashboard',
+          onAction: () => setCurrentView('overview'),
+        };
+      case 'manage-salary':
+        return {
+          title: 'Manage Salary Structures',
+          subtitle: 'Define flexible CTC structures, salary components, employee assignments, and increments.',
+          actionLabel: 'Run Payroll',
+          onAction: () => setCurrentView('run-payroll'),
+        };
+      case 'reimbursements':
+        return {
+          title: 'Employee Reimbursements',
+          subtitle: 'Track travel, food, internet, and office expenses with 1-click approvals and policy limits.',
+          actionLabel: 'Run Payroll',
+          onAction: () => setCurrentView('run-payroll'),
+        };
+      case 'tax-compliance':
+        return {
+          title: 'Statutory Tax & Compliance',
+          subtitle: 'Monthly TDS calculations, New vs Old Regime tracking, PF UAN, ESI, and Professional Tax.',
+          actionLabel: 'Export Statement',
+          onAction: () => addToast('Tax compliance statement exported', 'success'),
+        };
+      case 'off-cycle':
+        return {
+          title: 'Off-Cycle Disbursements',
+          subtitle: 'Process performance bonuses, sales incentives, retroactive arrears, and one-off rewards.',
+          actionLabel: 'Run Payroll',
+          onAction: () => setCurrentView('run-payroll'),
+        };
+      case 'reports':
+        return {
+          title: 'Payroll Analytics & Reports',
+          subtitle: 'In-depth cost trends, department allocations, CSV statements, and custom report exports.',
+          actionLabel: 'Run Payroll',
+          onAction: () => setCurrentView('run-payroll'),
+        };
+      case 'settings':
+        return {
+          title: 'Payroll Settings & Rules',
+          subtitle: 'Configure pay schedules, statutory registration numbers, payslip templates, and bank formats.',
+          actionLabel: 'Run Payroll',
+          onAction: () => setCurrentView('run-payroll'),
+        };
+    }
+  };
+
+  const headerInfo = getHeaderDetails();
 
   // Handlers for updating master state
   const handlePayrollCompleted = (newRun: PayrollRunItem) => {
@@ -93,62 +210,87 @@ export const PayrollView: React.FC = () => {
     setRuns(updated);
     setPayrollCache('runs', updated);
     setCurrentView('overview');
+    addToast(`Payroll for ${newRun.month} processed and disbursed successfully!`, 'success');
   };
 
   const handleAddStructure = (newStructure: SalaryStructure) => {
     const updated = [newStructure, ...structures];
     setStructures(updated);
     setPayrollCache('structures', updated);
+    addToast(`Salary structure "${newStructure.name}" created!`, 'success');
   };
 
   const handleUpdateStructure = (updatedStructure: SalaryStructure) => {
     const updated = structures.map((s) => (s.id === updatedStructure.id ? updatedStructure : s));
     setStructures(updated);
     setPayrollCache('structures', updated);
+    addToast(`Salary structure "${updatedStructure.name}" updated!`, 'success');
+  };
+
+  const handleUpdateAssignments = (updatedAssignments: EmployeeSalaryAssignment[]) => {
+    setAssignments(updatedAssignments);
+    setPayrollCache('assignments', updatedAssignments);
+    addToast('Employee salary assignments updated!', 'success');
   };
 
   const handleAddReimbursement = (newItem: ReimbursementItem) => {
     const updated = [newItem, ...reimbursements];
     setReimbursements(updated);
     setPayrollCache('reimbursements', updated);
+    addToast(`Reimbursement claim of ₹${newItem.amount.toLocaleString()} submitted for ${newItem.employee_name}!`, 'success');
   };
 
   const handleUpdateReimbursementStatus = (id: string | number, status: ReimbursementItem['status']) => {
     const updated = reimbursements.map((r) => (r.id === id ? { ...r, status } : r));
     setReimbursements(updated);
     setPayrollCache('reimbursements', updated);
+    addToast(`Claim marked as ${status}!`, 'success');
   };
 
   const handleUpdateTaxRecord = (updatedRecord: EmployeeTaxCompliance) => {
     const updated = taxRecords.map((t) => (t.id === updatedRecord.id ? updatedRecord : t));
     setTaxRecords(updated);
     setPayrollCache('tax', updated);
+    addToast(`Tax & compliance details updated for ${updatedRecord.employee_name}!`, 'success');
   };
 
   const handleAddOffCyclePayment = (newItem: OffCyclePaymentItem) => {
     const updated = [newItem, ...offCyclePayments];
     setOffCyclePayments(updated);
     setPayrollCache('offcycle', updated);
+    addToast(`Off-cycle payment of ₹${newItem.amount.toLocaleString()} disbursed to ${newItem.employee_name}!`, 'success');
   };
 
   const handleGenerateReport = (newReport: PayrollReportItem) => {
     const updated = [newReport, ...reports];
     setReports(updated);
     setPayrollCache('reports', updated);
+    addToast(`Generated ${newReport.name} for ${newReport.period}!`, 'success');
   };
 
   const handleUpdateSettings = (newSettings: PayrollSettingsState) => {
     setSettings(newSettings);
     setPayrollCache('settings', newSettings);
+    addToast('Payroll settings saved successfully!', 'success');
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-16">
-      {/* Secondary Top Navigation Bar (Module Sub-Header) */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-x-auto py-2.5">
-          {/* Subview Tabs */}
-          <div className="flex items-center gap-1.5 shrink-0">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+      {/* Standard Qiyam Business OS Header Component */}
+      <Header
+        title={headerInfo.title}
+        subtitle={headerInfo.subtitle}
+        primaryActionLabel={headerInfo.actionLabel}
+        onPrimaryAction={headerInfo.onAction}
+      />
+
+      {/* Unified Secondary Sub-Navigation Bar matching Qiyam design pattern */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-2xs">
+        <div className="px-4 sm:px-6">
+          <div
+            ref={scrollContainerRef}
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-2.5"
+          >
             {navTabs.map((tab) => {
               const IconComponent = tab.icon;
               const isActive = currentView === tab.id;
@@ -159,36 +301,34 @@ export const PayrollView: React.FC = () => {
                     setViewingRun(null);
                     setCurrentView(tab.id);
                   }}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
                   }`}
                 >
                   <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                   <span>{tab.label}</span>
+                  {tab.badge !== undefined && (
+                    <span
+                      className={`ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full border ${
+                        isActive
+                          ? 'bg-white text-emerald-800 border-white/60'
+                          : tab.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
-
-          {/* Quick Action Button */}
-          <div className="flex items-center gap-2 shrink-0">
-            {currentView !== 'run-payroll' && (
-              <button
-                onClick={() => setCurrentView('run-payroll')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-[0.98]"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Run Payroll</span>
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Main View Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      {/* Main Content Area */}
+      <main className="p-3 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
         {currentView === 'overview' && (
           <PayrollDashboardView
             runs={runs}
@@ -211,6 +351,7 @@ export const PayrollView: React.FC = () => {
             assignments={assignments}
             onAddStructure={handleAddStructure}
             onUpdateStructure={handleUpdateStructure}
+            onUpdateAssignments={handleUpdateAssignments}
           />
         )}
 
@@ -264,7 +405,7 @@ export const PayrollView: React.FC = () => {
               </div>
               <button
                 onClick={() => setViewingRun(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -296,8 +437,8 @@ export const PayrollView: React.FC = () => {
             </div>
 
             {viewingRun.notes && (
-              <div className="text-xs text-slate-600 bg-blue-50/60 border border-blue-100 rounded-xl p-3">
-                <span className="font-bold text-blue-900 block mb-0.5">Notes:</span>
+              <div className="text-xs text-slate-600 bg-emerald-50/50 border border-emerald-100 rounded-xl p-3">
+                <span className="font-bold text-emerald-900 block mb-0.5">Notes:</span>
                 {viewingRun.notes}
               </div>
             )}
@@ -305,7 +446,7 @@ export const PayrollView: React.FC = () => {
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setViewingRun(null)}
-                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
               >
                 Close
               </button>
@@ -314,7 +455,7 @@ export const PayrollView: React.FC = () => {
                   setViewingRun(null);
                   setCurrentView('reports');
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs cursor-pointer"
               >
                 View Statements in Reports
               </button>

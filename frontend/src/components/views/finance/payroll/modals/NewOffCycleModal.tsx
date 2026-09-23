@@ -150,7 +150,7 @@ export const NewOffCycleModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm shadow-amber-700/20 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Process Disbursement</span>

@@ -69,7 +69,7 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
@@ -97,7 +97,7 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Field Engineering Grade A"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
             <div className="space-y-1">
@@ -105,7 +105,7 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 <option value="Operations">Operations</option>
                 <option value="Sales">Sales</option>
@@ -150,7 +150,7 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
               <button
                 type="button"
                 onClick={handleAddComponent}
-                className="text-blue-600 hover:text-blue-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Component</span>
@@ -165,12 +165,12 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
                     value={c.name}
                     onChange={(e) => handleUpdateComponent(i, 'name', e.target.value)}
                     placeholder="Component name"
-                    className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none"
+                    className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   <select
                     value={c.type}
                     onChange={(e) => handleUpdateComponent(i, 'type', e.target.value)}
-                    className="w-28 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none"
+                    className="w-28 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
                   >
                     <option value="Fixed %">Fixed %</option>
                     <option value="Fixed Amount">Fixed Amount</option>
@@ -180,7 +180,7 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
                     value={c.value}
                     onChange={(e) => handleUpdateComponent(i, 'value', e.target.value)}
                     placeholder="Value (e.g. 40% or 3000)"
-                    className="w-24 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none text-right font-mono"
+                    className="w-24 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none text-right font-mono focus:ring-1 focus:ring-emerald-500"
                   />
                   {components.length > 1 && (
                     <button
@@ -207,7 +207,7 @@ export const NewSalaryStructureModal: React.FC<Props> = ({ isOpen, onClose, onSa
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm shadow-blue-700/20 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Create Structure</span>

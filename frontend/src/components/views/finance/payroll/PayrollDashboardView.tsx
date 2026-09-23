@@ -27,11 +27,11 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Card (Matching Screenshot 4) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 border border-blue-100 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Top Banner Card (Matching Screenshot 4 / Qiyam OS pattern) */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
         <div className="space-y-1.5 max-w-xl">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-700">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600/10 text-emerald-700">
               Payroll Automation Hub
             </span>
           </div>
@@ -43,15 +43,15 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
           </p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/80 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-xs shrink-0">
+        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
           <div className="text-center pr-4 border-r border-slate-200">
             <p className="text-xs font-serif italic text-slate-700 font-bold">
               “People Power Progress”
             </p>
             <div className="w-12 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full mx-auto mt-1" />
           </div>
-          <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-2 rounded-xl border border-blue-200/60">
-            <Wallet className="w-5 h-5 text-blue-600 shrink-0" />
+          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200/60">
+            <Wallet className="w-5 h-5 text-emerald-600 shrink-0" />
             <span className="font-bold text-xs">Payroll 2024</span>
           </div>
         </div>
@@ -296,9 +296,9 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
               <button
                 onClick={() => onNavigate('run-payroll')}
-                className="p-3 bg-blue-50/70 hover:bg-blue-100/90 text-blue-700 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1.5 border border-blue-200/80 transition-all cursor-pointer group shadow-2xs"
+                className="p-3 bg-emerald-50/70 hover:bg-emerald-100/90 text-emerald-800 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1.5 border border-emerald-200/80 transition-all cursor-pointer group shadow-2xs"
               >
-                <div className="p-2 rounded-lg bg-blue-600 text-white shadow-sm group-hover:scale-105 transition-transform">
+                <div className="p-2 rounded-lg bg-emerald-600 text-white shadow-sm group-hover:scale-105 transition-transform">
                   <Play className="w-4 h-4 fill-white" />
                 </div>
                 <span>Run Payroll</span>
@@ -392,7 +392,7 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
               </div>
               <button
                 onClick={() => onNavigate('run-payroll')}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-2xs cursor-pointer"
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all"
               >
                 Start Processing
               </button>

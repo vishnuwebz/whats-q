@@ -176,39 +176,27 @@ export const PayrollReportsView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Header and Banner */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <button onClick={() => onNavigate('overview')} className="hover:text-blue-600 transition-colors">Finance</button>
-            <span className="text-slate-300">/</span>
-            <button onClick={() => onNavigate('overview')} className="hover:text-blue-600 transition-colors">Payroll</button>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-900 font-bold">Reports</span>
+      {/* Top Banner Card (Screenshot 8 / Qiyam OS pattern) */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+        <div className="space-y-1.5 max-w-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600/10 text-emerald-700">
+              Analytics & Cost Intelligence
+            </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Payroll Reports</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Get insights into your payroll, salary, deductions, and compliance — all in one place.
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Payroll Reports</h2>
+          <p className="text-xs sm:text-sm text-slate-600 font-medium">
+            Analyze gross expense trends, department cost allocations, tax withholdings, and export statements.
           </p>
         </div>
 
-        {/* Banner Right */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          <div className="flex items-center gap-4 bg-gradient-to-r from-blue-50/90 to-sky-50/90 border border-blue-100/80 rounded-2xl px-5 py-3 shadow-2xs w-full sm:w-auto">
-            <div className="max-w-xs">
-              <h4 className="text-xs font-bold text-slate-900 leading-snug">Turn Payroll Data into Better Decisions.</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                Insights for a stronger, compliant and happier workforce.
-              </p>
-            </div>
-            <div className="w-12 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center shrink-0">
-              <BarChart3 className="w-6 h-6 text-blue-600" />
-            </div>
+        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
+          <div>
+            <h4 className="text-xs font-bold text-slate-900">Turn Payroll Data into Decisions</h4>
+            <p className="text-[11px] text-slate-500">Live analytics for workforce planning and audit compliance.</p>
           </div>
-
-          <div className="bg-white border border-slate-200/90 rounded-2xl px-4 py-3 shadow-2xs text-center shrink-0 hidden xl:block">
-            <p className="font-serif italic text-xs font-bold text-slate-700">“People Power Progress”</p>
-            <div className="w-8 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full mx-auto mt-1" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-emerald-600/20">
+            <BarChart3 className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -533,7 +521,7 @@ export const PayrollReportsView: React.FC<Props> = ({
           <button
             onClick={() => handleGenerate()}
             disabled={isGenerating}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 text-xs"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 text-xs cursor-pointer"
           >
             <BarChart3 className="w-4 h-4" />
             <span>{isGenerating ? 'Generating...' : 'Generate Report'}</span>
@@ -848,7 +836,7 @@ export const PayrollReportsView: React.FC<Props> = ({
                   handleGenerate('Custom Payroll Analytics');
                   setCustomReportModalOpen(false);
                 }}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-all"
               >
                 Generate & Save
               </button>

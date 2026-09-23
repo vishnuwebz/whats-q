@@ -114,7 +114,7 @@ export const RunPayrollReviewModal: React.FC<Props> = ({
             type="button"
             onClick={handleProcess}
             disabled={isProcessing}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm shadow-blue-700/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all"
           >
             {isProcessing ? (
               <>

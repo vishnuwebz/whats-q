@@ -80,39 +80,27 @@ export const PayrollSettingsView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Header and Banner */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <button onClick={() => onNavigate('overview')} className="hover:text-blue-600 transition-colors">Finance</button>
-            <span className="text-slate-300">/</span>
-            <button onClick={() => onNavigate('overview')} className="hover:text-blue-600 transition-colors">Payroll</button>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-900 font-bold">Payroll Settings</span>
+      {/* Top Banner Card (Screenshot 1 / Qiyam OS pattern) */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100/80 p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+        <div className="space-y-1.5 max-w-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600/10 text-emerald-700">
+              Payroll Automation & Governance
+            </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Payroll Settings</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Simple payroll. Complete compliance. Happier teams.
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Payroll Settings</h2>
+          <p className="text-xs sm:text-sm text-slate-600 font-medium">
+            Configure pay schedules, statutory registration numbers, payslip templates, and bank payment formats.
           </p>
         </div>
 
-        {/* Top Banner on Right */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          <div className="flex items-center gap-4 bg-gradient-to-r from-blue-50/90 to-sky-50/90 border border-blue-100/80 rounded-2xl px-5 py-3 shadow-2xs w-full sm:w-auto">
-            <div className="max-w-xs">
-              <h4 className="text-xs font-bold text-slate-900 leading-snug">Configure once. Payroll on autopilot.</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                Set up salary components, rules, tax settings and more — for a smooth payroll experience.
-              </p>
-            </div>
-            <div className="w-12 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center shrink-0">
-              <Settings className="w-6 h-6 text-blue-600 animate-spin-slow" />
-            </div>
+        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
+          <div>
+            <h4 className="text-xs font-bold text-slate-900">Configure once. Payroll on autopilot.</h4>
+            <p className="text-[11px] text-slate-500">Rules and tax formulas are applied automatically to every run.</p>
           </div>
-
-          <div className="bg-white border border-slate-200/90 rounded-2xl px-4 py-3 shadow-2xs text-center shrink-0 hidden xl:block">
-            <p className="font-serif italic text-xs font-bold text-slate-700">“People Power Progress”</p>
-            <div className="w-8 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full mx-auto mt-1" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-emerald-600/20">
+            <Settings className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -186,10 +174,10 @@ export const PayrollSettingsView: React.FC<Props> = ({
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === tab
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
               }`}
             >
               {tab}
@@ -713,6 +701,30 @@ export const PayrollSettingsView: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Bottom Save Action Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="text-xs text-slate-500 font-medium">
+          Settings are automatically synced across all payroll cycles upon saving.
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+        >
+          {isSaving ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Saving Changes...</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              <span>Save Payroll Settings</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Statutory Config Modal */}
       {configModalItem && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
@@ -784,7 +796,7 @@ export const PayrollSettingsView: React.FC<Props> = ({
                   showToast(`${configModalItem} rules updated!`);
                   setConfigModalItem(null);
                 }}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-all"
               >
                 Save Statutory Config
               </button>
