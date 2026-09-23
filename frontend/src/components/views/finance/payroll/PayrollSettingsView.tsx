@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Settings, Building2, ShieldCheck, FileText, Landmark,
   Sliders, Check, Info, Save, RefreshCw,
   TrendingUp, Users, Calendar, AlertCircle, CheckCircle2,
   DollarSign, ArrowRight, Shield, Award, Edit2, X, Plus,
   Clock, Bell, MessageSquare, Mail, Lock,
-  Download, RotateCcw, Building, Percent, Sparkles, CheckSquare
+  Download, RotateCcw, Building, Percent, Sparkles, CheckSquare,
+  Search, ExternalLink
 } from 'lucide-react';
 import { PayrollSettingsState, PayrollSubView } from '@/types';
-import { INITIAL_PAYROLL_SETTINGS, setPayrollCache } from './payrollData';
+import { INITIAL_PAYROLL_SETTINGS, INITIAL_EMPLOYEE_SALARY_DETAILS, setPayrollCache } from './payrollData';
 
 interface Props {
   settings: PayrollSettingsState;
@@ -74,6 +75,33 @@ export const PayrollSettingsView: React.FC<Props> = ({
 
   // Reset confirmation modal
   const [showResetModal, setShowResetModal] = useState(false);
+
+  // Active Scenario KPI Card States
+  const [selectedKpi, setSelectedKpi] = useState<'frequency' | 'employees' | 'components' | 'compliance' | null>(null);
+  const [showEmployeesModal, setShowEmployeesModal] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [selectedEmpDept, setSelectedEmpDept] = useState('All Departments');
+
+  const isFrequencyActive = selectedKpi === 'frequency' || activeTab === 'Pay Schedule';
+  const isEmployeesActive = selectedKpi === 'employees' || showEmployeesModal;
+  const isComponentsActive = selectedKpi === 'components' || activeTab === 'Salary Components' || activeTab === 'Deductions & Contributions';
+  const isComplianceActive = selectedKpi === 'compliance' || activeTab === 'Tax Settings';
+
+  const filteredStaff = useMemo(() => {
+    return INITIAL_EMPLOYEE_SALARY_DETAILS.filter((emp) => {
+      if (selectedEmpDept !== 'All Departments' && emp.department !== selectedEmpDept) return false;
+      if (employeeSearch.trim() !== '') {
+        const q = employeeSearch.toLowerCase();
+        return (
+          emp.name.toLowerCase().includes(q) ||
+          emp.employee_id.toLowerCase().includes(q) ||
+          emp.department.toLowerCase().includes(q) ||
+          (emp.role && emp.role.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [employeeSearch, selectedEmpDept]);
 
   const tabs = [
     'General',
@@ -189,26 +217,71 @@ export const PayrollSettingsView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Top 4 KPI Metric Cards */}
+      {/* Top 4 KPI Metric Cards (Interactive, Scenario-Border Themed, Never Black) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Payroll Frequency */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:shadow-xs transition-all">
+        {/* Card 1: Payroll Frequency (Blue Scenario Border) */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedKpi('frequency');
+            setActiveTab('Pay Schedule');
+            showToast('Showing Pay Schedule & Cutoff Frequency Rules');
+          }}
+          className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
+            isFrequencyActive
+              ? 'border-2 border-blue-500 shadow-sm ring-2 ring-blue-500/20'
+              : 'border border-slate-200/90 hover:border-blue-400 hover:shadow-xs'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                isFrequencyActive
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-blue-50 border border-blue-100 text-blue-600 group-hover:bg-blue-100/70'
+              }`}
+            >
               <Settings className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold text-slate-400">Next: 30 Sep 2026</span>
+            <div className="flex items-center gap-1.5">
+              {isFrequencyActive && (
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  Active
+                </span>
+              )}
+              <span className="text-xs font-semibold text-slate-400">Next: 30 Sep 2026</span>
+            </div>
           </div>
           <div className="mt-4">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Payroll Frequency</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">{settings.frequency || 'Monthly'}</div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Payroll Frequency</span>
+            <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5 flex items-baseline justify-between">
+              <span>{settings.frequency || 'Monthly'}</span>
+              <span className="text-[11px] font-semibold text-blue-600 group-hover:underline">Configure &rarr;</span>
+            </div>
           </div>
-        </div>
+        </button>
 
-        {/* Active Employees */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:shadow-xs transition-all">
+        {/* Card 2: Active Employees (Emerald Scenario Border) */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedKpi('employees');
+            setShowEmployeesModal(true);
+          }}
+          className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
+            isEmployeesActive
+              ? 'border-2 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+              : 'border border-slate-200/90 hover:border-emerald-400 hover:shadow-xs'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                isEmployeesActive
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:bg-emerald-100/70'
+              }`}
+            >
               <Users className="w-5 h-5" />
             </div>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
@@ -217,42 +290,99 @@ export const PayrollSettingsView: React.FC<Props> = ({
             </span>
           </div>
           <div className="mt-4">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Employees</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5 font-mono">32</div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Employees</span>
+            <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5 font-mono flex items-baseline justify-between">
+              <span>32</span>
+              <span className="text-[11px] font-semibold text-emerald-600 group-hover:underline font-sans">View Roster &rarr;</span>
+            </div>
           </div>
-        </div>
+        </button>
 
-        {/* Salary Components */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:shadow-xs transition-all">
+        {/* Card 3: Salary Components (Rose Scenario Border) */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedKpi('components');
+            setActiveTab('Salary Components');
+            showToast('Showing 12 Salary Earnings & Deductions Components');
+          }}
+          className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
+            isComponentsActive
+              ? 'border-2 border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+              : 'border border-slate-200/90 hover:border-rose-400 hover:shadow-xs'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                isComponentsActive
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'bg-rose-50 border border-rose-100 text-rose-600 group-hover:bg-rose-100/70'
+              }`}
+            >
               <FileText className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold text-slate-400">
-              {components.filter(c => c.type === 'Earning' && c.enabled).length} earnings, {components.filter(c => c.type === 'Deduction' && c.enabled).length} ded
-            </span>
-          </div>
-          <div className="mt-4">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salary Components</span>
-            <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5 font-mono">
-              {components.filter(c => c.enabled).length}
+            <div className="flex items-center gap-1.5">
+              {isComponentsActive && (
+                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                  Active
+                </span>
+              )}
+              <span className="text-xs font-semibold text-slate-400">
+                {components.filter(c => c.type === 'Earning' && c.enabled).length} earnings, {components.filter(c => c.type === 'Deduction' && c.enabled).length} ded
+              </span>
             </div>
           </div>
-        </div>
+          <div className="mt-4">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Salary Components</span>
+            <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5 font-mono flex items-baseline justify-between">
+              <span>{components.filter(c => c.enabled).length}</span>
+              <span className="text-[11px] font-semibold text-rose-600 group-hover:underline font-sans">Manage &rarr;</span>
+            </div>
+          </div>
+        </button>
 
-        {/* Compliance Status */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:shadow-xs transition-all">
+        {/* Card 4: Compliance Status (Teal Scenario Border) */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedKpi('compliance');
+            setActiveTab('Tax Settings');
+            showToast('Showing Statutory Tax & Compliance Configuration');
+          }}
+          className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
+            isComplianceActive
+              ? 'border-2 border-teal-500 shadow-sm ring-2 ring-teal-500/20'
+              : 'border border-slate-200/90 hover:border-teal-400 hover:shadow-xs'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                isComplianceActive
+                  ? 'bg-teal-600 text-white shadow-2xs'
+                  : 'bg-teal-50 border border-teal-100 text-teal-600 group-hover:bg-teal-100/70'
+              }`}
+            >
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold text-slate-400">TDS, PF, ESI, PT, LWF</span>
+            <div className="flex items-center gap-1.5">
+              {isComplianceActive && (
+                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                  Active
+                </span>
+              )}
+              <span className="text-xs font-semibold text-slate-400">TDS, PF, ESI, PT, LWF</span>
+            </div>
           </div>
           <div className="mt-4">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Compliance Status</span>
-            <div className="text-2xl font-black text-emerald-600 tracking-tight mt-0.5">Configured</div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Compliance Status</span>
+            <div className="text-2xl font-black text-emerald-600 tracking-tight mt-0.5 flex items-baseline justify-between">
+              <span>Configured</span>
+              <span className="text-[11px] font-semibold text-teal-600 group-hover:underline">Audit Rules &rarr;</span>
+            </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* 9 Tabs Navigation Bar (Matching Screenshot media_1790148105878.png) */}
@@ -261,7 +391,13 @@ export const PayrollSettingsView: React.FC<Props> = ({
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'Pay Schedule') setSelectedKpi('frequency');
+                else if (tab === 'Salary Components' || tab === 'Deductions & Contributions') setSelectedKpi('components');
+                else if (tab === 'Tax Settings') setSelectedKpi('compliance');
+                else setSelectedKpi(null);
+              }}
               className={`px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === tab
                   ? 'bg-emerald-600 text-white shadow-xs'
@@ -1848,6 +1984,134 @@ export const PayrollSettingsView: React.FC<Props> = ({
               >
                 Yes, Reset Defaults
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: ACTIVE EMPLOYEES ENROLLED IN PAYROLL (Card 2) ── */}
+      {showEmployeesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Active Employees in Payroll ({INITIAL_EMPLOYEE_SALARY_DETAILS.length})
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    All 32 employees enrolled and eligible for current month payroll disbursal.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEmployeesModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter Toolbar */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  placeholder="Search by name, employee code, or role..."
+                  className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none w-full focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <select
+                value={selectedEmpDept}
+                onChange={(e) => setSelectedEmpDept(e.target.value)}
+                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none"
+              >
+                <option>All Departments</option>
+                <option>Operations</option>
+                <option>Sales</option>
+                <option>Marketing</option>
+                <option>Technology</option>
+                <option>HR</option>
+                <option>Finance</option>
+              </select>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto flex-1 border border-slate-200 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th className="py-2.5 px-3 w-8">#</th>
+                    <th className="py-2.5 px-3">Employee</th>
+                    <th className="py-2.5 px-3">Department</th>
+                    <th className="py-2.5 px-3">Role</th>
+                    <th className="py-2.5 px-3 text-right">Gross Salary</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {filteredStaff.map((emp, idx) => (
+                    <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[9px] flex items-center justify-center shrink-0 uppercase">
+                            {emp.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900">{emp.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{emp.employee_id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">{emp.department}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{emp.role || 'Staff'}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                        ₹{(emp.gross_salary || 30000).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+              <span className="text-slate-500">
+                Showing {filteredStaff.length} of {INITIAL_EMPLOYEE_SALARY_DETAILS.length} active employees
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmployeesModal(false);
+                    onNavigate('manage-salary');
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-xl cursor-pointer transition-colors"
+                >
+                  Manage Salary Structures &rarr;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmployeesModal(false)}
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
