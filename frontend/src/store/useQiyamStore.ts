@@ -1518,6 +1518,12 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
         { id: 'seal-vch', type: 'seal', x: 570, y: 760, sealType: 'paid', width: 100, height: 100, sealTitle: '★ CASH PAID ★', sealSubtext: 'VOUCHER SETTLED', color: '#059669' },
         { id: 'sig-vch', type: 'signature', x: 60, y: 770, signatureType: 'manager', width: 130, height: 50, signeeName: 'S. Sharma', signeeRole: 'Cashier / Accountant' },
       ];
+    } else if (docType === 'compensation_letter') {
+      defaultElements = [
+        { id: 'seal-comp', type: 'seal', x: 580, y: 720, sealType: 'official_circle', width: 95, height: 95, sealTitle: '★ VERIFIED ★', sealSubtext: 'COMPENSATION', sealBottomText: 'QIYAM OS', color: '#10b981' },
+        { id: 'sig-comp', type: 'signature', x: 55, y: 725, signatureType: 'director', width: 140, height: 48, signeeName: doc?.approvedBy || 'Faris Usman (Director)', signeeRole: 'Authorized Signatory' },
+        { id: 'qr-comp', type: 'qr', x: 635, y: 30, width: 65, height: 65, qrLabel: 'REVISION' },
+      ];
     } else if (docType === 'staff_letter') {
       defaultElements = [
         { id: 'seal-1', type: 'seal', x: 580, y: 720, sealType: 'official_circle', width: 95, height: 95, sealTitle: '★ VERIFIED ★', sealSubtext: 'OFFICIAL SEAL', sealBottomText: 'QIYAM OS', color: '#10b981' },
@@ -1540,14 +1546,14 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
 
     const defaultDoc: PdfEditorDocument = {
       type: docType,
-      title: doc?.title || (docType === 'id_card' ? 'Staff Identity Card' : docType === 'staff_letter' ? `Official Staff Joining Letter - ${recipientName}` : docType === 'invoice' ? 'Tax Invoice' : 'Official Document'),
-      referenceNumber: doc?.referenceNumber || (docType === 'id_card' ? recipientId : docType === 'staff_letter' ? `QIYAM/APPOINT/${recipientId}` : 'QIYAM/DOC/2026-001'),
+      title: doc?.title || (docType === 'id_card' ? 'Staff Identity Card' : docType === 'staff_letter' ? `Official Staff Joining Letter - ${recipientName}` : docType === 'compensation_letter' ? `Compensation Revision Letter - ${recipientName}` : docType === 'invoice' ? 'Tax Invoice' : 'Official Document'),
+      referenceNumber: doc?.referenceNumber || (docType === 'id_card' ? recipientId : docType === 'staff_letter' ? `QIYAM/APPOINT/${recipientId}` : docType === 'compensation_letter' ? `QIYAM/SAL-REV/${recipientId}` : 'QIYAM/DOC/2026-001'),
       dateStr: dateStr,
       recipientName: recipientName,
       recipientRole: recipientRole,
       recipientId: recipientId,
       recipientPhone: doc?.recipientPhone || '+91 90000 11123',
-      department: doc?.department || 'AC Services',
+      department: doc?.department || 'Operations',
       bloodGroup: doc?.bloodGroup || 'O+',
       emergencyPhone: doc?.emergencyPhone || '+91 94471 10045',
       emergencyName: doc?.emergencyName || 'Emergency Contact',
@@ -1556,16 +1562,22 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       validTill: doc?.validTill || '31 Dec 2026',
       avatarInitials: doc?.avatarInitials || recipientName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
       avatarUrl: doc?.avatarUrl || '',
-      subject: doc?.subject || (docType === 'staff_letter' ? 'SUB: OFFICIAL LETTER OF APPOINTMENT' : 'OFFICIAL DOCUMENT'),
+      previousCtc: doc?.previousCtc || 38000,
+      newCtc: doc?.newCtc || 42000,
+      incrementPercent: doc?.incrementPercent || '10.5',
+      effectiveDate: doc?.effectiveDate || dateStr,
+      appraisalRationale: doc?.appraisalRationale || 'Excellent client retention and field HVAC operations lead.',
+      approvedBy: doc?.approvedBy || 'Faris Usman (Director)',
+      subject: doc?.subject || (docType === 'staff_letter' ? 'SUB: OFFICIAL LETTER OF APPOINTMENT' : docType === 'compensation_letter' ? 'COMPENSATION & CTC REVISION LETTER' : 'OFFICIAL DOCUMENT'),
       bodyContent: doc?.bodyContent || (docType === 'staff_letter' ? `Dear ${recipientName},
 
 We are pleased to confirm your appointment with Qiyam Business Solutions as ${recipientRole} effective from ${dateStr}. You will be reporting to the Calicut HQ branch.
 
 Your duty hours are 9:00 AM to 6:00 PM, Monday through Saturday. All company policies, safety protocols, and attendance punch rules via WhatsApp Geo-Punch apply.
 
-Welcome aboard to the Qiyam Engineering & Operations team!` : 'This document is issued by Qiyam Business Solutions.'),
-      companyName: doc?.companyName || (docType === 'staff_letter' ? 'QIYAM BUSINESS SOLUTIONS' : 'QIYAM BUSINESS OS'),
-      companyAddress: doc?.companyAddress || 'Cyberpark Calicut, Kozhikode, Kerala • Reg. No: KL-08-99234',
+Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compensation_letter' ? 'In recognition of your continued dedication, professional excellence, and invaluable contribution towards our organizational growth, the Management is pleased to revise your monthly compensation as outlined below:' : 'This document is issued by Qiyam Business Solutions.'),
+      companyName: doc?.companyName || (docType === 'staff_letter' || docType === 'compensation_letter' ? 'QIYAM BUSINESS SOLUTIONS LLP' : 'QIYAM BUSINESS OS'),
+      companyAddress: doc?.companyAddress || (docType === 'compensation_letter' ? 'Corporate HQ, Cyberpark, Calicut, Kerala, India' : 'Cyberpark Calicut, Kozhikode, Kerala • Reg. No: KL-08-99234'),
       companyPhone: doc?.companyPhone || '+91 94963 00233',
       companyEmail: doc?.companyEmail || 'operations@qiyam.in',
       watermarkText: doc?.watermarkText || (docType === 'id_card' ? 'QIYAM OS' : 'OFFICIAL DOCUMENT'),

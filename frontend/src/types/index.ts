@@ -860,7 +860,7 @@ export interface PdfCanvasElement {
 }
 
 export interface PdfEditorDocument {
-  type: 'staff_letter' | 'invoice' | 'quotation' | 'id_card' | 'voucher' | 'financial_report' | 'custom';
+  type: 'staff_letter' | 'invoice' | 'quotation' | 'id_card' | 'voucher' | 'financial_report' | 'compensation_letter' | 'custom';
   title: string;
   referenceNumber: string;
   dateStr: string;
@@ -878,6 +878,12 @@ export interface PdfEditorDocument {
   avatarInitials?: string;
   avatarUrl?: string;
   amount?: number | string;
+  previousCtc?: number | string;
+  newCtc?: number | string;
+  incrementPercent?: number | string;
+  effectiveDate?: string;
+  appraisalRationale?: string;
+  approvedBy?: string;
   invoiceNumber?: string;
   items?: any[];
   subject?: string;

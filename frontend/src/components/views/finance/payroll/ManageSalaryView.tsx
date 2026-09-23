@@ -4,10 +4,11 @@ import {
   Edit2, Download, ChevronLeft, ChevronRight, FileText,
   Clock, CheckCircle2, ArrowRight, ShieldCheck, ToggleLeft, ToggleRight,
   TrendingUp, RefreshCw, X, Eye, FileDown, Check, Percent, Sparkles, Building2,
-  Copy, Trash2
+  Copy, Trash2, PenTool
 } from 'lucide-react';
 import { SalaryStructure, EmployeeSalaryAssignment, SalaryComponentItem } from '@/types';
 import { NewSalaryStructureModal } from './modals/NewSalaryStructureModal';
+import { useQiyamStore } from '@/store/useQiyamStore';
 
 interface Props {
   structures: SalaryStructure[];
@@ -76,6 +77,30 @@ export const ManageSalaryView: React.FC<Props> = ({
 
   // Letter Preview Modal
   const [viewLetterItem, setViewLetterItem] = useState<RevisionHistoryItem | null>(null);
+
+  const { openPdfEditor } = useQiyamStore();
+
+  const handleOpenPdfEditorForLetter = (letter: RevisionHistoryItem) => {
+    openPdfEditor({
+      type: 'compensation_letter',
+      title: `Compensation Revision Letter - ${letter.employee_name}`,
+      referenceNumber: `QIYAM/SAL-REV/${letter.employee_id}`,
+      recipientName: letter.employee_name,
+      recipientId: letter.employee_id,
+      department: letter.department,
+      previousCtc: letter.previous_ctc,
+      newCtc: letter.new_ctc,
+      incrementPercent: letter.increment_percent,
+      effectiveDate: letter.effective_date,
+      dateStr: letter.effective_date,
+      appraisalRationale: letter.reason,
+      approvedBy: letter.approved_by || 'Faris Usman (Director)',
+      companyName: 'QIYAM BUSINESS SOLUTIONS LLP',
+      companyAddress: 'Corporate HQ, Cyberpark, Calicut, Kerala, India',
+      subject: 'COMPENSATION & CTC REVISION LETTER',
+      bodyContent: 'In recognition of your continued dedication, professional excellence, and invaluable contribution towards our organizational growth, the Management is pleased to revise your monthly compensation as outlined below:',
+    });
+  };
 
   // New Component Modal
   const [isAddComponentOpen, setIsAddComponentOpen] = useState(false);
@@ -1189,13 +1214,23 @@ export const ManageSalaryView: React.FC<Props> = ({
                       <td className="py-3 px-3 font-semibold text-slate-800">{r.revision_type}</td>
                       <td className="py-3 px-3 text-[11px] text-slate-500">{r.approved_by}</td>
                       <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => setViewLetterItem(r)}
-                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer transition-colors text-[11px] flex items-center gap-1 ml-auto"
-                        >
-                          <Eye className="w-3 h-3 text-slate-500" />
-                          <span>View Letter</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenPdfEditorForLetter(r)}
+                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-lg cursor-pointer transition-colors text-[11px] flex items-center gap-1"
+                            title="Edit and customize in PDF Studio"
+                          >
+                            <PenTool className="w-3 h-3 text-emerald-600" />
+                            <span>Edit in PDF</span>
+                          </button>
+                          <button
+                            onClick={() => setViewLetterItem(r)}
+                            className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer transition-colors text-[11px] flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3 text-slate-500" />
+                            <span>View Letter</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1576,6 +1611,17 @@ export const ManageSalaryView: React.FC<Props> = ({
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => {
+                  handleOpenPdfEditorForLetter(viewLetterItem);
+                  setViewLetterItem(null);
+                }}
+                className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors"
+                title="Open and customize this letter in PDF Studio"
+              >
+                <PenTool className="w-4 h-4 text-emerald-600" />
+                <span>Edit in PDF Editor</span>
+              </button>
               <button
                 onClick={() => {
                   window.print();

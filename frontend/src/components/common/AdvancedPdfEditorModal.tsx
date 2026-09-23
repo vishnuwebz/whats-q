@@ -922,6 +922,84 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
       `;
     }
 
+    if (d.type === 'compensation_letter') {
+      const prevCtc = Number(d.previousCtc) || 0;
+      const newCtc = Number(d.newCtc) || 0;
+      const hike = d.incrementPercent || '0';
+      const effectiveDate = d.effectiveDate || d.dateStr;
+      const reason = d.appraisalRationale || 'Annual Performance & Market Calibration';
+      const signatory = d.approvedBy || 'Faris Usman (Director)';
+
+      return `
+        <div class="doc-container" style="max-width: 680px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b;">
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 18px;">
+            <div>
+              <div style="font-weight: 800; font-size: 15px; color: #0f172a; letter-spacing: 0.5px;">${d.companyName || 'QIYAM BUSINESS SOLUTIONS LLP'}</div>
+              <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${d.companyAddress || 'Corporate HQ, Cyberpark, Calicut, Kerala, India'}</div>
+            </div>
+            <div style="text-align: right; font-size: 11px; color: #64748b; font-family: monospace;">
+              Date: <strong>${effectiveDate}</strong>
+            </div>
+          </div>
+
+          <!-- Recipient -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 700; color: #0f172a; font-size: 13px;">To: ${d.recipientName} (${d.recipientId || 'EMP-001'})</div>
+            <div style="font-size: 11px; color: #64748b;">Department: ${d.department || 'Operations'}</div>
+          </div>
+
+          <!-- Salutation -->
+          <p style="font-style: italic; margin-bottom: 12px; color: #0f172a;">Dear ${d.recipientName},</p>
+
+          <!-- Opening Body -->
+          <p style="margin-bottom: 18px; color: #334155; line-height: 1.7;">
+            ${d.bodyContent || 'In recognition of your continued dedication, professional excellence, and invaluable contribution towards our organizational growth, the Management is pleased to revise your monthly compensation as outlined below:'}
+          </p>
+
+          <!-- Compensation Matrix Box -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 18px;">
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #edf2f7;">
+              <span style="color: #64748b;">Previous Monthly CTC:</span>
+              <span style="font-family: monospace; text-decoration: line-through; color: #64748b; font-weight: 600;">₹${prevCtc.toLocaleString('en-IN')}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #edf2f7;">
+              <span style="color: #64748b;">Revised Monthly CTC:</span>
+              <span style="font-family: monospace; font-weight: 800; color: #047857; font-size: 14px;">₹${newCtc.toLocaleString('en-IN')}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #edf2f7;">
+              <span style="color: #64748b;">Percentage Hike:</span>
+              <span style="font-weight: 800; color: #059669;">+${hike}%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #edf2f7;">
+              <span style="color: #64748b;">Effective Date:</span>
+              <span style="font-weight: 600; color: #1e293b;">${effectiveDate}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+              <span style="color: #64748b;">Appraisal Rationale:</span>
+              <span style="font-weight: 600; color: #1e293b; font-style: italic;">${reason}</span>
+            </div>
+          </div>
+
+          <!-- Closing Body -->
+          <p style="font-size: 12px; color: #475569; margin-bottom: 30px;">
+            We thank you for your ongoing commitment and look forward to scaling new milestones together.
+          </p>
+
+          <!-- Footer Sign-off -->
+          <div style="padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <div style="font-weight: 800; color: #0f172a; font-size: 13px;">${signatory}</div>
+              <div style="font-size: 10px; color: #64748b;">Authorized Signatory</div>
+            </div>
+            <span style="padding: 3px 10px; border-radius: 6px; background: #d1fae5; color: #065f46; font-weight: 800; font-size: 10px;">
+              Digitally Authenticated
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
     // Default: staff_letter / letterhead
     return `
       <div class="letterhead">
@@ -1231,6 +1309,8 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                   ? 'EXPENSE VOUCHER'
                   : doc.type === 'financial_report'
                   ? 'FINANCIAL AUDIT'
+                  : doc.type === 'compensation_letter'
+                  ? 'COMPENSATION REVISION LETTER'
                   : 'OFFICIAL LETTER'}
               </span>
               {isPreviewMode ? (
@@ -1925,6 +2005,41 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                 className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 text-left cursor-grab active:cursor-grabbing hover:border hover:border-cyan-500 transition-all"
               >
                 Financial Audit
+              </button>
+              <button
+                type="button"
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    'application/pdf-template',
+                    JSON.stringify({
+                      type: 'compensation_letter',
+                      title: 'Compensation Revision Letter',
+                      subject: 'COMPENSATION & CTC REVISION LETTER',
+                      bodyContent:
+                        'In recognition of your continued dedication, professional excellence, and invaluable contribution towards our organizational growth, the Management is pleased to revise your monthly compensation as outlined below:',
+                    })
+                  );
+                }}
+                onClick={() =>
+                  setDoc({
+                    ...doc,
+                    type: 'compensation_letter',
+                    title: 'Compensation Revision Letter',
+                    subject: 'COMPENSATION & CTC REVISION LETTER',
+                    previousCtc: doc.previousCtc || 38000,
+                    newCtc: doc.newCtc || 42000,
+                    incrementPercent: doc.incrementPercent || '10.5',
+                    effectiveDate: doc.effectiveDate || doc.dateStr,
+                    appraisalRationale: doc.appraisalRationale || 'Annual Performance & Market Calibration',
+                    approvedBy: doc.approvedBy || 'Faris Usman (Director)',
+                    bodyContent:
+                      'In recognition of your continued dedication, professional excellence, and invaluable contribution towards our organizational growth, the Management is pleased to revise your monthly compensation as outlined below:',
+                  })
+                }
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 text-left cursor-grab active:cursor-grabbing hover:border hover:border-emerald-500 transition-all"
+              >
+                Compensation Letter
               </button>
             </div>
           </div>
@@ -3020,6 +3135,241 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                       <div>
                         This audit statement reflects verified general ledger figures, tax accounts, and operational banking records. Issued with authorization from the executive board.
                       </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (doc.type === 'compensation_letter') {
+                const prevCtc = Number(doc.previousCtc) || 0;
+                const newCtc = Number(doc.newCtc) || 0;
+                const hike = doc.incrementPercent || '0';
+                const effectiveDate = doc.effectiveDate || doc.dateStr;
+                const reason = doc.appraisalRationale || 'Annual Performance & Market Calibration';
+                const signatory = doc.approvedBy || 'Faris Usman (Director)';
+
+                return (
+                  <div className="relative z-10 w-full space-y-4 text-xs text-slate-800 font-sans">
+                    {/* Header: Company & Date */}
+                    <div className="flex justify-between items-start border-b-2 border-slate-200 pb-4">
+                      <div className="space-y-0.5">
+                        {isPreviewMode ? (
+                          <h4 className="font-bold text-slate-900 text-sm tracking-wide">{doc.companyName}</h4>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.companyName}
+                            onChange={(e) => setDoc({ ...doc, companyName: e.target.value })}
+                            className="font-bold text-slate-900 text-sm tracking-wide focus:bg-slate-50 focus:outline-none rounded px-1.5 w-80 hover:bg-slate-50/50"
+                            title="Edit Company Name"
+                          />
+                        )}
+                        {isPreviewMode ? (
+                          <p className="text-[10px] text-slate-500">{doc.companyAddress}</p>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.companyAddress}
+                            onChange={(e) => setDoc({ ...doc, companyAddress: e.target.value })}
+                            className="text-[10px] text-slate-500 focus:bg-slate-50 focus:outline-none rounded px-1.5 w-96 hover:bg-slate-50/50"
+                            title="Edit Company Address"
+                          />
+                        )}
+                      </div>
+                      <div className="text-right text-[11px] text-slate-500 font-mono">
+                        Date:{' '}
+                        {isPreviewMode ? (
+                          <span className="font-bold text-slate-700">{effectiveDate}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.effectiveDate || doc.dateStr}
+                            onChange={(e) => setDoc({ ...doc, effectiveDate: e.target.value, dateStr: e.target.value })}
+                            className="font-bold text-slate-700 font-mono text-[11px] w-28 text-right focus:bg-slate-50 focus:outline-none rounded px-1"
+                            title="Edit Date"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Recipient Details */}
+                    <div className="font-sans font-bold text-slate-900 pt-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span>To:</span>
+                        {isPreviewMode ? (
+                          <span>{doc.recipientName} ({doc.recipientId || 'EMP-001'})</span>
+                        ) : (
+                          <div className="inline-flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={doc.recipientName}
+                              onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                              className="font-bold text-slate-900 focus:bg-slate-50 focus:outline-none rounded px-1 w-44"
+                              title="Edit Employee Name"
+                            />
+                            <span>(</span>
+                            <input
+                              type="text"
+                              value={doc.recipientId || ''}
+                              onChange={(e) => setDoc({ ...doc, recipientId: e.target.value })}
+                              className="font-bold text-slate-600 font-mono focus:bg-slate-50 focus:outline-none rounded px-1 w-24"
+                              title="Edit Employee ID"
+                            />
+                            <span>)</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-slate-500 font-normal">
+                        <span>Department:</span>
+                        {isPreviewMode ? (
+                          <span>{doc.department || 'Operations'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.department || ''}
+                            onChange={(e) => setDoc({ ...doc, department: e.target.value })}
+                            className="text-slate-600 focus:bg-slate-50 focus:outline-none rounded px-1 w-44"
+                            title="Edit Department"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Salutation */}
+                    <p className="italic text-slate-800">Dear {doc.recipientName},</p>
+
+                    {/* Letter Opening Statement */}
+                    {isPreviewMode ? (
+                      <p className="leading-relaxed text-slate-700">
+                        {doc.bodyContent}
+                      </p>
+                    ) : (
+                      <textarea
+                        rows={3}
+                        value={doc.bodyContent}
+                        onChange={(e) => setDoc({ ...doc, bodyContent: e.target.value })}
+                        className="w-full text-xs text-slate-700 leading-relaxed p-2.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        title="Click to edit letter opening statement"
+                      />
+                    )}
+
+                    {/* Exact Compensation Matrix Card */}
+                    <div className="font-sans bg-white p-4 rounded-xl border border-slate-200 space-y-2.5 shadow-2xs">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Previous Monthly CTC:</span>
+                        {isPreviewMode ? (
+                          <span className="font-mono line-through text-slate-500 font-semibold">₹{prevCtc.toLocaleString('en-IN')}</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400">₹</span>
+                            <input
+                              type="number"
+                              value={doc.previousCtc || 0}
+                              onChange={(e) => {
+                                const prev = Number(e.target.value) || 0;
+                                const curr = Number(doc.newCtc) || 0;
+                                const hikeVal = prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : doc.incrementPercent;
+                                setDoc({ ...doc, previousCtc: prev, incrementPercent: hikeVal });
+                              }}
+                              className="font-mono line-through text-slate-500 font-semibold text-right w-24 px-1 py-0.5 border border-slate-200 rounded focus:outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Revised Monthly CTC:</span>
+                        {isPreviewMode ? (
+                          <span className="font-mono font-bold text-emerald-700 text-sm">₹{newCtc.toLocaleString('en-IN')}</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-emerald-700 font-bold">₹</span>
+                            <input
+                              type="number"
+                              value={doc.newCtc || 0}
+                              onChange={(e) => {
+                                const curr = Number(e.target.value) || 0;
+                                const prev = Number(doc.previousCtc) || 0;
+                                const hikeVal = prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : doc.incrementPercent;
+                                setDoc({ ...doc, newCtc: curr, incrementPercent: hikeVal });
+                              }}
+                              className="font-mono font-bold text-emerald-700 text-sm text-right w-28 px-1 py-0.5 border border-slate-200 rounded focus:outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Percentage Hike:</span>
+                        {isPreviewMode ? (
+                          <span className="font-bold text-emerald-600">+{hike}%</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-emerald-600 font-bold">+</span>
+                            <input
+                              type="text"
+                              value={doc.incrementPercent || ''}
+                              onChange={(e) => setDoc({ ...doc, incrementPercent: e.target.value })}
+                              className="font-bold text-emerald-600 text-xs text-right w-16 px-1 py-0.5 border border-slate-200 rounded focus:outline-none"
+                            />
+                            <span className="text-emerald-600 font-bold">%</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Effective Date:</span>
+                        {isPreviewMode ? (
+                          <span className="font-medium text-slate-800">{effectiveDate}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.effectiveDate || doc.dateStr}
+                            onChange={(e) => setDoc({ ...doc, effectiveDate: e.target.value, dateStr: e.target.value })}
+                            className="font-medium text-slate-800 text-right w-32 px-1 py-0.5 border border-slate-200 rounded focus:outline-none"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Appraisal Rationale:</span>
+                        {isPreviewMode ? (
+                          <span className="font-medium text-slate-800 italic">{reason}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.appraisalRationale || ''}
+                            onChange={(e) => setDoc({ ...doc, appraisalRationale: e.target.value })}
+                            className="font-medium text-slate-800 italic text-right w-72 px-1 py-0.5 border border-slate-200 rounded focus:outline-none"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Closing commitment */}
+                    <p className="text-[11px] text-slate-600 pt-2 leading-relaxed">
+                      We thank you for your ongoing commitment and look forward to scaling new milestones together.
+                    </p>
+
+                    {/* Authorized Signatory and Authentication */}
+                    <div className="pt-4 font-sans flex justify-between items-end border-t border-slate-200">
+                      <div>
+                        {isPreviewMode ? (
+                          <p className="font-bold text-slate-900">{signatory}</p>
+                        ) : (
+                          <input
+                            type="text"
+                            value={doc.approvedBy || ''}
+                            onChange={(e) => setDoc({ ...doc, approvedBy: e.target.value })}
+                            className="font-bold text-slate-900 focus:bg-slate-50 focus:outline-none rounded px-1"
+                            title="Edit Signatory"
+                          />
+                        )}
+                        <p className="text-[10px] text-slate-500">Authorized Signatory</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[9px] uppercase tracking-wider">
+                        Digitally Authenticated
+                      </span>
                     </div>
                   </div>
                 );
@@ -4124,6 +4474,117 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                         className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 text-xs font-bold"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Compensation Letter Specific Inspector Fields */}
+              {doc.type === 'compensation_letter' && (
+                <div className="space-y-3 pt-2 border-t border-slate-700/80">
+                  <span className="text-xs font-bold text-emerald-400">Compensation Revision Parameters</span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Employee Name</label>
+                      <input
+                        type="text"
+                        value={doc.recipientName}
+                        onChange={(e) => setDoc({ ...doc, recipientName: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Employee ID</label>
+                      <input
+                        type="text"
+                        value={doc.recipientId || ''}
+                        onChange={(e) => setDoc({ ...doc, recipientId: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Department</label>
+                      <input
+                        type="text"
+                        value={doc.department || ''}
+                        onChange={(e) => setDoc({ ...doc, department: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Effective Date</label>
+                      <input
+                        type="text"
+                        value={doc.effectiveDate || doc.dateStr}
+                        onChange={(e) => setDoc({ ...doc, effectiveDate: e.target.value, dateStr: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Previous CTC (₹)</label>
+                      <input
+                        type="number"
+                        value={doc.previousCtc || 0}
+                        onChange={(e) => {
+                          const prev = Number(e.target.value) || 0;
+                          const curr = Number(doc.newCtc) || 0;
+                          const hikeVal = prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : doc.incrementPercent;
+                          setDoc({ ...doc, previousCtc: prev, incrementPercent: hikeVal });
+                        }}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Revised CTC (₹)</label>
+                      <input
+                        type="number"
+                        value={doc.newCtc || 0}
+                        onChange={(e) => {
+                          const curr = Number(e.target.value) || 0;
+                          const prev = Number(doc.previousCtc) || 0;
+                          const hikeVal = prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : doc.incrementPercent;
+                          setDoc({ ...doc, newCtc: curr, incrementPercent: hikeVal });
+                        }}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 font-mono text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Hike (%)</label>
+                      <input
+                        type="text"
+                        value={doc.incrementPercent || ''}
+                        onChange={(e) => setDoc({ ...doc, incrementPercent: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-emerald-400 font-bold text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1 text-[11px]">Signatory</label>
+                      <input
+                        type="text"
+                        value={doc.approvedBy || ''}
+                        onChange={(e) => setDoc({ ...doc, approvedBy: e.target.value })}
+                        className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 text-[11px]">Appraisal Rationale</label>
+                    <textarea
+                      rows={2}
+                      value={doc.appraisalRationale || ''}
+                      onChange={(e) => setDoc({ ...doc, appraisalRationale: e.target.value })}
+                      className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 text-xs"
+                    />
                   </div>
                 </div>
               )}
