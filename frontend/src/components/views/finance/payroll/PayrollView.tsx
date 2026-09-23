@@ -257,6 +257,13 @@ export const PayrollView: React.FC = () => {
     addToast(`Salary structure "${updatedStructure.name}" updated!`, 'success');
   };
 
+  const handleDeleteStructure = (id: string | number) => {
+    const updated = structures.filter((s) => s.id !== id);
+    setStructures(updated);
+    setPayrollCache('structures', updated);
+    addToast('Salary structure deleted!', 'success');
+  };
+
   const handleUpdateAssignments = (updatedAssignments: EmployeeSalaryAssignment[]) => {
     setAssignments(updatedAssignments);
     setPayrollCache('assignments', updatedAssignments);
@@ -384,6 +391,7 @@ export const PayrollView: React.FC = () => {
             assignments={assignments}
             onAddStructure={handleAddStructure}
             onUpdateStructure={handleUpdateStructure}
+            onDeleteStructure={handleDeleteStructure}
             onUpdateAssignments={handleUpdateAssignments}
           />
         )}
