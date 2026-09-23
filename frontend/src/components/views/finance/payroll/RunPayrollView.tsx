@@ -691,39 +691,39 @@ export const RunPayrollView: React.FC<Props> = ({
                     <th className="py-2.5 px-3 text-center bg-rose-50/80 text-rose-800 font-bold border-r border-rose-200/60">
                       Unpaid Days
                     </th>
-                    {visibleColumns.dailyWage && <th className="py-2.5 px-3 text-right">Daily Wage</th>}
-                    <th className="py-2.5 px-3 text-right">Gross Wages</th>
-                    <th className="py-2.5 px-3 text-right">Earned Wages</th>
+                    {visibleColumns.dailyWage && <th className="py-2.5 px-3 text-right min-w-[95px]">Daily Wage</th>}
+                    <th className="py-2.5 px-3 text-right min-w-[105px]">Gross Wages</th>
+                    <th className="py-2.5 px-3 text-right min-w-[105px]">Earned Wages</th>
                     {visibleColumns.otherEarnings && (
-                      <th className="py-2.5 px-3 text-right">
+                      <th className="py-2.5 px-3 text-right min-w-[110px]">
                         <span className="inline-flex items-center gap-1 justify-end">
                           Other Earnings <Info className="w-3 h-3 text-slate-400" />
                         </span>
                       </th>
                     )}
-                    {visibleColumns.overtime && <th className="py-2.5 px-3 text-right">Overtime</th>}
-                    {visibleColumns.extras && <th className="py-2.5 px-3 text-right">Extras</th>}
-                    <th className="py-2.5 px-3 text-right">
+                    {visibleColumns.overtime && <th className="py-2.5 px-3 text-right min-w-[95px]">Overtime</th>}
+                    {visibleColumns.extras && <th className="py-2.5 px-3 text-right min-w-[90px]">Extras</th>}
+                    <th className="py-2.5 px-3 text-right min-w-[115px]">
                       <span className="inline-flex items-center gap-1 justify-end">
                         Gross Earnings <Info className="w-3 h-3 text-slate-400" />
                       </span>
                     </th>
-                    <th className="py-2.5 px-3 text-right">TDS</th>
-                    {visibleColumns.penalties && <th className="py-2.5 px-3 text-right">Penalties</th>}
+                    <th className="py-2.5 px-3 text-right min-w-[85px]">TDS</th>
+                    {visibleColumns.penalties && <th className="py-2.5 px-3 text-right min-w-[90px]">Penalties</th>}
                     {visibleColumns.otherDeductions && (
-                      <th className="py-2.5 px-3 text-right">
+                      <th className="py-2.5 px-3 text-right min-w-[115px]">
                         <span className="inline-flex items-center gap-1 justify-end">
                           Other Deductions <Info className="w-3 h-3 text-slate-400" />
                         </span>
                       </th>
                     )}
-                    <th className="py-2.5 px-3 text-right font-bold text-slate-900 bg-slate-100/60">
+                    <th className="py-2.5 px-3 text-right font-bold text-slate-900 bg-slate-100/60 min-w-[130px]">
                       <span className="inline-flex items-center gap-1 justify-end">
                         Finalized Amount <Info className="w-3 h-3 text-slate-400" />
                       </span>
                     </th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
-                    <th className="py-2.5 px-3 text-center sticky right-0 bg-slate-50 z-10 border-l border-slate-200/70">
+                    <th className="py-2.5 px-3 text-center min-w-[80px]">Status</th>
+                    <th className="py-2.5 px-3 text-center sticky right-0 bg-slate-50 z-20 border-l border-slate-200/70 min-w-[90px]">
                       Actions
                     </th>
                   </tr>
@@ -733,12 +733,17 @@ export const RunPayrollView: React.FC<Props> = ({
                     const globalIdx = (currentPage - 1) * pageSize + idx;
                     const isSelected = selectedIds.includes(emp.id);
                     const isActionOpen = activeActionId === emp.id;
+                    const isLastRows = idx >= paginatedEmployees.length - 2 && paginatedEmployees.length > 3;
 
                     return (
                       <tr
                         key={emp.id}
                         className={`transition-colors ${
-                          isSelected ? 'bg-blue-50/15 hover:bg-blue-50/30' : 'hover:bg-slate-50/80'
+                          isActionOpen
+                            ? 'relative z-40 bg-blue-50/25'
+                            : isSelected
+                            ? 'bg-blue-50/15 hover:bg-blue-50/30'
+                            : 'hover:bg-slate-50/80'
                         }`}
                       >
                         {/* Checkbox */}
@@ -890,56 +895,175 @@ export const RunPayrollView: React.FC<Props> = ({
                           </span>
                         </td>
 
-                        {/* Actions ... */}
-                        <td className="py-2 px-3 text-center sticky right-0 bg-white z-10 border-l border-slate-100">
-                          <div className="relative inline-block text-left">
+                        {/* Actions Column (Sticky Right with Elevated Z-Index When Open) */}
+                        <td
+                          className={`py-2 px-3 text-center sticky right-0 bg-white border-l border-slate-100 transition-all ${
+                            isActionOpen ? 'z-40 shadow-xs' : 'z-10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            {/* 1-Click Quick View Payslip Button */}
                             <button
                               type="button"
-                              onClick={() => setActiveActionId(isActionOpen ? null : emp.id)}
-                              className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                              title="Actions"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInspectEmployee(emp);
+                                setActiveActionId(null);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer group"
+                              title="View Official Payslip"
                             >
-                              <MoreVertical className="w-3.5 h-3.5" />
+                              <Eye className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                             </button>
 
-                            {isActionOpen && (
-                              <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-30 space-y-1 text-left animate-in fade-in zoom-in-95 duration-100">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setInspectEmployee(emp);
+                            {/* More Actions Trigger */}
+                            <div className="relative inline-block text-left">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveActionId(isActionOpen ? null : emp.id);
+                                }}
+                                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                  isActionOpen
+                                    ? 'bg-blue-50 text-blue-700 ring-2 ring-blue-500/20 shadow-2xs'
+                                    : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
+                                }`}
+                                title="Employee Payroll Actions"
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Click-away backdrop overlay */}
+                              {isActionOpen && (
+                                <div
+                                  className="fixed inset-0 z-30 bg-transparent cursor-default"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setActiveActionId(null);
                                   }}
-                                  className="w-full px-2.5 py-1.5 text-slate-700 hover:bg-slate-50 hover:text-blue-700 rounded-lg flex items-center gap-2 text-xs cursor-pointer font-medium"
+                                />
+                              )}
+
+                              {/* Design-Optimized Actions Menu Dropdown */}
+                              {isActionOpen && (
+                                <div
+                                  className={`absolute right-0 ${
+                                    isLastRows ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                                  } w-64 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 z-50 text-left space-y-1 animate-in fade-in zoom-in-95 duration-150`}
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
-                                  <span>View Official Payslip</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingEmployee(emp);
-                                    setActiveActionId(null);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-slate-700 hover:bg-slate-50 hover:text-blue-700 rounded-lg flex items-center gap-2 text-xs cursor-pointer font-medium"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                                  <span>Quick Adjust Values</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleToggleSelect(emp.id);
-                                    setActiveActionId(null);
-                                    triggerToast(`${emp.name} ${isSelected ? 'excluded from' : 'included in'} batch.`);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-slate-700 hover:bg-slate-50 hover:text-rose-600 rounded-lg flex items-center gap-2 text-xs cursor-pointer font-medium"
-                                >
-                                  <PauseCircle className="w-3.5 h-3.5 text-slate-400" />
-                                  <span>{isSelected ? 'Hold Disbursement' : 'Include in Batch'}</span>
-                                </button>
-                              </div>
-                            )}
+                                  {/* Employee Mini Card Header */}
+                                  <div className="px-2.5 py-1.5 border-b border-slate-100 bg-slate-50/70 rounded-xl mb-1.5">
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="font-bold text-xs text-slate-900 truncate">{emp.name}</span>
+                                      <span className="text-[10px] font-mono font-black text-emerald-700 shrink-0">
+                                        ₹{(emp.finalized_amount || emp.net_pay).toLocaleString('en-IN')}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between mt-0.5">
+                                      <span>{emp.employee_id} • {emp.department}</span>
+                                      <span
+                                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                                          emp.status === 'Ready'
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                                        }`}
+                                      >
+                                        {emp.status || 'Ready'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Action 1: View Official Payslip */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInspectEmployee(emp);
+                                      setActiveActionId(null);
+                                    }}
+                                    className="w-full px-2.5 py-2 text-left hover:bg-blue-50/80 rounded-xl flex items-center gap-2.5 group cursor-pointer transition-colors"
+                                  >
+                                    <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-xs text-slate-800 group-hover:text-blue-700">
+                                        View Official Payslip
+                                      </div>
+                                      <div className="text-[10px] text-slate-400">Preview & PDF compensation breakdown</div>
+                                    </div>
+                                  </button>
+
+                                  {/* Action 2: Quick Adjust Values */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingEmployee(emp);
+                                      setActiveActionId(null);
+                                    }}
+                                    className="w-full px-2.5 py-2 text-left hover:bg-amber-50/80 rounded-xl flex items-center gap-2.5 group cursor-pointer transition-colors"
+                                  >
+                                    <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-xs text-slate-800 group-hover:text-amber-700">
+                                        Quick Adjust Values
+                                      </div>
+                                      <div className="text-[10px] text-slate-400">Edit attendance, overtime & deductions</div>
+                                    </div>
+                                  </button>
+
+                                  <div className="border-t border-slate-100 my-1" />
+
+                                  {/* Action 3: Hold / Include in Batch */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleToggleSelect(emp.id);
+                                      setActiveActionId(null);
+                                      triggerToast(
+                                        `${emp.name} ${isSelected ? 'held / excluded from batch' : 'included in batch'}.`
+                                      );
+                                    }}
+                                    className={`w-full px-2.5 py-2 text-left rounded-xl flex items-center gap-2.5 group cursor-pointer transition-colors ${
+                                      isSelected ? 'hover:bg-rose-50/80' : 'hover:bg-emerald-50/80'
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-2xs ${
+                                        isSelected
+                                          ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
+                                          : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'
+                                      }`}
+                                    >
+                                      {isSelected ? (
+                                        <PauseCircle className="w-3.5 h-3.5" />
+                                      ) : (
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div
+                                        className={`font-bold text-xs ${
+                                          isSelected
+                                            ? 'text-slate-800 group-hover:text-rose-700'
+                                            : 'text-slate-800 group-hover:text-emerald-700'
+                                        }`}
+                                      >
+                                        {isSelected ? 'Hold Disbursement' : 'Include in Batch'}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400">
+                                        {isSelected
+                                          ? 'Exclude from current NEFT transfer run'
+                                          : 'Re-enable for payroll credit'}
+                                      </div>
+                                    </div>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
