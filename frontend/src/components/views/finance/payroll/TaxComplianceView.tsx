@@ -3,15 +3,102 @@ import {
   Users, FileText, ShieldCheck, ArrowUpRight, Search, Filter,
   Download, MoreVertical, ChevronLeft, ChevronRight, X, Edit2,
   CheckCircle2, AlertCircle, Building2, HelpCircle, FileDown,
-  Info, ExternalLink, Calendar, Check, Landmark, Shield, Eye, Printer
+  Info, ExternalLink, Calendar, Check, Landmark, Shield, Eye, Printer,
+  Plus, Wallet, Trash2, SlidersHorizontal
 } from 'lucide-react';
-import { EmployeeTaxCompliance } from '@/types';
+import {
+  EmployeeTaxCompliance,
+  EmployeeSalaryBreakdown,
+  ComplianceDocumentItem,
+  ComplianceHistoryItem,
+} from '@/types';
 import { TaxUpdateModal } from './modals/TaxUpdateModal';
+import { EditEmployeeSalaryModal } from './modals/EditEmployeeSalaryModal';
+import { ManageComplianceDocModal } from './modals/ManageComplianceDocModal';
+import { ManageComplianceHistoryModal } from './modals/ManageComplianceHistoryModal';
+import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
 
 interface Props {
   records: EmployeeTaxCompliance[];
   onUpdateRecord: (updated: EmployeeTaxCompliance) => void;
 }
+
+export const getSalaryBreakdown = (record: EmployeeTaxCompliance): EmployeeSalaryBreakdown => {
+  if (record.salary_breakdown) return record.salary_breakdown;
+  const gross = record.employee_id === 'EMP004' ? 45000 : 40000;
+  const basic = Math.round(gross * 0.4);
+  const hra = Math.round(gross * 0.2);
+  const conveyance = 3000;
+  const special = Math.max(0, gross - basic - hra - conveyance);
+  return {
+    gross_ctc: gross,
+    basic,
+    hra,
+    conveyance,
+    special_allowance: special,
+    other_allowances: 0,
+  };
+};
+
+export const getDocuments = (record: EmployeeTaxCompliance): ComplianceDocumentItem[] => {
+  if (record.documents && record.documents.length > 0) return record.documents;
+  return [
+    {
+      id: `${record.id}-doc-1`,
+      name: 'Form 16 (FY 2023-24)',
+      category: 'Tax Certificate',
+      description: 'Part A & Part B digitally signed',
+      status: 'Verified',
+      uploaded_at: '01 May 2024',
+      file_size: '2.4 MB',
+    },
+    {
+      id: `${record.id}-doc-2`,
+      name: 'PAN & Aadhaar Verification',
+      category: 'KYC & Identity',
+      description: 'e-KYC verified via NSDL',
+      status: record.status === 'Compliant' ? 'Verified' : 'Pending',
+      uploaded_at: '15 Jan 2024',
+      file_size: '1.1 MB',
+    },
+    {
+      id: `${record.id}-doc-3`,
+      name: 'Form 12BB Declaration',
+      category: 'Declaration',
+      description: '80C, 80D, HRA proof submitted',
+      status: record.status === 'Compliant' ? 'Verified' : 'Pending',
+      uploaded_at: '10 Apr 2024',
+      file_size: '3.8 MB',
+    },
+  ];
+};
+
+export const getHistory = (record: EmployeeTaxCompliance): ComplianceHistoryItem[] => {
+  if (record.history && record.history.length > 0) return record.history;
+  return [
+    {
+      id: `${record.id}-hist-1`,
+      title: `Tax Regime Selected: ${record.tds_regime || 'New Regime'}`,
+      description: 'Opted on 01 Apr 2024 by employee',
+      date: '01 Apr 2024',
+      type: 'regime',
+    },
+    {
+      id: `${record.id}-hist-2`,
+      title: 'EPFO UAN Linked & Seeded',
+      description: 'Verified with Aadhaar OTP on 15 Jan 2024',
+      date: '15 Jan 2024',
+      type: 'pf',
+    },
+    {
+      id: `${record.id}-hist-3`,
+      title: 'Form 24Q Q4 Return Filed',
+      description: 'TDS deducted successfully remitted to Traces',
+      date: '10 May 2024',
+      type: 'return',
+    },
+  ];
+};
 
 export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) => {
   const [activeTab, setActiveTab] = useState<'employees' | 'tds' | 'pf' | 'esi' | 'pt' | 'other'>('employees');
@@ -35,6 +122,13 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
   const [previewDoc, setPreviewDoc] = useState<{ type: 'form16' | 'form12bb'; record: EmployeeTaxCompliance } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // New states for editing Salary, Documents, and History
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<ComplianceDocumentItem | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [editingHistory, setEditingHistory] = useState<ComplianceHistoryItem | null>(null);
+
   const handleOpenUpdateModal = (
     section: 'all' | 'tds' | 'pf' | 'esi' | 'pt' = 'all',
     recordToEdit?: EmployeeTaxCompliance
@@ -49,6 +143,39 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSaveSalary = (updatedRecord: EmployeeTaxCompliance) => {
+    setSelectedRecord(updatedRecord);
+    onUpdateRecord(updatedRecord);
+    showToast(`Salary structure updated for ${updatedRecord.employee_name}!`);
+  };
+
+  const handleSaveDoc = (updatedRecord: EmployeeTaxCompliance) => {
+    setSelectedRecord(updatedRecord);
+    onUpdateRecord(updatedRecord);
+    showToast(`Compliance documents updated for ${updatedRecord.employee_name}!`);
+  };
+
+  const handleSaveHistory = (updatedRecord: EmployeeTaxCompliance) => {
+    setSelectedRecord(updatedRecord);
+    onUpdateRecord(updatedRecord);
+    showToast(`Compliance history updated for ${updatedRecord.employee_name}!`);
+  };
+
+  const handleToggleDocStatus = (doc: ComplianceDocumentItem) => {
+    const currentDocs = getDocuments(selectedRecord);
+    const newStatus: ComplianceDocumentItem['status'] =
+      doc.status === 'Verified' ? 'Pending' : 'Verified';
+    const updatedDocs = currentDocs.map((d) => (d.id === doc.id ? { ...d, status: newStatus } : d));
+    const updatedRecord: EmployeeTaxCompliance = {
+      ...selectedRecord,
+      documents: updatedDocs,
+      last_updated: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    };
+    setSelectedRecord(updatedRecord);
+    onUpdateRecord(updatedRecord);
+    showToast(`Document "${doc.name}" marked as ${newStatus}!`);
   };
 
   // Dynamic metrics from records
@@ -737,39 +864,45 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
               </div>
 
               {/* Sub-tabs inside Inspector */}
-              <div className="flex items-center gap-1 border-b border-slate-100 pb-1 text-[11px] font-semibold text-slate-500">
-                <button
-                  onClick={() => setRightTab('tax')}
-                  className={`px-2 py-1 rounded cursor-pointer transition-colors ${
-                    rightTab === 'tax' ? 'text-emerald-700 font-bold border-b-2 border-emerald-600' : 'hover:text-slate-800'
-                  }`}
-                >
-                  Tax & Statutory
-                </button>
-                <button
-                  onClick={() => setRightTab('salary')}
-                  className={`px-2 py-1 rounded cursor-pointer transition-colors ${
-                    rightTab === 'salary' ? 'text-emerald-700 font-bold border-b-2 border-emerald-600' : 'hover:text-slate-800'
-                  }`}
-                >
-                  Salary Info
-                </button>
-                <button
-                  onClick={() => setRightTab('docs')}
-                  className={`px-2 py-1 rounded cursor-pointer transition-colors ${
-                    rightTab === 'docs' ? 'text-emerald-700 font-bold border-b-2 border-emerald-600' : 'hover:text-slate-800'
-                  }`}
-                >
-                  Documents
-                </button>
-                <button
-                  onClick={() => setRightTab('history')}
-                  className={`px-2 py-1 rounded cursor-pointer transition-colors ${
-                    rightTab === 'history' ? 'text-emerald-700 font-bold border-b-2 border-emerald-600' : 'hover:text-slate-800'
-                  }`}
-                >
-                  History
-                </button>
+              <div className="border-b border-slate-100 pb-1">
+                <DraggableScrollRow showArrows={false} fadeEdges={false} className="w-full">
+                  <button
+                    type="button"
+                    onClick={() => setRightTab('tax')}
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
+                      rightTab === 'tax' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Tax & Statutory
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightTab('salary')}
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
+                      rightTab === 'salary' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Salary Info
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightTab('docs')}
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
+                      rightTab === 'docs' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Documents
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightTab('history')}
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
+                      rightTab === 'history' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    History
+                  </button>
+                </DraggableScrollRow>
               </div>
 
               {/* TAB CONTENT: Tax & Statutory */}
@@ -948,155 +1081,296 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
               )}
 
               {/* TAB CONTENT: Salary Info */}
-              {rightTab === 'salary' && (
-                <div className="space-y-2.5 text-[11px]">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Monthly Gross CTC:</span>
-                      <span className="font-mono font-bold text-slate-900">₹45,000</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Basic Salary (40%):</span>
-                      <span className="font-mono text-slate-700">₹18,000</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">HRA (20%):</span>
-                      <span className="font-mono text-slate-700">₹9,000</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Conveyance Allowance:</span>
-                      <span className="font-mono text-slate-700">₹3,000</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Special Allowance:</span>
-                      <span className="font-mono text-slate-700">₹15,000</span>
-                    </div>
-                  </div>
+              {rightTab === 'salary' && (() => {
+                const sal = getSalaryBreakdown(selectedRecord);
+                const monthlyTds = selectedRecord.tds ? (selectedRecord.monthly_tds || 0) : 0;
+                const monthlyPf = selectedRecord.pf ? Math.round(sal.basic * 0.12) : 0;
+                const monthlyEsi = selectedRecord.esi ? Math.round(sal.gross_ctc * 0.0075) : 0;
+                const monthlyPt = selectedRecord.pt ? (selectedRecord.pt_monthly || 200) : 0;
+                const totalStatutoryDeductions = monthlyTds + monthlyPf + monthlyEsi + monthlyPt;
+                const netMonthlyTakeHome = sal.gross_ctc - totalStatutoryDeductions;
 
-                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/80 space-y-1">
-                    <div className="flex justify-between font-bold text-slate-900">
-                      <span>Total Statutory Deductions:</span>
-                      <span className="font-mono text-rose-600">-₹8,860</span>
+                return (
+                  <div className="space-y-2.5 text-[11px]">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                        Monthly CTC Breakdown
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsSalaryModalOpen(true)}
+                        className="text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition-colors border border-emerald-200"
+                        title="Edit Salary Structure"
+                      >
+                        <Edit2 className="w-2.5 h-2.5" />
+                        <span>Edit Values</span>
+                      </button>
                     </div>
-                    <div className="flex justify-between font-bold text-emerald-900 pt-1 border-t border-emerald-200">
-                      <span>Net Monthly Take-home:</span>
-                      <span className="font-mono text-emerald-700 text-xs">₹36,140</span>
+
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Monthly Gross CTC:</span>
+                        <span className="font-mono font-bold text-slate-900 text-xs">
+                          ₹{sal.gross_ctc.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">
+                          Basic Salary ({Math.round((sal.basic / sal.gross_ctc) * 100)}%):
+                        </span>
+                        <span className="font-mono text-slate-700">₹{sal.basic.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">
+                          HRA ({Math.round((sal.hra / sal.gross_ctc) * 100)}%):
+                        </span>
+                        <span className="font-mono text-slate-700">₹{sal.hra.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Conveyance Allowance:</span>
+                        <span className="font-mono text-slate-700">₹{sal.conveyance.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Special Allowance:</span>
+                        <span className="font-mono text-slate-700">₹{sal.special_allowance.toLocaleString()}</span>
+                      </div>
+                      {Boolean(sal.other_allowances && sal.other_allowances > 0) && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Other Allowances:</span>
+                          <span className="font-mono text-slate-700">₹{sal.other_allowances.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/80 space-y-1">
+                      <div className="flex justify-between font-bold text-slate-900">
+                        <span>Total Statutory Deductions:</span>
+                        <span className="font-mono text-rose-600">-₹{totalStatutoryDeductions.toLocaleString()}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 flex justify-between font-mono">
+                        <span>(TDS: ₹{monthlyTds.toLocaleString()} • PF: ₹{monthlyPf.toLocaleString()} • ESI: ₹{monthlyEsi.toLocaleString()} • PT: ₹{monthlyPt.toLocaleString()})</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-emerald-900 pt-1 border-t border-emerald-200">
+                        <span>Net Monthly Take-home:</span>
+                        <span className="font-mono text-emerald-700 text-xs">₹{netMonthlyTakeHome.toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB CONTENT: Documents */}
-              {rightTab === 'docs' && (
-                <div className="space-y-2 text-[11px]">
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-emerald-600" />
-                      <div>
-                        <div className="font-bold text-slate-900">Form 16 (FY 2023-24)</div>
-                        <div className="text-[10px] text-slate-400">Part A & Part B digitally signed</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
+              {rightTab === 'docs' && (() => {
+                const docs = getDocuments(selectedRecord);
+                return (
+                  <div className="space-y-2 text-[11px]">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                        Compliance Documents ({docs.length})
+                      </span>
                       <button
                         type="button"
-                        onClick={() => setPreviewDoc({ type: 'form16', record: selectedRecord })}
-                        title="Preview Form 16 Certificate"
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                        onClick={() => {
+                          setEditingDoc(null);
+                          setIsDocModalOpen(true);
+                        }}
+                        className="text-blue-700 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
+                        title="Upload or Add Document"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadForm16(selectedRecord)}
-                        title="Download Form 16"
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>Add Document</span>
                       </button>
                     </div>
-                  </div>
 
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <div className="font-bold text-slate-900">PAN & Aadhaar Verification</div>
-                        <div className="text-[10px] text-slate-400">e-KYC verified via NSDL</div>
-                      </div>
-                    </div>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                      Verified
-                    </span>
-                  </div>
+                    {docs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-2.5 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200 flex items-center justify-between group transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 truncate">{doc.name}</div>
+                            <div className="text-[10px] text-slate-400 truncate">
+                              {doc.description || doc.category} • {doc.uploaded_at}
+                            </div>
+                          </div>
+                        </div>
 
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-purple-600" />
-                      <div>
-                        <div className="font-bold text-slate-900">Form 12BB Declaration</div>
-                        <div className="text-[10px] text-slate-400">80C, 80D, HRA proof submitted</div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Interactive Status Pill */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleDocStatus(doc)}
+                            title="Click to toggle Verified / Pending status"
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                              doc.status === 'Verified'
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : doc.status === 'Rejected'
+                                ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            }`}
+                          >
+                            {doc.status}
+                          </button>
+
+                          {/* Preview if Form 16 or 12BB */}
+                          {(doc.name.includes('Form 16') || doc.name.includes('12BB')) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (doc.name.includes('Form 16')) {
+                                  setPreviewDoc({ type: 'form16', record: selectedRecord });
+                                } else {
+                                  setPreviewDoc({ type: 'form12bb', record: selectedRecord });
+                                }
+                              }}
+                              title="Preview Document"
+                              className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* Edit button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDoc(doc);
+                              setIsDocModalOpen(true);
+                            }}
+                            title="Edit Document Parameters"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-200 rounded cursor-pointer transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewDoc({ type: 'form12bb', record: selectedRecord })}
-                        title="Preview Form 12BB Declaration"
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadForm12BB(selectedRecord)}
-                        title="Download Form 12BB"
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded cursor-pointer transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB CONTENT: History */}
-              {rightTab === 'history' && (
-                <div className="space-y-2 text-[11px]">
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1" />
-                    <div>
-                      <div className="font-bold text-slate-900">Tax Regime Selected: New Regime</div>
-                      <div className="text-[10px] text-slate-400">Opted on 01 Apr 2024 by employee</div>
+              {rightTab === 'history' && (() => {
+                const historyItems = getHistory(selectedRecord);
+                return (
+                  <div className="space-y-2 text-[11px]">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                        Compliance Audit Trail ({historyItems.length})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingHistory(null);
+                          setIsHistoryModalOpen(true);
+                        }}
+                        className="text-purple-700 hover:text-purple-800 font-bold flex items-center gap-1 cursor-pointer bg-purple-50 px-2 py-0.5 rounded-md hover:bg-purple-100 transition-colors border border-purple-200"
+                        title="Add Compliance Event"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>Add Event</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {historyItems.map((h) => {
+                        const dotColor =
+                          h.type === 'regime'
+                            ? 'bg-emerald-500'
+                            : h.type === 'pf'
+                            ? 'bg-blue-500'
+                            : h.type === 'return'
+                            ? 'bg-amber-500'
+                            : h.type === 'audit'
+                            ? 'bg-purple-500'
+                            : 'bg-slate-400';
+
+                        return (
+                          <div
+                            key={h.id}
+                            className="p-2 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200/80 flex items-start justify-between group transition-colors"
+                          >
+                            <div className="flex items-start gap-2 min-w-0 pr-2">
+                              <div className={`w-2 h-2 rounded-full ${dotColor} mt-1.5 shrink-0`} />
+                              <div className="min-w-0">
+                                <div className="font-bold text-slate-900">{h.title}</div>
+                                <div className="text-[10px] text-slate-500">{h.description}</div>
+                                <div className="text-[9px] text-slate-400 font-mono mt-0.5">{h.date}</div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingHistory(h);
+                                setIsHistoryModalOpen(true);
+                              }}
+                              title="Edit Audit Event"
+                              className="p-1 text-slate-400 hover:text-purple-600 hover:bg-slate-200 rounded cursor-pointer transition-colors opacity-70 group-hover:opacity-100 shrink-0"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-1" />
-                    <div>
-                      <div className="font-bold text-slate-900">EPFO UAN Linked & Seeded</div>
-                      <div className="text-[10px] text-slate-400">Verified with Aadhaar OTP on 15 Jan 2024</div>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 mt-1" />
-                    <div>
-                      <div className="font-bold text-slate-900">Form 24Q Q4 Return Filed</div>
-                      <div className="text-[10px] text-slate-400">TDS deducted successfully remitted to Traces</div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleOpenUpdateModal('all')}
-                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-center cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span>Update Compliance Parameters</span>
-                </button>
+                {rightTab === 'tax' && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenUpdateModal('all')}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-center cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Update Compliance Parameters</span>
+                  </button>
+                )}
+
+                {rightTab === 'salary' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSalaryModalOpen(true)}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-center cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit Salary Structure & CTC</span>
+                  </button>
+                )}
+
+                {rightTab === 'docs' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingDoc(null);
+                      setIsDocModalOpen(true);
+                    }}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-center cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Upload / Add Compliance Document</span>
+                  </button>
+                )}
+
+                {rightTab === 'history' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingHistory(null);
+                      setIsHistoryModalOpen(true);
+                    }}
+                    className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-center cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Compliance Event / Note</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1336,6 +1610,44 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
           showToast(`Successfully updated statutory compliance parameters for ${updated.employee_name}!`);
         }}
       />
+
+      {/* Edit Salary Modal */}
+      {isSalaryModalOpen && selectedRecord && (
+        <EditEmployeeSalaryModal
+          isOpen={isSalaryModalOpen}
+          onClose={() => setIsSalaryModalOpen(false)}
+          record={selectedRecord}
+          onSave={handleSaveSalary}
+        />
+      )}
+
+      {/* Manage Compliance Document Modal */}
+      {isDocModalOpen && selectedRecord && (
+        <ManageComplianceDocModal
+          isOpen={isDocModalOpen}
+          onClose={() => {
+            setIsDocModalOpen(false);
+            setEditingDoc(null);
+          }}
+          record={selectedRecord}
+          editingDoc={editingDoc}
+          onSave={handleSaveDoc}
+        />
+      )}
+
+      {/* Manage Compliance History Modal */}
+      {isHistoryModalOpen && selectedRecord && (
+        <ManageComplianceHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => {
+            setIsHistoryModalOpen(false);
+            setEditingHistory(null);
+          }}
+          record={selectedRecord}
+          editingHistory={editingHistory}
+          onSave={handleSaveHistory}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* STATUTORY DOCUMENT PREVIEW MODAL (FORM 16 / FORM 12BB)                   */}

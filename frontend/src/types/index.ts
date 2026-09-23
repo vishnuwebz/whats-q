@@ -1001,6 +1001,33 @@ export interface ReimbursementItem {
   notes?: string;
 }
 
+export interface EmployeeSalaryBreakdown {
+  gross_ctc: number;
+  basic: number;
+  hra: number;
+  conveyance: number;
+  special_allowance: number;
+  other_allowances?: number;
+}
+
+export interface ComplianceDocumentItem {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  status: 'Verified' | 'Pending' | 'Rejected';
+  uploaded_at: string;
+  file_size?: string;
+}
+
+export interface ComplianceHistoryItem {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  type: 'regime' | 'pf' | 'esi' | 'return' | 'audit' | 'general';
+}
+
 export interface EmployeeTaxCompliance {
   id: string | number;
   employee_name: string;
@@ -1023,6 +1050,9 @@ export interface EmployeeTaxCompliance {
   pt_state?: string;
   verification_notes?: string;
   last_updated?: string;
+  salary_breakdown?: EmployeeSalaryBreakdown;
+  documents?: ComplianceDocumentItem[];
+  history?: ComplianceHistoryItem[];
 }
 
 export interface OffCyclePaymentItem {
