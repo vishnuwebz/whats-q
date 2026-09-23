@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Settings, Building2, ShieldCheck, FileText, Landmark,
   Sliders, Check, Info, Save, RefreshCw,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { PayrollSettingsState, PayrollSubView } from '@/types';
 import { INITIAL_PAYROLL_SETTINGS, INITIAL_EMPLOYEE_SALARY_DETAILS, setPayrollCache } from './payrollData';
+import { getInitialPayrollSubtab, updatePayrollNavigation } from './payrollRouting';
 
 interface Props {
   settings: PayrollSettingsState;
@@ -45,13 +46,27 @@ const DEFAULT_SALARY_COMPONENTS: SalaryComponentItem[] = [
   { id: 'c12', name: 'Labour Welfare Fund (LWF)', code: 'LWF', type: 'Deduction', category: 'Statutory', calculation: '₹20/yr employee + ₹40/yr employer', taxable: false, pf_eligible: false, esi_eligible: false, enabled: true },
 ];
 
+export const SETTINGS_TABS = [
+  'General',
+  'Salary Components',
+  'Deductions & Contributions',
+  'Tax Settings',
+  'Pay Schedule',
+  'Bank & Payment',
+  'Approval Workflow',
+  'Notifications',
+  'Other Settings',
+] as const;
+
 export const PayrollSettingsView: React.FC<Props> = ({
   settings: initialSettings,
   onNavigate,
   onUpdateSettings,
 }) => {
   const [settings, setSettings] = useState<PayrollSettingsState>(initialSettings);
-  const [activeTab, setActiveTab] = useState<string>('General');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return getInitialPayrollSubtab('settings', 'General', SETTINGS_TABS);
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -103,17 +118,31 @@ export const PayrollSettingsView: React.FC<Props> = ({
     });
   }, [employeeSearch, selectedEmpDept]);
 
-  const tabs = [
-    'General',
-    'Salary Components',
-    'Deductions & Contributions',
-    'Tax Settings',
-    'Pay Schedule',
-    'Bank & Payment',
-    'Approval Workflow',
-    'Notifications',
-    'Other Settings',
-  ];
+  const tabs = SETTINGS_TABS;
+
+  const handleSelectTab = (tab: string, push = true) => {
+    setActiveTab(tab);
+    updatePayrollNavigation('settings', tab, undefined, push);
+    if (tab === 'Pay Schedule') setSelectedKpi('frequency');
+    else if (tab === 'Salary Components' || tab === 'Deductions & Contributions') setSelectedKpi('components');
+    else if (tab === 'Tax Settings') setSelectedKpi('compliance');
+    else setSelectedKpi(null);
+  };
+
+  // Sync URL on initial mount and when activeTab updates
+  useEffect(() => {
+    updatePayrollNavigation('settings', activeTab, undefined, false);
+  }, [activeTab]);
+
+  // Sync activeTab on popstate (browser back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const restored = getInitialPayrollSubtab('settings', 'General', SETTINGS_TABS);
+      setActiveTab(restored);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const showToast = (msg: string) => {
     setNotification(msg);
@@ -224,7 +253,7 @@ export const PayrollSettingsView: React.FC<Props> = ({
           type="button"
           onClick={() => {
             setSelectedKpi('frequency');
-            setActiveTab('Pay Schedule');
+            handleSelectTab('Pay Schedule');
             showToast('Showing Pay Schedule & Cutoff Frequency Rules');
           }}
           className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
@@ -303,7 +332,7 @@ export const PayrollSettingsView: React.FC<Props> = ({
           type="button"
           onClick={() => {
             setSelectedKpi('components');
-            setActiveTab('Salary Components');
+            handleSelectTab('Salary Components');
             showToast('Showing 12 Salary Earnings & Deductions Components');
           }}
           className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
@@ -347,7 +376,7 @@ export const PayrollSettingsView: React.FC<Props> = ({
           type="button"
           onClick={() => {
             setSelectedKpi('compliance');
-            setActiveTab('Tax Settings');
+            handleSelectTab('Tax Settings');
             showToast('Showing Statutory Tax & Compliance Configuration');
           }}
           className={`bg-white rounded-2xl p-5 text-left transition-all cursor-pointer relative group ${
@@ -391,13 +420,7 @@ export const PayrollSettingsView: React.FC<Props> = ({
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                if (tab === 'Pay Schedule') setSelectedKpi('frequency');
-                else if (tab === 'Salary Components' || tab === 'Deductions & Contributions') setSelectedKpi('components');
-                else if (tab === 'Tax Settings') setSelectedKpi('compliance');
-                else setSelectedKpi(null);
-              }}
+              onClick={() => handleSelectTab(tab)}
               className={`px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === tab
                   ? 'bg-emerald-600 text-white shadow-xs'

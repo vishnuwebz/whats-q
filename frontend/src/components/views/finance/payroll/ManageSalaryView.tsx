@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Layers, Users, IndianRupee, ArrowUpRight, Plus, Search, Filter,
   Edit2, Download, ChevronLeft, ChevronRight, FileText,
@@ -9,6 +9,9 @@ import {
 import { SalaryStructure, EmployeeSalaryAssignment, SalaryComponentItem } from '@/types';
 import { NewSalaryStructureModal } from './modals/NewSalaryStructureModal';
 import { useQiyamStore } from '@/store/useQiyamStore';
+import { getInitialPayrollSubtab, updatePayrollNavigation } from './payrollRouting';
+
+export const SALARY_TABS = ['structures', 'components', 'salaries', 'revisions', 'bulk'] as const;
 
 interface Props {
   structures: SalaryStructure[];
@@ -52,7 +55,30 @@ export const ManageSalaryView: React.FC<Props> = ({
   onDeleteStructure,
   onUpdateAssignments,
 }) => {
-  const [activeTab, setActiveTab] = useState<'structures' | 'components' | 'salaries' | 'revisions' | 'bulk'>('structures');
+  const [activeTab, setActiveTab] = useState<'structures' | 'components' | 'salaries' | 'revisions' | 'bulk'>(() => {
+    return getInitialPayrollSubtab('manage-salary', 'structures', SALARY_TABS) as any;
+  });
+
+  const handleSelectTab = (tab: 'structures' | 'components' | 'salaries' | 'revisions' | 'bulk', push = true) => {
+    setActiveTab(tab);
+    updatePayrollNavigation('manage-salary', tab, undefined, push);
+  };
+
+  // Sync URL on initial mount and when activeTab updates
+  useEffect(() => {
+    updatePayrollNavigation('manage-salary', activeTab, undefined, false);
+  }, [activeTab]);
+
+  // Sync activeTab on popstate
+  useEffect(() => {
+    const handlePopState = () => {
+      const restored = getInitialPayrollSubtab('manage-salary', 'structures', SALARY_TABS) as any;
+      setActiveTab(restored);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStructure, setEditingStructure] = useState<SalaryStructure | null>(null);
   const [editingMasterComp, setEditingMasterComp] = useState<ComponentMasterItem | null>(null);
@@ -389,7 +415,7 @@ export const ManageSalaryView: React.FC<Props> = ({
     setRevisionHistory((prev) => [...newRevisions, ...prev]);
     setBulkSelectedIds({});
     showToast(`Bulk salary increment applied to ${selectedCount} employees successfully!`);
-    setActiveTab('salaries');
+    handleSelectTab('salaries');
   };
 
   const handleSelectAllBulk = (checked: boolean) => {
@@ -416,7 +442,7 @@ export const ManageSalaryView: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
           <button
-            onClick={() => setActiveTab('structures')}
+            onClick={() => handleSelectTab('structures')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'structures'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -426,7 +452,7 @@ export const ManageSalaryView: React.FC<Props> = ({
             Salary Structures
           </button>
           <button
-            onClick={() => setActiveTab('components')}
+            onClick={() => handleSelectTab('components')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'components'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -441,7 +467,7 @@ export const ManageSalaryView: React.FC<Props> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('salaries')}
+            onClick={() => handleSelectTab('salaries')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'salaries'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -456,7 +482,7 @@ export const ManageSalaryView: React.FC<Props> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('revisions')}
+            onClick={() => handleSelectTab('revisions')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'revisions'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -471,7 +497,7 @@ export const ManageSalaryView: React.FC<Props> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('bulk')}
+            onClick={() => handleSelectTab('bulk')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'bulk'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -891,7 +917,7 @@ export const ManageSalaryView: React.FC<Props> = ({
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Recent Changes</h3>
                 <span
-                  onClick={() => setActiveTab('revisions')}
+                  onClick={() => handleSelectTab('revisions')}
                   className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
                 >
                   View All
@@ -938,7 +964,7 @@ export const ManageSalaryView: React.FC<Props> = ({
                 Use our bulk increment simulator to apply percentage hikes or flat increments across teams.
               </p>
               <button
-                onClick={() => setActiveTab('bulk')}
+                onClick={() => handleSelectTab('bulk')}
                 className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer pt-1"
               >
                 <span>Launch Bulk Increment Tool</span>

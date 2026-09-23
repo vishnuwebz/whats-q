@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   Users, Wallet, PieChart, Landmark, AlertTriangle, ArrowRight, Search,
   Filter, Eye, MoreVertical, CheckCircle2, ChevronLeft, ChevronRight,
@@ -11,6 +11,7 @@ import { PayslipModal } from './modals/PayslipModal';
 import { RunPayrollReviewModal } from './modals/RunPayrollReviewModal';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
+import { updatePayrollNavigation } from './payrollRouting';
 
 interface Props {
   employees: EmployeeSalaryDetail[];
@@ -28,8 +29,48 @@ export const RunPayrollView: React.FC<Props> = ({
   // Master employee list (editable in wizard)
   const [employeesList, setEmployeesList] = useState<EmployeeSalaryDetail[]>(initialEmployees);
 
-  // Stepper state: 1: Select Period & Review (Overview), 3: Confirm & Process, 4: Complete
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  // Stepper state with URL and LocalStorage persistence
+  const [currentStep, setCurrentStepState] = useState<number>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = params.get('step');
+      if (stepParam && ['1', '2', '3', '4'].includes(stepParam)) {
+        return Number(stepParam);
+      }
+      const saved = localStorage.getItem('whatsq_payroll_run_step');
+      if (saved && ['1', '2', '3', '4'].includes(saved)) {
+        return Number(saved);
+      }
+    } catch {}
+    return 1;
+  });
+
+  const setCurrentStep = useCallback((stepOrFn: number | ((prev: number) => number)) => {
+    setCurrentStepState((prev) => {
+      const nextStep = typeof stepOrFn === 'function' ? stepOrFn(prev) : stepOrFn;
+      try {
+        localStorage.setItem('whatsq_payroll_run_step', String(nextStep));
+      } catch {}
+      updatePayrollNavigation('run-payroll', undefined, { step: nextStep });
+      return nextStep;
+    });
+  }, []);
+
+  useEffect(() => {
+    updatePayrollNavigation('run-payroll', undefined, { step: currentStep }, false);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = params.get('step');
+      if (stepParam && ['1', '2', '3', '4'].includes(stepParam)) {
+        setCurrentStepState(Number(stepParam));
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Scope filter bar states
   const [selectedMonth, setSelectedMonth] = useState('September 2026');

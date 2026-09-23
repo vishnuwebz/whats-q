@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Users, Wallet, Clock, XCircle, Calendar, Plus, Search, Filter,
   CheckCircle2, ChevronLeft, ChevronRight, FileText,
@@ -11,6 +11,9 @@ import { ReimbursementItem } from '@/types';
 import { NewReimbursementModal } from './modals/NewReimbursementModal';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
+import { getInitialPayrollSubtab, updatePayrollNavigation } from './payrollRouting';
+
+export const REIMBURSEMENT_TABS = ['all', 'pending', 'approved', 'rejected', 'draft'] as const;
 
 interface Props {
   reimbursements: ReimbursementItem[];
@@ -35,7 +38,29 @@ export const ReimbursementsView: React.FC<Props> = ({
   onAddReimbursement,
   onUpdateStatus,
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'draft'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'draft'>(() => {
+    return getInitialPayrollSubtab('reimbursements', 'all', REIMBURSEMENT_TABS) as any;
+  });
+
+  const handleSelectTab = (tab: 'all' | 'pending' | 'approved' | 'rejected' | 'draft', push = true) => {
+    setActiveTab(tab);
+    updatePayrollNavigation('reimbursements', tab, undefined, push);
+  };
+
+  // Sync URL on initial mount and when activeTab updates
+  useEffect(() => {
+    updatePayrollNavigation('reimbursements', activeTab, undefined, false);
+  }, [activeTab]);
+
+  // Sync activeTab on popstate
+  useEffect(() => {
+    const handlePopState = () => {
+      const restored = getInitialPayrollSubtab('reimbursements', 'all', REIMBURSEMENT_TABS) as any;
+      setActiveTab(restored);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All Status');
@@ -175,7 +200,7 @@ export const ReimbursementsView: React.FC<Props> = ({
   };
 
   const handleResetFilters = () => {
-    setActiveTab('all');
+    handleSelectTab('all');
     setSearchQuery('');
     setSelectedCategory('All Categories');
     setSelectedStatusFilter('All Status');
@@ -759,7 +784,7 @@ export const ReimbursementsView: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
           <button
-            onClick={() => setActiveTab('all')}
+            onClick={() => handleSelectTab('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'all'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -774,7 +799,7 @@ export const ReimbursementsView: React.FC<Props> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('pending')}
+            onClick={() => handleSelectTab('pending')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'pending'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -791,7 +816,7 @@ export const ReimbursementsView: React.FC<Props> = ({
             )}
           </button>
           <button
-            onClick={() => setActiveTab('approved')}
+            onClick={() => handleSelectTab('approved')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'approved'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -806,7 +831,7 @@ export const ReimbursementsView: React.FC<Props> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('rejected')}
+            onClick={() => handleSelectTab('rejected')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'rejected'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -821,7 +846,7 @@ export const ReimbursementsView: React.FC<Props> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('draft')}
+            onClick={() => handleSelectTab('draft')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'draft'
                 ? 'bg-emerald-600 text-white shadow-xs'

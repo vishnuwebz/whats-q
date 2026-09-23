@@ -157,6 +157,11 @@ export function resolveTabFromPath(rawPath: string, search = '', hash = ''): Tab
     }
   }
 
+  // 2b. Finance payroll sub-route prefix match
+  if (normalized === '/finance/payroll' || normalized.startsWith('/finance/payroll/') || normalized.startsWith('/payroll/')) {
+    return 'finance-payroll';
+  }
+
   // 3. Check query parameters (?tab=... or ?page=... or ?view=...)
   if (search) {
     try {

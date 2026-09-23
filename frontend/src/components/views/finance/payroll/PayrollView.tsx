@@ -40,13 +40,17 @@ import { TaxComplianceView } from './TaxComplianceView';
 import { OffCyclePayrollView } from './OffCyclePayrollView';
 import { PayrollReportsView } from './PayrollReportsView';
 import { PayrollSettingsView } from './PayrollSettingsView';
+import {
+  getInitialPayrollView,
+  updatePayrollNavigation
+} from './payrollRouting';
 
 export const PayrollView: React.FC = () => {
   const store = useQiyamStore();
   const { addToast, employees: storeEmployees } = store;
 
-  // Navigation State
-  const [currentView, setCurrentView] = useState<PayrollSubView>('overview');
+  // Navigation State with URL & LocalStorage Persistence
+  const [currentView, setCurrentView] = useState<PayrollSubView>(() => getInitialPayrollView());
 
   // Master State with LocalStorage Persistence
   const [runs, setRuns] = useState<PayrollRunItem[]>(() =>
@@ -141,6 +145,31 @@ export const PayrollView: React.FC = () => {
     if (activeBtn) {
       activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
+  }, [currentView]);
+
+  // Handle selecting payroll view with URL & LocalStorage sync
+  const handleSelectView = (view: PayrollSubView, pushToHistory = false) => {
+    setViewingRun(null);
+    setCurrentView(view);
+    const savedSubtab = localStorage.getItem(`whatsq_payroll_subtab_${view}`);
+    updatePayrollNavigation(view, savedSubtab || undefined, undefined, pushToHistory);
+  };
+
+  // Sync navigation on popstate (browser Back/Forward buttons)
+  useEffect(() => {
+    const handlePopState = () => {
+      const popped = getInitialPayrollView();
+      setCurrentView(popped);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Ensure currentView URL param is synced on initial mount if not already
+  useEffect(() => {
+    const savedSubtab = localStorage.getItem(`whatsq_payroll_subtab_${currentView}`);
+    updatePayrollNavigation(currentView, savedSubtab || undefined, undefined, false);
   }, [currentView]);
 
   // Pending reimbursements count
@@ -239,7 +268,7 @@ export const PayrollView: React.FC = () => {
     const updated = [newRun, ...runs.filter((r) => r.id !== newRun.id)];
     setRuns(updated);
     setPayrollCache('runs', updated);
-    setCurrentView('overview');
+    handleSelectView('overview', true);
     addToast(`Payroll for ${newRun.month} processed and disbursed successfully!`, 'success');
   };
 
@@ -336,10 +365,7 @@ export const PayrollView: React.FC = () => {
                   <button
                     key={tab.id}
                     data-active={isActive ? 'true' : undefined}
-                    onClick={() => {
-                      setViewingRun(null);
-                      setCurrentView(tab.id);
-                    }}
+                    onClick={() => handleSelectView(tab.id, true)}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                       isActive
                         ? 'bg-emerald-600 text-white shadow-xs'
@@ -372,7 +398,7 @@ export const PayrollView: React.FC = () => {
         {currentView === 'overview' && (
           <PayrollDashboardView
             runs={runs}
-            onNavigate={(view) => setCurrentView(view)}
+            onNavigate={(view) => handleSelectView(view, true)}
             onViewRun={(run) => setViewingRun(run)}
           />
         )}
@@ -380,7 +406,7 @@ export const PayrollView: React.FC = () => {
         {currentView === 'run-payroll' && (
           <RunPayrollView
             employees={employees}
-            onBackToDashboard={() => setCurrentView('overview')}
+            onBackToDashboard={() => handleSelectView('overview', true)}
             onPayrollCompleted={handlePayrollCompleted}
             onAddEmployee={(newEmp) => {
               setEmployees((prev) => {
@@ -428,7 +454,7 @@ export const PayrollView: React.FC = () => {
         {currentView === 'reports' && (
           <PayrollReportsView
             reports={reports}
-            onNavigate={(view) => setCurrentView(view)}
+            onNavigate={(view) => handleSelectView(view, true)}
             onGenerateReport={handleGenerateReport}
           />
         )}
@@ -436,7 +462,7 @@ export const PayrollView: React.FC = () => {
         {currentView === 'settings' && (
           <PayrollSettingsView
             settings={settings}
-            onNavigate={(view) => setCurrentView(view)}
+            onNavigate={(view) => handleSelectView(view, true)}
             onUpdateSettings={handleUpdateSettings}
           />
         )}

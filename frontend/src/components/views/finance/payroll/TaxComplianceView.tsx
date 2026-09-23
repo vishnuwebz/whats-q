@@ -17,6 +17,9 @@ import { EditEmployeeSalaryModal } from './modals/EditEmployeeSalaryModal';
 import { ManageComplianceDocModal } from './modals/ManageComplianceDocModal';
 import { ManageComplianceHistoryModal } from './modals/ManageComplianceHistoryModal';
 import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
+import { getInitialPayrollSubtab, updatePayrollNavigation } from './payrollRouting';
+
+export const TAX_COMPLIANCE_TABS = ['employees', 'tds', 'pf', 'esi', 'pt', 'other'] as const;
 
 interface Props {
   records: EmployeeTaxCompliance[];
@@ -101,7 +104,9 @@ export const getHistory = (record: EmployeeTaxCompliance): ComplianceHistoryItem
 };
 
 export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) => {
-  const [activeTab, setActiveTab] = useState<'employees' | 'tds' | 'pf' | 'esi' | 'pt' | 'other'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'tds' | 'pf' | 'esi' | 'pt' | 'other'>(() => {
+    return getInitialPayrollSubtab('tax-compliance', 'employees', TAX_COMPLIANCE_TABS) as any;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [selectedStatus, setSelectedStatus] = useState('All Compliance Status');
@@ -118,7 +123,42 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
   }, [records]);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateModalSection, setUpdateModalSection] = useState<'all' | 'tds' | 'pf' | 'esi' | 'pt'>('all');
-  const [rightTab, setRightTab] = useState<'tax' | 'salary' | 'docs' | 'history'>('tax');
+  const [rightTab, setRightTab] = useState<'tax' | 'salary' | 'docs' | 'history'>(() => {
+    try {
+      const saved = localStorage.getItem('whatsq_payroll_tax_right_tab');
+      if (saved && ['tax', 'salary', 'docs', 'history'].includes(saved)) {
+        return saved as any;
+      }
+    } catch {}
+    return 'tax';
+  });
+
+  const handleSelectTab = (tab: 'employees' | 'tds' | 'pf' | 'esi' | 'pt' | 'other', push = true) => {
+    setActiveTab(tab);
+    updatePayrollNavigation('tax-compliance', tab, undefined, push);
+  };
+
+  const handleSelectRightTab = (tab: 'tax' | 'salary' | 'docs' | 'history') => {
+    setRightTab(tab);
+    try {
+      localStorage.setItem('whatsq_payroll_tax_right_tab', tab);
+    } catch {}
+  };
+
+  // Sync URL on initial mount and when activeTab updates
+  useEffect(() => {
+    updatePayrollNavigation('tax-compliance', activeTab, undefined, false);
+  }, [activeTab]);
+
+  // Sync activeTab on popstate
+  useEffect(() => {
+    const handlePopState = () => {
+      const restored = getInitialPayrollSubtab('tax-compliance', 'employees', TAX_COMPLIANCE_TABS) as any;
+      setActiveTab(restored);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [previewDoc, setPreviewDoc] = useState<{ type: 'form16' | 'form12bb'; record: EmployeeTaxCompliance } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -512,7 +552,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
       {/* Sub-Tabs (Screenshot 6) */}
       <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none py-1">
         <button
-          onClick={() => setActiveTab('employees')}
+          onClick={() => handleSelectTab('employees')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'employees'
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -522,7 +562,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
           Employees
         </button>
         <button
-          onClick={() => setActiveTab('tds')}
+          onClick={() => handleSelectTab('tds')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
             activeTab === 'tds'
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -537,7 +577,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
           </span>
         </button>
         <button
-          onClick={() => setActiveTab('pf')}
+          onClick={() => handleSelectTab('pf')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
             activeTab === 'pf'
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -552,7 +592,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
           </span>
         </button>
         <button
-          onClick={() => setActiveTab('esi')}
+          onClick={() => handleSelectTab('esi')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
             activeTab === 'esi'
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -567,7 +607,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
           </span>
         </button>
         <button
-          onClick={() => setActiveTab('pt')}
+          onClick={() => handleSelectTab('pt')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'pt'
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -577,7 +617,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
           Professional Tax
         </button>
         <button
-          onClick={() => setActiveTab('other')}
+          onClick={() => handleSelectTab('other')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'other'
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -868,7 +908,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                 <DraggableScrollRow showArrows={false} fadeEdges={false} className="w-full">
                   <button
                     type="button"
-                    onClick={() => setRightTab('tax')}
+                    onClick={() => handleSelectRightTab('tax')}
                     className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
                       rightTab === 'tax' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
@@ -877,7 +917,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRightTab('salary')}
+                    onClick={() => handleSelectRightTab('salary')}
                     className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
                       rightTab === 'salary' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
@@ -886,7 +926,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRightTab('docs')}
+                    onClick={() => handleSelectRightTab('docs')}
                     className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
                       rightTab === 'docs' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
@@ -895,7 +935,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRightTab('history')}
+                    onClick={() => handleSelectRightTab('history')}
                     className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors text-xs shrink-0 ${
                       rightTab === 'history' ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
