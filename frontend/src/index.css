@@ -9,6 +9,10 @@
   }
 }
 
+.font-quote {
+  font-family: 'Caveat', 'Dancing Script', 'Brush Script MT', cursive;
+}
+
 /* Custom modern scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

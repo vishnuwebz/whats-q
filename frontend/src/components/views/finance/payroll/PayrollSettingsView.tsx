@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { PayrollSettingsState, PayrollSubView } from '@/types';
 import { setPayrollCache } from './payrollData';
+import { PeoplePowerProgressBadge } from './PeoplePowerProgressBadge';
 
 interface Props {
   settings: PayrollSettingsState;
@@ -94,13 +95,16 @@ export const PayrollSettingsView: React.FC<Props> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
-          <div>
-            <h4 className="text-xs font-bold text-slate-900">Configure once. Payroll on autopilot.</h4>
-            <p className="text-[11px] text-slate-500">Rules and tax formulas are applied automatically to every run.</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-emerald-600/20">
-            <Settings className="w-5 h-5" />
+        <div className="flex items-center gap-3 shrink-0">
+          <PeoplePowerProgressBadge />
+          <div className="hidden sm:flex items-center gap-3 bg-white/90 backdrop-blur-xs px-4 py-3 rounded-2xl border border-white/60 shadow-2xs">
+            <div>
+              <h4 className="text-xs font-bold text-slate-900">Configure once. Payroll on autopilot.</h4>
+              <p className="text-[11px] text-slate-500">Rules and tax formulas are applied automatically to every run.</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-emerald-600/20">
+              <Settings className="w-5 h-5" />
+            </div>
           </div>
         </div>
       </div>

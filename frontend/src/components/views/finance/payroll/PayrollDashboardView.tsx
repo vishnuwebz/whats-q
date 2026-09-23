@@ -6,6 +6,7 @@ import {
   ArrowRight, Shield, Award, HelpCircle
 } from 'lucide-react';
 import { PayrollRunItem, PayrollSubView } from '@/types';
+import { PeoplePowerProgressBadge } from './PeoplePowerProgressBadge';
 
 interface Props {
   runs: PayrollRunItem[];
@@ -43,14 +44,9 @@ export const PayrollDashboardView: React.FC<Props> = ({ runs, onNavigate, onView
           </p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/90 backdrop-blur-xs px-5 py-3 rounded-2xl border border-white/60 shadow-2xs shrink-0">
-          <div className="text-center pr-4 border-r border-slate-200">
-            <p className="text-xs font-serif italic text-slate-700 font-bold">
-              “People Power Progress”
-            </p>
-            <div className="w-12 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full mx-auto mt-1" />
-          </div>
-          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200/60">
+        <div className="flex items-center gap-3 shrink-0">
+          <PeoplePowerProgressBadge />
+          <div className="hidden sm:flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3.5 py-3 rounded-2xl border border-emerald-200/60 shadow-2xs">
             <Wallet className="w-5 h-5 text-emerald-600 shrink-0" />
             <span className="font-bold text-xs">Payroll 2024</span>
           </div>

@@ -113,6 +113,32 @@ export const PayrollView: React.FC = () => {
   // Scroll ref for horizontal tab bar
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
+  // Enable PC mouse wheel horizontal scrolling on the sub-nav tab bar
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Smooth scroll active tab into view when switched
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const activeBtn = el.querySelector('[data-active="true"]') as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [currentView]);
+
   // Pending reimbursements count
   const pendingReimbursementsCount = reimbursements.filter((r) => r.status === 'Pending').length;
 
@@ -276,53 +302,56 @@ export const PayrollView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
-      {/* Standard Qiyam Business OS Header Component */}
-      <Header
-        title={headerInfo.title}
-        subtitle={headerInfo.subtitle}
-        primaryActionLabel={headerInfo.actionLabel}
-        onPrimaryAction={headerInfo.onAction}
-      />
+      {/* Pinned Top Navigation Bar & Sub-Nav Toolbar */}
+      <div className="sticky top-0 z-30 bg-white shadow-xs shrink-0">
+        <Header
+          title={headerInfo.title}
+          subtitle={headerInfo.subtitle}
+          primaryActionLabel={headerInfo.actionLabel}
+          onPrimaryAction={headerInfo.onAction}
+        />
 
-      {/* Unified Secondary Sub-Navigation Bar matching Qiyam design pattern */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-2xs">
-        <div className="px-4 sm:px-6">
-          <div
-            ref={scrollContainerRef}
-            className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-2.5"
-          >
-            {navTabs.map((tab) => {
-              const IconComponent = tab.icon;
-              const isActive = currentView === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setViewingRun(null);
-                    setCurrentView(tab.id);
-                  }}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
-                  }`}
-                >
-                  <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span>{tab.label}</span>
-                  {tab.badge !== undefined && (
-                    <span
-                      className={`ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full border ${
-                        isActive
-                          ? 'bg-white text-emerald-800 border-white/60'
-                          : tab.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Unified Secondary Sub-Navigation Bar matching Qiyam design pattern */}
+        <div className="bg-white/95 backdrop-blur-md border-b border-slate-200">
+          <div className="px-4 sm:px-6">
+            <div
+              ref={scrollContainerRef}
+              className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-2.5"
+            >
+              {navTabs.map((tab) => {
+                const IconComponent = tab.icon;
+                const isActive = currentView === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    data-active={isActive ? 'true' : undefined}
+                    onClick={() => {
+                      setViewingRun(null);
+                      setCurrentView(tab.id);
+                    }}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
+                    }`}
+                  >
+                    <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span>{tab.label}</span>
+                    {tab.badge !== undefined && (
+                      <span
+                        className={`ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full border ${
+                          isActive
+                            ? 'bg-white text-emerald-800 border-white/60'
+                            : tab.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
