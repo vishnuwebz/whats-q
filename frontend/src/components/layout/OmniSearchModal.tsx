@@ -702,10 +702,16 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center pt-6 sm:pt-16 p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[82vh] animate-in zoom-in-95 duration-100">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center pt-6 sm:pt-16 p-3 sm:p-4 animate-in fade-in duration-150"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[82vh] animate-in zoom-in-95 duration-100"
+      >
         
-        {/* ── TOP SEARCH INPUT ── */}
+        {/* ── TOP SEARCH INPUT & MODERN CLOSE BAR ── */}
         <div className="px-3.5 sm:px-4 py-3 sm:py-3.5 border-b border-slate-200 flex items-center gap-2.5 sm:gap-3 bg-white">
           <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
             <Search className="w-4 h-4" />
@@ -718,18 +724,37 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
             placeholder="Search pages (e.g. Leave Management, Payroll), leads, jobs, staff, invoices..."
             className="w-full bg-transparent text-sm sm:text-base font-semibold text-slate-900 placeholder-slate-400 outline-none"
           />
+
+          {/* Quick Clear Button if search query entered */}
           {query && (
             <button
-              onClick={() => setQuery('')}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              title="Clear search"
+              onClick={() => {
+                setQuery('');
+                inputRef.current?.focus();
+              }}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+              title="Clear search text"
+              aria-label="Clear search text"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded-md shadow-2xs">
-            ESC
-          </kbd>
+
+          {/* Modern Top-Right Close Bar */}
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 shrink-0">
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 hover:border-rose-200 transition-all cursor-pointer group shadow-2xs active:scale-95"
+              title="Close Search (Esc)"
+              aria-label="Close search modal"
+            >
+              <span className="text-xs font-semibold hidden sm:inline">Close</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono font-bold text-slate-500 bg-white border border-slate-200 rounded shadow-2xs group-hover:border-rose-200">
+                ESC
+              </kbd>
+              <X className="w-4 h-4 text-slate-400 group-hover:text-rose-600 group-hover:rotate-90 transition-all" />
+            </button>
+          </div>
         </div>
 
         {/* ── CATEGORY FILTER PILLS ── */}
