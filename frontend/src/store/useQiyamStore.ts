@@ -366,6 +366,8 @@ export interface QNotification {
   target: TabType;
   itemId?: string | number;
   itemType?: 'conversation' | 'invoice' | 'job' | 'route' | 'lead' | 'approval' | 'appointment' | 'deal';
+  severity?: 'info' | 'success' | 'warning' | 'error' | 'ai';
+  category?: 'operations' | 'finance' | 'messages' | 'alerts' | 'system';
 }
 
 interface QiyamState {
@@ -592,6 +594,9 @@ interface QiyamState {
   notifications: QNotification[];
   markNotificationRead: (id: number) => void;
   markAllNotificationsRead: () => void;
+  dismissNotification: (id: number) => void;
+  clearAllNotifications: () => void;
+  resetNotificationsToDefault: () => void;
   handleNotificationClick: (notif: QNotification) => void;
 
   addLead: (lead: Partial<Lead>) => Promise<Lead>;
@@ -673,13 +678,32 @@ interface QiyamState {
 }
 
 const INITIAL_NOTIFICATIONS: QNotification[] = [
-  { id: 1, title: 'New Booking from Amit Verma', text: 'AC Repair in Koyilandy scheduled for tomorrow 10:00 AM.', time: '2m ago', unread: true, target: 'conversations', itemId: 1, itemType: 'conversation' },
-  { id: 2, title: 'UPI Payment Received ₹2,800', text: 'Priya Sharma completed 30% advance via GPay.', time: '15m ago', unread: true, target: 'finance-invoices', itemId: 'INV-2024-0183', itemType: 'invoice' },
-  { id: 3, title: 'Overdue Job Flagged', text: 'Job #JOB-1024 delayed near Beach Road. Assign Amit Sharma.', time: '30m ago', unread: true, target: 'ops-jobs', itemId: 'JOB-1024', itemType: 'job' },
-  { id: 4, title: 'AI Route RTE-001 Ready', text: '12-stop GPS optimized route created for Ramesh Kumar.', time: '1h ago', unread: true, target: 'ops-routes', itemId: 'RTE-001', itemType: 'route' },
-  { id: 5, title: 'New WhatsApp Click-to-Ad Lead', text: 'Inquiry from +91 90000 11123 for AC Installation.', time: '2h ago', unread: true, target: 'crm-leads', itemId: 1, itemType: 'lead' },
-  { id: 6, title: 'Purchase Approval Needed', text: 'Warehouse spare parts request APR-1024 (₹25,000) pending.', time: '3h ago', unread: true, target: 'automation-approvals', itemId: 'APR-1024', itemType: 'approval' },
+  { id: 1, title: 'New Booking from Amit Verma', text: 'AC Repair in Koyilandy scheduled for tomorrow 10:00 AM.', time: '2m ago', unread: true, target: 'conversations', itemId: 1, itemType: 'conversation', severity: 'info', category: 'messages' },
+  { id: 2, title: 'UPI Payment Received ₹2,800', text: 'Priya Sharma completed 30% advance via GPay.', time: '15m ago', unread: true, target: 'finance-invoices', itemId: 'INV-2024-0183', itemType: 'invoice', severity: 'success', category: 'finance' },
+  { id: 3, title: 'Overdue Job Flagged', text: 'Job #JOB-1024 delayed near Beach Road. Assign Amit Sharma.', time: '30m ago', unread: true, target: 'ops-jobs', itemId: 'JOB-1024', itemType: 'job', severity: 'error', category: 'alerts' },
+  { id: 4, title: 'AI Route RTE-001 Ready', text: '12-stop GPS optimized route created for Ramesh Kumar.', time: '1h ago', unread: true, target: 'ops-routes', itemId: 'RTE-001', itemType: 'route', severity: 'ai', category: 'operations' },
+  { id: 5, title: 'New WhatsApp Click-to-Ad Lead', text: 'Inquiry from +91 90000 11123 for AC Installation.', time: '2h ago', unread: true, target: 'crm-leads', itemId: 1, itemType: 'lead', severity: 'info', category: 'messages' },
+  { id: 6, title: 'Purchase Approval Needed', text: 'Warehouse spare parts request APR-1024 (₹25,000) pending.', time: '3h ago', unread: true, target: 'automation-approvals', itemId: 'APR-1024', itemType: 'approval', severity: 'warning', category: 'alerts' },
 ];
+
+function getStoredNotifications(): QNotification[] {
+  if (typeof window === 'undefined') return INITIAL_NOTIFICATIONS;
+  try {
+    const raw = localStorage.getItem('whatsq_notifications_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return INITIAL_NOTIFICATIONS;
+}
+
+function persistNotifications(notifs: QNotification[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('whatsq_notifications_cache', JSON.stringify(notifs));
+  } catch {}
+}
 
 const INITIAL_APPOINTMENTS: Appointment[] = [
   {
@@ -1775,8 +1799,10 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       if (state.notifications.some((n) => n.id === notif.id)) {
         return {};
       }
+      const updated = [notif, ...state.notifications];
+      persistNotifications(updated);
       return {
-        notifications: [notif, ...state.notifications],
+        notifications: updated,
       };
     });
   },
@@ -2096,17 +2122,39 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   isOmniSearchOpen: false,
   setIsOmniSearchOpen: (open) => set({ isOmniSearchOpen: open }),
 
-  notifications: INITIAL_NOTIFICATIONS,
+  notifications: getStoredNotifications(),
   markNotificationRead: (id) => {
-    set((state) => ({
-      notifications: state.notifications.map((n) => (n.id === id ? { ...n, unread: false } : n)),
-    }));
+    set((state) => {
+      const updated = state.notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
+      persistNotifications(updated);
+      return { notifications: updated };
+    });
   },
   markAllNotificationsRead: () => {
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, unread: false })),
-    }));
+    set((state) => {
+      const updated = state.notifications.map((n) => ({ ...n, unread: false }));
+      persistNotifications(updated);
+      return { notifications: updated };
+    });
     get().addToast('All notifications marked as read', 'info');
+  },
+  dismissNotification: (id) => {
+    set((state) => {
+      const updated = state.notifications.filter((n) => n.id !== id);
+      persistNotifications(updated);
+      return { notifications: updated };
+    });
+    get().addToast('Notification dismissed', 'info');
+  },
+  clearAllNotifications: () => {
+    set({ notifications: [] });
+    persistNotifications([]);
+    get().addToast('All notifications cleared', 'info');
+  },
+  resetNotificationsToDefault: () => {
+    set({ notifications: INITIAL_NOTIFICATIONS });
+    persistNotifications(INITIAL_NOTIFICATIONS);
+    get().addToast('Demo notifications restored', 'info');
   },
   handleNotificationClick: (notif) => {
     get().markNotificationRead(notif.id);

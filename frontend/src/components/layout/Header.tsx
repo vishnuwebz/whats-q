@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { OmniSearchModal } from './OmniSearchModal';
 import { UniversalFilterPopover } from './UniversalFilterPopover';
+import { NotificationDropdown } from './NotificationDropdown';
 import { exportTableToCsv } from '@/utils/exportCsv';
 import { ModernDateRangePicker, DateRangeValue } from '@/components/common/ModernDateRangePicker';
 
@@ -58,6 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
     Boolean(globalFilter.query);
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const notifAnchorRef = React.useRef<HTMLDivElement>(null);
 
   // Enable PC mouse wheel vertical-to-horizontal scrolling
   useEffect(() => {
@@ -322,58 +324,29 @@ export const Header: React.FC<HeaderProps> = ({
         {/* ── PINNED RIGHT: Notifications + Profile Avatar ── */}
         <div className="flex items-center gap-1 sm:gap-2 pl-2 border-l border-slate-200 shrink-0">
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative" ref={notifAnchorRef}>
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="p-1.5 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-all relative cursor-pointer"
+              className={`p-1.5 rounded-lg transition-all relative cursor-pointer ${
+                isNotifOpen
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+              }`}
               title="Notifications"
+              aria-label="Open notifications"
             >
               <Bell className="w-4 h-4" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-bounce">
-                  {unreadNotifsCount}
+                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-bounce">
+                  {unreadNotifsCount > 9 ? '9+' : unreadNotifsCount}
                 </span>
               )}
             </button>
-            {isNotifOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
-                <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-84 max-w-[340px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs space-y-3 animate-in fade-in duration-100">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-slate-900 text-sm">Notifications</h4>
-                      {unreadNotifsCount > 0 && (
-                        <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">{unreadNotifsCount} new</span>
-                      )}
-                    </div>
-                    {unreadNotifsCount > 0 && (
-                      <button onClick={() => markAllNotificationsRead()} className="text-[11px] text-emerald-600 hover:underline font-semibold cursor-pointer">Mark all read</button>
-                    )}
-                  </div>
-                  <div className="space-y-1.5 max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => { setIsNotifOpen(false); handleNotificationClick(n); }}
-                        className={`pt-2.5 pb-2 px-2.5 rounded-xl cursor-pointer transition-colors space-y-1 ${n.unread ? 'bg-emerald-50/40 hover:bg-emerald-50/80 border border-emerald-100' : 'hover:bg-slate-50'}`}
-                      >
-                        <div className="flex items-center justify-between font-bold text-slate-800">
-                          <span className="flex items-center gap-1.5">
-                            {n.unread && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
-                            <span className={n.unread ? 'text-slate-950 font-bold' : 'text-slate-700'}>{n.title}</span>
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-normal shrink-0">{n.time}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 leading-snug pl-3.5">{n.text}</div>
-                        <div className="flex items-center justify-end text-[10px] font-semibold text-emerald-600 pt-0.5">
-                          <span className="flex items-center gap-1">Open record <ArrowRight className="w-3 h-3" /></span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
+            <NotificationDropdown
+              isOpen={isNotifOpen}
+              onClose={() => setIsNotifOpen(false)}
+              anchorRef={notifAnchorRef}
+            />
           </div>
 
           {/* Profile Avatar */}
