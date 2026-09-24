@@ -62,7 +62,71 @@ export type TabType =
   | 'settings'
   | 'settings-backup'
   | 'settings-whatsapp'
-  | 'roles';
+  | 'roles'
+  | 'super-admin';
+
+export interface TenantFeatureConfig {
+  multiAccount: boolean;
+  botBuilder: boolean;
+  interactiveButtons: boolean;
+  customBranding: boolean;
+  aiAssistant: boolean;
+  bulkCampaigns: boolean;
+  voiceNotes: boolean;
+  apiWebhooks: boolean;
+}
+
+export interface PlatformTenant {
+  id: string;
+  businessName: string;
+  initials: string;
+  branch: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  tier: 'starter' | 'growth' | 'enterprise';
+  amount: number;
+  billingCycle: 'monthly' | 'annually';
+  renewalDate: string;
+  createdAt: string;
+  activeLicenses: number;
+  maxLicenses: number;
+  status: 'active' | 'trial' | 'suspended';
+  wabaStatus: 'connected' | 'pending' | 'disconnected';
+  wabaPhone?: string;
+  wabaId?: string;
+  messagesSentThisMonth: number;
+  monthlyMessageLimit: number;
+  color?: string;
+  features: TenantFeatureConfig;
+}
+
+export interface PlatformAuditLog {
+  id: string;
+  timestamp: string;
+  actor: string;
+  actorRole: string;
+  action: string;
+  targetTenant?: string;
+  severity: 'info' | 'warning' | 'security' | 'critical';
+  ipAddress: string;
+  details?: string;
+}
+
+export interface PlatformPlanTier {
+  id: string;
+  name: string;
+  badge?: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  currency: string;
+  maxLicenses: number;
+  maxMessages: number;
+  maxWabaNumbers: number;
+  features: string[];
+  popular?: boolean;
+}
+
 
 export interface WhatsAppMessage {
   id: string | number;

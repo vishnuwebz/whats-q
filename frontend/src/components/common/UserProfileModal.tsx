@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
-import { X, ShieldCheck, Settings as SettingsIcon, Shield, ChevronRight, LogOut } from 'lucide-react';
+import { X, ShieldCheck, Settings as SettingsIcon, Shield, ChevronRight, LogOut, Crown } from 'lucide-react';
 
 export const UserProfileModal: React.FC = () => {
   const {
@@ -114,6 +114,27 @@ export const UserProfileModal: React.FC = () => {
 
           {/* Navigation Options */}
           <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileModalOpen(false);
+                setActiveTab('super-admin');
+              }}
+              className="w-full p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 transition flex items-center justify-between text-left text-amber-200 hover:text-white cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <Crown className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                <div>
+                  <div className="font-semibold text-xs flex items-center gap-1.5">
+                    Platform Super Admin Console
+                    <span className="text-[9px] font-extrabold bg-amber-500/30 text-amber-300 px-1 py-0.2 rounded border border-amber-500/40">PRO</span>
+                  </div>
+                  <div className="text-[10px] text-amber-300/70">Manage all tenant workspaces, licenses & global infrastructure</div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-400/60 group-hover:text-amber-300 transition" />
+            </button>
+
             <button
               type="button"
               onClick={() => {

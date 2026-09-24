@@ -78,6 +78,7 @@ import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
 import { LandingPageView } from './components/views/LandingPageView';
 import { RolesSecurityView } from './components/views/roles/RolesSecurityView';
+import { SuperAdminView } from './components/views/admin/SuperAdminView';
 
 // Bulk Messaging Views
 import { BulkOverviewView } from './components/views/bulk/BulkOverviewView';
@@ -322,6 +323,8 @@ export const App: React.FC = () => {
         return <SettingsView initialTab="whatsapp" />;
       case 'roles':
         return <RolesSecurityView />;
+      case 'super-admin':
+        return <SuperAdminView />;
 
       default:
         return <DashboardView />;

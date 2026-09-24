@@ -83,6 +83,7 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'settings', title: 'Workspace Settings', category: 'Settings', icon: SettingsIcon, keywords: 'workspace general preferences business brand organization profile' },
   { tab: 'settings-backup', title: 'Data Backup & Restore', category: 'Settings', icon: Database, keywords: 'backup restore data auto-backup last backup import export snapshot database disaster recovery postgresql sqlite' },
   { tab: 'roles', title: 'Roles & Security', category: 'Settings', icon: ShieldCheck, keywords: 'roles permissions rbac security access control admin users matrix privileges superadmin' },
+  { tab: 'super-admin', title: 'Platform Super Admin', category: 'Platform', icon: Crown, keywords: 'super admin platform tenants multi-tenant workspaces licenses saas billing waba gateway audit logs pro master control' },
 ];
 
 export type AccordionSection = 'messenger' | 'crm' | 'ops' | 'finance' | 'automation' | 'ai' | null;
@@ -194,59 +195,108 @@ export const Sidebar: React.FC = () => {
         setBrandLogo(localStorage.getItem('whatsq_brand_logo'));
       }
     };
+    const handleTenantsSync = () => {
+      try {
+        const stored = localStorage.getItem('whatsq_platform_tenants');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTenants(parsed.map((p: any) => ({
+              id: p.id,
+              name: p.businessName || p.name,
+              branch: p.branch || 'Branch',
+              status: p.status === 'active' ? 'Active' : p.status === 'trial' ? 'Online' : 'Suspended',
+              phone: p.ownerPhone || p.phone,
+              initial: p.initials || p.initial || (p.businessName || 'W')[0],
+              color: p.color || 'from-emerald-500 to-teal-600',
+              staffCount: p.activeLicenses || p.staffCount || 10,
+            })));
+          }
+        }
+      } catch {}
+    };
+
     window.addEventListener('storage', handleWorkspaceSync);
     window.addEventListener('whatsq_workspace_updated', handleWorkspaceSync);
+    window.addEventListener('whatsq_tenants_updated', handleTenantsSync);
     return () => {
       window.removeEventListener('storage', handleWorkspaceSync);
       window.removeEventListener('whatsq_workspace_updated', handleWorkspaceSync);
+      window.removeEventListener('whatsq_tenants_updated', handleTenantsSync);
     };
   }, []);
 
   // Tenant / Organization Switcher state
   const [isTenantOpen, setIsTenantOpen] = useState(false);
-  const [tenants, setTenants] = useState([
-    {
-      id: 'TN2345',
-      name: 'Qiyam Business Solutions',
-      branch: 'HQ • Kozhikode',
-      status: 'Active',
-      phone: '+91 94963 00233',
-      initial: 'Q',
-      color: 'from-emerald-500 to-teal-600',
-      staffCount: 18,
-    },
-    {
-      id: 'TN2388',
-      name: 'CoolFix Express',
-      branch: 'Kochi Hub',
-      status: 'Online',
-      phone: '+91 98765 43211',
-      initial: 'E',
-      color: 'from-blue-500 to-cyan-600',
-      staffCount: 12,
-    },
-    {
-      id: 'TN2401',
-      name: 'CoolFix Enterprises',
-      branch: 'Calicut Central',
-      status: 'Online',
-      phone: '+91 98765 43212',
-      initial: 'C',
-      color: 'from-purple-500 to-indigo-600',
-      staffCount: 24,
-    },
-    {
-      id: 'TN2455',
-      name: 'CoolFix MEP Solutions',
-      branch: 'Industrial Area',
-      status: 'Ready',
-      phone: '+91 98765 43213',
-      initial: 'M',
-      color: 'from-amber-500 to-orange-600',
-      staffCount: 8,
-    },
-  ]);
-  const [activeTenantId, setActiveTenantId] = useState('TN2345');
+  const [tenants, setTenants] = useState(() => {
+    try {
+      const stored = localStorage.getItem('whatsq_platform_tenants');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p: any) => ({
+            id: p.id,
+            name: p.businessName || p.name,
+            branch: p.branch || 'Branch',
+            status: p.status === 'active' ? 'Active' : p.status === 'trial' ? 'Online' : 'Suspended',
+            phone: p.ownerPhone || p.phone,
+            initial: p.initials || p.initial || (p.businessName || 'W')[0],
+            color: p.color || 'from-emerald-500 to-teal-600',
+            staffCount: p.activeLicenses || p.staffCount || 10,
+          }));
+        }
+      }
+    } catch {}
+    return [
+      {
+        id: 'TN2345',
+        name: 'Qiyam Business Solutions',
+        branch: 'HQ • Kozhikode',
+        status: 'Active',
+        phone: '+91 94963 00233',
+        initial: 'Q',
+        color: 'from-emerald-500 to-teal-600',
+        staffCount: 18,
+      },
+      {
+        id: 'TN2388',
+        name: 'CoolFix Express',
+        branch: 'Kochi Hub',
+        status: 'Online',
+        phone: '+91 98765 43211',
+        initial: 'E',
+        color: 'from-blue-500 to-cyan-600',
+        staffCount: 12,
+      },
+      {
+        id: 'TN2401',
+        name: 'CoolFix Enterprises',
+        branch: 'Calicut Central',
+        status: 'Online',
+        phone: '+91 98765 43212',
+        initial: 'C',
+        color: 'from-purple-500 to-indigo-600',
+        staffCount: 24,
+      },
+      {
+        id: 'TN2455',
+        name: 'CoolFix MEP Solutions',
+        branch: 'Industrial Area',
+        status: 'Ready',
+        phone: '+91 98765 43213',
+        initial: 'M',
+        color: 'from-amber-500 to-orange-600',
+        staffCount: 8,
+      },
+    ];
+  });
+  const [activeTenantId, setActiveTenantId] = useState(() => {
+    try {
+      return localStorage.getItem('whatsq_active_tenant_id') || 'TN2345';
+    } catch {
+      return 'TN2345';
+    }
+  });
   const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0];
 
   // Resolve active outbound WhatsApp line from store or localStorage
@@ -1584,11 +1634,16 @@ export const Sidebar: React.FC = () => {
 
         {/* Platform Super Admin */}
         <button
-          onClick={() => handleTabClick('roles')}
-          title="Platform Super Admin Role & Permission Control"
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer hover:bg-[#16233B] text-amber-300/90 group`}
+          data-tab="super-admin"
+          onClick={() => handleTabClick('super-admin')}
+          title="Platform Super Admin Control Panel"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
+            isActive('super-admin')
+              ? 'bg-amber-500/20 text-amber-200 font-semibold border border-amber-500/30 shadow-sm'
+              : 'hover:bg-[#16233B] text-amber-300/90'
+          } group`}
         >
-          <Crown className="w-4 h-4 shrink-0 text-amber-400 group-hover:scale-110 transition-transform" />
+          <Crown className={`w-4 h-4 shrink-0 ${isActive('super-admin') ? 'text-amber-300 scale-110' : 'text-amber-400 group-hover:scale-110'} transition-transform`} />
           {!isCollapsed && (
             <div className="flex items-center justify-between w-full">
               <span className="text-xs font-semibold text-amber-200">Platform Super Admin</span>

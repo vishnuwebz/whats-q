@@ -68,10 +68,15 @@ export const TAB_TO_PATH: Record<TabType, string> = {
   'settings-whatsapp': '/settings/whatsapp',
   'landing': '/landing',
   'roles': '/roles',
+  'super-admin': '/super-admin',
 };
 
 // Common path aliases for convenience and deep links
 const PATH_ALIASES: Record<string, TabType> = {
+  '/super-admin': 'super-admin',
+  '/superadmin': 'super-admin',
+  '/platform-admin': 'super-admin',
+  '/admin-platform': 'super-admin',
   '/roles': 'roles',
   '/security': 'roles',
   '/permissions': 'roles',
