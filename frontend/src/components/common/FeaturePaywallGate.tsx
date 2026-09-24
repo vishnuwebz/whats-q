@@ -21,11 +21,12 @@ interface FeaturePaywallGateProps {
 
 export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
   moduleId,
-  activeTenant,
+  activeTenant: propActiveTenant,
   onUnlocked,
   children,
 }) => {
-  const { addToast, setActiveTab } = useQiyamStore();
+  const { addToast, setActiveTab, activeTenant: storeActiveTenant } = useQiyamStore();
+  const activeTenant = propActiveTenant || storeActiveTenant;
   const [isProcessing, setIsProcessing] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
 
@@ -178,16 +179,22 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-rose-950 text-xs">
-                  {isAddonExpired ? 'Previous Add-On Subscription Expired' : 'Temporary Free Trial Expired'}
+                  {isAddonExpired && isTrialExpired
+                    ? `${trialDays}-Day Free Trial & Add-On Plan Expired`
+                    : isAddonExpired
+                    ? 'Previous Add-On Subscription Expired'
+                    : `${trialDays}-Day Free Trial Expired`}
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-200 text-rose-800">
                   Access Paused
                 </span>
               </div>
               <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
-                {isAddonExpired
+                {isAddonExpired && isTrialExpired
+                  ? `Both your ${trialDays}-day free trial and previous individual add-on plan for ${modInfo.label} have expired. You can instantly restore access by purchasing or renewing this standalone add-on below for ₹${displayPrice}/mo without buying the entire bundle.`
+                  : isAddonExpired
                   ? `Your previous individual add-on plan for ${modInfo.label} has expired. You can instantly renew access below for ₹${displayPrice}/mo without purchasing an entire bundle.`
-                  : `Your free trial period for ${modInfo.label} has ended. Purchase this standalone feature below to continue with all your configurations and data intact.`}
+                  : `Your ${trialDays}-day free trial period for ${modInfo.label} has ended. Purchase this standalone feature below to continue with all your configurations and data intact.`}
               </p>
             </div>
           </div>
@@ -305,7 +312,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
                   className="w-full py-2.5 bg-slate-100 text-slate-400 font-semibold rounded-xl text-xs cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
-                  <span>Trial Expired • Purchase Add-on</span>
+                  <span>{trialDays}-Day Free Trial Expired • Purchase Add-on</span>
                 </button>
               ) : (
                 <button

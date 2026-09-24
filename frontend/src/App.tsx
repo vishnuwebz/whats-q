@@ -108,9 +108,12 @@ export const App: React.FC = () => {
     triggerForceHardRefresh,
     isSidebarCollapsed,
     toggleSidebarCollapse,
+    activeTenant,
+    reloadPlatformTenants,
   } = useQiyamStore();
 
-  const { activeTenant } = useActiveTenant();
+  // Run periodic trial expiration checks and WhatsApp alerts in background
+  useActiveTenant();
 
   // Check if opened via mobile QR code scan for WhatsApp Group Grabber sync
   const [mobileGrabberToken, setMobileGrabberToken] = React.useState<string | null>(() => {
@@ -343,6 +346,9 @@ export const App: React.FC = () => {
         key={`${activeTenant?.id || 'TN2345'}-${targetModule}-${activeTab}`}
         moduleId={targetModule}
         activeTenant={activeTenant}
+        onUnlocked={() => {
+          reloadPlatformTenants();
+        }}
       >
         {rawView}
       </FeaturePaywallGate>

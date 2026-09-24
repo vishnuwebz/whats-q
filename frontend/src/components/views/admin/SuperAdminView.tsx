@@ -413,42 +413,19 @@ const INITIAL_AUDIT_LOGS: PlatformAuditLog[] = [
 ];
 
 export const SuperAdminView: React.FC = () => {
-  const { addToast } = useQiyamStore();
+  const { addToast, switchActiveTenant, reloadPlatformTenants } = useQiyamStore();
 
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'clients' | 'sidebar_config' | 'meta_wallets' | 'plans' | 'audit' | 'settings'>('clients');
 
   // Multi-tenant state (persisted to localStorage)
-  const [tenants, setTenants] = useState<PlatformTenant[]>(() => {
-    try {
-      const stored = localStorage.getItem('whatsq_platform_tenants');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasExpiredDemo = parsed.some((t: any) => t.id === 'TN-EXPIRED-DEMO');
-          if (!hasExpiredDemo) {
-            const updated = [...parsed, DEMO_EXPIRED_TENANT];
-            try {
-              localStorage.setItem('whatsq_platform_tenants', JSON.stringify(updated));
-            } catch {}
-            return updated;
-          }
-          return parsed;
-        }
-      }
-    } catch {}
-    return INITIAL_TENANTS;
-  });
+  const [tenants, setTenants] = useState<PlatformTenant[]>(() => getStoredTenants());
 
   // Save helper with broadcast
   const saveTenants = (updated: PlatformTenant[]) => {
     setTenants(updated);
-    try {
-      localStorage.setItem('whatsq_platform_tenants', JSON.stringify(updated));
-      window.dispatchEvent(new CustomEvent('whatsq_tenants_updated', { detail: updated }));
-    } catch (e) {
-      console.error('Failed to persist tenants:', e);
-    }
+    saveStoredTenants(updated);
+    reloadPlatformTenants();
   };
 
   // Search & Filters
@@ -804,16 +781,8 @@ export const SuperAdminView: React.FC = () => {
 
   // Handle Switch Workspace
   const handleSwitchWorkspace = (tenant: PlatformTenant) => {
-    try {
-      localStorage.setItem('whatsq_workspace_name', tenant.businessName);
-      localStorage.setItem('whatsq_active_tenant_id', tenant.id);
-      localStorage.setItem('whatsq_active_workspace_id', tenant.id);
-      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: tenant.id, id: tenant.id, ...tenant } }));
-      window.dispatchEvent(new Event('storage'));
-      addToast(`Switched active organization to "${tenant.businessName}" (${tenant.id})`, 'success');
-    } catch {
-      addToast(`Switched to ${tenant.businessName}`, 'success');
-    }
+    switchActiveTenant(tenant.id);
+    addToast(`Switched active organization to "${tenant.businessName}" (${tenant.id})`, 'success');
   };
 
   // Handle Top-Up Meta Wallet

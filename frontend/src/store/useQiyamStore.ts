@@ -10,8 +10,10 @@ import {
   SuppressionRecord,
   RoleDefinition, RoleModule, RolePermissionAction, RecordScope,
   LinkedEmployeeDevice, PdfEditorDocument, PdfCanvasElement,
-  KeywordRule, DaySchedule, WorkingHoursConfig
+  KeywordRule, DaySchedule, WorkingHoursConfig,
+  PlatformTenant
 } from '../types';
+import { getStoredTenants } from '../utils/featureEntitlements';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
 import {
@@ -564,6 +566,11 @@ interface QiyamState {
   branches: BranchItem[];
   metaConfig: MetaConfig | null;
   workspace: WorkspaceSettings | null;
+  activeTenantId: string;
+  activeTenant: PlatformTenant | null;
+  platformTenants: PlatformTenant[];
+  switchActiveTenant: (tenantId: string) => void;
+  reloadPlatformTenants: () => void;
   channelMetrics: ChannelMetricRow[];
   intentMetrics: IntentMetricRow[];
   dailyMetrics: DailyMetricRow[];
@@ -2631,6 +2638,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   branches: INITIAL_BRANCHES,
   metaConfig: getStoredMetaConfig(),
   workspace: null,
+  activeTenantId: typeof window !== 'undefined' ? localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id') || 'TN2345' : 'TN2345',
+  platformTenants: getStoredTenants(),
+  activeTenant: (() => {
+    const list = getStoredTenants();
+    const id = typeof window !== 'undefined' ? localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id') || 'TN2345' : 'TN2345';
+    return list.find((t) => t.id === id) || list[0] || null;
+  })(),
   channelMetrics: [],
   intentMetrics: [],
   dailyMetrics: [],
@@ -4513,6 +4527,34 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
     get().addToast(res?.error || 'Failed to save workspace settings', 'error');
     return false;
+  },
+
+  switchActiveTenant: (tenantId: string) => {
+    const tenants = getStoredTenants();
+    const target = tenants.find((t) => t.id === tenantId) || tenants[0];
+    if (!target) return;
+    try {
+      localStorage.setItem('whatsq_active_tenant_id', target.id);
+      localStorage.setItem('whatsq_active_workspace_id', target.id);
+      localStorage.setItem('whatsq_workspace_name', target.businessName);
+      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: target.id, id: target.id, name: target.businessName } }));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
+    set({
+      activeTenantId: target.id,
+      activeTenant: target,
+      platformTenants: tenants,
+    });
+  },
+
+  reloadPlatformTenants: () => {
+    const tenants = getStoredTenants();
+    const currentId = get().activeTenantId;
+    const target = tenants.find((t) => t.id === currentId) || tenants[0] || null;
+    set({
+      platformTenants: tenants,
+      activeTenant: target,
+    });
   },
 
   askAiCopilot: async (prompt) => {

@@ -194,6 +194,10 @@ export const Sidebar: React.FC = () => {
     simulateGlobalUpdate,
     metaConfig,
     suppressionList,
+    activeTenant: storeActiveTenant,
+    activeTenantId: storeActiveTenantId,
+    switchActiveTenant,
+    reloadPlatformTenants,
   } = useQiyamStore();
 
   // Brand Header & Workspace Name
@@ -336,7 +340,7 @@ export const Sidebar: React.FC = () => {
       },
       {
         id: 'TN-EXPIRED-DEMO',
-        name: 'Apex Retail Solutions (Expired Add-ons)',
+        name: 'Apex Retail Solutions (Expired 7d Trial & Add-ons)',
         branch: 'Demo Outlet • Calicut',
         status: 'Online',
         phone: '+91 94963 00233',
@@ -357,7 +361,7 @@ export const Sidebar: React.FC = () => {
       return 'TN2345';
     }
   });
-  const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0];
+  const activeTenant = (storeActiveTenant as any) || tenants.find((t) => t.id === (storeActiveTenantId || activeTenantId)) || tenants[0];
 
   // Check if a navigation module is enabled or unlocked for the active tenant
   const isModuleEnabled = (_moduleName: string) => {
@@ -417,13 +421,7 @@ export const Sidebar: React.FC = () => {
 
   const handleSelectTenant = (tenant: (typeof tenants)[0]) => {
     setActiveTenantId(tenant.id);
-    try {
-      localStorage.setItem('whatsq_active_tenant_id', tenant.id);
-      localStorage.setItem('whatsq_active_workspace_id', tenant.id);
-      localStorage.setItem('whatsq_workspace_name', tenant.name);
-      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: tenant.id, id: tenant.id, name: tenant.name } }));
-      window.dispatchEvent(new Event('storage'));
-    } catch {}
+    switchActiveTenant(tenant.id);
     setIsTenantOpen(false);
     setIsCreatingBranch(false);
     addToast(`Switched active organization to ${tenant.name} (${tenant.id})`, 'success');

@@ -190,7 +190,7 @@ export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
  */
 export const DEMO_EXPIRED_TENANT: PlatformTenant = {
   id: 'TN-EXPIRED-DEMO',
-  businessName: 'Apex Retail Solutions (Expired Add-ons)',
+  businessName: 'Apex Retail Solutions (Expired 7d Trial & Add-ons)',
   initials: 'AR',
   branch: 'Demo Outlet • Calicut',
   ownerName: 'Vikram Malhotra (Demo Account)',
@@ -240,8 +240,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     messenger: {
       moduleId: 'messenger',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -249,8 +249,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     crm: {
       moduleId: 'crm',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -258,8 +258,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     branches: {
       moduleId: 'branches',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -267,8 +267,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     ops: {
       moduleId: 'ops',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -276,8 +276,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     finance: {
       moduleId: 'finance',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -285,8 +285,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     automation: {
       moduleId: 'automation',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -294,8 +294,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     ai: {
       moduleId: 'ai',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -303,8 +303,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     analytics: {
       moduleId: 'analytics',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -312,8 +312,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     integrations: {
       moduleId: 'integrations',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -321,8 +321,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     roles: {
       moduleId: 'roles',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -330,8 +330,8 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
     'settings-backup': {
       moduleId: 'settings-backup',
       startedAt: '2026-09-01T00:00:00.000Z',
-      expiresAt: '2026-09-15T00:00:00.000Z',
-      durationDays: 14,
+      expiresAt: '2026-09-08T00:00:00.000Z',
+      durationDays: 7,
       preExpiryNotified: true,
       expiredNotified: true,
       status: 'expired',
@@ -441,6 +441,205 @@ export const DEMO_EXPIRED_TENANT: PlatformTenant = {
 };
 
 /**
+ * Initial platform tenants list
+ */
+export const INITIAL_PLATFORM_TENANTS: PlatformTenant[] = [
+  {
+    id: 'TN2345',
+    businessName: 'Qiyam Business Solutions',
+    initials: 'QB',
+    branch: 'HQ • Kozhikode',
+    ownerName: 'Rahul Mehta',
+    ownerEmail: 'rahul.mehta@coolfix.in',
+    ownerPhone: '+91 94963 00233',
+    tier: 'enterprise',
+    amount: 14999,
+    billingCycle: 'monthly',
+    createdAt: '2026-01-10',
+    lastPaymentDate: '2026-08-25',
+    lastPaymentAmount: 14999,
+    lastPaymentMethod: 'Razorpay UPI (pay_OP18294)',
+    nextPaymentDueDate: '2026-10-01',
+    paymentStatus: 'due_soon',
+    metaWalletBalance: 4850,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'healthy',
+    metaDailyLimit: 100000,
+    metaTier: 'Tier 3 (100k/day)',
+    activeLicenses: 18,
+    maxLicenses: 30,
+    onlineStaffCount: 7,
+    status: 'active',
+    wabaStatus: 'connected',
+    wabaPhone: '+91 73389 44799',
+    wabaId: '1098915959329432',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 38,
+    lastWebhookPing: '14s ago',
+    messagesSentThisMonth: 48920,
+    monthlyMessageLimit: 100000,
+    color: 'from-emerald-500 to-teal-600',
+    features: {
+      multiAccount: true,
+      botBuilder: true,
+      interactiveButtons: true,
+      customBranding: true,
+      aiAssistant: true,
+      bulkCampaigns: true,
+      voiceNotes: true,
+      apiWebhooks: true,
+    },
+    sidebarModules: [
+      'dashboard', 'conversations', 'messenger', 'crm', 'branches',
+      'ops', 'finance', 'automation', 'ai', 'analytics', 'integrations',
+      'roles', 'settings', 'settings-backup'
+    ],
+  },
+  {
+    id: 'TN2388',
+    businessName: 'CoolFix Express',
+    initials: 'CE',
+    branch: 'Kochi Hub',
+    ownerName: 'Sanjay Nair',
+    ownerEmail: 'sanjay@coolfix.in',
+    ownerPhone: '+91 98765 43211',
+    tier: 'growth',
+    amount: 5999,
+    billingCycle: 'monthly',
+    createdAt: '2026-03-14',
+    lastPaymentDate: '2026-09-02',
+    lastPaymentAmount: 5999,
+    lastPaymentMethod: 'Bank Transfer NEFT',
+    nextPaymentDueDate: '2026-10-02',
+    paymentStatus: 'paid',
+    metaWalletBalance: 1280,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'healthy',
+    metaDailyLimit: 10000,
+    metaTier: 'Tier 2 (10k/day)',
+    activeLicenses: 12,
+    maxLicenses: 15,
+    onlineStaffCount: 4,
+    status: 'active',
+    wabaStatus: 'connected',
+    wabaPhone: '+91 98765 43211',
+    wabaId: '1098915959329440',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 42,
+    lastWebhookPing: '32s ago',
+    messagesSentThisMonth: 28400,
+    monthlyMessageLimit: 50000,
+    color: 'from-blue-500 to-cyan-600',
+    features: {
+      multiAccount: true,
+      botBuilder: true,
+      interactiveButtons: true,
+      customBranding: false,
+      aiAssistant: true,
+      bulkCampaigns: true,
+      voiceNotes: true,
+      apiWebhooks: true,
+    },
+    sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'finance', 'settings'],
+  },
+  {
+    id: 'TN2401',
+    businessName: 'CoolFix Enterprises',
+    initials: 'CF',
+    branch: 'Calicut Central',
+    ownerName: 'Anoop Kumar',
+    ownerEmail: 'anoop@coolfix.in',
+    ownerPhone: '+91 98765 43212',
+    tier: 'enterprise',
+    amount: 14999,
+    billingCycle: 'monthly',
+    createdAt: '2026-02-01',
+    lastPaymentDate: '2026-08-20',
+    lastPaymentAmount: 14999,
+    lastPaymentMethod: 'Credit Card (HDFC Corporate)',
+    nextPaymentDueDate: '2026-09-20',
+    paymentStatus: 'overdue',
+    metaWalletBalance: 340,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'low',
+    metaDailyLimit: 100000,
+    metaTier: 'Tier 3 (100k/day)',
+    activeLicenses: 24,
+    maxLicenses: 40,
+    onlineStaffCount: 11,
+    status: 'active',
+    wabaStatus: 'connected',
+    wabaPhone: '+91 98765 43212',
+    wabaId: '1098915959329488',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 40,
+    lastWebhookPing: '8s ago',
+    messagesSentThisMonth: 61200,
+    monthlyMessageLimit: 100000,
+    color: 'from-purple-500 to-indigo-600',
+    features: {
+      multiAccount: true,
+      botBuilder: true,
+      interactiveButtons: true,
+      customBranding: true,
+      aiAssistant: true,
+      bulkCampaigns: true,
+      voiceNotes: true,
+      apiWebhooks: true,
+    },
+    sidebarModules: ['dashboard', 'conversations', 'messenger', 'crm', 'ops', 'finance', 'automation', 'roles', 'settings'],
+  },
+  {
+    id: 'TN2455',
+    businessName: 'CoolFix MEP Solutions',
+    initials: 'MS',
+    branch: 'Industrial Area',
+    ownerName: 'Faisal Mohammed',
+    ownerEmail: 'faisal@coolfixmep.com',
+    ownerPhone: '+91 98765 43213',
+    tier: 'starter',
+    amount: 2499,
+    billingCycle: 'monthly',
+    createdAt: '2026-06-18',
+    lastPaymentDate: '2026-08-30',
+    lastPaymentAmount: 2499,
+    lastPaymentMethod: 'Google Pay UPI',
+    nextPaymentDueDate: '2026-09-30',
+    paymentStatus: 'due_soon',
+    metaWalletBalance: 90,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'critical',
+    metaDailyLimit: 1000,
+    metaTier: 'Tier 1 (1k/day)',
+    activeLicenses: 8,
+    maxLicenses: 10,
+    onlineStaffCount: 2,
+    status: 'trial',
+    wabaStatus: 'pending',
+    wabaPhone: '+91 98765 43213',
+    wabaId: '1098915959329501',
+    wabaQualityScore: 'MEDIUM',
+    wabaLatencyMs: 115,
+    lastWebhookPing: '4m ago',
+    messagesSentThisMonth: 6060,
+    monthlyMessageLimit: 15000,
+    color: 'from-amber-500 to-orange-600',
+    features: {
+      multiAccount: false,
+      botBuilder: true,
+      interactiveButtons: true,
+      customBranding: false,
+      aiAssistant: false,
+      bulkCampaigns: true,
+      voiceNotes: false,
+      apiWebhooks: false,
+    },
+    sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'settings'],
+  },
+  DEMO_EXPIRED_TENANT,
+];
+
+/**
  * Check if a module is unlocked for the tenant
  */
 export const isModuleUnlockedForTenant = (
@@ -524,7 +723,7 @@ const sendWhatsAppAlert = async (phone: string, text: string) => {
  */
 export const getStoredTenants = (): PlatformTenant[] => {
   try {
-    const raw = localStorage.getItem('whatsq_platform_tenants');
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('whatsq_platform_tenants') : null;
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -537,15 +736,24 @@ export const getStoredTenants = (): PlatformTenant[] => {
           } catch {}
           return merged;
         } else {
-          // If DEMO_EXPIRED_TENANT exists in storage, make sure it has the expired addonPurchases and activeTrials,
-          // and that its sidebarModules does not erroneously include locked modules like analytics
+          // Force update DEMO_EXPIRED_TENANT so it strictly reflects the 7-day expired trial & expired add-on configuration
           const existing = parsed[existingIdx];
           const hasUnlockedLockedModules = existing.sidebarModules && existing.sidebarModules.includes('analytics');
-          if (hasUnlockedLockedModules || !existing.activeTrials || !existing.addonPurchases) {
+          const isDuration14 = existing.activeTrials && Object.values(existing.activeTrials).some((t: any) => t.durationDays === 14);
+          if (
+            hasUnlockedLockedModules ||
+            !existing.activeTrials ||
+            !existing.addonPurchases ||
+            isDuration14 ||
+            existing.trialConfigDays !== 7 ||
+            existing.businessName !== DEMO_EXPIRED_TENANT.businessName
+          ) {
             parsed[existingIdx] = {
-              ...DEMO_EXPIRED_TENANT,
               ...existing,
+              ...DEMO_EXPIRED_TENANT,
+              businessName: DEMO_EXPIRED_TENANT.businessName,
               sidebarModules: ['dashboard', 'conversations', 'settings'],
+              trialConfigDays: 7,
               activeTrials: DEMO_EXPIRED_TENANT.activeTrials,
               addonPurchases: DEMO_EXPIRED_TENANT.addonPurchases,
             };
@@ -553,12 +761,17 @@ export const getStoredTenants = (): PlatformTenant[] => {
               localStorage.setItem('whatsq_platform_tenants', JSON.stringify(parsed));
             } catch {}
           }
+          return parsed;
         }
-        return parsed;
       }
     }
   } catch {}
-  return [DEMO_EXPIRED_TENANT];
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('whatsq_platform_tenants', JSON.stringify(INITIAL_PLATFORM_TENANTS));
+    }
+  } catch {}
+  return INITIAL_PLATFORM_TENANTS;
 };
 
 /**
