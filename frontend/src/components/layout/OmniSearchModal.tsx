@@ -722,7 +722,7 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search pages (e.g. Leave Management, Payroll), leads, jobs, staff, invoices..."
-            className="w-full bg-transparent text-sm sm:text-base font-semibold text-slate-900 placeholder-slate-400 outline-none"
+            className="w-full bg-transparent text-xs sm:text-sm font-medium text-slate-900 placeholder:text-xs sm:placeholder:text-[13px] placeholder:font-normal placeholder:text-slate-400 outline-none"
           />
 
           {/* Quick Clear Button if search query entered */}
