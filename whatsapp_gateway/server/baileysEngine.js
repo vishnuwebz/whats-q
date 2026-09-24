@@ -538,6 +538,114 @@ export class BaileysEngine {
             text,
             timestamp: new Date().toISOString(),
           });
+
+          // Forward incoming message to Django backend webhook
+          try {
+            fetch('http://127.0.0.1:8000/api/conversations/webhook/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entry: [{
+                  changes: [{
+                    field: 'messages',
+                    value: {
+                      messages: [{
+                        from: senderPhone.replace('+', ''),
+                        id: msg.key.id || `baileys-${Date.now()}`,
+                        type: 'text',
+                        text: { body: text },
+                        timestamp: String(Math.floor(Date.now() / 1000)),
+                      }],
+                      contacts: [{
+                        profile: { name: sessionMeta.contacts.get(senderJid)?.name || senderPhone },
+                      }],
+                    },
+                  }],
+                }],
+              }),
+            }).catch(() => {});
+          } catch (e) {}
+        }
+      });
+
+      // Real-time WhatsApp Client Presence & Typing Updates
+      sock.ev.on('presence.update', async ({ id, presences }) => {
+        try {
+          if (!id) return;
+          const senderPhone = '+' + id.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+          let isTyping = false;
+          let state = 'available';
+
+          if (presences) {
+            for (const [pKey, pVal] of Object.entries(presences)) {
+              const pState = pVal?.lastKnownPresence;
+              if (pState === 'composing' || pState === 'recording') {
+                isTyping = true;
+                state = pState;
+                break;
+              }
+            }
+          }
+
+          this.emitEvent('presence_update', {
+            accountId,
+            phone: senderPhone,
+            isTyping,
+            state,
+          });
+
+          // Forward to Django backend webhook
+          fetch('http://127.0.0.1:8000/api/conversations/webhook/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'presence.update',
+              phone: senderPhone,
+              is_typing: isTyping,
+              state,
+            }),
+          }).catch(() => {});
+        } catch (err) {
+          console.warn('[Baileys Engine] Error handling presence.update:', err);
+        }
+      });
+
+      // Real-time WhatsApp Message Status Receipts (Delivery & Read receipts)
+      sock.ev.on('messages.update', async (updates) => {
+        try {
+          if (!Array.isArray(updates)) return;
+          for (const u of updates) {
+            const statusNum = u.update?.status;
+            let mappedStatus = null;
+            if (statusNum === 4 || statusNum === 5) {
+              mappedStatus = 'read';
+            } else if (statusNum === 3) {
+              mappedStatus = 'delivered';
+            } else if (statusNum === 2) {
+              mappedStatus = 'sent';
+            }
+
+            if (mappedStatus && u.key?.id) {
+              this.emitEvent('message_status_update', {
+                accountId,
+                messageId: u.key.id,
+                status: mappedStatus,
+              });
+
+              // Forward to Django webhook
+              fetch('http://127.0.0.1:8000/api/conversations/webhook/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  event: 'messages.update',
+                  status_id: u.key.id,
+                  status: mappedStatus,
+                }),
+              }).catch(() => {});
+            }
+          }
+        } catch (err) {
+          console.warn('[Baileys Engine] Error handling messages.update:', err);
         }
       });
 

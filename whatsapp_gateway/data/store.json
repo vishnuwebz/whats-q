@@ -256,6 +256,36 @@
       "sentToday": 0,
       "createdAt": "2026-09-22T10:02:29.941Z",
       "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_mufuc17cx5l0",
+      "phoneNumber": "",
+      "displayName": "Surat Wholesale Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-24T18:04:37.980Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_mufvl34sd62g",
+      "phoneNumber": "",
+      "displayName": "Surat Wholesale Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-24T18:39:42.007Z",
+      "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_mufxmwjq4i99",
+      "phoneNumber": "",
+      "displayName": "Surat Wholesale Line",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-24T19:38:34.270Z",
+      "warmupScore": 90
     }
   ],
   "contacts": [

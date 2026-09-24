@@ -98,7 +98,7 @@ class Message(models.Model):
     sender_name = models.CharField(max_length=100, blank=True, default='')
     text = models.TextField()
     timestamp = models.CharField(max_length=50, default='10:30 AM')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='read')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
     meta_message_id = models.CharField(max_length=150, blank=True, default='') # wamid.HBgL...
     sender_device = models.CharField(max_length=150, blank=True, default='') # e.g. "Ramesh Kumar (Sales Desk)", "Meta Cloud API"
     sender_phone = models.CharField(max_length=50, blank=True, default='') # e.g. "+91 98471 23456"

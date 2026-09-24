@@ -1053,6 +1053,109 @@ class ConversationViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
+    def assign_staff(self, request, pk=None):
+        """
+        Assigns or reassigns a conversation to a specific staff member / employee.
+        Emits software real-time notification & dispatches real WhatsApp notification to the staff member's phone.
+        """
+        try:
+            conv = self.get_object()
+        except Exception:
+            conv = Conversation.objects.filter(pk=pk).first()
+            if not conv and str(pk).isdigit():
+                conv = Conversation.objects.filter(pk=int(pk)).first()
+
+        if not conv:
+            return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        staff_name = (request.data.get('assigned_to') or request.data.get('staff_name') or '').strip()
+        if not staff_name:
+            staff_name = 'Unassigned'
+
+        conv.lead_owner = staff_name
+        conv.save(update_fields=['lead_owner', 'updated_at'])
+
+        # 1. Emit live real-time SSE updates for the conversation
+        emit_event('conversation.updated', {
+            'id': conv.id,
+            'lead_owner': conv.lead_owner,
+            'contact_name': conv.contact_name,
+            'phone_number': conv.phone_number,
+        })
+
+        # 2. In-App Software Notification
+        emit_event('notification.new', {
+            'id': int(time.time() * 1000),
+            'title': '👤 Staff Assigned to Chat',
+            'text': f"Chat with {conv.contact_name} ({conv.phone_number}) assigned to {staff_name}." if staff_name != 'Unassigned' else f"Chat with {conv.contact_name} is now Unassigned.",
+            'time': 'Just now',
+            'unread': True,
+            'target': 'conversations',
+            'itemId': conv.id,
+            'itemType': 'conversation'
+        })
+
+        # 3. Real WhatsApp Notification to the Assigned Staff Member
+        whatsapp_sent = False
+        staff_phone = ''
+        if staff_name and staff_name != 'Unassigned':
+            try:
+                from operations.models import Employee
+                emp = Employee.objects.filter(name__iexact=staff_name).first()
+                if not emp:
+                    emp = Employee.objects.filter(name__icontains=staff_name).first()
+                if emp and emp.phone:
+                    staff_phone = emp.phone
+
+                if not staff_phone:
+                    dev = LinkedEmployeeDevice.objects.filter(employee_name__icontains=staff_name).first()
+                    if dev and dev.phone_number:
+                        staff_phone = dev.phone_number
+
+                if staff_phone:
+                    clean_staff_phone = re.sub(r'\D', '', staff_phone)
+                    if len(clean_staff_phone) >= 10:
+                        last_msg = conv.messages.last()
+                        last_text = last_msg.text[:90] if last_msg else 'New customer inquiry'
+                        now_str = datetime.datetime.now().strftime('%I:%M %p')
+                        
+                        staff_alert_text = (
+                            f"🔔 *New Chat Assigned to You! — WhatsQ OS*\n\n"
+                            f"Hello *{staff_name}*,\n"
+                            f"You have been assigned to handle a customer conversation in Qiyam Business OS:\n\n"
+                            f"👤 *Customer:* {conv.contact_name}\n"
+                            f"📱 *Phone:* {conv.phone_number}\n"
+                            f"💬 *Last Message:* \"{last_text}\"\n"
+                            f"🕒 *Assigned Time:* {now_str}\n\n"
+                            f"👉 Please open Qiyam Business OS to reply and manage this customer."
+                        )
+
+                        cfg = MetaWhatsAppConfig.objects.first()
+                        if cfg and cfg.access_token and cfg.phone_number_id and cfg.connection_status == 'connected':
+                            res = MetaWhatsAppService.send_whatsapp_text(
+                                phone_number_id=cfg.phone_number_id,
+                                access_token=cfg.access_token,
+                                to_phone=clean_staff_phone,
+                                text=staff_alert_text,
+                                api_version=cfg.api_version
+                            )
+                            whatsapp_sent = bool(res.get('success'))
+                            if whatsapp_sent:
+                                logger.info(f"[Staff Assignment Alert] Sent WhatsApp alert to {staff_name} ({clean_staff_phone})")
+                            else:
+                                logger.warning(f"[Staff Assignment Alert] Meta send note: {res.get('error')}")
+            except Exception as notify_err:
+                logger.warning(f"[Staff Assignment Alert Error]: {notify_err}")
+
+        return Response({
+            'success': True,
+            'lead_owner': conv.lead_owner,
+            'whatsapp_notified': whatsapp_sent,
+            'staff_phone': staff_phone,
+            'conversation': ConversationSerializer(conv).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
         try:
             conversation = self.get_object()
@@ -1075,7 +1178,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         text = request.data.get('text', '')
         rich_card = request.data.get('rich_card', None)
         sender = request.data.get('sender', 'agent')
-        sender_name = request.data.get('sender_name', 'Rahul Mehta')
+        sender_name = request.data.get('sender_name') or (conversation.lead_owner if conversation.lead_owner and conversation.lead_owner != 'Unassigned' else 'Support Desk')
         sender_device = request.data.get('sender_device', '')
         sender_phone = request.data.get('sender_phone', '')
         sender_device_id = request.data.get('sender_device_id')
@@ -1147,13 +1250,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation.last_contact_date = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
         conversation.save()
 
-        # If customer is online on WhatsApp, prior outbound messages are marked read
-        if conversation.is_online:
-            Message.objects.filter(
-                conversation=conversation,
-                sender__in=['agent', 'bot']
-            ).exclude(id=msg.id).exclude(status='read').update(status='read')
-
         msg_data = MessageSerializer(msg).data
         emit_event('message.created', {
             'conversation_id': conversation.id,
@@ -1173,7 +1269,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 import django
                 django.db.connections.close_all()
                 remote_id = ''
-                final_status = 'delivered'
+                final_status = 'sent'
 
                 if not emp_device:
                     cfg = MetaWhatsAppConfig.objects.first()
@@ -1226,7 +1322,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
                         if m_res.get('success'):
                             remote_id = m_res.get('message_id', '')
-                            final_status = 'delivered'
+                            final_status = 'sent'
                         else:
                             logger.warning(f"[Meta Cloud API] Async dispatch failed: {m_res.get('error')}")
                 else:
@@ -1239,16 +1335,22 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     if baileys_res.get('success'):
                         res_obj = baileys_res.get('result', {})
                         remote_id = res_obj.get('messageId') or f"wa-emp-{dev_pk}-{int(time.time() * 1000)}"
-                        final_status = 'delivered'
+                        final_status = 'sent'
                     else:
                         remote_id = f"wa-emp-{dev_pk}-{int(time.time() * 1000)}"
-                        final_status = 'delivered'
+                        final_status = 'sent'
 
                 if remote_id or final_status:
                     Message.objects.filter(id=message_id).update(
                         meta_message_id=remote_id or temp_meta_id,
                         status=final_status
                     )
+                    emit_event('message.status_updated', {
+                        'conversation_id': conv_id,
+                        'message_id': message_id,
+                        'status': final_status,
+                        'meta_message_id': remote_id or temp_meta_id,
+                    })
                     emit_event('message.status', {
                         'conversation_id': conv_id,
                         'message_id': message_id,
@@ -2248,6 +2350,27 @@ class WhatsAppWebhookView(APIView):
                     })
                     return Response({'status': 'typing_processed'}, status=status.HTTP_200_OK)
 
+        # Direct message status update from multi-device gateways (Baileys, etc.)
+        if data.get('event') in ['messages.update', 'message.status_updated'] or ('status_id' in data and 'status' in data):
+            status_id = data.get('status_id') or data.get('message_id')
+            new_status = data.get('status')
+            if status_id and new_status:
+                matching_msgs = Message.objects.filter(meta_message_id=status_id)
+                matching_msgs.update(status=new_status)
+                for m in matching_msgs:
+                    if new_status == 'read':
+                        Message.objects.filter(
+                            conversation_id=m.conversation_id,
+                            id__lte=m.id,
+                            sender__in=['agent', 'bot']
+                        ).exclude(status='read').update(status='read')
+                    emit_event('message.status_updated', {
+                        'conversation_id': m.conversation_id,
+                        'message_id': m.id,
+                        'status': new_status
+                    })
+                return Response({'status': 'status_updated'}, status=status.HTTP_200_OK)
+
         entry_list = data.get('entry', [])
         for entry in entry_list:
             changes = entry.get('changes', [])
@@ -2934,6 +3057,10 @@ class StartWhatsAppChatView(APIView):
         if not text and not template_id:
             return Response({'error': 'Please provide an outbound message or select a WhatsApp template.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        assigned_staff = (request.data.get('assigned_to') or request.data.get('lead_owner') or '').strip()
+        if not assigned_staff:
+            assigned_staff = 'Unassigned'
+
         clean_digits = re.sub(r'\D', '', phone)
         last_10 = clean_digits[-10:] if len(clean_digits) >= 10 else clean_digits
 
@@ -2954,7 +3081,7 @@ class StartWhatsAppChatView(APIView):
                 avatar=avatar or f"https://ui-avatars.com/api/?name={encoded_name}&background=0D9488&color=fff",
                 category='Customer',
                 status='in_progress',
-                lead_owner='Rahul Mehta',
+                lead_owner=assigned_staff,
                 lead_stage='Active Chat',
                 source='WhatsApp',
                 location='Kozhikode, Kerala',
@@ -2973,6 +3100,8 @@ class StartWhatsAppChatView(APIView):
                 conv.contact_name = contact_name
             if avatar:
                 conv.avatar = avatar
+            if assigned_staff and assigned_staff != 'Unassigned':
+                conv.lead_owner = assigned_staff
             conv.last_contact_date = now_full
             conv.status = 'in_progress'
             conv.save()
@@ -2988,7 +3117,7 @@ class StartWhatsAppChatView(APIView):
         is_employee_device = False
         sender_device = 'Meta Cloud API'
         sender_phone = '+91 94963 00233'
-        sender_name = 'Rahul Mehta'
+        sender_name = request.data.get('sender_name') or (assigned_staff if assigned_staff != 'Unassigned' else 'Support Desk')
         dev = None
 
         if sender_device_id and str(sender_device_id) != 'meta_cloud':
@@ -3119,7 +3248,7 @@ class StartWhatsAppChatView(APIView):
             sender_phone=sender_phone,
             text=rendered_text,
             timestamp=now_time,
-            status='delivered' if dispatched else 'sent',
+            status='sent',
             meta_message_id=meta_msg_id,
             rich_card=msg_rich_card
         )
@@ -3141,6 +3270,40 @@ class StartWhatsAppChatView(APIView):
             'last_contact_date': now_full,
             'unread_count': 0
         })
+
+        # Dispatch WhatsApp Notification to the Assigned Staff Member
+        if assigned_staff and assigned_staff != 'Unassigned':
+            try:
+                from operations.models import Employee
+                emp = Employee.objects.filter(name__iexact=assigned_staff).first() or Employee.objects.filter(name__icontains=assigned_staff).first()
+                staff_phone = emp.phone if emp and emp.phone else ''
+                if not staff_phone:
+                    dev_match = LinkedEmployeeDevice.objects.filter(employee_name__icontains=assigned_staff).first()
+                    if dev_match and dev_match.phone_number:
+                        staff_phone = dev_match.phone_number
+
+                if staff_phone:
+                    clean_sp = re.sub(r'\D', '', staff_phone)
+                    if len(clean_sp) >= 10:
+                        staff_alert_text = (
+                            f"🔔 *New Chat Assigned to You! — WhatsQ OS*\n\n"
+                            f"Hello *{assigned_staff}*,\n"
+                            f"A new customer WhatsApp conversation with *{conv.contact_name}* ({conv.phone_number}) has been assigned to you.\n\n"
+                            f"💬 *Initial Message:* \"{rendered_text[:80] or 'Template dispatched'}\"\n"
+                            f"🕒 *Time:* {now_time}\n\n"
+                            f"👉 Please open Qiyam Business OS to continue chatting."
+                        )
+                        cfg_s = MetaWhatsAppConfig.objects.first()
+                        if cfg_s and cfg_s.access_token and cfg_s.phone_number_id and cfg_s.connection_status == 'connected':
+                            MetaWhatsAppService.send_whatsapp_text(
+                                phone_number_id=cfg_s.phone_number_id,
+                                access_token=cfg_s.access_token,
+                                to_phone=clean_sp,
+                                text=staff_alert_text,
+                                api_version=cfg_s.api_version
+                            )
+            except Exception as notify_err:
+                logger.warning(f"[StartChat Staff Alert Error]: {notify_err}")
 
         return Response({
             'status': 'success',
@@ -3552,7 +3715,7 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
                     sender_name=campaign.created_by or 'Broadcast System',
                     text=personalized_text or campaign.template_name or 'Broadcast Message',
                     timestamp=time_str,
-                    status='delivered' if success else 'failed',
+                    status='sent' if success else 'failed',
                     meta_message_id=remote_msg_id or f"camp-{campaign.id}-{log.id}",
                 )
                 emit_event('message.created', {
@@ -3561,7 +3724,7 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
                         'id': msg_rec.id,
                         'text': msg_rec.text,
                         'sender': 'agent',
-                        'status': 'delivered' if success else 'failed',
+                        'status': 'sent' if success else 'failed',
                         'timestamp': time_str,
                     }
                 })

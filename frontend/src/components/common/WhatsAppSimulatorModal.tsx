@@ -22,7 +22,8 @@ import {
   ArrowRight,
   ExternalLink,
   MessageCircle,
-  RotateCcw
+  RotateCcw,
+  UserCheck
 } from 'lucide-react';
 import { CustomerAvatar } from './CustomerAvatar';
 import { CountryPhoneInput } from './CountryPhoneInput';
@@ -40,6 +41,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
     templates,
     linkedDevices,
     metaConfig,
+    employees,
     setActiveTab,
     addToast
   } = useQiyamStore();
@@ -51,6 +53,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [assignedStaff, setAssignedStaff] = useState<string>('Unassigned');
 
   // Live Outbound options
   const [outboundMode, setOutboundMode] = useState<'direct' | 'template'>('direct');
@@ -241,6 +244,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
             text: cleanDirect,
             senderDeviceId: selectedSenderId,
             avatar: avatarUrl.trim() || undefined,
+            assigned_to: assignedStaff,
           });
 
           if (res.success) {
@@ -262,6 +266,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
             variables: templateVariables,
             senderDeviceId: selectedSenderId,
             avatar: avatarUrl.trim() || undefined,
+            assigned_to: assignedStaff,
           });
 
           if (res.success) {
@@ -418,6 +423,32 @@ export const WhatsAppSimulatorModal: React.FC = () => {
                 alignDropdown="right"
                 required
               />
+            </div>
+
+            {/* Assign Staff Member */}
+            <div className="sm:col-span-2">
+              <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Assign to Staff Member (Optional)</span>
+                </span>
+                <span className="text-[10px] text-slate-400">Gets real WhatsApp & in-app alerts</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={assignedStaff}
+                  onChange={(e) => setAssignedStaff(e.target.value)}
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition appearance-none cursor-pointer font-medium"
+                >
+                  <option value="Unassigned">⚪ Unassigned (Open for all team members)</option>
+                  {(employees || []).map((emp) => (
+                    <option key={emp.id} value={emp.name}>
+                      👤 {emp.name} — {emp.role || 'Staff Member'} {emp.phone ? `(${emp.phone})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
 

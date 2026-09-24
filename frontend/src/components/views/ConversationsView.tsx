@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
   Smile, Mic, CheckCheck, Clock, UserCheck,
-  ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, Tag,
+  ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, ChevronDown, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
@@ -79,6 +79,8 @@ export const ConversationsView: React.FC = () => {
     deletedConversations,
     restoreConversation,
     fetchDeletedConversations,
+    employees,
+    assignStaffToConversation,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam' | 'deleted'>('all');
@@ -155,6 +157,27 @@ export const ConversationsView: React.FC = () => {
     setFilterCustomEnd('');
   };
 
+  // Staff Assignment State & Refs
+  const [isAssignStaffOpen, setIsAssignStaffOpen] = useState(false);
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [isAssigningStaff, setIsAssigningStaff] = useState(false);
+  const assignDropdownRef = useRef<HTMLDivElement>(null);
+  const filterContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close filter popover and staff assignment dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target as Node)) {
+        setIsFilterOpen(false);
+      }
+      if (assignDropdownRef.current && !assignDropdownRef.current.contains(e.target as Node)) {
+        setIsAssignStaffOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const { globalFilter } = useQiyamStore();
 
   const allAvailableConvs = useMemo(
@@ -180,6 +203,49 @@ export const ConversationsView: React.FC = () => {
 
     return pool[0] || null;
   }, [allAvailableConvs, activeFilterTab, selectedConversationId, deletedConversations, conversations]);
+
+  const availableStaffList = useMemo(() => {
+    if (employees && employees.length > 0) return employees;
+    return [
+      { id: 1, name: 'Amit Sharma', role: 'Senior AC Technician', phone: '+91 90000 11123', avatar_url: '' },
+      { id: 2, name: 'Priya Sharma', role: 'Customer Service Lead', phone: '+91 89213 56789', avatar_url: '' },
+      { id: 3, name: 'Sneha Joshi', role: 'Support Specialist', phone: '+91 88481 23456', avatar_url: '' },
+      { id: 4, name: 'Rahul Singh', role: 'Field Technician', phone: '+91 98764 11122', avatar_url: '' },
+      { id: 5, name: 'Vikram Patel', role: 'Plumbing Specialist', phone: '+91 97451 98765', avatar_url: '' },
+      { id: 6, name: 'Ananya Rao', role: 'Operations Coordinator', phone: '+91 95441 23456', avatar_url: '' },
+    ];
+  }, [employees]);
+
+  const filteredEmployees = useMemo(() => {
+    if (!staffSearchQuery.trim()) return availableStaffList;
+    const q = staffSearchQuery.toLowerCase();
+    return availableStaffList.filter(
+      (e) => (e.name && e.name.toLowerCase().includes(q)) || (e.role && e.role.toLowerCase().includes(q))
+    );
+  }, [availableStaffList, staffSearchQuery]);
+
+  const handleAssignStaff = async (staffName: string, staffPhone?: string) => {
+    if (!currentConv) return;
+    setIsAssigningStaff(true);
+    try {
+      const res = await assignStaffToConversation(currentConv.id, staffName);
+      if (staffName === 'Unassigned') {
+        addToast('Conversation is now Unassigned (moved to open team pool)', 'info');
+      } else {
+        const phoneMsg = (res as any)?.staff_phone || staffPhone || '';
+        addToast(
+          `Assigned to ${staffName}! ${phoneMsg ? `WhatsApp alert sent to ${phoneMsg}` : 'Software & WhatsApp notifications sent.'}`,
+          'success'
+        );
+      }
+      setIsAssignStaffOpen(false);
+      setStaffSearchQuery('');
+    } catch (err) {
+      addToast('Failed to assign staff member', 'error');
+    } finally {
+      setIsAssigningStaff(false);
+    }
+  };
 
   const handleOpenWorkflowBuilder = (wfName: string = 'Service Booking Flow') => {
     const matchedWf = (workflows || []).find(
@@ -814,7 +880,7 @@ export const ConversationsView: React.FC = () => {
         customer_name: currentConv.contact_name,
         phone: currentConv.phone_number,
         service: currentConv.service_needed || 'AC Inspection & Deep Service',
-        employee: currentConv.lead_owner || 'Ramesh Kumar',
+        employee: currentConv.lead_owner && currentConv.lead_owner !== 'Unassigned' ? currentConv.lead_owner : (employees[0]?.name || 'Unassigned'),
         date_str: 'Tomorrow',
         time_str: '11:00 AM',
         duration: '1h 30m',
@@ -1019,9 +1085,16 @@ export const ConversationsView: React.FC = () => {
             Lead Details
           </h5>
           <div className="space-y-1.5 text-slate-600">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-slate-400">Lead Owner:</span>
-              <span className="font-semibold text-slate-800">{currentConv.lead_owner || 'Ramesh Kumar'}</span>
+              <button
+                onClick={() => setIsAssignStaffOpen(true)}
+                className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-xs"
+                title="Change staff assignment"
+              >
+                <span>{currentConv.lead_owner && currentConv.lead_owner !== 'Unassigned' ? currentConv.lead_owner : 'Unassigned'}</span>
+                <Edit2 className="w-3 h-3 text-slate-400" />
+              </button>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Service Needed:</span>
@@ -1182,7 +1255,7 @@ export const ConversationsView: React.FC = () => {
                   service: currentConv.service_needed || 'AC Maintenance & Inspection',
                   location: currentConv.location || 'Kozhikode, Kerala',
                   amount: currentConv.estimated_value || 3200,
-                  assigned_to: currentConv.lead_owner || 'Amit Sharma',
+                  assigned_to: currentConv.lead_owner && currentConv.lead_owner !== 'Unassigned' ? currentConv.lead_owner : (employees[0]?.name || 'Unassigned'),
                   status: 'scheduled',
                   priority: 'high',
                 });
@@ -1337,7 +1410,7 @@ export const ConversationsView: React.FC = () => {
           </DraggableScrollRow>
 
           {/* Search Box & Filter Controls */}
-          <div className="p-3 border-b border-slate-100 flex items-center gap-2 relative">
+          <div ref={filterContainerRef} className="p-3 border-b border-slate-100 flex items-center gap-2 relative">
             <div className="relative flex-1">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
@@ -1375,7 +1448,7 @@ export const ConversationsView: React.FC = () => {
 
             {/* Date / Month / Time Filter Popover */}
             {isFilterOpen && (
-              <div className="absolute top-full right-2 left-2 md:left-auto md:w-80 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 p-4 space-y-3.5 text-xs text-slate-700 animate-in fade-in duration-150">
+              <div className="absolute top-full left-3 right-3 mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-50 p-4 space-y-3.5 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
@@ -1422,11 +1495,16 @@ export const ConversationsView: React.FC = () => {
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
                     <span>Month & Year</span>
-                    {availableMonths.length > 0 && (
-                      <span className="text-[10px] text-slate-400 lowercase font-normal">
-                        ({availableMonths.length} active)
+                    {filterMonth !== 'all' ? (
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Active
                       </span>
-                    )}
+                    ) : availableMonths.length > 0 ? (
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        ({availableMonths.length} {availableMonths.length === 1 ? 'month' : 'months'})
+                      </span>
+                    ) : null}
                   </label>
                   <select
                     value={filterMonth}
@@ -1664,7 +1742,7 @@ export const ConversationsView: React.FC = () => {
                       ) : (
                         <div className="text-xs text-slate-600 truncate mt-0.5 font-medium flex items-center gap-1">
                           {lastMessage && lastMessage.sender !== 'customer' && (
-                            (lastMessage.status === 'read' || !lastMessage.status) ? (
+                            lastMessage.status === 'read' ? (
                               <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] stroke-[2.4] shrink-0" />
                             ) : lastMessage.status === 'delivered' ? (
                               <CheckCheck className="w-3.5 h-3.5 text-slate-400 stroke-[2] shrink-0" />
@@ -1802,23 +1880,148 @@ export const ConversationsView: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    {typingUsers[currentConv.id] ? (
-                      <div className="text-[11px] sm:text-xs text-emerald-600 font-medium tracking-wide flex items-center gap-1 mt-0.5 animate-in fade-in duration-150">
-                        <span>typing...</span>
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 flex-wrap mt-0.5">
+                      {typingUsers[currentConv.id] ? (
+                        <div className="text-[11px] sm:text-xs text-emerald-600 font-semibold tracking-wide flex items-center gap-1 animate-in fade-in duration-150">
+                          <span>typing...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{currentConv.phone_number}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="hidden sm:inline">
+                            {isCustomerReallyOnline
+                              ? <span className="text-emerald-600 font-semibold">Active now</span>
+                              : <span>Last seen {customerRealLastSeen}</span>}
+                          </span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <div ref={assignDropdownRef} className="relative inline-flex items-center">
+                        <button
+                          onClick={() => setIsAssignStaffOpen(!isAssignStaffOpen)}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-medium border transition-all cursor-pointer ${
+                            currentConv.lead_owner && currentConv.lead_owner !== 'Unassigned'
+                              ? 'bg-blue-50/90 text-blue-800 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
+                              : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 ring-1 ring-amber-300/60'
+                          }`}
+                          title="Click to assign or reassign this chat to any staff member"
+                        >
+                          <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span className="text-slate-500 font-normal">Assigned:</span>
+                          <strong className="font-semibold truncate max-w-[110px] sm:max-w-[140px]">
+                            {currentConv.lead_owner && currentConv.lead_owner !== 'Unassigned'
+                              ? currentConv.lead_owner
+                              : 'Unassigned'}
+                          </strong>
+                          <ChevronDown className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                        </button>
+
+                        {isAssignStaffOpen && (
+                          <div className="absolute top-full left-0 sm:left-auto sm:right-auto mt-1.5 w-72 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-50 p-3 space-y-2.5 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+                            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                              <div>
+                                <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Assign Staff Member</span>
+                                </h4>
+                                <p className="text-[10px] text-slate-400">Notifies via software & real WhatsApp</p>
+                              </div>
+                              <button
+                                onClick={() => setIsAssignStaffOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            {/* Staff Search */}
+                            <div className="relative">
+                              <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="text"
+                                value={staffSearchQuery}
+                                onChange={(e) => setStaffSearchQuery(e.target.value)}
+                                placeholder="Search staff by name or role..."
+                                className="w-full pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+
+                            {/* Staff Options List */}
+                            <div className="max-h-56 overflow-y-auto space-y-1 custom-scrollbar pr-0.5">
+                              {/* Unassigned Option */}
+                              <button
+                                onClick={() => handleAssignStaff('Unassigned')}
+                                disabled={isAssigningStaff}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition cursor-pointer ${
+                                  !currentConv.lead_owner || currentConv.lead_owner === 'Unassigned'
+                                    ? 'bg-amber-50/80 border border-amber-300 font-semibold text-amber-900'
+                                    : 'hover:bg-slate-50 border border-transparent text-slate-600'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-500">
+                                    ⚪
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-slate-800">Unassigned</p>
+                                    <p className="text-[10px] text-slate-400">Open team pool</p>
+                                  </div>
+                                </div>
+                                {(!currentConv.lead_owner || currentConv.lead_owner === 'Unassigned') && (
+                                  <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                )}
+                              </button>
+
+                              {/* Real Staff Members */}
+                              {filteredEmployees.map((emp) => {
+                                const isCurrent = currentConv.lead_owner === emp.name;
+                                return (
+                                  <button
+                                    key={emp.id || emp.name}
+                                    onClick={() => handleAssignStaff(emp.name, emp.phone)}
+                                    disabled={isAssigningStaff}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition cursor-pointer ${
+                                      isCurrent
+                                        ? 'bg-emerald-50 border border-emerald-300 font-semibold text-emerald-900 shadow-2xs'
+                                        : 'hover:bg-slate-50 border border-transparent text-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-[11px] shrink-0 overflow-hidden">
+                                        {'avatar_url' in emp && emp.avatar_url ? (
+                                          <img src={emp.avatar_url} alt={emp.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-slate-800 truncate">{emp.name}</p>
+                                        <div className="flex items-center gap-1 text-[10px] text-slate-400 truncate">
+                                          <span>{emp.role || 'Staff'}</span>
+                                          {emp.phone && (
+                                            <>
+                                              <span>•</span>
+                                              <span className="text-slate-500">{emp.phone}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {isCurrent && (
+                                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded-md border border-emerald-200 shrink-0">
+                                        <Check className="w-3 h-3 text-emerald-600" />
+                                        Active
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 truncate">
-                        <span>{currentConv.phone_number}</span>
-                        <span className="hidden sm:inline">•</span>
-                        <span className="hidden sm:inline">
-                          {isCustomerReallyOnline
-                            ? <span className="text-emerald-600 font-semibold">Active now</span>
-                            : <span>Last seen {customerRealLastSeen}</span>}
-                        </span>
-                        <span className="hidden md:inline">•</span>
-                        <span className="hidden md:inline">Assigned to: <strong className="text-slate-700">{currentConv.lead_owner || 'Ramesh Kumar'}</strong></span>
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 
@@ -2141,13 +2344,12 @@ export const ConversationsView: React.FC = () => {
                         const allMessages = currentConv.messages || [];
                         const msgIndex = allMessages.findIndex((m) => m.id === msg.id);
 
-                        // WhatsApp Real-Time Monotonic Read Status Rule
-                        const isCustomerOnline = Boolean(
-                          onlineUsers[String(currentConv.id)]?.isOnline ?? currentConv.is_online ?? false
-                        );
-
+                        // WhatsApp Real-Time Monotonic Read Status Rule:
+                        // - Double Blue Tick ('read'): Recipient opened/read chat, replied after, or later outbound is marked read
+                        // - Double Grey Tick ('delivered'): Recipient device received message (phone data/WiFi is ON)
+                        // - Single Grey Tick ('sent'): Sent to WhatsApp network (phone data is OFF or in transit)
                         const hasLaterReadOutbound = allMessages.slice(msgIndex + 1).some(
-                          (m) => m.sender !== 'customer' && (m.status === 'read' || !m.status)
+                          (m) => m.sender !== 'customer' && m.status === 'read'
                         );
                         const hasCustomerReplyAfter = allMessages.slice(msgIndex + 1).some(
                           (m) => m.sender === 'customer'
@@ -2155,10 +2357,8 @@ export const ConversationsView: React.FC = () => {
 
                         const isRead = !isCustomer && (
                           msg.status === 'read' ||
-                          !msg.status ||
                           hasLaterReadOutbound ||
-                          hasCustomerReplyAfter ||
-                          (isCustomerOnline && msg.status === 'delivered')
+                          hasCustomerReplyAfter
                         );
 
                         const isDelivered = !isCustomer && !isRead && msg.status === 'delivered';
@@ -2432,7 +2632,7 @@ export const ConversationsView: React.FC = () => {
                                   ) : isDelivered ? (
                                     <button
                                       type="button"
-                                      title="Delivered. Click to mark as read (Double blue tick)"
+                                      title="Delivered to recipient phone (Mobile data/WiFi ON). Click to mark as read (Double blue tick)"
                                       className="inline-flex items-center text-slate-300 hover:text-[#53bdeb] ml-0.5 transition-colors cursor-pointer"
                                       onClick={() => {
                                         useQiyamStore.getState().applyMessageStatus(currentConv.id, msg.id, 'read');
@@ -2442,7 +2642,7 @@ export const ConversationsView: React.FC = () => {
                                       <CheckCheck className="w-3.5 h-3.5 stroke-[2.2]" />
                                     </button>
                                   ) : (
-                                    <span title="Sent" className="inline-flex items-center text-slate-300 ml-0.5">
+                                    <span title="Sent to WhatsApp (Recipient mobile data is OFF or message in transit)" className="inline-flex items-center text-slate-300 ml-0.5">
                                       <Check className="w-3.5 h-3.5 stroke-[2.2]" />
                                     </span>
                                   )

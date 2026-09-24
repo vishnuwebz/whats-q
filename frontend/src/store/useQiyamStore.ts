@@ -661,7 +661,12 @@ interface QiyamState {
     variables?: Record<string, string>;
     senderDeviceId?: string | number;
     avatar?: string;
+    assigned_to?: string;
   }) => Promise<{ success: boolean; conversationId?: string | number; error?: string }>;
+  assignStaffToConversation: (
+    conversationId: string | number,
+    staffName: string
+  ) => Promise<{ success: boolean; lead_owner?: string; whatsapp_notified?: boolean; staff_phone?: string }>;
   simulateInboundWhatsApp: (name: string, phone: string, text: string, avatar?: string) => Promise<void>;
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
   submitTemplateToMeta: (templateId: string | number) => Promise<boolean>;
@@ -3106,9 +3111,12 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       ? employeeDevice.device_label
       : 'Meta Cloud API';
 
+    const targetConv = get().conversations.find((c) => String(c.id) === String(conversationId));
+    const assignedStaff = targetConv?.lead_owner && targetConv.lead_owner !== 'Unassigned' ? targetConv.lead_owner : null;
+
     const resolvedSenderName = isEmployeeDevice && employeeDevice
       ? (employeeDevice.employee_name || employeeDevice.device_label)
-      : (sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant');
+      : (sender === 'agent' ? (assignedStaff || 'Support Desk') : 'Qiyam AI Assistant');
 
     const isVoice = Boolean(
       voicePayload?.isVoiceNote ||
@@ -3227,6 +3235,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         variables: params.variables,
         sender_device_id: params.senderDeviceId,
         avatar: params.avatar,
+        assigned_to: params.assigned_to,
       });
 
       if (res && res.status === 'success' && res.conversation) {
@@ -3269,6 +3278,49 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
   },
 
+  assignStaffToConversation: async (conversationId, staffName) => {
+    // 1. Optimistic update in UI
+    set((state) => {
+      const nextConversations = state.conversations.map((c) =>
+        String(c.id) === String(conversationId) ? { ...c, lead_owner: staffName } : c
+      );
+      persistConversations(nextConversations);
+      return { conversations: nextConversations };
+    });
+
+    try {
+      const res: any = await apiClient.post(`/conversations/threads/${conversationId}/assign_staff/`, {
+        assigned_to: staffName,
+      });
+
+      if (res && res.lead_owner) {
+        set((state) => {
+          const nextConversations = state.conversations.map((c) =>
+            String(c.id) === String(conversationId) ? { ...c, lead_owner: res.lead_owner } : c
+          );
+          persistConversations(nextConversations);
+          return { conversations: nextConversations };
+        });
+      }
+
+      const alertNote = res?.whatsapp_notified
+        ? ` (Real WhatsApp alert sent to ${res.staff_phone || 'mobile'})`
+        : '';
+
+      if (staffName === 'Unassigned') {
+        get().addToast('Conversation is now unassigned', 'info');
+      } else {
+        get().addToast(`Assigned to ${staffName}${alertNote}`, 'success');
+      }
+
+      return res || { success: true, lead_owner: staffName };
+    } catch (err: any) {
+      console.error('[AssignStaff Error]:', err);
+      get().addToast(`Failed to assign staff: ${err?.message || 'Network error'}`, 'error');
+      throw err;
+    }
+  },
+
   simulateInboundWhatsApp: async (name, phone, text, avatar) => {
     const res = await apiClient.post('/conversations/simulate/', { name, phone, text, avatar });
     if (res?.conversation) {
@@ -3308,11 +3360,12 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     const targetConv = get().conversations.find((c) => String(c.id) === String(conversationId));
     const activeWf = targetConv?.active_workflow || 'Service Booking Flow';
+    const assignedStaff = targetConv?.lead_owner && targetConv.lead_owner !== 'Unassigned' ? targetConv.lead_owner : null;
 
     const optimisticMsg: WhatsAppMessage = {
       id: tempId,
       sender: 'agent',
-      senderName: 'Rahul Mehta (Template)',
+      senderName: assignedStaff ? `${assignedStaff} (Template)` : 'Support Desk (Template)',
       text: renderedText,
       timestamp: nowTime,
       created_at: new Date().toISOString(),
@@ -5511,7 +5564,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         category: 'Customer',
         unread_count: 0,
         status: 'in_progress',
-        lead_owner: apt.employee || 'Rahul Mehta',
+        lead_owner: apt.employee || 'Unassigned',
         lead_stage: 'Appointment Confirmed',
         source: apt.source || 'Appointments',
         first_contact_date: apt.date_str || 'Today',
@@ -5673,7 +5726,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         category: 'Customer',
         unread_count: 0,
         status: 'in_progress',
-        lead_owner: 'Rahul Mehta',
+        lead_owner: 'Unassigned',
         lead_stage: 'Active Chat',
         source: 'CRM Directory',
         first_contact_date: 'Today',
