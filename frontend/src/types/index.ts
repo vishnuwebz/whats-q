@@ -76,6 +76,22 @@ export interface TenantFeatureConfig {
   apiWebhooks: boolean;
 }
 
+export type TenantSidebarModule =
+  | 'dashboard'
+  | 'conversations'
+  | 'messenger'
+  | 'crm'
+  | 'branches'
+  | 'ops'
+  | 'finance'
+  | 'automation'
+  | 'ai'
+  | 'analytics'
+  | 'integrations'
+  | 'roles'
+  | 'settings'
+  | 'settings-backup';
+
 export interface PlatformTenant {
   id: string;
   businessName: string;
@@ -86,19 +102,46 @@ export interface PlatformTenant {
   ownerPhone: string;
   tier: 'starter' | 'growth' | 'enterprise';
   amount: number;
-  billingCycle: 'monthly' | 'annually';
-  renewalDate: string;
+  billingCycle: 'monthly' | 'annually' | 'quarterly';
   createdAt: string;
+  
+  // Software Payments & Ledger
+  lastPaymentDate: string;
+  lastPaymentAmount: number;
+  lastPaymentMethod: string;
+  lastPaymentRef?: string;
+  nextPaymentDueDate: string;
+  paymentStatus: 'paid' | 'due_soon' | 'overdue' | 'grace_period';
+  
+  // Meta Prepaid Wallet Balance
+  metaWalletBalance: number;
+  metaWalletCurrency: string;
+  metaWalletStatus: 'healthy' | 'low' | 'critical';
+  metaDailyLimit: number;
+  metaTier: 'Tier 1 (1k/day)' | 'Tier 2 (10k/day)' | 'Tier 3 (100k/day)' | 'Unlimited';
+  
+  // Licenses & Staff
   activeLicenses: number;
   maxLicenses: number;
+  onlineStaffCount: number;
   status: 'active' | 'trial' | 'suspended';
-  wabaStatus: 'connected' | 'pending' | 'disconnected';
+  
+  // WhatsApp WABA Live Status
+  wabaStatus: 'connected' | 'pending' | 'disconnected' | 'rate_limited';
   wabaPhone?: string;
   wabaId?: string;
+  wabaQualityScore: 'HIGH' | 'MEDIUM' | 'LOW';
+  wabaLatencyMs: number;
+  lastWebhookPing: string;
   messagesSentThisMonth: number;
   monthlyMessageLimit: number;
   color?: string;
+  
+  // Granular features
   features: TenantFeatureConfig;
+  
+  // Custom Sidebar Navigation Modules for this Client
+  sidebarModules: TenantSidebarModule[];
 }
 
 export interface PlatformAuditLog {

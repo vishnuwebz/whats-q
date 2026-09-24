@@ -210,6 +210,7 @@ export const Sidebar: React.FC = () => {
               initial: p.initials || p.initial || (p.businessName || 'W')[0],
               color: p.color || 'from-emerald-500 to-teal-600',
               staffCount: p.activeLicenses || p.staffCount || 10,
+              sidebarModules: p.sidebarModules,
             })));
           }
         }
@@ -243,6 +244,7 @@ export const Sidebar: React.FC = () => {
             initial: p.initials || p.initial || (p.businessName || 'W')[0],
             color: p.color || 'from-emerald-500 to-teal-600',
             staffCount: p.activeLicenses || p.staffCount || 10,
+            sidebarModules: p.sidebarModules,
           }));
         }
       }
@@ -257,6 +259,11 @@ export const Sidebar: React.FC = () => {
         initial: 'Q',
         color: 'from-emerald-500 to-teal-600',
         staffCount: 18,
+        sidebarModules: [
+          'dashboard', 'conversations', 'messenger', 'crm', 'branches',
+          'ops', 'finance', 'automation', 'ai', 'analytics', 'integrations',
+          'roles', 'settings', 'settings-backup'
+        ],
       },
       {
         id: 'TN2388',
@@ -267,6 +274,7 @@ export const Sidebar: React.FC = () => {
         initial: 'E',
         color: 'from-blue-500 to-cyan-600',
         staffCount: 12,
+        sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'finance', 'settings'],
       },
       {
         id: 'TN2401',
@@ -277,6 +285,7 @@ export const Sidebar: React.FC = () => {
         initial: 'C',
         color: 'from-purple-500 to-indigo-600',
         staffCount: 24,
+        sidebarModules: ['dashboard', 'conversations', 'messenger', 'crm', 'ops', 'finance', 'automation', 'roles', 'settings'],
       },
       {
         id: 'TN2455',
@@ -287,6 +296,7 @@ export const Sidebar: React.FC = () => {
         initial: 'M',
         color: 'from-amber-500 to-orange-600',
         staffCount: 8,
+        sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'settings'],
       },
     ];
   });
@@ -298,6 +308,17 @@ export const Sidebar: React.FC = () => {
     }
   });
   const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0];
+
+  // Check if a navigation module is enabled for the active tenant
+  const isModuleEnabled = (moduleName: string) => {
+    // Super Admin tab is always visible to super admin
+    if (moduleName === 'super-admin') return true;
+    const modules = (activeTenant as any)?.sidebarModules;
+    if (!modules || !Array.isArray(modules) || modules.length === 0) {
+      return true; // Default fallback: show all if unconfigured
+    }
+    return modules.includes(moduleName);
+  };
 
   // Resolve active outbound WhatsApp line from store or localStorage
   const activeOutboundLine = useMemo(() => {
@@ -802,21 +823,24 @@ export const Sidebar: React.FC = () => {
               </button>
 
               {/* Dashboard */}
-              <button
-                data-tab="dashboard"
-                onClick={() => handleTabClick('dashboard')}
-                title="Dashboard"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
-                  isActive('dashboard')
-                    ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                    : 'hover:bg-[#16233B] text-slate-300'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4 shrink-0" />
-                {!isCollapsed && <span>Dashboard</span>}
-              </button>
+              {isModuleEnabled('dashboard') && (
+                <button
+                  data-tab="dashboard"
+                  onClick={() => handleTabClick('dashboard')}
+                  title="Dashboard"
+                  className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all ${
+                    isActive('dashboard')
+                      ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                      : 'hover:bg-[#16233B] text-slate-300'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4 shrink-0" />
+                  {!isCollapsed && <span>Dashboard</span>}
+                </button>
+              )}
 
           {/* Messenger (Accordion containing Conversations, Bulk Message Overview, Send Bulk Message, etc.) */}
+          {(isModuleEnabled('conversations') || isModuleEnabled('messenger')) && (
           <div>
             {isCollapsed ? (
               <button
@@ -868,30 +892,35 @@ export const Sidebar: React.FC = () => {
                 {messengerOpen && (
                   <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-1 mt-1">
                     {/* Conversations */}
-                    <button
-                      data-tab="conversations"
-                      onClick={() => handleTabClick('conversations')}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('conversations')
-                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                          : 'hover:bg-[#16233B] text-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <MessageSquare className={`w-4 h-4 shrink-0 ${isActive('conversations') ? 'text-white' : 'text-slate-400'}`} />
-                        <span>Conversations</span>
-                      </div>
-                      {unreadConversationsCount > 0 && (
-                        <span className="bg-emerald-950/80 text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                          {unreadConversationsCount}
-                        </span>
-                      )}
-                    </button>
+                    {isModuleEnabled('conversations') && (
+                      <button
+                        data-tab="conversations"
+                        onClick={() => handleTabClick('conversations')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                          isActive('conversations')
+                            ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                            : 'hover:bg-[#16233B] text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <MessageSquare className={`w-4 h-4 shrink-0 ${isActive('conversations') ? 'text-white' : 'text-slate-400'}`} />
+                          <span>Conversations</span>
+                        </div>
+                        {unreadConversationsCount > 0 && (
+                          <span className="bg-emerald-950/80 text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                            {unreadConversationsCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
 
-                    {/* Bulk Message Overview */}
-                    <button
-                      data-tab="bulk-overview"
-                      onClick={() => handleTabClick('bulk-overview')}
+                    {/* Bulk Message Items */}
+                    {isModuleEnabled('messenger') && (
+                      <>
+                        {/* Bulk Message Overview */}
+                        <button
+                          data-tab="bulk-overview"
+                          onClick={() => handleTabClick('bulk-overview')}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                         isActive('bulk-overview')
                           ? 'bg-emerald-600 text-white font-semibold shadow-sm'
@@ -993,16 +1022,20 @@ export const Sidebar: React.FC = () => {
                           : 'hover:bg-[#16233B] text-slate-300'
                       }`}
                     >
-                      <Clock className={`w-4 h-4 shrink-0 ${isActive('bulk-scheduled') ? 'text-white' : 'text-slate-400'}`} />
-                      <span>Scheduled Messages</span>
-                    </button>
+                        <Clock className={`w-4 h-4 shrink-0 ${isActive('bulk-scheduled') ? 'text-white' : 'text-slate-400'}`} />
+                        <span>Scheduled Messages</span>
+                      </button>
+                    </>
+                  )}
                   </div>
                 )}
               </>
             )}
           </div>
+          )}
 
         {/* CRM */}
+        {isModuleEnabled('crm') && (
         <div>
           {isCollapsed ? (
             <button
@@ -1087,8 +1120,10 @@ export const Sidebar: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* Branches */}
+        {isModuleEnabled('branches') && (
         <button
           data-tab="branches"
           onClick={() => handleTabClick('branches')}
@@ -1102,8 +1137,10 @@ export const Sidebar: React.FC = () => {
           <Building2 className={`w-4 h-4 shrink-0 ${isActive('branches') ? 'text-white' : 'text-emerald-400'}`} />
           {!isCollapsed && <span>Branches</span>}
         </button>
+        )}
 
         {/* Operations */}
+        {isModuleEnabled('ops') && (
         <div>
           {isCollapsed ? (
             <button
@@ -1238,8 +1275,10 @@ export const Sidebar: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* Finance */}
+        {isModuleEnabled('finance') && (
         <div>
           {isCollapsed ? (
             <button
@@ -1384,8 +1423,10 @@ export const Sidebar: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* Automation */}
+        {isModuleEnabled('automation') && (
         <div>
           {isCollapsed ? (
             <button
@@ -1470,8 +1511,10 @@ export const Sidebar: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* AI Assistant */}
+        {isModuleEnabled('ai') && (
         <div>
           {isCollapsed ? (
             <button
@@ -1575,8 +1618,10 @@ export const Sidebar: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* Analytics */}
+        {isModuleEnabled('analytics') && (
         <button
           data-tab="analytics"
           onClick={() => handleTabClick('analytics')}
@@ -1590,8 +1635,10 @@ export const Sidebar: React.FC = () => {
           <BarChart3 className="w-4 h-4 shrink-0" />
           {!isCollapsed && <span>Analytics</span>}
         </button>
+        )}
 
         {/* Integrations */}
+        {isModuleEnabled('integrations') && (
         <button
           data-tab="integrations"
           onClick={() => handleTabClick('integrations')}
@@ -1605,8 +1652,10 @@ export const Sidebar: React.FC = () => {
           <Puzzle className="w-4 h-4 shrink-0" />
           {!isCollapsed && <span>Integrations</span>}
         </button>
+        )}
 
         {/* Roles, Permissions & Security */}
+        {isModuleEnabled('roles') && (
         <button
           data-tab="roles"
           onClick={() => handleTabClick('roles')}
@@ -1631,6 +1680,7 @@ export const Sidebar: React.FC = () => {
             </div>
           )}
         </button>
+        )}
 
         {/* Platform Super Admin */}
         <button
@@ -1655,6 +1705,7 @@ export const Sidebar: React.FC = () => {
         </button>
 
         {/* Settings */}
+        {isModuleEnabled('settings') && (
         <button
           data-tab="settings"
           onClick={() => handleTabClick('settings')}
@@ -1668,8 +1719,10 @@ export const Sidebar: React.FC = () => {
           <SettingsIcon className="w-4 h-4 shrink-0" />
           {!isCollapsed && <span>Settings</span>}
         </button>
+        )}
 
         {/* Data Backup & Restore */}
+        {isModuleEnabled('settings-backup') && (
         <button
           data-tab="settings-backup"
           onClick={() => handleTabClick('settings-backup')}
@@ -1690,6 +1743,7 @@ export const Sidebar: React.FC = () => {
             </div>
           )}
         </button>
+        )}
 
         {/* API Endpoints & Swagger Hub */}
         <a
@@ -2055,6 +2109,22 @@ export const Sidebar: React.FC = () => {
                     initial: newName.trim().charAt(0).toUpperCase(),
                     color: 'from-teal-500 to-emerald-600',
                     staffCount: 1,
+                    sidebarModules: [
+                      'dashboard',
+                      'conversations',
+                      'messenger',
+                      'crm',
+                      'branches',
+                      'ops',
+                      'finance',
+                      'automation',
+                      'ai',
+                      'analytics',
+                      'integrations',
+                      'roles',
+                      'settings',
+                      'settings-backup',
+                    ],
                   };
                   setTenants((prev) => [...prev, newTenant]);
                   handleSelectTenant(newTenant);

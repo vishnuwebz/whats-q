@@ -4,19 +4,14 @@ import {
   Crown,
   ShieldCheck,
   ShieldAlert,
-  Shield,
   Server,
   Activity,
   Users,
   Building,
   Building2,
-  Key,
-  Lock,
-  Globe,
   Check,
   X,
   AlertTriangle,
-  AlertCircle,
   RefreshCw,
   Plus,
   Edit3,
@@ -26,7 +21,6 @@ import {
   Copy,
   Download,
   Zap,
-  Database,
   Smartphone,
   Send,
   MessageSquare,
@@ -35,19 +29,57 @@ import {
   CheckCircle2,
   TrendingUp,
   Radio,
-  Sparkles,
-  ChevronRight,
-  PauseCircle,
-  PlayCircle,
   Sliders,
   DollarSign,
   BarChart3,
   Layers,
   Settings,
-  HelpCircle
+  CreditCard,
+  Wallet,
+  Clock,
+  Calendar,
+  PhoneCall,
+  UserCheck,
+  Briefcase,
+  ReceiptText,
+  FileText,
+  FileCheck,
+  Bot,
+  Sparkles,
+  Puzzle,
+  Database,
+  ArrowRight,
+  ChevronRight,
+  PlayCircle,
+  PauseCircle,
+  AlertCircle,
+  IndianRupee
 } from 'lucide-react';
-import { PlatformTenant, PlatformAuditLog, PlatformPlanTier, TenantFeatureConfig } from '@/types';
+import { PlatformTenant, PlatformAuditLog, PlatformPlanTier, TenantSidebarModule, TenantFeatureConfig } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
+
+export const ALL_SIDEBAR_MODULES: {
+  id: TenantSidebarModule;
+  label: string;
+  description: string;
+  category: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: 'dashboard', label: 'Executive Dashboard', description: 'System KPIs, revenue numbers & operational overview', category: 'Core', icon: BarChart3 },
+  { id: 'conversations', label: 'WhatsApp Inbox', description: 'Live two-way WhatsApp chat & agent collision detection', category: 'Messenger', icon: MessageSquare },
+  { id: 'messenger', label: 'Bulk Broadcasts', description: 'Bulk WhatsApp campaigns, recipient lists & scheduler', category: 'Messenger', icon: Send },
+  { id: 'crm', label: 'CRM & Pipeline', description: 'Leads, customers, deals pipeline & follow-up scheduler', category: 'Sales', icon: UserCheck },
+  { id: 'branches', label: 'Multi-Branch Management', description: 'Regional office locations, store branches & managers', category: 'Organization', icon: Building2 },
+  { id: 'ops', label: 'Operations & Field Service', description: 'Work orders, bookings, technician roster, attendance & tasks', category: 'Operations', icon: Briefcase },
+  { id: 'finance', label: 'Finance & Invoicing', description: 'GST invoices, quotations, expense ledger & payments', category: 'Finance', icon: IndianRupee },
+  { id: 'automation', label: 'Workflow Automation', description: 'Visual drag-drop canvas & keyword trigger rules', category: 'Automation', icon: Zap },
+  { id: 'ai', label: 'AI Copilot & Knowledge', description: 'RAG knowledge base, AI smart suggestions & templates', category: 'AI Assistant', icon: Bot },
+  { id: 'analytics', label: 'Analytics & BI', description: 'Deep performance reports, charts & conversion trends', category: 'Intelligence', icon: TrendingUp },
+  { id: 'integrations', label: 'Integrations & Webhooks', description: 'Meta Cloud API, REST webhook endpoints & connectors', category: 'Ecosystem', icon: Puzzle },
+  { id: 'roles', label: 'Roles & Security (RBAC)', description: 'Granular permissions matrix & staff access policies', category: 'Security', icon: ShieldCheck },
+  { id: 'settings-backup', label: 'Data Backup & Restore', description: 'Automated database backups & recovery snapshots', category: 'System', icon: Database },
+  { id: 'settings', label: 'Workspace Settings', description: 'Company profile, branding, timezone & preferences', category: 'System', icon: Settings },
+];
 
 const INITIAL_TENANTS: PlatformTenant[] = [
   {
@@ -61,14 +93,27 @@ const INITIAL_TENANTS: PlatformTenant[] = [
     tier: 'enterprise',
     amount: 14999,
     billingCycle: 'monthly',
-    renewalDate: '2026-10-15',
     createdAt: '2026-01-10',
+    lastPaymentDate: '2026-08-25',
+    lastPaymentAmount: 14999,
+    lastPaymentMethod: 'Razorpay UPI (pay_OP18294)',
+    nextPaymentDueDate: '2026-10-01',
+    paymentStatus: 'due_soon',
+    metaWalletBalance: 4850,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'healthy',
+    metaDailyLimit: 100000,
+    metaTier: 'Tier 3 (100k/day)',
     activeLicenses: 18,
     maxLicenses: 30,
+    onlineStaffCount: 7,
     status: 'active',
     wabaStatus: 'connected',
     wabaPhone: '+91 73389 44799',
     wabaId: '1098915959329432',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 38,
+    lastWebhookPing: '14s ago',
     messagesSentThisMonth: 48920,
     monthlyMessageLimit: 100000,
     color: 'from-emerald-500 to-teal-600',
@@ -82,6 +127,11 @@ const INITIAL_TENANTS: PlatformTenant[] = [
       voiceNotes: true,
       apiWebhooks: true,
     },
+    sidebarModules: [
+      'dashboard', 'conversations', 'messenger', 'crm', 'branches',
+      'ops', 'finance', 'automation', 'ai', 'analytics', 'integrations',
+      'roles', 'settings', 'settings-backup'
+    ],
   },
   {
     id: 'TN2388',
@@ -94,14 +144,27 @@ const INITIAL_TENANTS: PlatformTenant[] = [
     tier: 'growth',
     amount: 5999,
     billingCycle: 'monthly',
-    renewalDate: '2026-10-02',
     createdAt: '2026-03-14',
+    lastPaymentDate: '2026-09-02',
+    lastPaymentAmount: 5999,
+    lastPaymentMethod: 'Bank Transfer NEFT',
+    nextPaymentDueDate: '2026-10-02',
+    paymentStatus: 'paid',
+    metaWalletBalance: 1280,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'healthy',
+    metaDailyLimit: 10000,
+    metaTier: 'Tier 2 (10k/day)',
     activeLicenses: 12,
     maxLicenses: 15,
+    onlineStaffCount: 4,
     status: 'active',
     wabaStatus: 'connected',
     wabaPhone: '+91 98765 43211',
     wabaId: '1098915959329440',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 42,
+    lastWebhookPing: '32s ago',
     messagesSentThisMonth: 28400,
     monthlyMessageLimit: 50000,
     color: 'from-blue-500 to-cyan-600',
@@ -115,6 +178,7 @@ const INITIAL_TENANTS: PlatformTenant[] = [
       voiceNotes: true,
       apiWebhooks: true,
     },
+    sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'finance', 'settings'],
   },
   {
     id: 'TN2401',
@@ -127,14 +191,27 @@ const INITIAL_TENANTS: PlatformTenant[] = [
     tier: 'enterprise',
     amount: 14999,
     billingCycle: 'monthly',
-    renewalDate: '2026-10-20',
     createdAt: '2026-02-01',
+    lastPaymentDate: '2026-08-20',
+    lastPaymentAmount: 14999,
+    lastPaymentMethod: 'Credit Card (HDFC Corporate)',
+    nextPaymentDueDate: '2026-09-20',
+    paymentStatus: 'overdue',
+    metaWalletBalance: 340,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'low',
+    metaDailyLimit: 100000,
+    metaTier: 'Tier 3 (100k/day)',
     activeLicenses: 24,
     maxLicenses: 40,
+    onlineStaffCount: 11,
     status: 'active',
     wabaStatus: 'connected',
     wabaPhone: '+91 98765 43212',
     wabaId: '1098915959329488',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 40,
+    lastWebhookPing: '8s ago',
     messagesSentThisMonth: 61200,
     monthlyMessageLimit: 100000,
     color: 'from-purple-500 to-indigo-600',
@@ -148,6 +225,7 @@ const INITIAL_TENANTS: PlatformTenant[] = [
       voiceNotes: true,
       apiWebhooks: true,
     },
+    sidebarModules: ['dashboard', 'conversations', 'messenger', 'crm', 'ops', 'finance', 'automation', 'roles', 'settings'],
   },
   {
     id: 'TN2455',
@@ -160,14 +238,27 @@ const INITIAL_TENANTS: PlatformTenant[] = [
     tier: 'starter',
     amount: 2499,
     billingCycle: 'monthly',
-    renewalDate: '2026-09-30',
     createdAt: '2026-06-18',
+    lastPaymentDate: '2026-08-30',
+    lastPaymentAmount: 2499,
+    lastPaymentMethod: 'Google Pay UPI',
+    nextPaymentDueDate: '2026-09-30',
+    paymentStatus: 'due_soon',
+    metaWalletBalance: 90,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'critical',
+    metaDailyLimit: 1000,
+    metaTier: 'Tier 1 (1k/day)',
     activeLicenses: 8,
     maxLicenses: 10,
+    onlineStaffCount: 2,
     status: 'trial',
     wabaStatus: 'pending',
     wabaPhone: '+91 98765 43213',
     wabaId: '1098915959329501',
+    wabaQualityScore: 'MEDIUM',
+    wabaLatencyMs: 115,
+    lastWebhookPing: '4m ago',
     messagesSentThisMonth: 6060,
     monthlyMessageLimit: 15000,
     color: 'from-amber-500 to-orange-600',
@@ -181,6 +272,7 @@ const INITIAL_TENANTS: PlatformTenant[] = [
       voiceNotes: false,
       apiWebhooks: false,
     },
+    sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'settings'],
   },
 ];
 
@@ -188,7 +280,7 @@ const INITIAL_PLANS: PlatformPlanTier[] = [
   {
     id: 'plan_starter',
     name: 'Starter Tier',
-    badge: 'Standard',
+    badge: 'Essential',
     monthlyPrice: 2499,
     annualPrice: 24990,
     currency: '₹',
@@ -200,9 +292,8 @@ const INITIAL_PLANS: PlatformPlanTier[] = [
       'Up to 5 Team Agent Seats',
       '15,000 Outbound WhatsApp Messages/mo',
       'Keyword Auto-Replies & Triggers',
-      'Basic CRM & Contact Management',
-      'Bulk Messaging & Scheduler',
-      'Community & Email Support',
+      'Core CRM & Customer Roster',
+      'Basic Invoicing & Payments',
     ],
     popular: false,
   },
@@ -220,11 +311,10 @@ const INITIAL_PLANS: PlatformPlanTier[] = [
       'Up to 3 WhatsApp Business Numbers',
       'Up to 15 Team Agent Seats',
       '50,000 Outbound WhatsApp Messages/mo',
-      'Full Interactive Workflow Automation Canvas',
-      'AI Knowledge Base & Smart Assistant',
-      'Voice Note Transcription & Audio Notes',
-      'Multi-Agent Inbox with Collision Detection',
-      'Priority WhatsApp Support & SLA',
+      'Field Service Jobs & Appointments',
+      'Interactive Workflow Builder Canvas',
+      'AI Knowledge Base & Copilot',
+      'Voice Notes Transcription & Audio',
     ],
     popular: true,
   },
@@ -239,14 +329,14 @@ const INITIAL_PLANS: PlatformPlanTier[] = [
     maxMessages: 200000,
     maxWabaNumbers: 10,
     features: [
-      'Unlimited WABA Phone Number Channels',
-      'Up to 50 Dedicated Team Seats (Expandable)',
+      'Unlimited WABA Phone Channels',
+      'Up to 50 Dedicated Team Seats',
       '200,000+ Outbound Messages / mo',
-      'Full White-Label Branding & Custom Domain',
       'Multi-Branch Organization Routing',
+      'Full White-Label & Custom Branding',
+      'Custom Sidebar Menu Provisioning',
       'REST Webhook API & External ERP Sync',
-      'Dedicated IP & 99.99% Guaranteed SLA',
-      '24/7 Dedicated Technical Account Manager',
+      '24/7 Dedicated Account Manager',
     ],
     popular: false,
   },
@@ -258,52 +348,51 @@ const INITIAL_AUDIT_LOGS: PlatformAuditLog[] = [
     timestamp: '2 mins ago',
     actor: 'Rahul Mehta',
     actorRole: 'Platform Super Admin',
-    action: 'Modified global outbound rate limiter throttle from 12s to 10s',
-    targetTenant: 'Global Platform',
+    action: 'Configured custom sidebar navigation menu for "CoolFix Express" (TN2388)',
+    targetTenant: 'CoolFix Express',
     severity: 'info',
     ipAddress: '103.248.112.44',
-    details: 'Applied across all 4 active workspace outbound queues.',
+    details: 'Enabled 6 custom modules: Dashboard, Inbox, CRM, Operations, Finance, Settings.',
   },
   {
     id: 'log-02',
-    timestamp: '28 mins ago',
-    actor: 'System Engine',
-    actorRole: 'Meta Webhook Listener',
-    action: 'Successfully handled 1,420 incoming message callbacks without drops',
+    timestamp: '18 mins ago',
+    actor: 'Billing Engine',
+    actorRole: 'Automated SaaS Ledger',
+    action: 'Recorded subscription payment of ₹14,999 from Qiyam Business Solutions (TN2345)',
     targetTenant: 'Qiyam Business Solutions',
     severity: 'info',
-    ipAddress: '31.13.88.35 (Meta Ireland)',
+    ipAddress: 'Razorpay Webhook (103.111.45.2)',
   },
   {
     id: 'log-03',
-    timestamp: '1 hour ago',
-    actor: 'Anoop Kumar',
-    actorRole: 'Tenant Admin',
-    action: 'Provisioned 2 new staff seats in Calicut Central branch',
+    timestamp: '45 mins ago',
+    actor: 'Meta WABA Monitor',
+    actorRole: 'Gateway Daemon',
+    action: 'Low Meta Prepaid Wallet warning: CoolFix Enterprises balance at ₹340.00 (< ₹500)',
     targetTenant: 'CoolFix Enterprises',
-    severity: 'info',
-    ipAddress: '117.218.49.201',
+    severity: 'warning',
+    ipAddress: '31.13.88.35 (Meta Ireland)',
   },
   {
     id: 'log-04',
-    timestamp: '3 hours ago',
+    timestamp: '2 hours ago',
     actor: 'Rahul Mehta',
     actorRole: 'Platform Super Admin',
-    action: 'Generated and encrypted full Multi-Tenant Database Backup Snapshot',
-    targetTenant: 'Global Platform',
-    severity: 'security',
+    action: 'Topped up Meta Prepaid Wallet (+₹2,000) for CoolFix MEP Solutions',
+    targetTenant: 'CoolFix MEP Solutions',
+    severity: 'info',
     ipAddress: '103.248.112.44',
   },
   {
     id: 'log-05',
     timestamp: 'Yesterday',
     actor: 'Security Monitor',
-    actorRole: 'Anomaly Guard',
-    action: 'Blocked 3 unauthorized JWT token renewal attempts from unknown ASN',
-    targetTenant: 'Security Perimeter',
-    severity: 'warning',
-    ipAddress: '185.220.101.5',
-    details: 'IP quarantined automatically for 24 hours.',
+    actorRole: 'Platform Firewall',
+    action: 'System health check completed. All 4 client WABA webhooks verified and 100% operational.',
+    targetTenant: 'Global Platform',
+    severity: 'info',
+    ipAddress: '127.0.0.1 (Localhost)',
   },
 ];
 
@@ -311,7 +400,7 @@ export const SuperAdminView: React.FC = () => {
   const { addToast } = useQiyamStore();
 
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'tenants' | 'gateway' | 'plans' | 'rbac' | 'audit' | 'branding'>('tenants');
+  const [activeTab, setActiveTab] = useState<'clients' | 'sidebar_config' | 'meta_wallets' | 'plans' | 'audit' | 'settings'>('clients');
 
   // Multi-tenant state (persisted to localStorage)
   const [tenants, setTenants] = useState<PlatformTenant[]>(() => {
@@ -325,7 +414,7 @@ export const SuperAdminView: React.FC = () => {
     return INITIAL_TENANTS;
   });
 
-  // Save tenants helper with broadcast
+  // Save helper with broadcast
   const saveTenants = (updated: PlatformTenant[]) => {
     setTenants(updated);
     try {
@@ -340,17 +429,29 @@ export const SuperAdminView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | 'enterprise' | 'growth' | 'starter'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'trial' | 'suspended'>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'due_soon' | 'overdue'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   // Modals state
   const [isCreateTenantOpen, setIsCreateTenantOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<PlatformTenant | null>(null);
-  const [selectedFeaturesTenant, setSelectedFeaturesTenant] = useState<PlatformTenant | null>(null);
-  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [broadcastSeverity, setBroadcastSeverity] = useState<'info' | 'warning' | 'critical'>('info');
+  const [configuringSidebarTenant, setConfiguringSidebarTenant] = useState<PlatformTenant | null>(null);
+  const [walletTopUpTenant, setWalletTopUpTenant] = useState<PlatformTenant | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState<number>(2000);
+  const [recordPaymentTenant, setRecordPaymentTenant] = useState<PlatformTenant | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: 14999,
+    method: 'Razorpay UPI',
+    reference: `pay_${Math.floor(100000 + Math.random() * 900000)}`,
+    nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  });
 
-  // Emergency Global Outbound Kill-Switch state
+  // Diagnostics Modal state
+  const [diagnosticsTenant, setDiagnosticsTenant] = useState<PlatformTenant | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<any | null>(null);
+
+  // Global Kill-Switch
   const [isKillSwitchActive, setIsKillSwitchActive] = useState(() => {
     try {
       return localStorage.getItem('whatsq_emergency_kill_switch') === 'true';
@@ -364,28 +465,20 @@ export const SuperAdminView: React.FC = () => {
     setIsKillSwitchActive(next);
     localStorage.setItem('whatsq_emergency_kill_switch', String(next));
     if (next) {
-      addToast('🛑 EMERGENCY KILL-SWITCH ACTIVATED: All outbound WhatsApp campaigns suspended globally!', 'error');
+      addToast('🛑 EMERGENCY KILL-SWITCH: Outbound WhatsApp campaigns suspended globally!', 'error');
     } else {
       addToast('🟢 Outbound WhatsApp campaign engine resumed globally.', 'success');
     }
   };
 
-  // Global Rate Limiter throttle config
-  const [rateLimitMinDelay, setRateLimitMinDelay] = useState(10);
-  const [revealWebhookSecret, setRevealWebhookSecret] = useState(false);
+  // Broadcast modal
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastSeverity, setBroadcastSeverity] = useState<'info' | 'warning' | 'critical'>('info');
 
   // Audit Logs state
   const [auditLogs, setAuditLogs] = useState<PlatformAuditLog[]>(INITIAL_AUDIT_LOGS);
   const [auditSearch, setAuditSearch] = useState('');
-  const [auditSeverity, setAuditSeverity] = useState<'all' | 'info' | 'warning' | 'security' | 'critical'>('all');
-
-  // Global Platform Settings / White-Label
-  const [platformName, setPlatformName] = useState(() => localStorage.getItem('whatsq_platform_name') || 'WhatsQ Enterprise OS');
-  const [platformTagline, setPlatformTagline] = useState(() => localStorage.getItem('whatsq_platform_tagline') || 'Enterprise Multi-Tenant WhatsApp Business Operating System');
-  const [supportWhatsApp, setSupportWhatsApp] = useState('+91 94963 00233');
-  const [supportEmail, setSupportEmail] = useState('support@qiyam.ventures');
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [maintenanceBannerText, setMaintenanceBannerText] = useState('Scheduled system maintenance in progress. All messages remain queued.');
 
   // New Tenant Form state
   const [newTenantForm, setNewTenantForm] = useState({
@@ -398,38 +491,48 @@ export const SuperAdminView: React.FC = () => {
     maxLicenses: 15,
     monthlyMessageLimit: 50000,
     wabaPhone: '',
+    initialMetaBalance: 2000,
+    selectedPreset: 'field_service' as 'field_service' | 'retail' | 'minimal' | 'full',
   });
 
-  // KPI Calculations
+  // KPI calculations
   const metrics = useMemo(() => {
-    const totalTenants = tenants.length;
-    const activeTenants = tenants.filter((t) => t.status === 'active').length;
-    const trialTenants = tenants.filter((t) => t.status === 'trial').length;
-    const suspendedTenants = tenants.filter((t) => t.status === 'suspended').length;
+    const totalClients = tenants.length;
+    const activeClients = tenants.filter((t) => t.status === 'active').length;
+    const trialClients = tenants.filter((t) => t.status === 'trial').length;
+    const suspendedClients = tenants.filter((t) => t.status === 'suspended').length;
+
+    const totalMRR = tenants.reduce((acc, t) => (t.status !== 'suspended' ? acc + (t.amount || 0) : acc), 0);
+    const totalMetaWallets = tenants.reduce((acc, t) => acc + (t.metaWalletBalance || 0), 0);
+    const lowWalletCount = tenants.filter((t) => (t.metaWalletBalance || 0) < 500).length;
 
     const totalLicensesAllocated = tenants.reduce((acc, t) => acc + (t.maxLicenses || 0), 0);
     const totalLicensesInUse = tenants.reduce((acc, t) => acc + (t.activeLicenses || 0), 0);
+    const totalStaffOnline = tenants.reduce((acc, t) => acc + (t.onlineStaffCount || 0), 0);
 
     const totalMessagesThisMonth = tenants.reduce((acc, t) => acc + (t.messagesSentThisMonth || 0), 0);
-    const totalMRR = tenants.reduce((acc, t) => (t.status !== 'suspended' ? acc + (t.amount || 0) : acc), 0);
 
     return {
-      totalTenants,
-      activeTenants,
-      trialTenants,
-      suspendedTenants,
+      totalClients,
+      activeClients,
+      trialClients,
+      suspendedClients,
+      totalMRR,
+      totalMetaWallets,
+      lowWalletCount,
       totalLicensesAllocated,
       totalLicensesInUse,
+      totalStaffOnline,
       totalMessagesThisMonth,
-      totalMRR,
     };
   }, [tenants]);
 
-  // Filtered Tenants
+  // Filtered clients
   const filteredTenants = useMemo(() => {
     return tenants.filter((t) => {
       if (tierFilter !== 'all' && t.tier !== tierFilter) return false;
       if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+      if (paymentFilter !== 'all' && t.paymentStatus !== paymentFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchName = t.businessName.toLowerCase().includes(q);
@@ -440,29 +543,13 @@ export const SuperAdminView: React.FC = () => {
       }
       return true;
     });
-  }, [tenants, tierFilter, statusFilter, searchQuery]);
+  }, [tenants, tierFilter, statusFilter, paymentFilter, searchQuery]);
 
-  // Filtered Audit Logs
-  const filteredAuditLogs = useMemo(() => {
-    return auditLogs.filter((l) => {
-      if (auditSeverity !== 'all' && l.severity !== auditSeverity) return false;
-      if (auditSearch.trim()) {
-        const q = auditSearch.toLowerCase().trim();
-        const matchAction = l.action.toLowerCase().includes(q);
-        const matchActor = l.actor.toLowerCase().includes(q);
-        const matchTarget = (l.targetTenant || '').toLowerCase().includes(q);
-        const matchIp = l.ipAddress.toLowerCase().includes(q);
-        if (!matchAction && !matchActor && !matchTarget && !matchIp) return false;
-      }
-      return true;
-    });
-  }, [auditLogs, auditSeverity, auditSearch]);
-
-  // Handle Create Tenant
-  const handleCreateTenant = (e: React.FormEvent) => {
+  // Handle Create Client
+  const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTenantForm.businessName.trim() || !newTenantForm.ownerName.trim()) {
-      addToast('Please provide a business name and primary owner name', 'error');
+      addToast('Please provide a client business name and primary owner name', 'error');
       return;
     }
 
@@ -483,6 +570,20 @@ export const SuperAdminView: React.FC = () => {
     ];
     const assignedColor = colors[tenants.length % colors.length];
 
+    // Determine initial sidebar modules based on preset
+    let initialModules: TenantSidebarModule[] = ['dashboard', 'conversations', 'crm', 'ops', 'finance', 'settings'];
+    if (newTenantForm.selectedPreset === 'retail') {
+      initialModules = ['dashboard', 'conversations', 'messenger', 'automation', 'finance', 'settings'];
+    } else if (newTenantForm.selectedPreset === 'minimal') {
+      initialModules = ['dashboard', 'conversations', 'settings'];
+    } else if (newTenantForm.selectedPreset === 'full') {
+      initialModules = [
+        'dashboard', 'conversations', 'messenger', 'crm', 'branches',
+        'ops', 'finance', 'automation', 'ai', 'analytics', 'integrations',
+        'roles', 'settings', 'settings-backup'
+      ];
+    }
+
     const newTenant: PlatformTenant = {
       id: `TN${Math.floor(2500 + Math.random() * 900)}`,
       businessName: newTenantForm.businessName.trim(),
@@ -494,13 +595,26 @@ export const SuperAdminView: React.FC = () => {
       tier: newTenantForm.tier,
       amount: priceMap[newTenantForm.tier],
       billingCycle: 'monthly',
-      renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       createdAt: new Date().toISOString().split('T')[0],
+      lastPaymentDate: new Date().toISOString().split('T')[0],
+      lastPaymentAmount: priceMap[newTenantForm.tier],
+      lastPaymentMethod: 'UPI / Direct Onboarding',
+      nextPaymentDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      paymentStatus: 'paid',
+      metaWalletBalance: Number(newTenantForm.initialMetaBalance) || 2000,
+      metaWalletCurrency: '₹',
+      metaWalletStatus: (Number(newTenantForm.initialMetaBalance) || 2000) > 1000 ? 'healthy' : 'low',
+      metaDailyLimit: newTenantForm.tier === 'starter' ? 1000 : newTenantForm.tier === 'growth' ? 10000 : 100000,
+      metaTier: newTenantForm.tier === 'starter' ? 'Tier 1 (1k/day)' : newTenantForm.tier === 'growth' ? 'Tier 2 (10k/day)' : 'Tier 3 (100k/day)',
       activeLicenses: 1,
       maxLicenses: Number(newTenantForm.maxLicenses) || 10,
+      onlineStaffCount: 1,
       status: 'active',
       wabaStatus: newTenantForm.wabaPhone ? 'connected' : 'pending',
       wabaPhone: newTenantForm.wabaPhone || undefined,
+      wabaQualityScore: 'HIGH',
+      wabaLatencyMs: 40,
+      lastWebhookPing: 'Just now',
       messagesSentThisMonth: 0,
       monthlyMessageLimit: Number(newTenantForm.monthlyMessageLimit) || 50000,
       color: assignedColor,
@@ -514,18 +628,18 @@ export const SuperAdminView: React.FC = () => {
         voiceNotes: newTenantForm.tier !== 'starter',
         apiWebhooks: newTenantForm.tier === 'enterprise',
       },
+      sidebarModules: initialModules,
     };
 
     const updated = [newTenant, ...tenants];
     saveTenants(updated);
 
-    // Add audit log
     const newLog: PlatformAuditLog = {
       id: `log-${Date.now()}`,
       timestamp: 'Just now',
       actor: 'Rahul Mehta',
       actorRole: 'Platform Super Admin',
-      action: `Provisioned new workspace "${newTenant.businessName}" (${newTenant.id}) with ${newTenant.maxLicenses} licenses on ${newTenant.tier} tier`,
+      action: `Provisioned new client workspace "${newTenant.businessName}" (${newTenant.id}) with ₹${newTenant.metaWalletBalance} Meta balance`,
       targetTenant: newTenant.businessName,
       severity: 'info',
       ipAddress: '103.248.112.44',
@@ -543,180 +657,215 @@ export const SuperAdminView: React.FC = () => {
       maxLicenses: 15,
       monthlyMessageLimit: 50000,
       wabaPhone: '',
+      initialMetaBalance: 2000,
+      selectedPreset: 'field_service',
     });
 
-    addToast(`Successfully provisioned workspace "${newTenant.businessName}"!`, 'success');
+    addToast(`Successfully onboarded client "${newTenant.businessName}"!`, 'success');
   };
 
-  // Handle Toggle Tenant Status (Suspend / Reactivate)
-  const handleToggleTenantStatus = (tenant: PlatformTenant) => {
-    const nextStatus: 'active' | 'suspended' = tenant.status === 'suspended' ? 'active' : 'suspended';
-    const updated = tenants.map((t) => (t.id === tenant.id ? { ...t, status: nextStatus } : t));
-    saveTenants(updated);
-
-    const log: PlatformAuditLog = {
-      id: `log-${Date.now()}`,
-      timestamp: 'Just now',
-      actor: 'Rahul Mehta',
-      actorRole: 'Platform Super Admin',
-      action: `${nextStatus === 'suspended' ? 'Suspended' : 'Reactivated'} workspace access for "${tenant.businessName}" (${tenant.id})`,
-      targetTenant: tenant.businessName,
-      severity: nextStatus === 'suspended' ? 'warning' : 'info',
-      ipAddress: '103.248.112.44',
-    };
-    setAuditLogs((prev) => [log, ...prev]);
-
-    addToast(`Workspace "${tenant.businessName}" is now ${nextStatus.toUpperCase()}`, nextStatus === 'suspended' ? 'warning' : 'success');
-  };
-
-  // Handle Impersonate / Switch Workspace
-  const handleImpersonateTenant = (tenant: PlatformTenant) => {
+  // Handle Switch Workspace
+  const handleSwitchWorkspace = (tenant: PlatformTenant) => {
     try {
       localStorage.setItem('whatsq_workspace_name', tenant.businessName);
       localStorage.setItem('whatsq_active_tenant_id', tenant.id);
       window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: tenant }));
-      addToast(`Switched active workspace context to "${tenant.businessName}" (${tenant.id})`, 'success');
+      addToast(`Switched active organization to "${tenant.businessName}" (${tenant.id})`, 'success');
     } catch {
-      addToast(`Context switched to ${tenant.businessName}`, 'success');
+      addToast(`Switched to ${tenant.businessName}`, 'success');
     }
   };
 
-  // Handle Delete Tenant
-  const handleDeleteTenant = (tenant: PlatformTenant) => {
-    if (confirm(`Are you sure you want to permanently delete workspace "${tenant.businessName}" (${tenant.id})? This will detach its licenses and message history.`)) {
-      const updated = tenants.filter((t) => t.id !== tenant.id);
-      saveTenants(updated);
+  // Handle Top-Up Meta Wallet
+  const handleTopUpMetaWallet = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletTopUpTenant) return;
 
-      const log: PlatformAuditLog = {
-        id: `log-${Date.now()}`,
-        timestamp: 'Just now',
-        actor: 'Rahul Mehta',
-        actorRole: 'Platform Super Admin',
-        action: `Permanently deleted workspace "${tenant.businessName}" (${tenant.id})`,
-        targetTenant: tenant.businessName,
-        severity: 'critical',
-        ipAddress: '103.248.112.44',
-      };
-      setAuditLogs((prev) => [log, ...prev]);
+    const newBalance = (walletTopUpTenant.metaWalletBalance || 0) + Number(topUpAmount);
+    const updatedStatus: 'healthy' | 'low' | 'critical' = newBalance > 1000 ? 'healthy' : newBalance > 500 ? 'low' : 'critical';
 
-      addToast(`Workspace "${tenant.businessName}" deleted.`, 'info');
-    }
-  };
-
-  // Handle Export Master Backup
-  const handleExportMasterBackup = () => {
-    const backupData = {
-      exportDate: new Date().toISOString(),
-      platform: platformName,
-      version: '2.4.3',
-      cluster: 'asia-south-1',
-      metrics,
-      tenants,
-      auditLogs,
-      plans: INITIAL_PLANS,
+    const updatedTenant: PlatformTenant = {
+      ...walletTopUpTenant,
+      metaWalletBalance: newBalance,
+      metaWalletStatus: updatedStatus,
     };
 
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `whatsq-superadmin-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    addToast('Unified Multi-Tenant Database Backup downloaded successfully!', 'success');
-  };
-
-  // Handle Send Global Broadcast
-  const handleSendGlobalBroadcast = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!broadcastMessage.trim()) return;
-
-    addToast(`📢 Broadcast sent to all ${tenants.length} tenant workspaces: "${broadcastMessage}"`, 'success');
+    const updatedList = tenants.map((t) => (t.id === walletTopUpTenant.id ? updatedTenant : t));
+    saveTenants(updatedList);
 
     const log: PlatformAuditLog = {
       id: `log-${Date.now()}`,
       timestamp: 'Just now',
       actor: 'Rahul Mehta',
       actorRole: 'Platform Super Admin',
-      action: `Sent global broadcast announcement (${broadcastSeverity.toUpperCase()}): "${broadcastMessage.substring(0, 50)}..."`,
-      targetTenant: 'All Workspaces',
-      severity: broadcastSeverity === 'critical' ? 'critical' : broadcastSeverity === 'warning' ? 'warning' : 'info',
+      action: `Credited Meta Prepaid Wallet with +₹${Number(topUpAmount).toLocaleString()} for "${walletTopUpTenant.businessName}" (New Balance: ₹${newBalance.toLocaleString()})`,
+      targetTenant: walletTopUpTenant.businessName,
+      severity: 'info',
       ipAddress: '103.248.112.44',
-      details: broadcastMessage,
     };
     setAuditLogs((prev) => [log, ...prev]);
 
-    setBroadcastMessage('');
-    setIsBroadcastModalOpen(false);
+    setWalletTopUpTenant(null);
+    addToast(`Meta Prepaid Wallet recharged with ₹${Number(topUpAmount).toLocaleString()}!`, 'success');
   };
 
-  // Handle Save Branding
-  const handleSaveBranding = (e: React.FormEvent) => {
+  // Handle Record Software Payment
+  const handleRecordPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('whatsq_platform_name', platformName);
-    localStorage.setItem('whatsq_platform_tagline', platformTagline);
-    window.dispatchEvent(new CustomEvent('whatsq_workspace_updated'));
-    addToast('Global platform branding & contact configurations saved!', 'success');
+    if (!recordPaymentTenant) return;
+
+    const updatedTenant: PlatformTenant = {
+      ...recordPaymentTenant,
+      lastPaymentDate: new Date().toISOString().split('T')[0],
+      lastPaymentAmount: Number(paymentForm.amount),
+      lastPaymentMethod: paymentForm.method,
+      lastPaymentRef: paymentForm.reference,
+      nextPaymentDueDate: paymentForm.nextDueDate,
+      paymentStatus: 'paid',
+    };
+
+    const updatedList = tenants.map((t) => (t.id === recordPaymentTenant.id ? updatedTenant : t));
+    saveTenants(updatedList);
+
+    const log: PlatformAuditLog = {
+      id: `log-${Date.now()}`,
+      timestamp: 'Just now',
+      actor: 'Rahul Mehta',
+      actorRole: 'Platform Super Admin',
+      action: `Recorded software renewal payment of ₹${Number(paymentForm.amount).toLocaleString()} for "${recordPaymentTenant.businessName}" (Ref: ${paymentForm.reference}). Next due: ${paymentForm.nextDueDate}`,
+      targetTenant: recordPaymentTenant.businessName,
+      severity: 'info',
+      ipAddress: '103.248.112.44',
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+
+    setRecordPaymentTenant(null);
+    addToast(`Software payment of ₹${Number(paymentForm.amount).toLocaleString()} recorded!`, 'success');
+  };
+
+  // Handle Live Diagnostics
+  const handleRunDiagnostics = (tenant: PlatformTenant) => {
+    setDiagnosticsTenant(tenant);
+    setIsDiagnosing(true);
+    setDiagnosticResult(null);
+
+    setTimeout(() => {
+      setIsDiagnosing(false);
+      setDiagnosticResult({
+        metaGraphApi: { status: 'pass', latency: `${tenant.wabaLatencyMs || 38}ms`, code: 200, message: 'Meta Graph API v21.0 Handshake Verified' },
+        webhook: { status: 'pass', latency: '12ms', lastCallback: tenant.lastWebhookPing || '14s ago', message: 'Inbound Webhook Callback 200 OK' },
+        metaWallet: {
+          status: tenant.metaWalletBalance > 500 ? 'pass' : 'warn',
+          balance: `₹${(tenant.metaWalletBalance || 0).toLocaleString()}`,
+          tier: tenant.metaTier,
+          message: tenant.metaWalletBalance > 500 ? 'Sufficient prepaid conversation reserve' : 'Low prepaid balance warning',
+        },
+        softwareLicense: {
+          status: tenant.paymentStatus === 'overdue' ? 'warn' : 'pass',
+          dueDate: tenant.nextPaymentDueDate,
+          statusText: tenant.paymentStatus.toUpperCase(),
+        },
+        database: { status: 'pass', latency: '1.2ms', message: 'Tenant database isolate operational' },
+      });
+      addToast(`Live diagnostics complete for "${tenant.businessName}": 100% Operational!`, 'success');
+    }, 1000);
+  };
+
+  // Preset Applier for Sidebar Config
+  const handleApplyPreset = (preset: 'field_service' | 'retail' | 'minimal' | 'full') => {
+    if (!configuringSidebarTenant) return;
+    let selected: TenantSidebarModule[] = [];
+    if (preset === 'field_service') {
+      selected = ['dashboard', 'conversations', 'crm', 'ops', 'finance', 'settings'];
+    } else if (preset === 'retail') {
+      selected = ['dashboard', 'conversations', 'messenger', 'automation', 'finance', 'settings'];
+    } else if (preset === 'minimal') {
+      selected = ['dashboard', 'conversations', 'settings'];
+    } else {
+      selected = [
+        'dashboard', 'conversations', 'messenger', 'crm', 'branches',
+        'ops', 'finance', 'automation', 'ai', 'analytics', 'integrations',
+        'roles', 'settings', 'settings-backup'
+      ];
+    }
+
+    const updated = {
+      ...configuringSidebarTenant,
+      sidebarModules: selected,
+    };
+    setConfiguringSidebarTenant(updated);
+    const updatedList = tenants.map((t) => (t.id === configuringSidebarTenant.id ? updated : t));
+    saveTenants(updatedList);
+    addToast(`Applied preset: ${preset.replace('_', ' ').toUpperCase()}`, 'info');
+  };
+
+  // Toggle single sidebar module for client
+  const handleToggleSidebarModule = (moduleId: TenantSidebarModule) => {
+    if (!configuringSidebarTenant) return;
+    const current = configuringSidebarTenant.sidebarModules || [];
+    const exists = current.includes(moduleId);
+    const next = exists ? current.filter((m) => m !== moduleId) : [...current, moduleId];
+
+    const updated = {
+      ...configuringSidebarTenant,
+      sidebarModules: next,
+    };
+    setConfiguringSidebarTenant(updated);
+    const updatedList = tenants.map((t) => (t.id === configuringSidebarTenant.id ? updated : t));
+    saveTenants(updatedList);
   };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] overflow-y-auto font-sans">
-      {/* ── 1. Top Header Banner with Royal Super Admin Aesthetic ── */}
-      <div className="bg-gradient-to-r from-[#070D18] via-[#0E1A30] to-[#0A261D] text-white border-b border-amber-500/20 px-6 py-5 sticky top-0 z-20 shadow-md">
+      {/* ── 1. Minimal Signature Header ── */}
+      <div className="bg-white border-b border-slate-200/90 px-6 py-4 sticky top-0 z-20 shadow-2xs">
         <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <SidebarToggle />
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/30 border border-amber-400/40 flex items-center justify-center shrink-0 shadow-inner">
-              <Crown className="w-6 h-6 text-amber-400 animate-pulse" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs shrink-0">
+              <Crown className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-                  <span>Platform Super Admin</span>
-                </h1>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Platform Super Admin</h1>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 tracking-wider">
                   PRO
                 </span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Meta WABA v21.0 Online
+                </span>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                   Cluster: asia-south-1
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  Meta WABA v21.0
-                </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1 flex items-center gap-2">
-                <span>Multi-Tenant SaaS Control Center</span>
-                <span className="text-slate-500">•</span>
-                <span>Owner: <strong>Rahul Mehta</strong></span>
-                <span className="text-slate-500">•</span>
-                <span className="text-emerald-400 font-semibold">99.98% Gateway SLA</span>
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                <span>Client SaaS Provisioning • Meta Wallets • Custom Sidebar Planning</span>
+                <span className="text-slate-300">•</span>
+                <span>Owner: <strong className="text-slate-700 font-bold">Rahul Mehta</strong></span>
+                <span className="text-slate-300">•</span>
+                <span className="text-emerald-700 font-semibold">99.98% Gateway SLA</span>
               </p>
             </div>
           </div>
 
-          {/* Quick Platform Actions */}
+          {/* Minimal Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Global Broadcast */}
             <button
               onClick={() => setIsBroadcastModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 transition shadow-2xs cursor-pointer"
               title="Broadcast system announcement to all logged-in workspaces"
             >
-              <Radio className="w-3.5 h-3.5 text-amber-400" />
+              <Radio className="w-3.5 h-3.5 text-amber-600" />
               <span>Broadcast</span>
             </button>
 
-            {/* Emergency Kill-Switch */}
             <button
               onClick={toggleEmergencyKillSwitch}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer ${
                 isKillSwitchActive
                   ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
-                  : 'bg-slate-800/80 hover:bg-rose-950/60 border border-rose-500/30 text-rose-300 hover:text-rose-200'
+                  : 'bg-white hover:bg-rose-50 border border-rose-200 text-rose-700'
               }`}
               title={isKillSwitchActive ? 'Click to Resume Campaign Engine' : 'Click to Emergency Stop Outbound Campaigns'}
             >
@@ -724,119 +873,83 @@ export const SuperAdminView: React.FC = () => {
               <span>{isKillSwitchActive ? 'Engine Halted' : 'Outbound Gate'}</span>
             </button>
 
-            {/* Master Backup */}
             <button
-              onClick={handleExportMasterBackup}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white transition shadow-xs cursor-pointer"
-              title="Download full encrypted multi-tenant snapshot"
+              onClick={() => {
+                const blob = new Blob([JSON.stringify({ exportDate: new Date().toISOString(), tenants }, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `whatsq-tenants-export-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                addToast('Unified Client Database Exported!', 'success');
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 transition shadow-2xs cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-blue-400" />
+              <Download className="w-3.5 h-3.5 text-slate-600" />
               <span>Backup</span>
             </button>
 
-            {/* Provision Workspace CTA */}
             <button
               onClick={() => setIsCreateTenantOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold text-xs shadow-xs transition cursor-pointer active:scale-95"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>+ Provision Tenant</span>
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>+ Provision Client</span>
             </button>
           </div>
         </div>
 
-        {/* Emergency Kill-Switch Warning Banner if Active */}
+        {/* Emergency Alert Banner if Active */}
         {isKillSwitchActive && (
-          <div className="max-w-7xl mx-auto mt-3 bg-rose-500/20 border border-rose-500/40 rounded-xl px-4 py-2.5 text-xs text-rose-200 flex items-center justify-between animate-in fade-in duration-200">
+          <div className="max-w-7xl mx-auto mt-3 bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-xs text-rose-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>
-                <strong>CRITICAL ALERT:</strong> Global outbound WhatsApp campaign dispatch is currently <strong>SUSPENDED</strong>. Inbound webhooks and interactive bots continue to function normally.
+                <strong>CRITICAL NOTICE:</strong> Global outbound WhatsApp campaigns are currently <strong>SUSPENDED</strong>. Inbound webhooks remain functional.
               </span>
             </div>
             <button
               onClick={toggleEmergencyKillSwitch}
               className="text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold px-2.5 py-1 rounded-lg cursor-pointer"
             >
-              Resume Now
+              Resume Outbound
             </button>
           </div>
         )}
       </div>
 
-      {/* ── 2. Top Metric KPI Cards ── */}
+      {/* ── 2. Top 4 Minimal Metric KPI Strip ── */}
       <div className="max-w-7xl mx-auto w-full p-6 pb-2">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Total Tenants */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition">
+          {/* Card 1: Purchased Clients */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tenant Workspaces</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Purchased Clients</span>
+              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
                 <Building2 className="w-4 h-4 text-blue-600" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{metrics.totalTenants}</span>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                {metrics.activeTenants} Active
+              <span className="text-2xl font-black text-slate-900">{metrics.totalClients}</span>
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                {metrics.activeClients} Active Subscriptions
               </span>
             </div>
             <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>{metrics.trialTenants} Trial • {metrics.suspendedTenants} Suspended</span>
-              <span className="font-semibold text-blue-600">100% Online</span>
-            </div>
-          </div>
-
-          {/* Card 2: Provisioned Licenses */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Staff Seat Licenses</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                <Users className="w-4 h-4 text-emerald-600" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{metrics.totalLicensesInUse}</span>
-              <span className="text-xs text-slate-500 font-medium">/ {metrics.totalLicensesAllocated} Provisioned</span>
-            </div>
-            <div className="mt-2 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-emerald-600 h-1.5 rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(100, Math.round((metrics.totalLicensesInUse / (metrics.totalLicensesAllocated || 1)) * 100))}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Card 3: Outbound Volume */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly WhatsApp Traffic</span>
-              <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-purple-600" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">
-                {metrics.totalMessagesThisMonth.toLocaleString()}
-              </span>
-              <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                99.4% Delivery
+              <span>{metrics.trialClients} Trial • {metrics.suspendedClients} Suspended</span>
+              <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {metrics.totalStaffOnline} Staff Online Now
               </span>
             </div>
-            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Avg Latency: 42ms</span>
-              <span className="text-emerald-600 font-semibold">Zero drops</span>
-            </div>
           </div>
 
-          {/* Card 4: Platform MRR */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition">
+          {/* Card 2: Software MRR & Payments */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Platform MRR</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Software MRR Volume</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
@@ -848,152 +961,185 @@ export const SuperAdminView: React.FC = () => {
               </span>
             </div>
             <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Next Global Renewal: Oct 01</span>
-              <span className="text-amber-600 font-semibold">Active Subscriptions</span>
+              <span>Next Due: Oct 01 (₹20,998)</span>
+              <span className="text-amber-700 font-semibold">1 Due Soon</span>
+            </div>
+          </div>
+
+          {/* Card 3: Meta Prepaid Wallets Total */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Meta Prepaid Wallets</span>
+              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+                <Wallet className="w-4 h-4 text-amber-600" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-slate-900">
+                ₹{metrics.totalMetaWallets.toLocaleString()}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                metrics.lowWalletCount > 0
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              }`}>
+                {metrics.lowWalletCount > 0 ? `⚠️ ${metrics.lowWalletCount} Low Balance` : 'All Healthy'}
+              </span>
+            </div>
+            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+              <span>Client WABA Prepaid Reserve</span>
+              <span className="text-blue-600 font-semibold">Meta Direct</span>
+            </div>
+          </div>
+
+          {/* Card 4: Monthly Traffic & SLA */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly WhatsApp Traffic</span>
+              <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center">
+                <MessageSquare className="w-4 h-4 text-purple-600" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-slate-900">
+                {metrics.totalMessagesThisMonth.toLocaleString()}
+              </span>
+              <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                99.4% Delivery
+              </span>
+            </div>
+            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+              <span>Avg Latency: 38ms</span>
+              <span className="text-emerald-700 font-semibold">Zero Drops</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── 3. Tabbed Navigation Bar ── */}
-      <div className="max-w-7xl mx-auto w-full px-6 pt-4">
+      {/* ── 3. Tabbed Minimal Navigation ── */}
+      <div className="max-w-7xl mx-auto w-full px-6 pt-2">
         <div className="flex items-center justify-between border-b border-slate-200 overflow-x-auto gap-2">
           <div className="flex items-center gap-1 sm:gap-2">
             <button
-              onClick={() => setActiveTab('tenants')}
+              onClick={() => setActiveTab('clients')}
               className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
-                activeTab === 'tenants'
-                  ? 'border-amber-500 text-amber-800 bg-amber-50/50'
+                activeTab === 'clients'
+                  ? 'border-emerald-700 text-emerald-800 bg-emerald-50/50'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <Building className="w-4 h-4 text-amber-600" />
-              <span>Tenant Workspaces</span>
+              <Building className="w-4 h-4 text-emerald-700" />
+              <span>Purchased Clients & Payments</span>
               <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-slate-100 text-slate-700 font-extrabold">
                 {tenants.length}
               </span>
             </button>
 
             <button
-              onClick={() => setActiveTab('gateway')}
+              onClick={() => setActiveTab('sidebar_config')}
               className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
-                activeTab === 'gateway'
-                  ? 'border-amber-500 text-amber-800 bg-amber-50/50'
+                activeTab === 'sidebar_config'
+                  ? 'border-emerald-700 text-emerald-800 bg-emerald-50/50'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <Server className="w-4 h-4 text-emerald-600" />
-              <span>Meta Gateway & Webhooks</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <Sliders className="w-4 h-4 text-amber-600" />
+              <span>Sidebar Options Matrix</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-amber-50 text-amber-800 font-extrabold border border-amber-200">
+                Customized
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('meta_wallets')}
+              className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
+                activeTab === 'meta_wallets'
+                  ? 'border-emerald-700 text-emerald-800 bg-emerald-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+              }`}
+            >
+              <Wallet className="w-4 h-4 text-blue-600" />
+              <span>Meta Prepaid Wallets & WABA Health</span>
             </button>
 
             <button
               onClick={() => setActiveTab('plans')}
               className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
                 activeTab === 'plans'
-                  ? 'border-amber-500 text-amber-800 bg-amber-50/50'
+                  ? 'border-emerald-700 text-emerald-800 bg-emerald-50/50'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <Layers className="w-4 h-4 text-blue-600" />
+              <Layers className="w-4 h-4 text-purple-600" />
               <span>SaaS Plan Tiers</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('rbac')}
-              className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
-                activeTab === 'rbac'
-                  ? 'border-amber-500 text-amber-800 bg-amber-50/50'
-                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-purple-600" />
-              <span>Super Admin RBAC</span>
             </button>
 
             <button
               onClick={() => setActiveTab('audit')}
               className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
                 activeTab === 'audit'
-                  ? 'border-amber-500 text-amber-800 bg-amber-50/50'
+                  ? 'border-emerald-700 text-emerald-800 bg-emerald-50/50'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <Activity className="w-4 h-4 text-rose-600" />
+              <Activity className="w-4 h-4 text-slate-600" />
               <span>Platform Audit Trail</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('branding')}
-              className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
-                activeTab === 'branding'
-                  ? 'border-amber-500 text-amber-800 bg-amber-50/50'
-                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-              }`}
-            >
-              <Globe className="w-4 h-4 text-indigo-600" />
-              <span>White-Label & Global Config</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── 4. Main Body per Tab ── */}
+      {/* ── 4. Main Body ── */}
       <div className="max-w-7xl mx-auto w-full p-6 space-y-6">
         {/* ========================================================================= */}
-        {/* TAB 1: TENANT WORKSPACES                                                  */}
+        {/* TAB 1: PURCHASED CLIENTS, SOFTWARE LEDGER & META WALLETS                  */}
         {/* ========================================================================= */}
-        {activeTab === 'tenants' && (
+        {activeTab === 'clients' && (
           <div className="space-y-5">
-            {/* Filter Bar */}
+            {/* Filter Toolbar */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 flex-1 max-w-md">
-                <div className="relative w-full">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by business name, tenant ID, owner, phone..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search client by business name, ID, phone or owner..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600 focus:bg-white"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Tier Filter */}
                 <select
                   value={tierFilter}
                   onChange={(e: any) => setTierFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none cursor-pointer"
                 >
-                  <option value="all">All Plan Tiers</option>
+                  <option value="all">All Plans</option>
                   <option value="enterprise">Enterprise PRO</option>
-                  <option value="growth">Growth</option>
-                  <option value="starter">Starter</option>
+                  <option value="growth">Growth Tier</option>
+                  <option value="starter">Starter Tier</option>
                 </select>
 
-                {/* Status Filter */}
                 <select
-                  value={statusFilter}
-                  onChange={(e: any) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  value={paymentFilter}
+                  onChange={(e: any) => setPaymentFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none cursor-pointer"
                 >
-                  <option value="all">All Statuses</option>
-                  <option value="active">Active Only</option>
-                  <option value="trial">Trial Only</option>
-                  <option value="suspended">Suspended Only</option>
+                  <option value="all">All Payment Statuses</option>
+                  <option value="paid">Paid & Current</option>
+                  <option value="due_soon">Upcoming Due Soon</option>
+                  <option value="overdue">Overdue Payment</option>
                 </select>
 
-                {/* View Switcher */}
                 <div className="bg-slate-100 p-0.5 rounded-xl border border-slate-200 flex items-center">
                   <button
                     onClick={() => setViewMode('cards')}
@@ -1017,196 +1163,271 @@ export const SuperAdminView: React.FC = () => {
               </div>
             </div>
 
-            {/* Cards View */}
+            {/* Grid Cards View */}
             {viewMode === 'cards' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filteredTenants.map((tenant) => {
-                  const percentSeats = Math.round((tenant.activeLicenses / (tenant.maxLicenses || 1)) * 100);
-                  const percentMsgs = Math.round((tenant.messagesSentThisMonth / (tenant.monthlyMessageLimit || 1)) * 100);
+                {filteredTenants.map((client) => {
+                  const percentSeats = Math.round((client.activeLicenses / (client.maxLicenses || 1)) * 100);
 
                   return (
                     <div
-                      key={tenant.id}
-                      className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-2xs hover:shadow-md flex flex-col justify-between ${
-                        tenant.status === 'suspended'
-                          ? 'border-rose-200 bg-rose-50/20'
-                          : 'border-slate-200/90'
-                      }`}
+                      key={client.id}
+                      className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between"
                     >
-                      {/* Top Accent Gradient */}
-                      <div className={`h-1.5 w-full bg-gradient-to-r ${tenant.color || 'from-emerald-500 to-teal-600'}`} />
+                      {/* Top Accent Strip */}
+                      <div className={`h-1.5 w-full bg-gradient-to-r ${client.color || 'from-emerald-500 to-teal-600'}`} />
 
                       <div className="p-5 space-y-4">
-                        {/* Header: Avatar, Name, ID, Badges */}
+                        {/* Header: Identity, Plan, Live Status */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tenant.color || 'from-emerald-500 to-teal-600'} text-white font-extrabold text-base flex items-center justify-center shadow-sm shrink-0`}>
-                              {tenant.initials}
+                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${client.color || 'from-emerald-500 to-teal-600'} text-white font-extrabold text-base flex items-center justify-center shadow-xs shrink-0`}>
+                              {client.initials}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-slate-900 text-sm">{tenant.businessName}</h3>
+                                <h3 className="font-bold text-slate-900 text-sm">{client.businessName}</h3>
                                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-bold">
-                                  {tenant.id}
+                                  {client.id}
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-500 mt-0.5">{tenant.branch || 'Head Office'}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{client.branch || 'Head Office'}</p>
                             </div>
                           </div>
 
                           <div className="flex flex-col items-end gap-1">
                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                              tenant.status === 'active'
+                              client.status === 'active'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : tenant.status === 'trial'
+                                : client.status === 'trial'
                                 ? 'bg-amber-50 text-amber-800 border-amber-200'
                                 : 'bg-rose-50 text-rose-800 border-rose-200'
                             }`}>
-                              {tenant.status.toUpperCase()}
+                              {client.status.toUpperCase()}
                             </span>
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 uppercase">
-                              {tenant.tier} PRO
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Owner & Contact Pill */}
-                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between text-slate-600">
-                            <span className="text-slate-400 font-medium">Owner Admin:</span>
-                            <span className="font-semibold text-slate-800">{tenant.ownerName}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-slate-600">
-                            <span className="text-slate-400 font-medium">Contact:</span>
-                            <span className="font-mono text-emerald-700 font-medium">{tenant.ownerPhone}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-slate-600">
-                            <span className="text-slate-400 font-medium">Official WABA Line:</span>
-                            <span className="font-mono text-slate-700 flex items-center gap-1">
-                              {tenant.wabaStatus === 'connected' ? (
-                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                              ) : (
-                                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                              )}
-                              {tenant.wabaPhone || 'Pending WABA'}
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 uppercase">
+                              {client.tier} PRO
                             </span>
                           </div>
                         </div>
 
-                        {/* Quota Progress Bars */}
-                        <div className="space-y-2.5 pt-1">
-                          {/* Seat License Quota */}
-                          <div>
-                            <div className="flex items-center justify-between text-[11px] mb-1">
-                              <span className="text-slate-500 font-medium">Seat Licenses Utilized:</span>
-                              <span className="font-bold text-slate-800">
-                                {tenant.activeLicenses} / {tenant.maxLicenses} Seats ({percentSeats}%)
+                        {/* Exact Live Status Strip */}
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                            <span className="font-bold text-slate-800">
+                              {client.wabaStatus === 'connected' ? 'WABA Live & Sending' : 'WABA Setup Pending'}
+                            </span>
+                            <span className="text-slate-400">•</span>
+                            <span className="font-mono text-emerald-700">{client.wabaPhone || 'No Phone'}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRunDiagnostics(client)}
+                            className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer"
+                            title="Run instant ping & webhook diagnostics"
+                          >
+                            <Zap className="w-3 h-3 text-amber-500" />
+                            <span>Diagnose</span>
+                          </button>
+                        </div>
+
+                        {/* Dual Key Metrics: Meta Prepaid Wallet & Software Payment */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* 1. Meta Prepaid Wallet */}
+                          <div className={`p-3 rounded-xl border space-y-1.5 ${
+                            client.metaWalletStatus === 'healthy'
+                              ? 'bg-emerald-50/50 border-emerald-200'
+                              : client.metaWalletStatus === 'low'
+                              ? 'bg-amber-50/50 border-amber-200'
+                              : 'bg-rose-50/50 border-rose-200'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                                <Wallet className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Meta Wallet</span>
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setWalletTopUpTenant(client);
+                                  setTopUpAmount(2000);
+                                }}
+                                className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                              >
+                                + Recharge
+                              </button>
+                            </div>
+                            <div className="text-base font-black text-slate-900">
+                              ₹{(client.metaWalletBalance || 0).toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                              <span>{client.metaTier}</span>
+                              <span className={`font-bold ${
+                                client.metaWalletStatus === 'healthy'
+                                  ? 'text-emerald-700'
+                                  : client.metaWalletStatus === 'low'
+                                  ? 'text-amber-700'
+                                  : 'text-rose-700'
+                              }`}>
+                                {client.metaWalletStatus === 'healthy' ? 'Normal' : client.metaWalletStatus === 'low' ? 'Low Bal!' : 'Depleted'}
                               </span>
                             </div>
-                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className="bg-emerald-600 h-1.5 rounded-full"
-                                style={{ width: `${Math.min(100, percentSeats)}%` }}
-                              />
-                            </div>
                           </div>
 
-                          {/* Message Quota */}
-                          <div>
-                            <div className="flex items-center justify-between text-[11px] mb-1">
-                              <span className="text-slate-500 font-medium">Monthly Messages Sent:</span>
-                              <span className="font-bold text-slate-800">
-                                {tenant.messagesSentThisMonth.toLocaleString()} / {tenant.monthlyMessageLimit.toLocaleString()} ({percentMsgs}%)
+                          {/* 2. Software Subscription & Next Payment */}
+                          <div className={`p-3 rounded-xl border space-y-1.5 ${
+                            client.paymentStatus === 'paid'
+                              ? 'bg-slate-50 border-slate-200'
+                              : client.paymentStatus === 'due_soon'
+                              ? 'bg-amber-50/50 border-amber-200'
+                              : 'bg-rose-50/50 border-rose-200'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                                <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Next Due</span>
                               </span>
+                              <button
+                                onClick={() => {
+                                  setRecordPaymentTenant(client);
+                                  setPaymentForm({
+                                    amount: client.amount,
+                                    method: 'Razorpay UPI',
+                                    reference: `pay_${Math.floor(100000 + Math.random() * 900000)}`,
+                                    nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                                  });
+                                }}
+                                className="text-[10px] font-bold text-blue-700 hover:underline cursor-pointer"
+                              >
+                                Pay Ledger
+                              </button>
                             </div>
-                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className="bg-purple-600 h-1.5 rounded-full"
-                                style={{ width: `${Math.min(100, percentMsgs)}%` }}
-                              />
+                            <div className="text-base font-black text-slate-900">
+                              ₹{client.amount.toLocaleString()}
+                            </div>
+                            <div className="text-[10px] flex items-center justify-between">
+                              <span className="text-slate-500">{client.nextPaymentDueDate}</span>
+                              <span className={`font-bold ${
+                                client.paymentStatus === 'paid'
+                                  ? 'text-emerald-700'
+                                  : client.paymentStatus === 'due_soon'
+                                  ? 'text-amber-700'
+                                  : 'text-rose-700'
+                              }`}>
+                                {client.paymentStatus === 'paid' ? 'Paid' : client.paymentStatus === 'due_soon' ? 'Due Soon' : 'Overdue!'}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Feature Badges */}
-                        <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                          {tenant.features.botBuilder && (
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-semibold">
-                              Bot Builder
+                        {/* Last Payment Record Strip */}
+                        <div className="text-[11px] text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between">
+                          <span>
+                            Last Paid: <strong>₹{client.lastPaymentAmount.toLocaleString()}</strong> on {client.lastPaymentDate}
+                          </span>
+                          <span className="font-mono text-slate-400 text-[10px] truncate max-w-[120px]">
+                            {client.lastPaymentMethod}
+                          </span>
+                        </div>
+
+                        {/* Active Staff & Seat Usage */}
+                        <div>
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="text-slate-500 font-medium">Active Staff Seats:</span>
+                            <span className="font-bold text-slate-800">
+                              {client.activeLicenses} / {client.maxLicenses} Seats ({percentSeats}%) • {client.onlineStaffCount} Online Now
                             </span>
-                          )}
-                          {tenant.features.aiAssistant && (
-                            <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-semibold">
-                              AI Assistant
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-emerald-600 h-1.5 rounded-full"
+                              style={{ width: `${Math.min(100, percentSeats)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Configured Sidebar Menu Modules */}
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                              Configured Sidebar Menu ({(client.sidebarModules || []).length}):
                             </span>
-                          )}
-                          {tenant.features.voiceNotes && (
-                            <span className="px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 rounded-md text-[10px] font-semibold">
-                              Voice Notes
-                            </span>
-                          )}
-                          {tenant.features.customBranding && (
-                            <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-semibold">
-                              White-Label
-                            </span>
-                          )}
-                          {tenant.features.apiWebhooks && (
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] font-semibold">
-                              Webhooks
-                            </span>
-                          )}
+                            <button
+                              onClick={() => setConfiguringSidebarTenant(client)}
+                              className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Sliders className="w-3 h-3" />
+                              <span>Customize</span>
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(client.sidebarModules || []).map((modId) => {
+                              const item = ALL_SIDEBAR_MODULES.find((m) => m.id === modId);
+                              return (
+                                <span
+                                  key={modId}
+                                  className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] font-semibold flex items-center gap-1"
+                                >
+                                  {item ? item.label : modId}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 
                       {/* Card Footer Actions */}
                       <div className="p-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2">
-                        {/* Switch Workspace */}
                         <button
-                          onClick={() => handleImpersonateTenant(tenant)}
+                          onClick={() => handleSwitchWorkspace(client)}
                           className="px-3 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                          title="Switch active organization view to this workspace"
+                          title="Switch active organization context to this workspace"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           <span>Switch Workspace</span>
                         </button>
 
                         <div className="flex items-center gap-1">
-                          {/* Feature Flags */}
                           <button
-                            onClick={() => setSelectedFeaturesTenant(tenant)}
+                            onClick={() => setConfiguringSidebarTenant(client)}
                             className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                            title="Toggle Feature Flags"
+                            title="Configure Sidebar Menu Options"
                           >
                             <Sliders className="w-4 h-4" />
                           </button>
 
-                          {/* Edit */}
                           <button
-                            onClick={() => setEditingTenant(tenant)}
+                            onClick={() => setEditingTenant(client)}
                             className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                            title="Edit Workspace Details"
+                            title="Edit Client Details"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
 
-                          {/* Suspend / Resume */}
                           <button
-                            onClick={() => handleToggleTenantStatus(tenant)}
+                            onClick={() => {
+                              const nextStatus: 'active' | 'suspended' = client.status === 'suspended' ? 'active' : 'suspended';
+                              const updated = tenants.map((t) => (t.id === client.id ? { ...t, status: nextStatus } : t));
+                              saveTenants(updated);
+                              addToast(`Client "${client.businessName}" is now ${nextStatus.toUpperCase()}`, nextStatus === 'suspended' ? 'warning' : 'success');
+                            }}
                             className={`p-1.5 rounded-lg transition cursor-pointer ${
-                              tenant.status === 'suspended'
-                                ? 'text-emerald-600 hover:bg-emerald-50'
-                                : 'text-amber-600 hover:bg-amber-50'
+                              client.status === 'suspended' ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'
                             }`}
-                            title={tenant.status === 'suspended' ? 'Reactivate Workspace' : 'Suspend Workspace'}
+                            title={client.status === 'suspended' ? 'Reactivate Client' : 'Suspend Client'}
                           >
-                            {tenant.status === 'suspended' ? <PlayCircle className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />}
+                            {client.status === 'suspended' ? <PlayCircle className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />}
                           </button>
 
-                          {/* Delete */}
                           <button
-                            onClick={() => handleDeleteTenant(tenant)}
+                            onClick={() => {
+                              if (confirm(`Permanently remove client "${client.businessName}" (${client.id})?`)) {
+                                const updated = tenants.filter((t) => t.id !== client.id);
+                                saveTenants(updated);
+                                addToast(`Client "${client.businessName}" removed.`, 'info');
+                              }
+                            }}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                            title="Delete Workspace"
+                            title="Delete Client"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1217,71 +1438,85 @@ export const SuperAdminView: React.FC = () => {
                 })}
               </div>
             ) : (
-              /* Table View */
+              /* Compact Table View */
               <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th className="py-3.5 px-4">Workspace / ID</th>
-                        <th className="py-3.5 px-4">Owner & Contact</th>
-                        <th className="py-3.5 px-4">Plan & Billing</th>
-                        <th className="py-3.5 px-4">Seats / Usage</th>
-                        <th className="py-3.5 px-4">Status</th>
-                        <th className="py-3.5 px-4 text-right">Actions</th>
+                        <th className="py-3 px-4">Client / ID</th>
+                        <th className="py-3 px-4">Meta Wallet Balance</th>
+                        <th className="py-3 px-4">Last Software Payment</th>
+                        <th className="py-3 px-4">Upcoming Due Date</th>
+                        <th className="py-3 px-4">Sidebar Options</th>
+                        <th className="py-3 px-4">Live Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredTenants.map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-50/60 transition">
-                          <td className="py-3.5 px-4">
+                      {filteredTenants.map((c) => (
+                        <tr key={c.id} className="hover:bg-slate-50/60 transition">
+                          <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${t.color || 'from-emerald-500 to-teal-600'} text-white font-bold text-xs flex items-center justify-center shrink-0`}>
-                                {t.initials}
+                              <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${c.color || 'from-emerald-500 to-teal-600'} text-white font-bold text-xs flex items-center justify-center shrink-0`}>
+                                {c.initials}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-900">{t.businessName}</div>
-                                <div className="text-[10px] text-slate-400 font-mono">{t.id} • {t.branch}</div>
+                                <div className="font-bold text-slate-900">{c.businessName}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{c.id} • {c.ownerPhone}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-800">{t.ownerName}</div>
-                            <div className="text-[10px] text-slate-500 font-mono">{t.ownerPhone}</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-bold text-amber-800 uppercase text-[11px]">{t.tier} PRO</div>
-                            <div className="text-[10px] text-slate-500">₹{t.amount.toLocaleString()} / mo</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-semibold text-slate-800">{t.activeLicenses} / {t.maxLicenses} Seats</div>
-                            <div className="text-[10px] text-slate-500">{t.messagesSentThisMonth.toLocaleString()} msgs</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                              t.status === 'active'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : t.status === 'trial'
-                                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                          <td className="py-3 px-4">
+                            <div className="font-extrabold text-slate-900 text-xs">
+                              ₹{(c.metaWalletBalance || 0).toLocaleString()}
+                            </div>
+                            <span className={`text-[10px] font-bold ${
+                              c.metaWalletStatus === 'healthy' ? 'text-emerald-700' : 'text-amber-700'
                             }`}>
-                              {t.status.toUpperCase()}
+                              {c.metaWalletStatus === 'healthy' ? '🟢 Normal' : '⚠️ Low Bal'}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-800">₹{c.lastPaymentAmount.toLocaleString()}</div>
+                            <div className="text-[10px] text-slate-400">{c.lastPaymentDate}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-800">{c.nextPaymentDueDate}</div>
+                            <span className={`text-[10px] font-bold ${
+                              c.paymentStatus === 'paid' ? 'text-emerald-700' : c.paymentStatus === 'due_soon' ? 'text-amber-700' : 'text-rose-700'
+                            }`}>
+                              {c.paymentStatus === 'paid' ? 'Paid' : c.paymentStatus === 'due_soon' ? 'Due Soon' : 'Overdue!'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => setConfiguringSidebarTenant(c)}
+                              className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-semibold text-[10px] cursor-pointer"
+                            >
+                              {(c.sidebarModules || []).length} Options ⚙️
+                            </button>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Operational
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => handleImpersonateTenant(t)}
-                                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                                onClick={() => handleSwitchWorkspace(c)}
+                                className="px-2.5 py-1 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-lg text-[11px] font-semibold cursor-pointer"
                               >
                                 Switch
                               </button>
                               <button
-                                onClick={() => setEditingTenant(t)}
-                                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-                                title="Edit"
+                                onClick={() => handleRunDiagnostics(c)}
+                                className="p-1 text-slate-400 hover:text-amber-600 cursor-pointer"
+                                title="Run Diagnostics"
                               >
-                                <Edit3 className="w-3.5 h-3.5" />
+                                <Zap className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1296,239 +1531,127 @@ export const SuperAdminView: React.FC = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: META GATEWAY & WEBHOOKS                                           */}
+        {/* TAB 2: SIDEBAR OPTIONS MATRIX CONFIGURATOR                               */}
         {/* ========================================================================= */}
-        {activeTab === 'gateway' && (
+        {activeTab === 'sidebar_config' && (
           <div className="space-y-6">
-            {/* Meta Cloud API Credentials & Live Webhook Card */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                    <Server className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-base">Meta WhatsApp Cloud API Engine</h3>
-                    <p className="text-xs text-slate-500">Official Graph API v21.0 Gateway & Inbound Webhook Listener</p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  Webhook Verified & Active
-                </span>
-              </div>
-
-              {/* Endpoint Boxes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                {/* Webhook Callback URL */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-700">Inbound Webhook Callback URL</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText('https://api.whatsq.com/api/meta/webhook');
-                        addToast('Webhook URL copied to clipboard!', 'success');
-                      }}
-                      className="text-emerald-700 hover:text-emerald-800 flex items-center gap-1 font-semibold cursor-pointer"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
-                    </button>
-                  </div>
-                  <div className="font-mono text-xs text-slate-800 bg-white p-2.5 rounded-lg border border-slate-200 select-all truncate">
-                    https://api.whatsq.com/api/meta/webhook
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Paste into Meta Developer App &gt; WhatsApp &gt; Configuration &gt; Callback URL
-                  </p>
-                </div>
-
-                {/* Webhook Verification Token */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-700">Webhook Verify Token</span>
-                    <button
-                      onClick={() => setRevealWebhookSecret(!revealWebhookSecret)}
-                      className="text-slate-500 hover:text-slate-700 flex items-center gap-1 font-semibold cursor-pointer"
-                    >
-                      {revealWebhookSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      <span>{revealWebhookSecret ? 'Hide' : 'Reveal'}</span>
-                    </button>
-                  </div>
-                  <div className="font-mono text-xs text-slate-800 bg-white p-2.5 rounded-lg border border-slate-200 select-all truncate">
-                    {revealWebhookSecret ? 'whatsapp_bot_verify_token_2026' : '••••••••••••••••••••••••••••••••'}
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Used by Meta servers to verify the authenticity of your server during webhook handshakes.
-                  </p>
-                </div>
-              </div>
-
-              {/* Engine Details Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 font-medium">Node.js Gateway Engine</div>
-                  <div className="font-bold text-slate-800 text-sm mt-0.5">Port 3001 (Active)</div>
-                  <div className="text-[10px] text-emerald-600 mt-0.5">WebSocket broadcaster live</div>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 font-medium">Django Business Core</div>
-                  <div className="font-bold text-slate-800 text-sm mt-0.5">Port 8000 (Active)</div>
-                  <div className="text-[10px] text-emerald-600 mt-0.5">ORM & Multi-Tenant DB live</div>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 font-medium">WABA Account Quality</div>
-                  <div className="font-bold text-emerald-600 text-sm mt-0.5">HIGH (Green 🟢)</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">No quality restrictions</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Platform Rate Limiter & Throttling Controls */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
-                <Sliders className="w-5 h-5 text-amber-600" />
-                <span>Global Campaign Rate Limiting & Safety Controls</span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Protect your Meta WABA phone numbers from temporary blocks and anti-spam detection by enforcing strict inter-message delay intervals across all tenant outbound queues.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Minimum Safety Delay Between Bulk Messages (Seconds):
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={5}
-                      max={30}
-                      step={1}
-                      value={rateLimitMinDelay}
-                      onChange={(e) => setRateLimitMinDelay(Number(e.target.value))}
-                      className="flex-1 accent-amber-500 cursor-pointer"
-                    />
-                    <span className="font-mono font-bold text-sm text-slate-800 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-                      {rateLimitMinDelay}s
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Recommended: 8–15s to simulate natural human typing speeds and maintain 100% Meta trust.
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Client Custom Sidebar Options Matrix</h3>
+                  <p className="text-xs text-slate-500">
+                    Control which modules appear on each client's left navigation sidebar. Clients only see features they purchased.
                   </p>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Automatic Failure Circuit Breaker:
-                  </label>
-                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-amber-600" />
-                      <span>Threshold: 5% consecutive delivery errors</span>
-                    </div>
-                    <p className="text-[11px] text-amber-700 leading-relaxed">
-                      If any tenant's bulk campaign encounters &gt;5% Meta API errors (e.g. invalid numbers or blocked recipients), the platform automatically pauses their queue and alerts the super admin.
-                    </p>
-                  </div>
-                </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => addToast('Global rate limit policies applied across all tenant queues.', 'success')}
-                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                >
-                  Save Throttle Settings
-                </button>
+              {/* Table of all clients and their assigned sidebar modules */}
+              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                {tenants.map((client) => (
+                  <div key={client.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50/60 transition">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${client.color || 'from-emerald-500 to-teal-600'} text-white font-bold text-sm flex items-center justify-center shrink-0`}>
+                        {client.initials}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-900 text-xs">{client.businessName}</h4>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
+                            {client.id}
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                            {client.tier.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          {(client.sidebarModules || []).map((mId) => {
+                            const mod = ALL_SIDEBAR_MODULES.find((m) => m.id === mId);
+                            return (
+                              <span key={mId} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] rounded font-medium">
+                                {mod ? mod.label : mId}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setConfiguringSidebarTenant(client)}
+                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                        <span>Configure Sidebar ({(client.sidebarModules || []).length}/14)</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: SAAS PLAN TIERS                                                    */}
+        {/* TAB 3: META PREPAID WALLETS & WABA HEALTH                                */}
         {/* ========================================================================= */}
-        {activeTab === 'plans' && (
+        {activeTab === 'meta_wallets' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Subscription Plans & Feature Tiers</h3>
-                <p className="text-xs text-slate-500">Configure licensing quotas, pricing and feature access per tier</p>
-              </div>
-              <button
-                onClick={() => addToast('Custom Plan Builder is available in Enterprise Edition', 'info')}
-                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
-              >
-                + Add Custom Plan
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {INITIAL_PLANS.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`bg-white rounded-2xl border p-6 flex flex-col justify-between shadow-2xs transition hover:shadow-md relative ${
-                    plan.popular ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-200/90'
-                  }`}
-                >
-                  {plan.popular && (
-                    <span className="absolute -top-3 right-6 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[10px] px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                      Most Popular
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {tenants.map((client) => (
+                <div key={client.id} className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${client.color} text-white font-bold text-xs flex items-center justify-center`}>
+                        {client.initials}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-xs">{client.businessName}</h4>
+                        <span className="text-[10px] text-slate-400 font-mono">{client.wabaPhone || 'Pending WABA'}</span>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      client.metaWalletStatus === 'healthy'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : client.metaWalletStatus === 'low'
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-rose-50 text-rose-800 border-rose-200'
+                    }`}>
+                      {client.metaWalletStatus === 'healthy' ? '🟢 Normal Reserve' : '⚠️ Low Balance Alert'}
                     </span>
-                  )}
-
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                        {plan.badge}
-                      </span>
-                      <h4 className="text-lg font-black text-slate-900 mt-2">{plan.name}</h4>
-                    </div>
-
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-black text-slate-900">
-                        {plan.currency}{plan.monthlyPrice.toLocaleString()}
-                      </span>
-                      <span className="text-xs text-slate-500">/ month</span>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Max Staff Seats:</span>
-                        <span className="font-bold text-slate-800">{plan.maxLicenses} Seats</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Monthly Messages:</span>
-                        <span className="font-bold text-slate-800">{plan.maxMessages.toLocaleString()} msgs</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">WhatsApp Lines:</span>
-                        <span className="font-bold text-slate-800">{plan.maxWabaNumbers} Number(s)</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-2">
-                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Features Included:</div>
-                      <div className="space-y-1.5">
-                        {plan.features.map((feat, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-700">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>{feat}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
 
-                  <div className="pt-6 border-t border-slate-100 mt-6">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] text-slate-500 font-medium">Prepaid Conversation Balance</div>
+                      <div className="text-2xl font-black text-slate-900 mt-0.5">
+                        ₹{(client.metaWalletBalance || 0).toLocaleString()}
+                      </div>
+                    </div>
                     <button
-                      onClick={() => addToast(`Configuring ${plan.name}...`, 'info')}
-                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+                      onClick={() => {
+                        setWalletTopUpTenant(client);
+                        setTopUpAmount(2000);
+                      }}
+                      className="px-3.5 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer"
                     >
-                      Edit Plan Limits
+                      + Top-Up Credit
                     </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-600">
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="text-slate-400 text-[10px]">Daily Limit</div>
+                      <div className="font-bold text-slate-800">{client.metaTier}</div>
+                    </div>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="text-slate-400 text-[10px]">Quality Rating</div>
+                      <div className="font-bold text-emerald-700">{client.wabaQualityScore || 'HIGH 🟢'}</div>
+                    </div>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="text-slate-400 text-[10px]">API Latency</div>
+                      <div className="font-bold text-slate-800">{client.wabaLatencyMs || 38}ms</div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1537,374 +1660,480 @@ export const SuperAdminView: React.FC = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 4: SUPER ADMIN RBAC & PRIVILEGES                                     */}
+        {/* TAB 4: SAAS PLANS                                                        */}
         {/* ========================================================================= */}
-        {activeTab === 'rbac' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">Super Admin Role & Root Privileges</h3>
-                  <p className="text-xs text-slate-500">
-                    Highest platform administrative tier with omnipotent permissions across all tenant boundaries
-                  </p>
-                </div>
-              </div>
-
-              {/* Master Root Privileges Checklist */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                {[
-                  {
-                    title: 'Multi-Tenant Impersonation',
-                    desc: 'Instantly assume workspace identity for any tenant without requiring customer passwords.',
-                  },
-                  {
-                    title: 'Meta WABA Token Rotation',
-                    desc: 'Full authority to update System User Tokens and re-verify Meta webhook endpoints.',
-                  },
-                  {
-                    title: 'Emergency Global Kill-Switch',
-                    desc: 'Ability to halt all outbound broadcast campaigns platform-wide in emergency scenarios.',
-                  },
-                  {
-                    title: 'Encrypted Snapshot Extraction',
-                    desc: 'Direct access to multi-tenant database exports and automated backup scheduling.',
-                  },
-                  {
-                    title: 'Tenant Quota Overrides',
-                    desc: 'Manually expand staff licenses or outbound message ceilings for VIP enterprise accounts.',
-                  },
-                  {
-                    title: 'Financial & Billing Overrides',
-                    desc: 'Generate complimentary trial extensions or modify subscription billing schedules.',
-                  },
-                ].map((item, idx) => (
-                  <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs text-slate-900">{item.title}</div>
-                      <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
-                    </div>
+        {activeTab === 'plans' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {INITIAL_PLANS.map((plan) => (
+              <div key={plan.id} className="bg-white rounded-2xl border border-slate-200/90 p-6 flex flex-col justify-between shadow-2xs">
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {plan.badge}
+                    </span>
+                    <h4 className="text-lg font-black text-slate-900 mt-2">{plan.name}</h4>
                   </div>
-                ))}
-              </div>
-
-              {/* Super Admin Profiles */}
-              <div className="pt-4 border-t border-slate-100 space-y-3">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  ACTIVE PLATFORM SUPER ADMINS (2)
-                </div>
-
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
-                  <div className="p-3.5 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                        alt="Rahul Mehta"
-                        className="w-9 h-9 rounded-xl object-cover ring-1 ring-amber-400"
-                      />
-                      <div>
-                        <div className="font-bold text-slate-900 flex items-center gap-2">
-                          Rahul Mehta
-                          <span className="text-[9px] font-black bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded uppercase">
-                            Primary Owner
-                          </span>
-                        </div>
-                        <div className="text-slate-500 text-[11px]">rahul.mehta@coolfix.in • 2FA Active</div>
-                      </div>
-                    </div>
-                    <span className="text-emerald-700 font-semibold text-[11px]">🟢 Active Session</span>
+                  <div className="text-3xl font-black text-slate-900">
+                    {plan.currency}{plan.monthlyPrice.toLocaleString()}<span className="text-xs text-slate-500 font-normal"> / mo</span>
                   </div>
-
-                  <div className="p-3.5 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center">
-                        VA
+                  <div className="space-y-1.5 text-xs text-slate-700">
+                    {plan.features.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{f}</span>
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-900 flex items-center gap-2">
-                          Vishnu Admin
-                          <span className="text-[9px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded uppercase">
-                            Platform Lead
-                          </span>
-                        </div>
-                        <div className="text-slate-500 text-[11px]">admin@qiyam.ventures • 2FA Active</div>
-                      </div>
-                    </div>
-                    <span className="text-slate-500 text-[11px]">Idle (Last seen 2h ago)</span>
+                    ))}
                   </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 5: PLATFORM AUDIT TRAIL                                              */}
+        {/* TAB 5: AUDIT TRAIL                                                       */}
         {/* ========================================================================= */}
         {activeTab === 'audit' && (
-          <div className="space-y-5">
-            {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Filter audit logs by action, actor, target or IP..."
-                  value={auditSearch}
-                  onChange={(e) => setAuditSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={auditSeverity}
-                  onChange={(e: any) => setAuditSeverity(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All Severities</option>
-                  <option value="info">Info</option>
-                  <option value="warning">Warning</option>
-                  <option value="security">Security</option>
-                  <option value="critical">Critical</option>
-                </select>
-
-                <button
-                  onClick={() => {
-                    const csvContent = 'data:text/csv;charset=utf-8,' +
-                      ['Timestamp,Actor,Role,Action,Target,Severity,IP'].join(',') + '\n' +
-                      auditLogs.map((l) => `"${l.timestamp}","${l.actor}","${l.actorRole}","${l.action.replace(/"/g, '""')}","${l.targetTenant}","${l.severity}","${l.ipAddress}"`).join('\n');
-                    const encoded = encodeURI(csvContent);
-                    const link = document.createElement('a');
-                    link.setAttribute('href', encoded);
-                    link.setAttribute('download', `platform_audit_log_${Date.now()}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    addToast('Audit Log exported to CSV!', 'success');
-                  }}
-                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Audit Log Table */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-4">Timestamp</th>
-                      <th className="py-3 px-4">Actor</th>
-                      <th className="py-3 px-4">Action</th>
-                      <th className="py-3 px-4">Target Workspace</th>
-                      <th className="py-3 px-4">Severity</th>
-                      <th className="py-3 px-4 text-right">IP Address</th>
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <th className="py-3 px-4">Timestamp</th>
+                    <th className="py-3 px-4">Actor</th>
+                    <th className="py-3 px-4">Action</th>
+                    <th className="py-3 px-4">Target Client</th>
+                    <th className="py-3 px-4 text-right">IP Address</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {auditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{log.timestamp}</td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-800">{log.actor}</div>
+                        <div className="text-[10px] text-slate-400">{log.actorRole}</div>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-800 max-w-md">{log.action}</td>
+                      <td className="py-3 px-4 font-semibold text-slate-700">{log.targetTenant || 'Global'}</td>
+                      <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-500">{log.ipAddress}</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredAuditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-4 text-slate-500 font-medium whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-800">{log.actor}</div>
-                          <div className="text-[10px] text-slate-400">{log.actorRole}</div>
-                        </td>
-                        <td className="py-3 px-4 max-w-md">
-                          <div className="text-slate-800 font-medium leading-relaxed">{log.action}</div>
-                          {log.details && (
-                            <div className="text-[10px] text-slate-500 mt-0.5">{log.details}</div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-700 font-semibold whitespace-nowrap">
-                          {log.targetTenant || 'Global'}
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
-                            log.severity === 'info'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : log.severity === 'warning'
-                              ? 'bg-amber-50 text-amber-800 border-amber-200'
-                              : log.severity === 'security'
-                              ? 'bg-purple-50 text-purple-800 border-purple-200'
-                              : 'bg-rose-50 text-rose-800 border-rose-200'
-                          }`}>
-                            {log.severity}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                          {log.ipAddress}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 6: WHITE-LABEL & GLOBAL CONFIG                                       */}
-        {/* ========================================================================= */}
-        {activeTab === 'branding' && (
-          <div className="space-y-6">
-            <form onSubmit={handleSaveBranding} className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">White-Label & Global Platform Branding</h3>
-                  <p className="text-xs text-slate-500">Configure global platform metadata, support endpoints and maintenance banner</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">Master Platform Title:</label>
-                  <input
-                    type="text"
-                    value={platformName}
-                    onChange={(e) => setPlatformName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">Platform Subtitle / Tagline:</label>
-                  <input
-                    type="text"
-                    value={platformTagline}
-                    onChange={(e) => setPlatformTagline(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">Primary Support WhatsApp Line:</label>
-                  <input
-                    type="text"
-                    value={supportWhatsApp}
-                    onChange={(e) => setSupportWhatsApp(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">Primary Support Email:</label>
-                  <input
-                    type="email"
-                    value={supportEmail}
-                    onChange={(e) => setSupportEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
-
-              {/* Maintenance Mode Box */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-xs text-slate-800">Platform Maintenance Announcement Banner</div>
-                    <div className="text-[11px] text-slate-500">Show a top banner alert across all logged-in staff sessions</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={maintenanceMode}
-                    onChange={(e) => setMaintenanceMode(e.target.checked)}
-                    className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer accent-amber-500"
-                  />
-                </div>
-
-                {maintenanceMode && (
-                  <input
-                    type="text"
-                    value={maintenanceBannerText}
-                    onChange={(e) => setMaintenanceBannerText(e.target.value)}
-                    placeholder="Enter announcement text..."
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
-                  />
-                )}
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
-                >
-                  Save Platform Configurations
-                </button>
-              </div>
-            </form>
           </div>
         )}
       </div>
 
-      {/* ── 5. MODAL: PROVISION NEW TENANT ── */}
-      {isCreateTenantOpen && (
+      {/* ── 5. MODAL: CONFIGURE CLIENT SIDEBAR MENU ── */}
+      {configuringSidebarTenant && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden text-xs">
-            <div className="p-5 bg-gradient-to-r from-slate-900 to-amber-950 text-white flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden text-xs">
+            {/* Minimal Header */}
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center">
-                  <Building2 className="w-4 h-4 text-amber-400" />
+                <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                  <Sliders className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Provision New Tenant Workspace</h3>
-                  <p className="text-[11px] text-amber-200/80">Onboard a client organization with dedicated quotas</p>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Configure Sidebar Navigation: {configuringSidebarTenant.businessName}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Enable or disable sidebar options tailored specifically for this client
+                  </p>
                 </div>
               </div>
               <button
-                onClick={() => setIsCreateTenantOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+                onClick={() => setConfiguringSidebarTenant(null)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTenant} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* 1-Click Planning Presets */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  Apply Structured Industry Preset:
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset('field_service')}
+                    className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-left transition cursor-pointer"
+                  >
+                    <div className="font-bold text-slate-800 text-[11px]">🛠️ Field Service</div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">Jobs, CRM, Invoices</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset('retail')}
+                    className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-left transition cursor-pointer"
+                  >
+                    <div className="font-bold text-slate-800 text-[11px]">🛍️ Retail / Shop</div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">Bulk, Keywords, Deals</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset('minimal')}
+                    className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-left transition cursor-pointer"
+                  >
+                    <div className="font-bold text-slate-800 text-[11px]">⚡ Inbox Only</div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">Clean & Minimal</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset('full')}
+                    className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-left transition cursor-pointer"
+                  >
+                    <div className="font-bold text-slate-800 text-[11px]">🏢 Full Suite</div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">All 14 Modules</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Individual Modules Checklist */}
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-700">Business / Workspace Name *</label>
+                <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  Module Selection ({(configuringSidebarTenant.sidebarModules || []).length} enabled):
+                </div>
+
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+                  {ALL_SIDEBAR_MODULES.map((mod) => {
+                    const isChecked = (configuringSidebarTenant.sidebarModules || []).includes(mod.id);
+                    const ModIcon = mod.icon;
+
+                    return (
+                      <div
+                        key={mod.id}
+                        onClick={() => handleToggleSidebarModule(mod.id)}
+                        className={`p-3 flex items-center justify-between cursor-pointer transition ${
+                          isChecked ? 'bg-emerald-50/20' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            isChecked ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            <ModIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>{mod.label}</span>
+                              <span className="text-[9px] font-medium text-slate-400 px-1 py-0.2 rounded bg-slate-100">
+                                {mod.category}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 leading-tight">{mod.description}</p>
+                          </div>
+                        </div>
+
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleSidebarModule(mod.id)}
+                          className="w-4 h-4 text-emerald-700 rounded focus:ring-emerald-600 cursor-pointer accent-[#0B3B2C]"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-[11px] text-slate-500">
+                  Settings apply immediately when this workspace is active.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setConfiguringSidebarTenant(null)}
+                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
+                >
+                  Save & Apply Menu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. MODAL: TOP-UP META PREPAID WALLET ── */}
+      {walletTopUpTenant && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-xs">
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-emerald-600" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  Recharge Meta Wallet: {walletTopUpTenant.businessName}
+                </h3>
+              </div>
+              <button onClick={() => setWalletTopUpTenant(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleTopUpMetaWallet} className="p-5 space-y-4">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-slate-500">Current Balance:</div>
+                  <div className="text-lg font-black text-slate-900">
+                    ₹{(walletTopUpTenant.metaWalletBalance || 0).toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-right text-[11px] text-slate-500 font-mono">
+                  WABA: {walletTopUpTenant.wabaPhone || 'Active'}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-700">Top-Up Amount (₹ INR):</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1000, 2000, 5000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setTopUpAmount(amt)}
+                      className={`py-2 rounded-xl font-bold transition cursor-pointer border ${
+                        topUpAmount === amt ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      +₹{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  min={100}
+                  step={100}
+                  value={topUpAmount}
+                  onChange={(e) => setTopUpAmount(Number(e.target.value))}
+                  className="w-full mt-2 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-600 font-mono text-sm"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setWalletTopUpTenant(null)}
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
+                >
+                  Confirm Credit Recharge
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. MODAL: RECORD SOFTWARE PAYMENT ── */}
+      {recordPaymentTenant && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-xs">
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  Record Software Payment: {recordPaymentTenant.businessName}
+                </h3>
+              </div>
+              <button onClick={() => setRecordPaymentTenant(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordPayment} className="p-5 space-y-3.5">
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Payment Amount Received (₹):</label>
+                <input
+                  type="number"
+                  required
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Payment Method:</label>
+                <select
+                  value={paymentForm.method}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
+                >
+                  <option value="Razorpay UPI">Razorpay UPI</option>
+                  <option value="Bank NEFT / IMPS">Bank NEFT / IMPS</option>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Cash / Cheque">Cash / Cheque</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Transaction Reference ID:</label>
+                <input
+                  type="text"
+                  required
+                  value={paymentForm.reference}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Next Upcoming Due Date:</label>
+                <input
+                  type="date"
+                  required
+                  value={paymentForm.nextDueDate}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, nextDueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRecordPaymentTenant(null)}
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
+                >
+                  Save Payment Receipt
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 8. MODAL: LIVE DIAGNOSTICS RESULTS ── */}
+      {diagnosticsTenant && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-xs">
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  Live Diagnostics: {diagnosticsTenant.businessName}
+                </h3>
+              </div>
+              <button onClick={() => setDiagnosticsTenant(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              {isDiagnosing ? (
+                <div className="py-8 flex flex-col items-center justify-center space-y-3">
+                  <RefreshCw className="w-6 h-6 text-emerald-600 animate-spin" />
+                  <div className="font-bold text-slate-800 text-xs">Running real-time WABA & Webhook ping tests...</div>
+                </div>
+              ) : diagnosticResult ? (
+                <div className="space-y-2.5">
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-emerald-900 text-xs">Meta Graph API v21.0 Handshake</div>
+                      <div className="text-[11px] text-emerald-700">{diagnosticResult.metaGraphApi.message} ({diagnosticResult.metaGraphApi.latency})</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-emerald-900 text-xs">Inbound Webhook Verification</div>
+                      <div className="text-[11px] text-emerald-700">{diagnosticResult.webhook.message} (Last ping: {diagnosticResult.webhook.lastCallback})</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5">
+                    <Wallet className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Meta Prepaid Balance Check</div>
+                      <div className="text-[11px] text-slate-600">Balance: {diagnosticResult.metaWallet.balance} • {diagnosticResult.metaWallet.tier}</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5">
+                    <CreditCard className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Software Subscription License</div>
+                      <div className="text-[11px] text-slate-600">Status: {diagnosticResult.softwareLicense.statusText} • Due: {diagnosticResult.softwareLicense.dueDate}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDiagnosticsTenant(null)}
+                  className="px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 9. MODAL: PROVISION NEW CLIENT ── */}
+      {isCreateTenantOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden text-xs">
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-700" />
+                <h3 className="font-bold text-sm text-slate-900">Provision New Client Workspace</h3>
+              </div>
+              <button onClick={() => setIsCreateTenantOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateClient} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Client / Business Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Apex Logistics India"
                   value={newTenantForm.businessName}
                   onChange={(e) => setNewTenantForm({ ...newTenantForm, businessName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-600"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-700">Branch / HQ Location</label>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Branch Location</label>
                   <input
                     type="text"
-                    placeholder="e.g. Calicut Central"
                     value={newTenantForm.branch}
                     onChange={(e) => setNewTenantForm({ ...newTenantForm, branch: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-700">Subscription Tier</label>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Plan Tier</label>
                   <select
                     value={newTenantForm.tier}
                     onChange={(e: any) => setNewTenantForm({ ...newTenantForm, tier: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white cursor-pointer"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
                   >
                     <option value="starter">Starter (₹2,499/mo)</option>
                     <option value="growth">Growth (₹5,999/mo)</option>
@@ -1914,70 +2143,51 @@ export const SuperAdminView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="block font-bold text-slate-700">Owner Full Name *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Rajesh Sharma"
                     value={newTenantForm.ownerName}
                     onChange={(e) => setNewTenantForm({ ...newTenantForm, ownerName: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-700">Owner Phone (WhatsApp) *</label>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Owner WhatsApp Phone *</label>
                   <input
                     type="text"
                     required
-                    placeholder="+91 98765 00000"
                     value={newTenantForm.ownerPhone}
                     onChange={(e) => setNewTenantForm({ ...newTenantForm, ownerPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-700">Owner Email Address</label>
-                <input
-                  type="email"
-                  placeholder="admin@apexlogistics.com"
-                  value={newTenantForm.ownerEmail}
-                  onChange={(e) => setNewTenantForm({ ...newTenantForm, ownerEmail: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-700">Max Staff Seat Licenses</label>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Initial Meta Wallet (₹)</label>
                   <input
                     type="number"
-                    min={1}
-                    max={100}
-                    value={newTenantForm.maxLicenses}
-                    onChange={(e) => setNewTenantForm({ ...newTenantForm, maxLicenses: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                    value={newTenantForm.initialMetaBalance}
+                    onChange={(e) => setNewTenantForm({ ...newTenantForm, initialMetaBalance: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-700">Monthly Messages Cap</label>
-                  <input
-                    type="number"
-                    min={1000}
-                    step={5000}
-                    value={newTenantForm.monthlyMessageLimit}
-                    onChange={(e) => setNewTenantForm({ ...newTenantForm, monthlyMessageLimit: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
-                  />
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Sidebar Preset</label>
+                  <select
+                    value={newTenantForm.selectedPreset}
+                    onChange={(e: any) => setNewTenantForm({ ...newTenantForm, selectedPreset: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
+                  >
+                    <option value="field_service">🛠️ Field Service (Jobs, CRM, Invoices)</option>
+                    <option value="retail">🛍️ Retail (Bulk, Keywords, Invoices)</option>
+                    <option value="minimal">⚡ Inbox Only (Lightweight)</option>
+                    <option value="full">🏢 Full Suite (All 14 Modules)</option>
+                  </select>
                 </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                💡 <strong>Instant Multi-Tenant Provisioning:</strong> The workspace will be initialized with dedicated database isolation, default keyword triggers, and RBAC security controls.
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -1990,7 +2200,7 @@ export const SuperAdminView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
                 >
                   Confirm & Provision
                 </button>
@@ -2000,16 +2210,16 @@ export const SuperAdminView: React.FC = () => {
         </div>
       )}
 
-      {/* ── 6. MODAL: EDIT TENANT ── */}
+      {/* ── 10. MODAL: EDIT CLIENT DETAILS ── */}
       {editingTenant && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-xs">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-sm text-white">Edit Workspace: {editingTenant.businessName}</h3>
+                <Edit3 className="w-4 h-4 text-emerald-700" />
+                <h3 className="font-bold text-sm text-slate-900">Edit Client: {editingTenant.businessName}</h3>
               </div>
-              <button onClick={() => setEditingTenant(null)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setEditingTenant(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -2021,55 +2231,28 @@ export const SuperAdminView: React.FC = () => {
                   type="text"
                   value={editingTenant.businessName}
                   onChange={(e) => setEditingTenant({ ...editingTenant, businessName: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Seat Licenses Cap</label>
+                  <label className="block font-bold text-slate-700">Staff Seats Limit</label>
                   <input
                     type="number"
                     value={editingTenant.maxLicenses}
                     onChange={(e) => setEditingTenant({ ...editingTenant, maxLicenses: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Monthly Message Cap</label>
+                  <label className="block font-bold text-slate-700">Software Fee (₹)</label>
                   <input
                     type="number"
-                    value={editingTenant.monthlyMessageLimit}
-                    onChange={(e) => setEditingTenant({ ...editingTenant, monthlyMessageLimit: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                    value={editingTenant.amount}
+                    onChange={(e) => setEditingTenant({ ...editingTenant, amount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Subscription Tier</label>
-                  <select
-                    value={editingTenant.tier}
-                    onChange={(e: any) => setEditingTenant({ ...editingTenant, tier: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="starter">Starter</option>
-                    <option value="growth">Growth</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Status</label>
-                  <select
-                    value={editingTenant.status}
-                    onChange={(e: any) => setEditingTenant({ ...editingTenant, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="active">Active</option>
-                    <option value="trial">Trial</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
                 </div>
               </div>
 
@@ -2087,9 +2270,9 @@ export const SuperAdminView: React.FC = () => {
                     const updated = tenants.map((t) => (t.id === editingTenant.id ? editingTenant : t));
                     saveTenants(updated);
                     setEditingTenant(null);
-                    addToast(`Updated workspace "${editingTenant.businessName}"`, 'success');
+                    addToast(`Updated client "${editingTenant.businessName}"`, 'success');
                   }}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer"
+                  className="px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -2099,132 +2282,39 @@ export const SuperAdminView: React.FC = () => {
         </div>
       )}
 
-      {/* ── 7. MODAL: TENANT FEATURE FLAGS ── */}
-      {selectedFeaturesTenant && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-xs">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-sm text-white">
-                  Feature Flags: {selectedFeaturesTenant.businessName}
-                </h3>
-              </div>
-              <button onClick={() => setSelectedFeaturesTenant(null)} className="text-slate-400 hover:text-white cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-3">
-              <p className="text-slate-500 text-[11px]">
-                Toggle available modules and SaaS engine capabilities for this workspace:
-              </p>
-
-              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
-                {(Object.keys(selectedFeaturesTenant.features) as (keyof TenantFeatureConfig)[]).map((featureKey) => {
-                  const labelMap: Record<keyof TenantFeatureConfig, string> = {
-                    multiAccount: 'Multi-Account & Multi-Line Routing',
-                    botBuilder: 'Interactive Workflow Builder & Triggers',
-                    interactiveButtons: 'Interactive WhatsApp Buttons & Lists',
-                    customBranding: 'White-Label Branding & Custom Logo',
-                    aiAssistant: 'AI Knowledge Base & LLM Assistant',
-                    bulkCampaigns: 'Bulk Campaigns & Phone Grabber',
-                    voiceNotes: 'Audio Transcription & Voice Messaging',
-                    apiWebhooks: 'External REST API Webhook Access',
-                  };
-
-                  const isChecked = selectedFeaturesTenant.features[featureKey];
-
-                  return (
-                    <div key={featureKey} className="p-3 flex items-center justify-between">
-                      <span className="font-medium text-slate-800">{labelMap[featureKey]}</span>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {
-                          const updatedFeatures = {
-                            ...selectedFeaturesTenant.features,
-                            [featureKey]: !isChecked,
-                          };
-                          const updatedTenant = {
-                            ...selectedFeaturesTenant,
-                            features: updatedFeatures,
-                          };
-                          setSelectedFeaturesTenant(updatedTenant);
-                          const updatedList = tenants.map((t) =>
-                            t.id === selectedFeaturesTenant.id ? updatedTenant : t
-                          );
-                          saveTenants(updatedList);
-                        }}
-                        className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer accent-amber-500"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedFeaturesTenant(null)}
-                  className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 8. MODAL: GLOBAL BROADCAST ANNOUNCEMENT ── */}
+      {/* ── 11. MODAL: GLOBAL BROADCAST ── */}
       {isBroadcastModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-xs">
-            <div className="p-4 bg-gradient-to-r from-slate-900 to-amber-950 text-white flex items-center justify-between">
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-sm text-white">Global Workspace Broadcast</h3>
+                <Radio className="w-4 h-4 text-amber-600" />
+                <h3 className="font-bold text-sm text-slate-900">Broadcast Alert to All Workspaces</h3>
               </div>
-              <button onClick={() => setIsBroadcastModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setIsBroadcastModalOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSendGlobalBroadcast} className="p-5 space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!broadcastMessage.trim()) return;
+                addToast(`Broadcast sent to all ${tenants.length} client workspaces!`, 'success');
+                setIsBroadcastModalOpen(false);
+                setBroadcastMessage('');
+              }}
+              className="p-5 space-y-4"
+            >
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-700">Announcement Severity</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['info', 'warning', 'critical'] as const).map((sev) => (
-                    <button
-                      key={sev}
-                      type="button"
-                      onClick={() => setBroadcastSeverity(sev)}
-                      className={`py-2 px-2 rounded-xl font-bold uppercase text-[10px] transition cursor-pointer border ${
-                        broadcastSeverity === sev
-                          ? sev === 'critical'
-                            ? 'bg-rose-600 text-white border-rose-600'
-                            : sev === 'warning'
-                            ? 'bg-amber-500 text-slate-950 border-amber-500'
-                            : 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {sev}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-700">Broadcast Message *</label>
+                <label className="block font-bold text-slate-700">Announcement Message:</label>
                 <textarea
                   rows={4}
                   required
-                  placeholder="e.g. System upgrade scheduled tonight at 1:00 AM UTC. No downtime expected."
+                  placeholder="e.g. Scheduled Meta WhatsApp server maintenance tonight at 1:00 AM. Inbound chats continue as normal."
                   value={broadcastMessage}
                   onChange={(e) => setBroadcastMessage(e.target.value)}
-                  className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs text-slate-800"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-600"
                 />
               </div>
 
@@ -2238,7 +2328,7 @@ export const SuperAdminView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Send Broadcast</span>
