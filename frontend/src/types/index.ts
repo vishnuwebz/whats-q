@@ -162,8 +162,10 @@ export interface TenantTrialRecord {
 export interface TenantAddonPurchase {
   moduleId: TenantSidebarModule;
   purchasedAt: string;
+  expiresAt?: string;
+  billingCycle?: 'monthly' | 'annually';
   monthlyAmount: number;
-  status: 'active' | 'cancelled';
+  status: 'active' | 'cancelled' | 'expired';
   paymentRef?: string;
 }
 

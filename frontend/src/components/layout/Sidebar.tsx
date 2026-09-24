@@ -13,7 +13,7 @@ import {
   RefreshCw, Search, Database, Globe, Ban, FileCheck, Crown,
   Award, Lock
 } from 'lucide-react';
-import { isModuleUnlockedForTenant } from '@/utils/featureEntitlements';
+import { isModuleUnlockedForTenant, DEMO_EXPIRED_TENANT } from '@/utils/featureEntitlements';
 
 interface SidebarMenuItem {
   tab: TabType;
@@ -241,7 +241,9 @@ export const Sidebar: React.FC = () => {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((p: any) => ({
+          const hasExpiredDemo = parsed.some((t: any) => t.id === 'TN-EXPIRED-DEMO');
+          const list = hasExpiredDemo ? parsed : [...parsed, DEMO_EXPIRED_TENANT];
+          return list.map((p: any) => ({
             id: p.id,
             name: p.businessName || p.name,
             branch: p.branch || 'Branch',
@@ -306,6 +308,20 @@ export const Sidebar: React.FC = () => {
         color: 'from-amber-500 to-orange-600',
         staffCount: 8,
         sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'settings'],
+      },
+      {
+        id: 'TN-EXPIRED-DEMO',
+        name: 'Apex Retail Solutions (Expired Add-ons)',
+        branch: 'Demo Outlet • Calicut',
+        status: 'Online',
+        phone: '+91 94963 00233',
+        initial: 'A',
+        color: 'from-rose-500 to-red-600',
+        staffCount: 6,
+        sidebarModules: ['dashboard', 'conversations', 'settings'],
+        trialConfigDays: 7,
+        activeTrials: DEMO_EXPIRED_TENANT.activeTrials,
+        addonPurchases: DEMO_EXPIRED_TENANT.addonPurchases,
       },
     ];
   });
@@ -376,6 +392,12 @@ export const Sidebar: React.FC = () => {
 
   const handleSelectTenant = (tenant: (typeof tenants)[0]) => {
     setActiveTenantId(tenant.id);
+    try {
+      localStorage.setItem('whatsq_active_tenant_id', tenant.id);
+      localStorage.setItem('whatsq_active_workspace_id', tenant.id);
+      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: tenant.id } }));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
     setIsTenantOpen(false);
     addToast(`Switched active organization to ${tenant.name} (${tenant.id})`, 'success');
   };
@@ -2127,6 +2149,11 @@ export const Sidebar: React.FC = () => {
                         {isCurrent && (
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                             Active
+                          </span>
+                        )}
+                        {t.id === 'TN-EXPIRED-DEMO' && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            All Add-ons Expired
                           </span>
                         )}
                       </div>

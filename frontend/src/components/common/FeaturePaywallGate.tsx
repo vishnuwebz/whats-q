@@ -74,7 +74,9 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
 
   const trialDays = activeTenant?.trialConfigDays || 7;
   const trialRecord = activeTenant?.activeTrials?.[moduleId];
-  const isTrialExpired = trialRecord?.status === 'expired';
+  const addonRecord = activeTenant?.addonPurchases?.[moduleId];
+  const isTrialExpired = trialRecord?.status === 'expired' || (trialRecord?.expiresAt ? new Date(trialRecord.expiresAt).getTime() <= Date.now() : false);
+  const isAddonExpired = addonRecord?.status === 'expired' || (addonRecord?.expiresAt ? new Date(addonRecord.expiresAt).getTime() <= Date.now() : false);
 
   const monthlyPrice = modInfo.addonMonthlyPrice;
   const annualPrice = Math.round(modInfo.addonAnnualPrice / 12);
@@ -98,7 +100,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
     }
   };
 
-  // Handle Standalone Add-on Purchase
+  // Handle Standalone Add-on Purchase / Renewal
   const handlePurchaseAddon = async () => {
     if (!activeTenant) return;
     setIsProcessing(true);
@@ -167,18 +169,44 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
           </div>
         </div>
 
+        {/* Expired Status Banner (for Demo Client or any expired tenant) */}
+        {(isAddonExpired || isTrialExpired) && (
+          <div className="bg-rose-50/90 border border-rose-200 rounded-2xl p-4 flex items-start gap-3.5 shadow-xs text-left animate-in fade-in">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-rose-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-rose-950 text-xs">
+                  {isAddonExpired ? 'Previous Add-On Subscription Expired' : 'Temporary Free Trial Expired'}
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-200 text-rose-800">
+                  Access Paused
+                </span>
+              </div>
+              <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
+                {isAddonExpired
+                  ? `Your previous individual add-on plan for ${modInfo.label} has expired. You can instantly renew access below for ₹${displayPrice}/mo without purchasing an entire bundle.`
+                  : `Your free trial period for ${modInfo.label} has ended. Purchase this standalone feature below to continue with all your configurations and data intact.`}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── 3 Action Cards ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 items-stretch">
 
           {/* Option 1: Standalone Add-on (User Request: "or if they need that only specific feature that estimated amount need to pay for that feature as an addon feature instead of bundle of features") */}
           <div className="bg-white rounded-2xl border-2 border-emerald-500 shadow-xl p-5 flex flex-col justify-between relative overflow-hidden group">
-            <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl shadow-xs">
-              Recommended Add-On
+            <div className={`absolute top-0 right-0 ${isAddonExpired ? 'bg-rose-600' : 'bg-emerald-600'} text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl shadow-xs`}>
+              {isAddonExpired ? 'Add-On Expired • Renew' : 'Recommended Add-On'}
             </div>
 
             <div className="space-y-4">
               <div>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Individual Add-On</span>
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
+                  {isAddonExpired ? 'Reactivate Subscription' : 'Individual Add-On'}
+                </span>
                 <h3 className="text-lg font-bold text-slate-900">{modInfo.label}</h3>
                 <p className="text-xs text-slate-500 mt-1">
                   Pay only for this specific feature. No need to buy an entire expensive bundle!
@@ -218,7 +246,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <>
-                    <span>Unlock Add-On (₹{displayPrice}/mo)</span>
+                    <span>{isAddonExpired ? `Renew Add-On (₹${displayPrice}/mo)` : `Unlock Add-On (₹${displayPrice}/mo)`}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}

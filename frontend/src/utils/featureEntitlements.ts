@@ -186,6 +186,261 @@ export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
 };
 
 /**
+ * Demo Client with ALL Add-On Plans and Free Trials Expired
+ */
+export const DEMO_EXPIRED_TENANT: PlatformTenant = {
+  id: 'TN-EXPIRED-DEMO',
+  businessName: 'Apex Retail Solutions (Expired Add-ons)',
+  initials: 'AR',
+  branch: 'Demo Outlet • Calicut',
+  ownerName: 'Vikram Malhotra (Demo Account)',
+  ownerEmail: 'vikram.demo@apexretail.in',
+  ownerPhone: '+91 94963 00233',
+  tier: 'starter',
+  amount: 2499,
+  billingCycle: 'monthly',
+  createdAt: '2026-07-01',
+  lastPaymentDate: '2026-08-01',
+  lastPaymentAmount: 2499,
+  lastPaymentMethod: 'UPI Autopay (Expired)',
+  nextPaymentDueDate: '2026-09-01',
+  paymentStatus: 'overdue',
+  metaWalletBalance: 120,
+  metaWalletCurrency: '₹',
+  metaWalletStatus: 'low',
+  metaDailyLimit: 5000,
+  metaTier: 'Tier 1 (1k/day)',
+  activeLicenses: 6,
+  maxLicenses: 10,
+  onlineStaffCount: 1,
+  status: 'active',
+  wabaStatus: 'connected',
+  wabaPhone: '+91 94963 00233',
+  wabaId: '1098915959329999',
+  wabaQualityScore: 'MEDIUM',
+  wabaLatencyMs: 65,
+  lastWebhookPing: '5m ago',
+  messagesSentThisMonth: 8200,
+  monthlyMessageLimit: 15000,
+  color: 'from-rose-500 to-red-600',
+  trialConfigDays: 7,
+  features: {
+    multiAccount: false,
+    botBuilder: false,
+    interactiveButtons: true,
+    customBranding: false,
+    aiAssistant: false,
+    bulkCampaigns: false,
+    voiceNotes: false,
+    apiWebhooks: false,
+  },
+  // Only the 3 base starter modules are enabled in their base plan
+  sidebarModules: ['dashboard', 'conversations', 'settings'],
+  activeTrials: {
+    messenger: {
+      moduleId: 'messenger',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    crm: {
+      moduleId: 'crm',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    branches: {
+      moduleId: 'branches',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    ops: {
+      moduleId: 'ops',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    finance: {
+      moduleId: 'finance',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    automation: {
+      moduleId: 'automation',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    ai: {
+      moduleId: 'ai',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    analytics: {
+      moduleId: 'analytics',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    integrations: {
+      moduleId: 'integrations',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    roles: {
+      moduleId: 'roles',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+    'settings-backup': {
+      moduleId: 'settings-backup',
+      startedAt: '2026-09-01T00:00:00.000Z',
+      expiresAt: '2026-09-15T00:00:00.000Z',
+      durationDays: 14,
+      preExpiryNotified: true,
+      expiredNotified: true,
+      status: 'expired',
+    },
+  },
+  addonPurchases: {
+    messenger: {
+      moduleId: 'messenger',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 799,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_MESSENGER',
+    },
+    crm: {
+      moduleId: 'crm',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 999,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_CRM',
+    },
+    branches: {
+      moduleId: 'branches',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 1499,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_BRANCHES',
+    },
+    ops: {
+      moduleId: 'ops',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 1999,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_OPS',
+    },
+    finance: {
+      moduleId: 'finance',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 1299,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_FINANCE',
+    },
+    automation: {
+      moduleId: 'automation',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 1199,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_AUTOMATION',
+    },
+    ai: {
+      moduleId: 'ai',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 999,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_AI',
+    },
+    analytics: {
+      moduleId: 'analytics',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 899,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_ANALYTICS',
+    },
+    integrations: {
+      moduleId: 'integrations',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 699,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_INTEGRATIONS',
+    },
+    roles: {
+      moduleId: 'roles',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 799,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_ROLES',
+    },
+    'settings-backup': {
+      moduleId: 'settings-backup',
+      purchasedAt: '2026-08-15T10:00:00.000Z',
+      expiresAt: '2026-09-15T10:00:00.000Z',
+      billingCycle: 'monthly',
+      monthlyAmount: 599,
+      status: 'expired',
+      paymentRef: 'pay_DEMO_EXPIRED_BACKUP',
+    },
+  },
+};
+
+/**
  * Check if a module is unlocked for the tenant
  */
 export const isModuleUnlockedForTenant = (
@@ -198,6 +453,7 @@ export const isModuleUnlockedForTenant = (
   trialHoursLeft?: number;
   expiresAt?: string;
   trialRecord?: TenantTrialRecord;
+  addonRecord?: TenantAddonPurchase;
 } => {
   if (!tenant) return { isUnlocked: true, reason: 'plan' };
 
@@ -209,8 +465,12 @@ export const isModuleUnlockedForTenant = (
 
   // 2. Active Add-on purchase
   const addon = tenant.addonPurchases?.[moduleId];
-  if (addon && addon.status === 'active') {
-    return { isUnlocked: true, reason: 'addon' };
+  if (addon) {
+    const now = Date.now();
+    const isExpired = addon.status === 'expired' || (addon.expiresAt && new Date(addon.expiresAt).getTime() <= now);
+    if (!isExpired && addon.status === 'active') {
+      return { isUnlocked: true, reason: 'addon', addonRecord: addon };
+    }
   }
 
   // 3. Active Free Trial
@@ -229,11 +489,18 @@ export const isModuleUnlockedForTenant = (
         trialHoursLeft: hoursLeft,
         expiresAt: trial.expiresAt,
         trialRecord: trial,
+        addonRecord: addon,
       };
     }
+    return {
+      isUnlocked: false,
+      reason: 'locked',
+      trialRecord: trial,
+      addonRecord: addon,
+    };
   }
 
-  return { isUnlocked: false, reason: 'locked' };
+  return { isUnlocked: false, reason: 'locked', addonRecord: addon };
 };
 
 /**
@@ -260,10 +527,21 @@ export const getStoredTenants = (): PlatformTenant[] => {
     const raw = localStorage.getItem('whatsq_platform_tenants');
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure the demo expired tenant is available
+        const hasExpiredDemo = parsed.some((t: any) => t.id === 'TN-EXPIRED-DEMO');
+        if (!hasExpiredDemo) {
+          const merged = [...parsed, DEMO_EXPIRED_TENANT];
+          try {
+            localStorage.setItem('whatsq_platform_tenants', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        }
+        return parsed;
+      }
     }
   } catch {}
-  return [];
+  return [DEMO_EXPIRED_TENANT];
 };
 
 /**

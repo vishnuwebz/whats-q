@@ -64,6 +64,7 @@ import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 import { apiClient } from '@/api/client';
 import {
   MODULE_PRICING_CATALOG,
+  DEMO_EXPIRED_TENANT,
   startTenantModuleTrial,
   purchaseTenantModuleAddon,
   isModuleUnlockedForTenant,
@@ -288,6 +289,7 @@ const INITIAL_TENANTS: PlatformTenant[] = [
     },
     sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'settings'],
   },
+  DEMO_EXPIRED_TENANT,
 ];
 
 const INITIAL_PLANS: PlatformPlanTier[] = [
@@ -422,7 +424,17 @@ export const SuperAdminView: React.FC = () => {
       const stored = localStorage.getItem('whatsq_platform_tenants');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasExpiredDemo = parsed.some((t: any) => t.id === 'TN-EXPIRED-DEMO');
+          if (!hasExpiredDemo) {
+            const updated = [...parsed, DEMO_EXPIRED_TENANT];
+            try {
+              localStorage.setItem('whatsq_platform_tenants', JSON.stringify(updated));
+            } catch {}
+            return updated;
+          }
+          return parsed;
+        }
       }
     } catch {}
     return INITIAL_TENANTS;
@@ -1633,6 +1645,11 @@ export const SuperAdminView: React.FC = () => {
                             <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 uppercase">
                               {client.tier} PRO
                             </span>
+                            {client.id === 'TN-EXPIRED-DEMO' && (
+                              <span className="text-[9px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-300">
+                                All Add-ons Expired (Demo)
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1887,7 +1904,14 @@ export const SuperAdminView: React.FC = () => {
                                 {c.initials}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-900">{c.businessName}</div>
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  <span>{c.businessName}</span>
+                                  {c.id === 'TN-EXPIRED-DEMO' && (
+                                    <span className="text-[9px] font-extrabold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                                      All Add-ons Expired
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-[10px] text-slate-400 font-mono">{c.id} • {c.ownerPhone}</div>
                               </div>
                             </div>
