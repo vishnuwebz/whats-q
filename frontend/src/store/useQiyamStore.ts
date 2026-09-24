@@ -3048,10 +3048,11 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           persistConversations(sortedMerged);
 
           const current = state.selectedConversationId;
-          const currentExists = sortedMerged.some((c) => String(c.id) === String(current));
+          const isDeleted = deletedIds.includes(String(current)) || (state.deletedConversations || []).some((c) => String(c.id) === String(current));
+          const currentExists = sortedMerged.some((c) => String(c.id) === String(current)) || isDeleted;
           const nextSelected = (current && currentExists)
             ? current
-            : (sortedMerged[0]?.id || current || '');
+            : (current || sortedMerged[0]?.id || '');
 
           return {
             conversations: sortedMerged,
@@ -3059,6 +3060,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           };
         });
       }
+      get().fetchDeletedConversations();
     } catch (e) {
       console.warn('[Store] refreshConversations error:', e);
     }

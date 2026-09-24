@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
@@ -160,11 +160,24 @@ export const ConversationsView: React.FC = () => {
     [conversations, deletedConversations]
   );
 
-  const currentConv = (allAvailableConvs && allAvailableConvs.length > 0)
-    ? allAvailableConvs.find(
-        (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
-      ) || (activeFilterTab === 'deleted' ? deletedConversations[0] : conversations[0]) || null
-    : null;
+  const currentConv = useMemo(() => {
+    if (!allAvailableConvs || allAvailableConvs.length === 0) return null;
+
+    const pool = activeFilterTab === 'deleted'
+      ? (deletedConversations || [])
+      : activeFilterTab === 'all'
+      ? conversations
+      : conversations.filter((c) => c.status === activeFilterTab);
+
+    if (pool.length === 0) return null;
+
+    const match = pool.find(
+      (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
+    );
+    if (match) return match;
+
+    return pool[0] || null;
+  }, [allAvailableConvs, activeFilterTab, selectedConversationId, deletedConversations, conversations]);
 
   const handleOpenWorkflowBuilder = (wfName: string = 'Service Booking Flow') => {
     const matchedWf = (workflows || []).find(
@@ -258,29 +271,51 @@ export const ConversationsView: React.FC = () => {
     }
   }, [currentConv?.id, currentConv?.unread_count, markConversationAsRead]);
 
-  // Open mobile chat automatically and adjust filters when an individual conversation is selected
+  const prevSelectedConvIdRef = useRef<string | number | null>(selectedConversationId);
+
+  // Helper to change active filter tab and ensure selected conversation reflects the tab
+  const handleSelectFilterTab = (tab: typeof activeFilterTab) => {
+    setActiveFilterTab(tab);
+
+    const pool = tab === 'deleted'
+      ? (deletedConversations || [])
+      : tab === 'all'
+      ? conversations
+      : conversations.filter((c) => c.status === tab);
+
+    const alreadyMatches = pool.some(
+      (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
+    );
+
+    if (!alreadyMatches && pool.length > 0) {
+      setSelectedConversationId(pool[0].id);
+      prevSelectedConvIdRef.current = pool[0].id;
+    }
+  };
+
+  // Open mobile chat and adjust tabs ONLY when an individual conversation is explicitly selected from outside
   React.useEffect(() => {
-    if (selectedConversationId) {
+    if (selectedConversationId && selectedConversationId !== prevSelectedConvIdRef.current) {
+      prevSelectedConvIdRef.current = selectedConversationId;
       setIsMobileChatOpen(true);
+
       const target = allAvailableConvs.find(
         (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
       );
+
       if (target) {
-        if (target.is_deleted) {
-          if (activeFilterTab !== 'deleted') {
-            setActiveFilterTab('deleted');
-          }
-        } else if (activeFilterTab === 'deleted') {
+        // If an external navigation opened a deleted conversation, switch to trash tab
+        if (target.is_deleted && activeFilterTab !== 'deleted') {
+          setActiveFilterTab('deleted');
+        } else if (!target.is_deleted && activeFilterTab === 'deleted') {
+          // If an external navigation opened an active conversation while on trash tab, switch to all
           setActiveFilterTab('all');
-        } else if (activeFilterTab !== 'all' && target.status !== activeFilterTab) {
-          setActiveFilterTab('all');
-        }
-        if (isAnyDateFilterActive) {
-          clearAllDateFilters();
         }
       }
+    } else if (selectedConversationId) {
+      prevSelectedConvIdRef.current = selectedConversationId;
     }
-  }, [selectedConversationId, allAvailableConvs]);
+  }, [selectedConversationId, allAvailableConvs, activeFilterTab]);
 
   React.useEffect(() => {
     fetchDeletedConversations();
@@ -1242,7 +1277,7 @@ export const ConversationsView: React.FC = () => {
             wheelMultiplier={1.2}
           >
             <button
-              onClick={() => setActiveFilterTab('all')}
+              onClick={() => handleSelectFilterTab('all')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all ${
                 activeFilterTab === 'all' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -1250,7 +1285,7 @@ export const ConversationsView: React.FC = () => {
               All ({counts.all})
             </button>
             <button
-              onClick={() => setActiveFilterTab('open')}
+              onClick={() => handleSelectFilterTab('open')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all ${
                 activeFilterTab === 'open' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -1258,7 +1293,7 @@ export const ConversationsView: React.FC = () => {
               Open ({counts.open})
             </button>
             <button
-              onClick={() => setActiveFilterTab('in_progress')}
+              onClick={() => handleSelectFilterTab('in_progress')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all ${
                 activeFilterTab === 'in_progress' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -1266,7 +1301,7 @@ export const ConversationsView: React.FC = () => {
               In Progress ({counts.in_progress})
             </button>
             <button
-              onClick={() => setActiveFilterTab('waiting')}
+              onClick={() => handleSelectFilterTab('waiting')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all ${
                 activeFilterTab === 'waiting' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -1274,7 +1309,7 @@ export const ConversationsView: React.FC = () => {
               Waiting ({counts.waiting})
             </button>
             <button
-              onClick={() => setActiveFilterTab('resolved')}
+              onClick={() => handleSelectFilterTab('resolved')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all ${
                 activeFilterTab === 'resolved' ? 'border-emerald-600 text-emerald-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -1282,7 +1317,7 @@ export const ConversationsView: React.FC = () => {
               Resolved ({counts.resolved})
             </button>
             <button
-              onClick={() => setActiveFilterTab('deleted')}
+              onClick={() => handleSelectFilterTab('deleted')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 activeFilterTab === 'deleted' ? 'border-amber-600 text-amber-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -1563,6 +1598,7 @@ export const ConversationsView: React.FC = () => {
                     key={conv.id}
                     onClick={() => {
                       setSelectedConversationId(conv.id);
+                      prevSelectedConvIdRef.current = conv.id;
                       setIsMobileChatOpen(true);
                     }}
                     className={`group relative p-3 cursor-pointer transition-all flex items-start gap-3 hover:bg-slate-50 ${
