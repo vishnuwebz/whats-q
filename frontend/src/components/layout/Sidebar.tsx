@@ -277,8 +277,7 @@ export const Sidebar: React.FC = () => {
     addToast(`Switched active organization to ${tenant.name} (${tenant.id})`, 'success');
   };
 
-  // Profile & Help Modals
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  // Help Modal
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Version Update & Auto-Backup State (Antigravity Style)
@@ -1718,14 +1717,13 @@ export const Sidebar: React.FC = () => {
               {activeTenant.initial}
             </button>
             <div
-              onClick={() => setIsProfileOpen(true)}
-              title="Rahul Mehta (Owner) - Click for Account & Profile"
-              className="cursor-pointer relative group"
+              title="Rahul Mehta • Owner & Super Admin"
+              className="relative select-none"
             >
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
                 alt="Rahul Mehta"
-                className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50 group-hover:ring-2 group-hover:ring-emerald-400 transition"
+                className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50"
               />
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
             </div>
@@ -1751,25 +1749,24 @@ export const Sidebar: React.FC = () => {
               <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 transition-colors" />
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between pt-1 select-none">
               <div
-                onClick={() => setIsProfileOpen(true)}
-                className="flex items-center gap-2.5 cursor-pointer group hover:bg-slate-800/40 p-1 -m-1 rounded-lg transition"
-                title="Click for Profile & Account Settings"
+                className="flex items-center gap-2.5 p-1 -m-1"
+                title="Rahul Mehta • Owner & Super Admin"
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img
                     src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
                     alt="Rahul Mehta"
-                    className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50 group-hover:ring-2 group-hover:ring-emerald-400 transition"
+                    className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50"
                   />
                   <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-white leading-tight group-hover:text-emerald-300 transition-colors">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-white leading-tight truncate">
                     Rahul Mehta
                   </div>
-                  <div className="text-[10px] text-slate-400">Owner</div>
+                  <div className="text-[10px] text-slate-400 truncate">Owner & Super Admin</div>
                 </div>
               </div>
               <button
@@ -2018,136 +2015,6 @@ export const Sidebar: React.FC = () => {
       </div>
     )}
 
-    {/* ── 2. User Profile & Account Settings Modal ── */}
-    {isProfileOpen && (
-      <div
-        className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-        onClick={() => setIsProfileOpen(false)}
-      >
-        <div
-          className="bg-[#0F172A] border border-[#1E293B] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-xs animate-in zoom-in-95 duration-150"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header Banner */}
-          <div className="relative p-5 bg-gradient-to-r from-emerald-950/80 to-[#111C33] border-b border-[#1E293B]">
-            <button
-              onClick={() => setIsProfileOpen(false)}
-              className="absolute top-3 right-3 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/80 transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-3.5">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                  alt="Rahul Mehta"
-                  className="w-14 h-14 rounded-2xl object-cover ring-2 ring-emerald-500 shadow-md"
-                />
-                <span className="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0F172A] absolute -bottom-0.5 -right-0.5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Rahul Mehta</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Owner & Super Admin
-                  </span>
-                  <span className="text-[11px] text-slate-400">Kozhikode, India</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Profile Details */}
-          <div className="p-4 space-y-3">
-            <div className="bg-[#111C33]/60 rounded-xl p-3 border border-[#1E293B] space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Email Address</span>
-                <span className="text-white font-medium font-mono">rahul.mehta@coolfix.in</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">WhatsApp Phone</span>
-                <span className="text-emerald-400 font-medium font-mono">{activeOutboundLine}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Current Workspace</span>
-                <span className="text-white font-medium">{activeTenant.name}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Two-Factor Auth</span>
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Active (WhatsApp OTP)
-                </span>
-              </div>
-            </div>
-
-            {/* Navigation Options */}
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  handleTabClick('settings');
-                }}
-                className="w-full p-2.5 rounded-xl bg-[#111C33]/40 hover:bg-[#162544] border border-[#1E293B] hover:border-slate-600 transition flex items-center justify-between text-left text-slate-300 hover:text-white cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <SettingsIcon className="w-4 h-4 text-emerald-400" />
-                  <div>
-                    <div className="font-semibold text-xs">Account & Workspace Settings</div>
-                    <div className="text-[10px] text-slate-400">Configure business profile, billing and team</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  handleTabClick('automation-logs');
-                }}
-                className="w-full p-2.5 rounded-xl bg-[#111C33]/40 hover:bg-[#162544] border border-[#1E293B] hover:border-slate-600 transition flex items-center justify-between text-left text-slate-300 hover:text-white cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-4 h-4 text-indigo-400" />
-                  <div>
-                    <div className="font-semibold text-xs">Security & Audit Logs</div>
-                    <div className="text-[10px] text-slate-400">View live employee sessions and login audit trails</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition" />
-              </button>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="p-3 border-t border-[#1E293B] bg-[#070D18] flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                setIsProfileOpen(false);
-                addToast('Profile state authenticated as Rahul Mehta (Owner).', 'info');
-              }}
-              className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition cursor-pointer"
-            >
-              Verify Session
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsProfileOpen(false);
-                addToast('Signed out of session. Session safely saved.', 'info');
-              }}
-              className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl transition cursor-pointer flex items-center gap-1.5 font-semibold"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
 
     {/* ── 3. Qiyam OS Help & Shortcuts Modal ── */}
     {isHelpOpen && (

@@ -43,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
     handleNotificationClick,
     isOmniSearchOpen,
     setIsOmniSearchOpen,
+    setIsProfileModalOpen,
   } = store;
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -351,14 +352,22 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Profile Avatar */}
           <div
-            onClick={() => setActiveTab('settings')}
+            onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center cursor-pointer shrink-0"
-            title="Account Settings"
+            title="Rahul Mehta (Owner) - Click for Profile & Account"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsProfileModalOpen(true);
+              }
+            }}
           >
             <img
               src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
               alt="Rahul Mehta"
-              className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/20 hover:ring-emerald-500 transition-all"
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/20 hover:ring-emerald-500 transition-all shadow-xs"
             />
           </div>
         </div>

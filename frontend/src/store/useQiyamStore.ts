@@ -621,6 +621,9 @@ interface QiyamState {
   isOmniSearchOpen: boolean;
   setIsOmniSearchOpen: (open: boolean) => void;
 
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (open: boolean) => void;
+
   isPdfEditorOpen: boolean;
   pdfEditorDocument: PdfEditorDocument | null;
   openPdfEditor: (doc?: Partial<PdfEditorDocument>) => void;
@@ -2156,6 +2159,9 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   isOmniSearchOpen: false,
   setIsOmniSearchOpen: (open) => set({ isOmniSearchOpen: open }),
+
+  isProfileModalOpen: false,
+  setIsProfileModalOpen: (open) => set({ isProfileModalOpen: open }),
 
   notifications: getStoredNotifications(),
   markNotificationRead: (id) => {
