@@ -50,6 +50,8 @@ import {
   Database,
   ArrowRight,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   PlayCircle,
   PauseCircle,
   AlertCircle,
@@ -431,6 +433,25 @@ export const SuperAdminView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'trial' | 'suspended'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'due_soon' | 'overdue'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+  // Expand / Collapse state for Top Metric KPI Cards (collapsed by default)
+  const [isMetricsExpanded, setIsMetricsExpanded] = useState(() => {
+    try {
+      return localStorage.getItem('whatsq_superadmin_metrics_expanded') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleMetricsExpanded = () => {
+    setIsMetricsExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('whatsq_superadmin_metrics_expanded', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Modals state
   const [isCreateTenantOpen, setIsCreateTenantOpen] = useState(false);
@@ -852,6 +873,24 @@ export const SuperAdminView: React.FC = () => {
           {/* Minimal Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              onClick={toggleMetricsExpanded}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition shadow-2xs cursor-pointer ${
+                isMetricsExpanded
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+              }`}
+              title={isMetricsExpanded ? "Click to collapse metric cards" : "Click to expand metric cards"}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isMetricsExpanded ? 'Collapse KPIs' : 'Expand KPIs'}</span>
+              {isMetricsExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              )}
+            </button>
+
+            <button
               onClick={() => setIsBroadcastModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 transition shadow-2xs cursor-pointer"
               title="Broadcast system announcement to all logged-in workspaces"
@@ -918,102 +957,196 @@ export const SuperAdminView: React.FC = () => {
         )}
       </div>
 
-      {/* ── 2. Top 4 Minimal Metric KPI Strip ── */}
-      <div className="max-w-7xl mx-auto w-full p-6 pb-2">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Purchased Clients */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Purchased Clients</span>
-              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-blue-600" />
+      {/* ── 2. Top Metric KPI Strip (Expand / Collapse) ── */}
+      <div className="max-w-7xl mx-auto w-full px-6 pt-4 pb-1">
+        {!isMetricsExpanded ? (
+          /* Collapsed State Bar - only visible when collapsed */
+          <div className="bg-white border border-slate-200/90 rounded-2xl px-5 py-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all hover:border-slate-300">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                <BarChart3 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Platform Performance Metrics</span>
+                  <span className="text-[10px] bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full border border-blue-200">
+                    {metrics.totalClients} Workspaces
+                  </span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                    {metrics.totalLicensesInUse} / {metrics.totalLicensesAllocated} Staff Seats
+                  </span>
+                  <span className="text-[10px] bg-purple-50 text-purple-700 font-semibold px-2 py-0.5 rounded-full border border-purple-200">
+                    {metrics.totalMessagesThisMonth.toLocaleString()} WhatsApp Traffic
+                  </span>
+                  <span className="text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                    ₹{metrics.totalMRR.toLocaleString()} MRR
+                  </span>
+                  <span className="text-[10px] bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded-full border border-teal-200">
+                    ₹{metrics.totalMetaWallets.toLocaleString()} Wallets
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Platform KPI cards are collapsed to keep your workspace minimal. Click <strong>Expand Metrics</strong> to reveal full metric cards.
+                </p>
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{metrics.totalClients}</span>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                {metrics.activeClients} Active Subscriptions
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>{metrics.trialClients} Trial • {metrics.suspendedClients} Suspended</span>
-              <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {metrics.totalStaffOnline} Staff Online Now
-              </span>
-            </div>
-          </div>
 
-          {/* Card 2: Software MRR & Payments */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Software MRR Volume</span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">
-                ₹{metrics.totalMRR.toLocaleString()}
-              </span>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-0.5">
-                <TrendingUp className="w-3 h-3" /> +18.4%
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Next Due: Oct 01 (₹20,998)</span>
-              <span className="text-amber-700 font-semibold">1 Due Soon</span>
-            </div>
+            <button
+              onClick={toggleMetricsExpanded}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 text-xs font-bold transition shadow-2xs cursor-pointer shrink-0 active:scale-95"
+            >
+              <ChevronDown className="w-4 h-4 text-emerald-600" />
+              <span>Expand Metrics</span>
+            </button>
           </div>
+        ) : (
+          /* Expanded State Cards - only visible when expanded */
+          <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between bg-white/70 border border-slate-200/80 rounded-xl px-4 py-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Platform Performance KPIs</span>
+                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Live Sync
+                </span>
+              </div>
+              <button
+                onClick={toggleMetricsExpanded}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-600 transition cursor-pointer shadow-2xs active:scale-95"
+                title="Collapse metrics strip"
+              >
+                <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                <span>Collapse Metrics</span>
+              </button>
+            </div>
 
-          {/* Card 3: Meta Prepaid Wallets Total */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Meta Prepaid Wallets</span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
-                <Wallet className="w-4 h-4 text-amber-600" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {/* Card 1: TENANT WORKSPACES */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">TENANT WORKSPACES</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">{metrics.totalClients}</span>
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    {metrics.activeClients} Active
+                  </span>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>{metrics.trialClients} Trial • {metrics.suspendedClients} Suspended</span>
+                  <span className="font-semibold text-blue-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    100% Online
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">
-                ₹{metrics.totalMetaWallets.toLocaleString()}
-              </span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                metrics.lowWalletCount > 0
-                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-              }`}>
-                {metrics.lowWalletCount > 0 ? `⚠️ ${metrics.lowWalletCount} Low Balance` : 'All Healthy'}
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Client WABA Prepaid Reserve</span>
-              <span className="text-blue-600 font-semibold">Meta Direct</span>
-            </div>
-          </div>
 
-          {/* Card 4: Monthly Traffic & SLA */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly WhatsApp Traffic</span>
-              <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-purple-600" />
+              {/* Card 2: STAFF SEAT LICENSES */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">STAFF SEAT LICENSES</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">{metrics.totalLicensesInUse}</span>
+                  <span className="text-xs font-medium text-slate-500">
+                    / {metrics.totalLicensesAllocated} Provisioned
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-1.5 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          metrics.totalLicensesAllocated > 0
+                            ? Math.round((metrics.totalLicensesInUse / metrics.totalLicensesAllocated) * 100)
+                            : 65
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: MONTHLY WHATSAPP TRAFFIC */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">MONTHLY WHATSAPP TRAFFIC</span>
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-purple-600" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    {metrics.totalMessagesThisMonth.toLocaleString()}
+                  </span>
+                  <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                    99.4% Delivery
+                  </span>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Avg Latency: 42ms</span>
+                  <span className="text-emerald-700 font-semibold">Zero drops</span>
+                </div>
+              </div>
+
+              {/* Card 4: PLATFORM MRR */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">PLATFORM MRR</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4 text-amber-600" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    ₹{metrics.totalMRR.toLocaleString()}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-0.5">
+                    <TrendingUp className="w-3 h-3" /> +18.4%
+                  </span>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Next Global Renewal: Oct 01</span>
+                  <span className="text-amber-700 font-semibold">Active Subscriptions</span>
+                </div>
+              </div>
+
+              {/* Card 5: META PREPAID WALLETS */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">META PREPAID WALLETS</span>
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center">
+                    <Wallet className="w-4 h-4 text-teal-600" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    ₹{metrics.totalMetaWallets.toLocaleString()}
+                  </span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                    metrics.lowWalletCount > 0
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}>
+                    {metrics.lowWalletCount > 0 ? `⚠️ ${metrics.lowWalletCount} Low Balance` : 'All Healthy'}
+                  </span>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Client WABA Prepaid Reserve</span>
+                  <span className="text-teal-700 font-semibold">Meta Direct</span>
+                </div>
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">
-                {metrics.totalMessagesThisMonth.toLocaleString()}
-              </span>
-              <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                99.4% Delivery
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Avg Latency: 38ms</span>
-              <span className="text-emerald-700 font-semibold">Zero Drops</span>
-            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── 3. Tabbed Minimal Navigation ── */}
