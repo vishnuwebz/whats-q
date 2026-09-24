@@ -11,8 +11,9 @@ import {
   PanelLeftClose, PanelLeftOpen, X, Building2, Check,
   User, Shield, LogOut, ArrowRight, ExternalLink, Send,
   RefreshCw, Search, Database, Globe, Ban, FileCheck, Crown,
-  Award
+  Award, Lock
 } from 'lucide-react';
+import { isModuleUnlockedForTenant } from '@/utils/featureEntitlements';
 
 interface SidebarMenuItem {
   tab: TabType;
@@ -211,6 +212,9 @@ export const Sidebar: React.FC = () => {
               color: p.color || 'from-emerald-500 to-teal-600',
               staffCount: p.activeLicenses || p.staffCount || 10,
               sidebarModules: p.sidebarModules,
+              trialConfigDays: p.trialConfigDays,
+              activeTrials: p.activeTrials,
+              addonPurchases: p.addonPurchases,
             })));
           }
         }
@@ -220,10 +224,12 @@ export const Sidebar: React.FC = () => {
     window.addEventListener('storage', handleWorkspaceSync);
     window.addEventListener('whatsq_workspace_updated', handleWorkspaceSync);
     window.addEventListener('whatsq_tenants_updated', handleTenantsSync);
+    window.addEventListener('whatsq_trials_updated', handleTenantsSync);
     return () => {
       window.removeEventListener('storage', handleWorkspaceSync);
       window.removeEventListener('whatsq_workspace_updated', handleWorkspaceSync);
       window.removeEventListener('whatsq_tenants_updated', handleTenantsSync);
+      window.removeEventListener('whatsq_trials_updated', handleTenantsSync);
     };
   }, []);
 
@@ -245,6 +251,9 @@ export const Sidebar: React.FC = () => {
             color: p.color || 'from-emerald-500 to-teal-600',
             staffCount: p.activeLicenses || p.staffCount || 10,
             sidebarModules: p.sidebarModules,
+            trialConfigDays: p.trialConfigDays,
+            activeTrials: p.activeTrials,
+            addonPurchases: p.addonPurchases,
           }));
         }
       }
@@ -309,15 +318,38 @@ export const Sidebar: React.FC = () => {
   });
   const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0];
 
-  // Check if a navigation module is enabled for the active tenant
-  const isModuleEnabled = (moduleName: string) => {
-    // Super Admin tab is always visible to super admin
-    if (moduleName === 'super-admin') return true;
-    const modules = (activeTenant as any)?.sidebarModules;
-    if (!modules || !Array.isArray(modules) || modules.length === 0) {
-      return true; // Default fallback: show all if unconfigured
+  // Check if a navigation module is enabled or unlocked for the active tenant
+  const isModuleEnabled = (_moduleName: string) => {
+    // Keep modules visible in sidebar so clients can discover features, activate trials, or purchase standalone add-ons!
+    return true;
+  };
+
+  const getModuleBadge = (moduleName: string) => {
+    if (moduleName === 'super-admin' || isCollapsed) return null;
+    const ent = isModuleUnlockedForTenant(activeTenant as any, moduleName as any);
+    if (ent.reason === 'trial') {
+      return (
+        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse ml-auto">
+          Trial ({ent.trialDaysLeft}d)
+        </span>
+      );
     }
-    return modules.includes(moduleName);
+    if (ent.reason === 'addon') {
+      return (
+        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 ml-auto">
+          Addon
+        </span>
+      );
+    }
+    if (!ent.isUnlocked) {
+      return (
+        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-semibold bg-slate-800/80 text-slate-400 border border-slate-700/60 flex items-center gap-0.5 ml-auto">
+          <Lock className="w-2.5 h-2.5 text-slate-400" />
+          <span>Locked</span>
+        </span>
+      );
+    }
+    return null;
   };
 
   // Resolve active outbound WhatsApp line from store or localStorage
@@ -835,7 +867,12 @@ export const Sidebar: React.FC = () => {
                   }`}
                 >
                   <LayoutDashboard className="w-4 h-4 shrink-0" />
-                  {!isCollapsed && <span>Dashboard</span>}
+                  {!isCollapsed && (
+                    <div className="flex items-center justify-between w-full">
+                      <span>Dashboard</span>
+                      {getModuleBadge('dashboard')}
+                    </div>
+                  )}
                 </button>
               )}
 
@@ -885,6 +922,7 @@ export const Sidebar: React.FC = () => {
                         {unreadConversationsCount}
                       </span>
                     )}
+                    {getModuleBadge('messenger')}
                     {messengerOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
                   </div>
                 </button>
@@ -1071,7 +1109,10 @@ export const Sidebar: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   )}
                 </div>
-                {crmOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <div className="flex items-center gap-2">
+                  {getModuleBadge('crm')}
+                  {crmOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </div>
               </button>
               {crmOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
@@ -1135,7 +1176,12 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <Building2 className={`w-4 h-4 shrink-0 ${isActive('branches') ? 'text-white' : 'text-emerald-400'}`} />
-          {!isCollapsed && <span>Branches</span>}
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span>Branches</span>
+              {getModuleBadge('branches')}
+            </div>
+          )}
         </button>
         )}
 
@@ -1176,7 +1222,10 @@ export const Sidebar: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   )}
                 </div>
-                {opsOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <div className="flex items-center gap-2">
+                  {getModuleBadge('ops')}
+                  {opsOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </div>
               </button>
               {opsOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
@@ -1314,7 +1363,10 @@ export const Sidebar: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   )}
                 </div>
-                {financeOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <div className="flex items-center gap-2">
+                  {getModuleBadge('finance')}
+                  {financeOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </div>
               </button>
               {financeOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
@@ -1462,7 +1514,10 @@ export const Sidebar: React.FC = () => {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   )}
                 </div>
-                {automationOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <div className="flex items-center gap-2">
+                  {getModuleBadge('automation')}
+                  {automationOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </div>
               </button>
               {automationOpen && (
                 <div className="ml-4 pl-3 border-l border-[#1E293B] space-y-0.5 mt-1">
@@ -1552,9 +1607,11 @@ export const Sidebar: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-1.5 py-0.2 rounded border border-purple-500/30">
-                    New
-                  </span>
+                  {getModuleBadge('ai') || (
+                    <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-1.5 py-0.2 rounded border border-purple-500/30">
+                      New
+                    </span>
+                  )}
                   {aiOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </div>
               </button>
@@ -1633,7 +1690,12 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <BarChart3 className="w-4 h-4 shrink-0" />
-          {!isCollapsed && <span>Analytics</span>}
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span>Analytics</span>
+              {getModuleBadge('analytics')}
+            </div>
+          )}
         </button>
         )}
 
@@ -1650,7 +1712,12 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <Puzzle className="w-4 h-4 shrink-0" />
-          {!isCollapsed && <span>Integrations</span>}
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span>Integrations</span>
+              {getModuleBadge('integrations')}
+            </div>
+          )}
         </button>
         )}
 
@@ -1670,13 +1737,16 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <div className="flex items-center justify-between w-full">
               <span>Roles & Security</span>
-              <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
-                isActive('roles')
-                  ? 'bg-white/20 text-white border-white/30'
-                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              }`}>
-                RBAC
-              </span>
+              <div className="flex items-center gap-1.5">
+                {getModuleBadge('roles')}
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
+                  isActive('roles')
+                    ? 'bg-white/20 text-white border-white/30'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                }`}>
+                  RBAC
+                </span>
+              </div>
             </div>
           )}
         </button>
@@ -1717,7 +1787,12 @@ export const Sidebar: React.FC = () => {
           }`}
         >
           <SettingsIcon className="w-4 h-4 shrink-0" />
-          {!isCollapsed && <span>Settings</span>}
+          {!isCollapsed && (
+            <div className="flex items-center justify-between w-full">
+              <span>Settings</span>
+              {getModuleBadge('settings')}
+            </div>
+          )}
         </button>
         )}
 
@@ -1737,9 +1812,12 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <div className="flex items-center justify-between w-full">
               <span>Data Backup</span>
-              <span className="text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                Live
-              </span>
+              <div className="flex items-center gap-1.5">
+                {getModuleBadge('settings-backup')}
+                <span className="text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                  Live
+                </span>
+              </div>
             </div>
           )}
         </button>

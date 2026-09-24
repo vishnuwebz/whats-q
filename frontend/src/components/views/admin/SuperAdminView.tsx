@@ -55,11 +55,22 @@ import {
   PlayCircle,
   PauseCircle,
   AlertCircle,
-  IndianRupee
+  IndianRupee,
+  Lock,
 } from 'lucide-react';
 import { PlatformTenant, PlatformAuditLog, PlatformPlanTier, TenantSidebarModule, TenantFeatureConfig } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { CountryPhoneInput } from '../../common/CountryPhoneInput';
+import { apiClient } from '@/api/client';
+import {
+  MODULE_PRICING_CATALOG,
+  startTenantModuleTrial,
+  purchaseTenantModuleAddon,
+  isModuleUnlockedForTenant,
+  checkAndNotifyTrialExpirations,
+  getStoredTenants,
+  saveStoredTenants,
+} from '@/utils/featureEntitlements';
 
 export const ALL_SIDEBAR_MODULES: {
   id: TenantSidebarModule;
@@ -928,6 +939,118 @@ export const SuperAdminView: React.FC = () => {
     setConfiguringSidebarTenant(updated);
     const updatedList = tenants.map((t) => (t.id === configuringSidebarTenant.id ? updated : t));
     saveTenants(updatedList);
+  };
+
+  // Update configurable trial duration for tenant
+  const handleUpdateTrialConfigDays = (days: number) => {
+    if (!configuringSidebarTenant) return;
+    const updated = {
+      ...configuringSidebarTenant,
+      trialConfigDays: days,
+    };
+    setConfiguringSidebarTenant(updated);
+    const updatedList = tenants.map((t) => (t.id === configuringSidebarTenant.id ? updated : t));
+    saveTenants(updatedList);
+    addToast(`Updated default trial duration to ${days} days for ${configuringSidebarTenant.businessName}`, 'info');
+  };
+
+  // Grant or extend trial directly from Super Admin
+  const handleAdminGrantTrial = async (moduleId: TenantSidebarModule, days?: number) => {
+    if (!configuringSidebarTenant) return;
+    try {
+      const res = await startTenantModuleTrial(configuringSidebarTenant.id, moduleId, days);
+      setConfiguringSidebarTenant(res.tenant);
+      const updatedList = tenants.map((t) => (t.id === res.tenant.id ? res.tenant : t));
+      saveTenants(updatedList);
+      addToast(`Granted ${days || res.trial.durationDays}-day free trial for ${moduleId} to ${configuringSidebarTenant.businessName}. WhatsApp alert dispatched!`, 'success');
+    } catch (e) {
+      addToast('Failed to grant trial', 'error');
+    }
+  };
+
+  // Grant individual add-on
+  const handleAdminGrantAddon = async (moduleId: TenantSidebarModule) => {
+    if (!configuringSidebarTenant) return;
+    try {
+      const res = await purchaseTenantModuleAddon(configuringSidebarTenant.id, moduleId);
+      setConfiguringSidebarTenant(res.tenant);
+      const updatedList = tenants.map((t) => (t.id === res.tenant.id ? res.tenant : t));
+      saveTenants(updatedList);
+      addToast(`Granted standalone add-on for ${moduleId} to ${configuringSidebarTenant.businessName}. WhatsApp confirmation sent!`, 'success');
+    } catch (e) {
+      addToast('Failed to grant add-on', 'error');
+    }
+  };
+
+  // Revoke trial or add-on
+  const handleAdminRevokeTrial = (moduleId: TenantSidebarModule) => {
+    if (!configuringSidebarTenant) return;
+    const nextTrials = { ...(configuringSidebarTenant.activeTrials || {}) };
+    delete nextTrials[moduleId];
+    const nextAddons = { ...(configuringSidebarTenant.addonPurchases || {}) };
+    delete nextAddons[moduleId];
+
+    const updated = {
+      ...configuringSidebarTenant,
+      activeTrials: nextTrials,
+      addonPurchases: nextAddons,
+    };
+    setConfiguringSidebarTenant(updated);
+    const updatedList = tenants.map((t) => (t.id === configuringSidebarTenant.id ? updated : t));
+    saveTenants(updatedList);
+    addToast(`Revoked temporary access / add-on for ${moduleId}`, 'warning');
+  };
+
+  // Simulate before-ending alert (24 hours left)
+  const handleSimulatePreExpiryAlert = async (moduleId: TenantSidebarModule) => {
+    if (!configuringSidebarTenant) return;
+    const modInfo = MODULE_PRICING_CATALOG[moduleId];
+    addToast(`[TEST ALERT] ⚠️ Trial expiring soon: "${modInfo.label}" will expire in 24 hours! Sent WhatsApp alert to ${configuringSidebarTenant.ownerPhone}`, 'warning');
+    if (configuringSidebarTenant.ownerPhone) {
+      try {
+        await apiClient.post('/conversations/threads/start_whatsapp_chat/', {
+          phone_number: configuringSidebarTenant.ownerPhone,
+          initial_message: `⚠️ *[TEST NOTICE] Trial Expiring Soon: ${modInfo.label}*\n\nHello *${configuringSidebarTenant.ownerName}*,\nYour free trial for *${modInfo.label}* on *${configuringSidebarTenant.businessName}* will expire in *24 hours*!\n\nTo keep full access, you can purchase this standalone add-on for ₹${modInfo.addonMonthlyPrice}/month without buying a full bundle.`,
+          assigned_to: 'Super Admin',
+        });
+      } catch (err) {}
+    }
+  };
+
+  // Simulate trial expired alert
+  const handleSimulateExpiredAlert = async (moduleId: TenantSidebarModule) => {
+    if (!configuringSidebarTenant) return;
+    const modInfo = MODULE_PRICING_CATALOG[moduleId];
+    const currentTrials = { ...(configuringSidebarTenant.activeTrials || {}) };
+    currentTrials[moduleId] = {
+      ...(currentTrials[moduleId] || {
+        moduleId,
+        startedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+        durationDays: 7,
+      }),
+      expiresAt: new Date(Date.now() - 3600000).toISOString(),
+      status: 'expired',
+      expiredNotified: true,
+    };
+    const updated = {
+      ...configuringSidebarTenant,
+      activeTrials: currentTrials,
+    };
+    setConfiguringSidebarTenant(updated);
+    const updatedList = tenants.map((t) => (t.id === configuringSidebarTenant.id ? updated : t));
+    saveTenants(updatedList);
+
+    addToast(`[TEST ALERT] 🔴 Trial expired: "${modInfo.label}" has ended. Module locked and WhatsApp notice sent to ${configuringSidebarTenant.ownerPhone}`, 'error');
+
+    if (configuringSidebarTenant.ownerPhone) {
+      try {
+        await apiClient.post('/conversations/threads/start_whatsapp_chat/', {
+          phone_number: configuringSidebarTenant.ownerPhone,
+          initial_message: `🔴 *[TEST NOTICE] Trial Expired: ${modInfo.label}*\n\nHello *${configuringSidebarTenant.ownerName}*,\nYour free trial for *${modInfo.label}* has ended. Access is now paused.\n\nYou can restore instant access anytime by unlocking this feature as a standalone add-on for ₹${modInfo.addonMonthlyPrice}/month.`,
+          assigned_to: 'Super Admin',
+        });
+      } catch (err) {}
+    }
   };
 
   return (
@@ -2097,48 +2220,204 @@ export const SuperAdminView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Configurable Temporary Access (Free Trial Duration) */}
+              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <span>Configurable Temporary Access (Free Trial Duration)</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                    Current: {configuringSidebarTenant.trialConfigDays || 7} Days
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  When this client tests a locked feature, they get temporary access for this period. Automatic notifications are sent 24 hours before expiration and upon ending via software &amp; WhatsApp.
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  {[3, 7, 14, 30].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => handleUpdateTrialConfigDays(d)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                        (configuringSidebarTenant.trialConfigDays || 7) === d
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {d} Days
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="text-[10px] text-slate-500 font-medium">Custom days:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="90"
+                      value={configuringSidebarTenant.trialConfigDays || 7}
+                      onChange={(e) => handleUpdateTrialConfigDays(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-14 px-2 py-0.5 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-800 text-center focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Individual Modules Checklist */}
               <div className="space-y-1.5">
-                <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  Module Selection ({(configuringSidebarTenant.sidebarModules || []).length} enabled):
+                <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                  <span>Module Selection ({(configuringSidebarTenant.sidebarModules || []).length} enabled in plan):</span>
+                  <span className="text-[10px] font-normal text-slate-400">Add-on pricing active</span>
                 </div>
 
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
                   {ALL_SIDEBAR_MODULES.map((mod) => {
                     const isChecked = (configuringSidebarTenant.sidebarModules || []).includes(mod.id);
                     const ModIcon = mod.icon;
+                    const modInfo = MODULE_PRICING_CATALOG[mod.id] || { addonMonthlyPrice: 999 };
+                    const addon = configuringSidebarTenant.addonPurchases?.[mod.id];
+                    const hasAddon = addon && addon.status === 'active';
+                    const trial = configuringSidebarTenant.activeTrials?.[mod.id];
+                    const now = Date.now();
+                    const isTrialActive = trial && new Date(trial.expiresAt).getTime() > now && trial.status !== 'expired';
+                    const isTrialExpired = trial && (trial.status === 'expired' || new Date(trial.expiresAt).getTime() <= now);
+                    const trialDaysLeft = trial ? Math.ceil((new Date(trial.expiresAt).getTime() - now) / 86400000) : 0;
+                    const trialHoursLeft = trial ? Math.ceil((new Date(trial.expiresAt).getTime() - now) / 3600000) : 0;
 
                     return (
                       <div
                         key={mod.id}
-                        onClick={() => handleToggleSidebarModule(mod.id)}
-                        className={`p-3 flex items-center justify-between cursor-pointer transition ${
-                          isChecked ? 'bg-emerald-50/20' : 'hover:bg-slate-50'
+                        className={`p-3 transition ${
+                          isChecked ? 'bg-emerald-50/20' : hasAddon ? 'bg-teal-50/20' : isTrialActive ? 'bg-amber-50/20' : 'hover:bg-slate-50/60'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                            isChecked ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
-                          }`}>
-                            <ModIcon className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                              <span>{mod.label}</span>
-                              <span className="text-[9px] font-medium text-slate-400 px-1 py-0.2 rounded bg-slate-100">
-                                {mod.category}
-                              </span>
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div
+                            onClick={() => handleToggleSidebarModule(mod.id)}
+                            className="flex items-center gap-3 cursor-pointer flex-1 min-w-[200px]"
+                          >
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                              isChecked ? 'bg-emerald-100 text-emerald-800' : hasAddon ? 'bg-teal-100 text-teal-800' : isTrialActive ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              <ModIcon className="w-4 h-4" />
                             </div>
-                            <p className="text-[11px] text-slate-500 leading-tight">{mod.description}</p>
+                            <div>
+                              <div className="font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                                <span>{mod.label}</span>
+                                <span className="text-[9px] font-medium text-slate-400 px-1 py-0.2 rounded bg-slate-100">
+                                  {mod.category}
+                                </span>
+                                <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
+                                  ₹{modInfo.addonMonthlyPrice}/mo
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 leading-tight mt-0.5">{mod.description}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Status Badges */}
+                            {isChecked ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                <Check className="w-2.5 h-2.5" />
+                                <span>Plan Included</span>
+                              </span>
+                            ) : hasAddon ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                <span>Add-On Active</span>
+                              </span>
+                            ) : isTrialActive ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5 text-amber-600 animate-spin" />
+                                <span>Trial Active ({trialDaysLeft}d / {trialHoursLeft}h left)</span>
+                              </span>
+                            ) : isTrialExpired ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                                🔴 Trial Expired
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>Locked</span>
+                              </span>
+                            )}
+
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSidebarModule(mod.id)}
+                              className="w-4 h-4 text-emerald-700 rounded focus:ring-emerald-600 cursor-pointer accent-[#0B3B2C]"
+                              title="Toggle inclusion in base plan"
+                            />
                           </div>
                         </div>
 
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSidebarModule(mod.id)}
-                          className="w-4 h-4 text-emerald-700 rounded focus:ring-emerald-600 cursor-pointer accent-[#0B3B2C]"
-                        />
+                        {/* Admin Action Bar for Unbundled / Add-on Modules */}
+                        {!isChecked && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-100/80 flex items-center justify-between text-[11px] gap-2 flex-wrap">
+                            <span className="text-slate-400 text-[10px]">
+                              {hasAddon ? 'Standalone add-on unlocked' : isTrialActive ? `Trial ends: ${new Date(trial!.expiresAt).toLocaleDateString()}` : 'Client can purchase addon or start trial'}
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {!isTrialActive && !hasAddon && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminGrantTrial(mod.id)}
+                                  className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md font-bold transition cursor-pointer flex items-center gap-1 text-[10px]"
+                                >
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>Grant {configuringSidebarTenant.trialConfigDays || 7}d Trial</span>
+                                </button>
+                              )}
+                              {isTrialActive && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAdminGrantTrial(mod.id, 7)}
+                                    className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md font-bold transition cursor-pointer text-[10px]"
+                                  >
+                                    +7 Days
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSimulatePreExpiryAlert(mod.id)}
+                                    className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-md font-bold transition cursor-pointer text-[10px]"
+                                    title="Dispatches the 24h WhatsApp warning alert"
+                                  >
+                                    🔔 Test 24h Alert
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSimulateExpiredAlert(mod.id)}
+                                    className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md font-bold transition cursor-pointer text-[10px]"
+                                    title="Dispatches the trial expired WhatsApp notice"
+                                  >
+                                    🔴 Expire Now
+                                  </button>
+                                </>
+                              )}
+                              {!hasAddon ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminGrantAddon(mod.id)}
+                                  className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-md font-bold transition cursor-pointer flex items-center gap-1 text-[10px]"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5" />
+                                  <span>Grant Add-On</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminRevokeTrial(mod.id)}
+                                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md font-medium transition cursor-pointer text-[10px]"
+                                >
+                                  Revoke Add-On
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -142,6 +142,29 @@ export interface PlatformTenant {
   
   // Custom Sidebar Navigation Modules for this Client
   sidebarModules: TenantSidebarModule[];
+
+  // Configurable Temporary Access (Free Trials) & Individual Add-on Purchases
+  trialConfigDays?: number; // Configurable trial period in days (e.g., 3, 7, 14, 30)
+  activeTrials?: Record<string, TenantTrialRecord>;
+  addonPurchases?: Record<string, TenantAddonPurchase>;
+}
+
+export interface TenantTrialRecord {
+  moduleId: TenantSidebarModule;
+  startedAt: string; // ISO date string
+  expiresAt: string; // ISO date string
+  durationDays: number;
+  preExpiryNotified?: boolean; // Notified before ending
+  expiredNotified?: boolean; // Notified after ending
+  status: 'active' | 'expiring_soon' | 'expired';
+}
+
+export interface TenantAddonPurchase {
+  moduleId: TenantSidebarModule;
+  purchasedAt: string;
+  monthlyAmount: number;
+  status: 'active' | 'cancelled';
+  paymentRef?: string;
 }
 
 export interface PlatformAuditLog {

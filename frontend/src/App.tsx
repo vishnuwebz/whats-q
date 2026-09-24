@@ -88,6 +88,8 @@ import { BulkCampaignHistoryView } from './components/views/bulk/BulkCampaignHis
 import { BulkRecipientListsView } from './components/views/bulk/BulkRecipientListsView';
 import { BulkScheduledMessagesView } from './components/views/bulk/BulkScheduledMessagesView';
 import { MobileGroupGrabberPortal } from './components/views/bulk/MobileGroupGrabberPortal';
+import { FeaturePaywallGate } from './components/common/FeaturePaywallGate';
+import { getModuleForTab, useActiveTenant } from './utils/featureEntitlements';
 import { TabType } from './types';
 import {
   TAB_TO_PATH,
@@ -107,6 +109,8 @@ export const App: React.FC = () => {
     isSidebarCollapsed,
     toggleSidebarCollapse,
   } = useQiyamStore();
+
+  const { activeTenant } = useActiveTenant();
 
   // Check if opened via mobile QR code scan for WhatsApp Group Grabber sync
   const [mobileGrabberToken, setMobileGrabberToken] = React.useState<string | null>(() => {
@@ -185,11 +189,12 @@ export const App: React.FC = () => {
   }, [activeTab]);
 
   const renderActiveView = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardView />;
-      case 'conversations':
-        return <ConversationsView />;
+    const rawView = (() => {
+      switch (activeTab) {
+        case 'dashboard':
+          return <DashboardView />;
+        case 'conversations':
+          return <ConversationsView />;
 
       // Bulk Messaging
       case 'bulk-overview':
@@ -329,7 +334,23 @@ export const App: React.FC = () => {
       default:
         return <DashboardView />;
     }
-  };
+  })();
+
+  const targetModule = getModuleForTab(activeTab);
+  if (targetModule && activeTab !== 'super-admin' && activeTab !== 'dashboard') {
+    return (
+      <FeaturePaywallGate
+        key={`${activeTenant?.id || 'TN2345'}-${targetModule}-${activeTab}`}
+        moduleId={targetModule}
+        activeTenant={activeTenant}
+      >
+        {rawView}
+      </FeaturePaywallGate>
+    );
+  }
+
+  return rawView;
+};
 
   if (mobileGrabberToken) {
     return (
