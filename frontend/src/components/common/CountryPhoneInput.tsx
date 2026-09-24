@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronDown, Search, Phone, Check, Globe } from 'lucide-react';
+import { ChevronDown, Search, Check } from 'lucide-react';
 
 export interface CountryItem {
   iso: string;
@@ -65,6 +65,41 @@ export const COUNTRIES: CountryItem[] = [
 ];
 
 export const DEFAULT_COUNTRY = COUNTRIES[0]; // India (+91)
+
+/**
+ * Modern High-Resolution Country Flag Component
+ * Renders real crisp graphical national flags across all operating systems (including Windows)
+ */
+export const CountryFlag: React.FC<{
+  iso: string;
+  name: string;
+  className?: string;
+}> = ({ iso, name, className = 'w-5 h-3.5' }) => {
+  const [imgError, setImgError] = useState(false);
+  const lower = iso.toLowerCase();
+
+  if (imgError) {
+    return (
+      <span
+        className={`inline-flex items-center justify-center font-bold text-[9px] bg-slate-100 text-slate-700 border border-slate-300 rounded-xs select-none shrink-0 ${className}`}
+        title={name}
+      >
+        {iso}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${lower}.png`}
+      srcSet={`https://flagcdn.com/w80/${lower}.png 2x`}
+      alt={name}
+      loading="lazy"
+      onError={() => setImgError(true)}
+      className={`object-cover rounded-xs shadow-2xs border border-black/10 shrink-0 inline-block align-middle ${className}`}
+    />
+  );
+};
 
 /**
  * Strips non-digits
@@ -162,6 +197,7 @@ export interface CountryPhoneInputProps {
   buttonClassName?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'light' | 'dark';
+  alignDropdown?: 'left' | 'right' | 'auto';
   autoFocus?: boolean;
   error?: string;
   showIcon?: boolean;
@@ -181,9 +217,10 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
   buttonClassName = '',
   size = 'md',
   variant = 'light',
+  alignDropdown = 'auto',
   autoFocus = false,
   error,
-  showIcon = true,
+  showIcon = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -305,12 +342,20 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
 
   const isDark = variant === 'dark';
 
+  // Dropdown alignment logic: default right-0 on tight/modal screens so it never overflows
+  const dropdownAlignClass =
+    alignDropdown === 'left'
+      ? 'left-0'
+      : alignDropdown === 'right'
+      ? 'right-0'
+      : 'right-0 sm:left-auto';
+
   return (
     <div className={`relative flex flex-col ${className}`} ref={dropdownRef}>
       <div
         className={`flex items-center transition-all ${
           isDark
-            ? 'bg-slate-900/90 border border-slate-700 text-white focus-within:border-emerald-500'
+            ? 'bg-slate-900/90 border border-slate-700 text-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20'
             : 'bg-white border border-slate-200 text-slate-800 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 shadow-2xs'
         } ${sizeClasses} ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}`}
       >
@@ -324,13 +369,10 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
               ? 'border-slate-700 text-slate-200 hover:text-white'
               : 'border-slate-200 text-slate-700 hover:text-slate-900'
           } ${buttonClassName}`}
-          title={`${selectedCountry.name} (${selectedCountry.dialCode}) - Click to change country`}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
         >
-          <span className="text-base leading-none select-none drop-shadow-xs" role="img" aria-label={selectedCountry.name}>
-            {selectedCountry.flag}
-          </span>
+          <CountryFlag iso={selectedCountry.iso} name={selectedCountry.name} className="w-5 h-3.5" />
           <span className="font-mono font-bold text-xs tracking-tight">
             {selectedCountry.dialCode}
           </span>
@@ -340,15 +382,6 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
             }`}
           />
         </button>
-
-        {/* Optional phone icon */}
-        {showIcon && (
-          <Phone
-            className={`w-3.5 h-3.5 mr-2 shrink-0 ${
-              isDark ? 'text-slate-500' : 'text-slate-400'
-            }`}
-          />
-        )}
 
         {/* National Number Input */}
         <input
@@ -369,7 +402,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
           autoComplete="tel-national"
         />
 
-        {/* National digit count indicator on focus or length */}
+        {/* National digit count indicator on length */}
         {nationalDigits.length > 0 && (
           <div className="shrink-0 text-[10px] font-mono text-slate-400 px-1 select-none">
             {nationalDigits.length}/{selectedCountry.maxDigits}
@@ -382,10 +415,10 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
       {/* Modern Country Code Dropdown */}
       {isOpen && (
         <div
-          className={`absolute left-0 top-full mt-1.5 z-50 w-72 max-w-[90vw] rounded-2xl border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+          className={`absolute ${dropdownAlignClass} top-full mt-1.5 z-50 w-72 max-w-[calc(100vw-32px)] rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
             isDark
               ? 'bg-slate-900 border-slate-700 text-white shadow-slate-950/80'
-              : 'bg-white border-slate-200 text-slate-800 shadow-slate-900/10'
+              : 'bg-white border-slate-200 text-slate-800 shadow-slate-900/15'
           }`}
           role="listbox"
         >
@@ -411,7 +444,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="text-slate-400 hover:text-slate-600 text-xs px-1"
+                  className="text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
                 >
                   ✕
                 </button>
@@ -419,25 +452,25 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
             </div>
           </div>
 
-          {/* Quick Select Pill Header */}
-          <div className={`px-2.5 py-1.5 border-b flex items-center gap-1 overflow-x-auto text-[10px] ${
+          {/* Quick Select Pill Header (Wrapped, No Ugly Scrollbar) */}
+          <div className={`px-2.5 py-2 border-b flex flex-wrap items-center gap-1.5 text-[10px] ${
             isDark ? 'border-slate-800 bg-slate-950/40 text-slate-400' : 'border-slate-100 bg-slate-50/50 text-slate-500'
           }`}>
-            <span className="font-bold text-[9px] uppercase tracking-wider text-slate-400 mr-1 shrink-0">Popular:</span>
+            <span className="font-bold text-[9px] uppercase tracking-wider text-slate-400 mr-0.5 shrink-0">Popular:</span>
             {[COUNTRIES[0], COUNTRIES[1], COUNTRIES[2], COUNTRIES[7], COUNTRIES[11]].map((topC) => (
               <button
                 key={topC.iso}
                 type="button"
                 onClick={() => handleCountrySelect(topC)}
-                className={`px-1.5 py-0.5 rounded-md font-mono shrink-0 transition flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded-lg font-mono text-[11px] shrink-0 transition flex items-center gap-1.5 border cursor-pointer ${
                   selectedCountry.iso === topC.iso
-                    ? 'bg-emerald-500 text-white font-bold'
+                    ? 'bg-emerald-600 border-emerald-600 text-white font-bold shadow-xs'
                     : isDark
-                    ? 'hover:bg-slate-800 text-slate-300'
-                    : 'hover:bg-slate-200 text-slate-700'
+                    ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200'
+                    : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 hover:border-slate-300'
                 }`}
               >
-                <span>{topC.flag}</span>
+                <CountryFlag iso={topC.iso} name={topC.name} className="w-3.5 h-2.5" />
                 <span>{topC.dialCode}</span>
               </button>
             ))}
@@ -470,8 +503,8 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
                     aria-selected={isSelected}
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <span className="text-base select-none shrink-0">{c.flag}</span>
-                      <span className="truncate">{c.name}</span>
+                      <CountryFlag iso={c.iso} name={c.name} className="w-5 h-3.5" />
+                      <span className="truncate text-xs">{c.name}</span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] text-slate-400">

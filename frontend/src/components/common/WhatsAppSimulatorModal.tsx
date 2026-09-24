@@ -89,13 +89,13 @@ export const WhatsAppSimulatorModal: React.FC = () => {
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Customer / Contact Name</label>
               <div className="relative">
-                <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Rahul Sharma or Priya Patel"
-                  className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm sm:text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition"
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition shadow-2xs"
                 />
               </div>
             </div>
@@ -107,6 +107,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
               <CountryPhoneInput
                 value={phone}
                 onChange={(val) => setPhone(val)}
+                alignDropdown="right"
                 required
               />
             </div>
@@ -132,7 +133,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
-                {phone || 'Enter phone number with country code'}
+                {phone || 'No phone number entered (e.g. +91 94963 00233)'}
               </p>
             </div>
           </div>
