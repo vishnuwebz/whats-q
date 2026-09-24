@@ -560,6 +560,7 @@ interface QiyamState {
     senderDeviceId?: string | number | 'meta_cloud',
     voicePayload?: {
       audioUrl?: string;
+      audioBase64?: string;
       audioDuration?: number;
       waveform?: number[];
       isVoiceNote?: boolean;
@@ -2754,9 +2755,11 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         sender_device_id: isEmployeeDevice ? targetDeviceId : undefined,
         contact_name: parentConv?.contact_name,
         phone_number: parentConv?.phone_number,
+        audio_base64: voicePayload?.audioBase64,
         rich_card: isVoice ? {
           type: 'voice_note',
           audioUrl: voicePayload?.audioUrl,
+          audioBase64: voicePayload?.audioBase64,
           duration: voicePayload?.audioDuration,
           waveform: voicePayload?.waveform,
         } : undefined,

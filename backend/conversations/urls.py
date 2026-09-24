@@ -6,6 +6,7 @@ from .views import (
     WhatsAppTemplateViewSet,
     MetaConfigViewSet,
     WhatsAppWebhookView,
+    WhatsAppMediaProxyView,
     SimulateWhatsAppMessageView,
     InspectGroupInviteView,
     LinkedEmployeeDeviceViewSet,
@@ -23,6 +24,7 @@ router.register(r'bulk-campaigns', BulkCampaignViewSet, basename='bulk-campaigns
 
 urlpatterns = [
     path('webhook/', WhatsAppWebhookView.as_view(), name='whatsapp_webhook'),
+    path('media/<str:media_id>/', WhatsAppMediaProxyView.as_view(), name='whatsapp_media_proxy'),
     path('simulate/', SimulateWhatsAppMessageView.as_view(), name='whatsapp_simulate'),
     path('grabber-session/', GroupGrabberSessionView.as_view(), name='whatsapp_grabber_session'),
     path('inspect-group-invite/', InspectGroupInviteView.as_view(), name='inspect_group_invite'),

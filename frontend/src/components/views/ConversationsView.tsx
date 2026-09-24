@@ -479,12 +479,14 @@ export const ConversationsView: React.FC = () => {
         audioStreamRef.current = stream;
 
         let mimeType = '';
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          mimeType = 'audio/ogg;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
           mimeType = 'audio/webm;codecs=opus';
         } else if (MediaRecorder.isTypeSupported('audio/webm')) {
           mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-          mimeType = 'audio/ogg;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
         }
 
         const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -540,7 +542,7 @@ export const ConversationsView: React.FC = () => {
       20, 35, 60, 45, 80, 95, 70, 50, 65, 85, 90, 40, 30, 55, 75, 90, 60, 45, 30, 60, 80, 70, 50, 30, 20
     ].map((val) => Math.min(100, Math.max(15, Math.floor(val * (0.8 + Math.random() * 0.4)))));
 
-    const finalizeAndSend = (audioUrl?: string) => {
+    const finalizeAndSend = (audioUrl?: string, audioBase64?: string) => {
       sendMessage(
         currentConv.id,
         `🎙️ Voice note (${duration}s)`,
@@ -548,6 +550,7 @@ export const ConversationsView: React.FC = () => {
         activeSenderDeviceId,
         {
           audioUrl,
+          audioBase64,
           audioDuration: duration,
           waveform: sampleWaveform,
           isVoiceNote: true,
@@ -564,7 +567,15 @@ export const ConversationsView: React.FC = () => {
           const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
           const blob = new Blob(audioChunksRef.current, { type: mimeType });
           const audioUrl = URL.createObjectURL(blob);
-          finalizeAndSend(audioUrl);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const audioBase64 = (reader.result as string) || '';
+            finalizeAndSend(audioUrl, audioBase64);
+          };
+          reader.onerror = () => {
+            finalizeAndSend(audioUrl);
+          };
+          reader.readAsDataURL(blob);
         } catch {
           finalizeAndSend();
         }

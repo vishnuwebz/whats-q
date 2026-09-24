@@ -29,6 +29,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   const [playbackTime, setPlaybackTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState<1 | 1.5 | 2>(1);
   const [hasPlayed, setHasPlayed] = useState(false);
+  const [actualDuration, setActualDuration] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -51,7 +52,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     return result;
   }, [waveform]);
 
-  const totalDuration = Math.max(1, duration || 4);
+  const totalDuration = Math.max(1, actualDuration || duration || 4);
 
   // Web Audio Synthetic Voice Generator fallback
   const startSyntheticAudio = (fromOffset: number) => {
@@ -222,6 +223,12 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
           ref={audioRef}
           src={audioUrl}
           preload="metadata"
+          onLoadedMetadata={(e) => {
+            const d = e.currentTarget.duration;
+            if (d && !isNaN(d) && isFinite(d) && d > 0) {
+              setActualDuration(Math.round(d));
+            }
+          }}
           onEnded={() => {
             setIsPlaying(false);
             setPlaybackTime(0);

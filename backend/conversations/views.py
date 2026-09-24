@@ -2,7 +2,8 @@ from rest_framework import serializers, viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
+from django.conf import settings
 from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice, BulkCampaign, BulkCampaignLog
 from .meta_service import MetaWhatsAppService
 from .grabber_views import link_grabber_session
@@ -23,6 +24,7 @@ import time
 import re
 import threading
 import sys
+import base64
 
 import os
 import subprocess
@@ -166,7 +168,93 @@ class MessageSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         ret['senderName'] = ret.get('sender_name', '')
+        rc = ret.get('rich_card')
+        if isinstance(rc, dict):
+            is_voice = rc.get('type') == 'voice_note' or rc.get('is_voice')
+            if is_voice:
+                ret['isVoiceNote'] = True
+                audio_url = rc.get('audioUrl') or rc.get('audio_url')
+                media_id = rc.get('media_id') or rc.get('mediaId')
+                if not audio_url and media_id:
+                    audio_url = f"/api/conversations/media/{media_id}/"
+                    rc['audioUrl'] = audio_url
+                ret['audioUrl'] = audio_url
+                ret['audioDuration'] = rc.get('duration') or rc.get('audioDuration') or 4
+                ret['waveform'] = rc.get('waveform')
+        elif ret.get('text') and ('🎙️' in ret['text'] or 'voice note' in ret['text'].lower()):
+            ret['isVoiceNote'] = True
         return ret
+
+def process_outbound_voice_payload(audio_base64: str) -> dict:
+    """
+    Decodes audio base64 from browser recording, converts it using ffmpeg to standard
+    WhatsApp Push-To-Talk voice note format (.ogg container, mono channel, libopus codec),
+    saves the file to MEDIA_ROOT/voice_notes, and returns a dict with:
+    {
+        'audio_bytes': bytes,
+        'audio_url': '/media/voice_notes/...ogg',
+        'file_path': '...',
+        'mime_type': 'audio/ogg'
+    }
+    """
+    if not audio_base64:
+        return {}
+
+    raw_b64 = audio_base64
+    if ',' in raw_b64:
+        raw_b64 = raw_b64.split(',', 1)[1]
+
+    try:
+        raw_bytes = base64.b64decode(raw_b64)
+    except Exception as e:
+        logger.warning(f"Failed to decode voice note base64: {e}")
+        return {}
+
+    media_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes')
+    os.makedirs(media_dir, exist_ok=True)
+    ts = int(time.time() * 1000)
+    raw_path = os.path.join(media_dir, f"raw_{ts}.webm")
+    ogg_filename = f"vn_{ts}.ogg"
+    ogg_path = os.path.join(media_dir, ogg_filename)
+
+    with open(raw_path, 'wb') as f:
+        f.write(raw_bytes)
+
+    ffmpeg_bin = shutil.which('ffmpeg')
+    final_bytes = raw_bytes
+    final_filename = f"raw_{ts}.webm"
+    final_mime = 'audio/webm'
+
+    if ffmpeg_bin:
+        try:
+            # WhatsApp native voice message (PTT) requires .ogg with libopus codec and mono channel
+            cmd = [
+                ffmpeg_bin, '-y', '-i', raw_path,
+                '-c:a', 'libopus',
+                '-b:a', '32k',
+                '-ac', '1',
+                '-ar', '16000',
+                ogg_path
+            ]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12)
+            if res.returncode == 0 and os.path.exists(ogg_path) and os.path.getsize(ogg_path) > 0:
+                with open(ogg_path, 'rb') as f:
+                    final_bytes = f.read()
+                final_filename = ogg_filename
+                final_mime = 'audio/ogg'
+                try:
+                    os.remove(raw_path)
+                except Exception:
+                    pass
+        except Exception as conv_err:
+            logger.warning(f"Voice note transcoding error: {conv_err}")
+
+    return {
+        'audio_bytes': final_bytes,
+        'audio_url': f"/media/voice_notes/{final_filename}",
+        'file_path': ogg_path if final_filename.endswith('.ogg') else raw_path,
+        'mime_type': final_mime
+    }
 
 class WhatsAppTemplateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -245,14 +333,37 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         any(w in lower_text for w in ['agent', 'human', 'speak', 'call', 'contact', 'support', 'representative', 'operator', 'person', 'help', 'talk', 'someone'])
     )
 
-    # Booking Confirmation
-    is_confirm = any(w in lower_text for w in ['confirm', 'confirmed', 'yes', 'approve', 'proceed', 'book'])
+    # Voice Note Inbound Detection
+    is_voice_note = (
+        '🎙️' in text_body or
+        'voice note' in lower_text or
+        lower_text.startswith('voice') or
+        lower_text == '🎙️ voice note'
+    )
 
     reply_text = ''
     rich_card = None
     step_name = 'Inbound Received'
 
-    if is_reschedule_slot:
+    if is_voice_note:
+        reply_text = (
+            f"🎙️ *Voice Note Received*\n\n"
+            f"Hi {cust_name}, thank you! We have received your voice note regarding *{service_name}* (Booking {booking_id}).\n\n"
+            f"Our service team is listening to your audio message and will reply to you promptly."
+        )
+        rich_card = {
+            'type': 'agent_handover',
+            'title': 'Voice Note Received',
+            'agent': technician_name,
+            'phone': tech_phone,
+            'status': 'Voice Message Under Review',
+            'actionText': 'Listening to Audio'
+        }
+        conv.status = 'in_progress'
+        conv.lead_stage = 'Voice Note Received'
+        step_name = 'Voice Note Handover'
+
+    elif is_reschedule_slot:
         reply_text = (
             f"✅ *Appointment Slot Updated!*\n\n"
             f"Hi {cust_name}, your *{service_name}* (Booking {booking_id}) has been updated to your requested slot: *{text_body.strip()}*.\n\n"
@@ -745,6 +856,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'error': f"Cannot send message: Contact has {reason} on WhatsApp. Sending to suppressed contacts violates WhatsApp Business Policy. Re-subscribe with customer consent first or provide force=True."
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Voice payload processing (converts base64 audio to WhatsApp-compliant .ogg libopus mono)
+        audio_base64 = request.data.get('audio_base64') or (rich_card or {}).get('audioBase64') or (rich_card or {}).get('audio_base64')
+        voice_info = None
+        if audio_base64:
+            voice_info = process_outbound_voice_payload(audio_base64)
+            if voice_info and voice_info.get('audio_url'):
+                if not rich_card or not isinstance(rich_card, dict):
+                    rich_card = {}
+                rich_card['type'] = 'voice_note'
+                rich_card['is_voice'] = True
+                rich_card['audioUrl'] = voice_info['audio_url']
+                rich_card.pop('audioBase64', None)
+                rich_card.pop('audio_base64', None)
+
         temp_meta_id = f"wa-out-{int(time.time() * 1000)}"
         now_str = datetime.datetime.now().strftime('%I:%M %p')
 
@@ -784,7 +909,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         # High-Speed WhatsApp Cloud API & Baileys Asynchronous Background Dispatch
         # Removes external network blocking from request thread, returning HTTP 201 in <15ms
-        def async_dispatch_worker(message_id, conv_id, phone, msg_text, rc, emp_device, dev_acc_id, dev_pk):
+        def async_dispatch_worker(message_id, conv_id, phone, msg_text, rc, emp_device, dev_acc_id, dev_pk, v_info=None):
             try:
                 import django
                 django.db.connections.close_all()
@@ -794,10 +919,34 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 if not emp_device:
                     cfg = MetaWhatsAppConfig.objects.first()
                     if cfg and cfg.access_token and cfg.phone_number_id and cfg.connection_status == 'connected':
-                        is_voice = bool(rc and isinstance(rc, dict) and rc.get('type') == 'voice_note')
+                        is_voice = bool(rc and isinstance(rc, dict) and (rc.get('type') == 'voice_note' or rc.get('is_voice')))
                         audio_url = rc.get('audioUrl') if (rc and isinstance(rc, dict)) else None
 
-                        if is_voice and audio_url and str(audio_url).startswith('http'):
+                        m_res = None
+                        # 1. If voice_info has audio bytes, upload directly to Meta Media API
+                        if is_voice and v_info and v_info.get('audio_bytes'):
+                            upload_res = MetaWhatsAppService.upload_whatsapp_audio(
+                                phone_number_id=cfg.phone_number_id,
+                                access_token=cfg.access_token,
+                                audio_bytes=v_info['audio_bytes'],
+                                mime_type='audio/ogg',
+                                api_version=cfg.api_version
+                            )
+                            if upload_res.get('success') and upload_res.get('media_id'):
+                                media_id = upload_res.get('media_id')
+                                logger.info(f"[Meta Cloud API] Uploaded voice note ({len(v_info['audio_bytes'])} bytes). Dispatching native WhatsApp audio media_id: {media_id}")
+                                m_res = MetaWhatsAppService.send_whatsapp_audio(
+                                    phone_number_id=cfg.phone_number_id,
+                                    access_token=cfg.access_token,
+                                    to_phone=phone,
+                                    media_id=media_id,
+                                    api_version=cfg.api_version
+                                )
+                            else:
+                                logger.warning(f"[Meta Cloud API] Voice note upload failed: {upload_res.get('error')}")
+
+                        # 2. If not uploaded via bytes, check if public http url exists
+                        if not m_res and is_voice and audio_url and str(audio_url).startswith('http'):
                             m_res = MetaWhatsAppService.send_whatsapp_audio(
                                 phone_number_id=cfg.phone_number_id,
                                 access_token=cfg.access_token,
@@ -805,7 +954,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
                                 audio_url=audio_url,
                                 api_version=cfg.api_version
                             )
-                        else:
+
+                        # 3. Fallback to text message if audio couldn't be sent
+                        if not m_res:
                             m_res = MetaWhatsAppService.send_whatsapp_text(
                                 phone_number_id=cfg.phone_number_id,
                                 access_token=cfg.access_token,
@@ -813,6 +964,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
                                 text=msg_text,
                                 api_version=cfg.api_version
                             )
+
                         if m_res.get('success'):
                             remote_id = m_res.get('message_id', '')
                             final_status = 'delivered'
@@ -854,11 +1006,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         dev_id_val = dev.id if (is_employee_device and dev) else None
 
         if 'test' in sys.argv:
-            async_dispatch_worker(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val)
+            async_dispatch_worker(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val, voice_info)
         else:
             t = threading.Thread(
                 target=async_dispatch_worker,
-                args=(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val),
+                args=(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val, voice_info),
                 daemon=True
             )
             t.start()
@@ -1883,14 +2035,33 @@ class WhatsAppWebhookView(APIView):
                             audio_meta = msg.get('audio') or msg.get('voice') or {}
                             voice_id = audio_meta.get('id', '')
                             voice_mime = audio_meta.get('mime_type', 'audio/ogg')
-                            text_body = '🎙️ Voice note'
+                            voice_dur = int(audio_meta.get('duration', 4) or 4)
+                            text_body = f"🎙️ Voice note ({voice_dur}s)" if voice_dur else '🎙️ Voice note'
                             rich_card_data = {
                                 'type': 'voice_note',
                                 'is_voice': True,
                                 'media_id': voice_id,
                                 'mime_type': voice_mime,
-                                'duration': 5,
+                                'duration': voice_dur,
+                                'audioUrl': f"/api/conversations/media/{voice_id}/" if voice_id else None,
+                                'waveform': [25, 40, 65, 30, 50, 85, 95, 70, 45, 60, 80, 100, 75, 40, 30, 55, 80, 90, 65, 45, 35, 60, 85, 70, 50, 35, 60, 80, 45, 25],
                             }
+                            # Pre-cache incoming voice note asynchronously to local disk
+                            if voice_id and config and config.access_token:
+                                def _prefetch_inbound_voice(v_id, token, v_ver):
+                                    try:
+                                        target_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes')
+                                        os.makedirs(target_dir, exist_ok=True)
+                                        target_file = os.path.join(target_dir, f"{v_id}.ogg")
+                                        if not os.path.exists(target_file):
+                                            MetaWhatsAppService.download_whatsapp_media(v_id, token, save_path=target_file, api_version=v_ver)
+                                    except Exception as dl_err:
+                                        logger.warning(f"[Meta Webhook] Pre-fetch error for voice {v_id}: {dl_err}")
+                                threading.Thread(
+                                    target=_prefetch_inbound_voice,
+                                    args=(voice_id, config.access_token, config.api_version),
+                                    daemon=True
+                                ).start()
                         elif msg_type == 'video':
                             text_body = msg.get('video', {}).get('caption') or '🎥 Video'
                         elif msg_type == 'document':
@@ -2464,6 +2635,71 @@ class SimulateWhatsAppMessageView(APIView):
             'customer_message': user_msg_data,
             'bot_reply': bot_msg_data
         }, status=status.HTTP_200_OK)
+
+class WhatsAppMediaProxyView(APIView):
+    """
+    Proxies and streams WhatsApp voice notes and media from Meta Cloud API or local disk cache.
+    Endpoint: GET /api/conversations/media/<str:media_id>/
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, media_id):
+        if not media_id:
+            return Response({'error': 'media_id required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Sanitize media_id to alphanumeric, dashes, and underscores
+        safe_media_id = re.sub(r'[^a-zA-Z0-9_\-]', '', str(media_id))
+        media_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes')
+        os.makedirs(media_dir, exist_ok=True)
+        cached_file = os.path.join(media_dir, f"{safe_media_id}.ogg")
+
+        if os.path.exists(cached_file) and os.path.getsize(cached_file) > 0:
+            with open(cached_file, 'rb') as f:
+                content = f.read()
+            resp = HttpResponse(content, content_type='audio/ogg')
+            resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+            return resp
+
+        # Check alternative formats if previously saved
+        for ext in ['.webm', '.mp4', '.m4a', '.mp3', '.ogg']:
+            alt_path = os.path.join(media_dir, f"{safe_media_id}{ext}")
+            if os.path.exists(alt_path) and os.path.getsize(alt_path) > 0:
+                mime = 'audio/webm' if ext == '.webm' else ('audio/mp4' if ext in ['.mp4', '.m4a'] else ('audio/mpeg' if ext == '.mp3' else 'audio/ogg'))
+                with open(alt_path, 'rb') as f:
+                    content = f.read()
+                resp = HttpResponse(content, content_type=mime)
+                resp['Content-Disposition'] = f'inline; filename="{safe_media_id}{ext}"'
+                return resp
+
+        # Download on-demand from Meta Cloud API
+        config = MetaWhatsAppConfig.objects.first()
+        if not config or not config.access_token:
+            return Response({'error': 'Meta WhatsApp Cloud API token not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        download_res = MetaWhatsAppService.download_whatsapp_media(
+            media_id=safe_media_id,
+            access_token=config.access_token,
+            save_path=cached_file,
+            api_version=config.api_version
+        )
+
+        if download_res.get('success'):
+            content_type = download_res.get('mime_type') or 'audio/ogg'
+            if os.path.exists(cached_file):
+                with open(cached_file, 'rb') as f:
+                    content = f.read()
+                resp = HttpResponse(content, content_type=content_type)
+                resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+                return resp
+            elif download_res.get('data'):
+                resp = HttpResponse(download_res['data'], content_type=content_type)
+                resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+                return resp
+
+        return Response({
+            'error': f"Failed to retrieve media: {download_res.get('error', 'Not found')}"
+        }, status=status.HTTP_404_NOT_FOUND)
 
 class InspectGroupInviteView(APIView):
     """

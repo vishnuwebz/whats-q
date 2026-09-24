@@ -534,6 +534,91 @@ class MetaWhatsAppService:
             return {"success": False, "error": f"Network error: {str(e)}"}
 
     @classmethod
+    def upload_whatsapp_audio(cls, phone_number_id: str, access_token: str, audio_bytes: bytes, mime_type: str = 'audio/ogg', api_version: str = DEFAULT_API_VERSION) -> dict:
+        """
+        Uploads audio/voice note bytes directly to Meta WhatsApp Media API:
+        POST /{PHONE_NUMBER_ID}/media
+        Returns {"success": True, "media_id": "<ID>"}
+        """
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/media"
+        headers = {
+            "Authorization": f"Bearer {access_token.strip()}"
+        }
+
+        # Meta accepts audio/ogg, audio/mp4, audio/aac, audio/amr, audio/mpeg
+        files = {
+            'file': ('voice_note.ogg', audio_bytes, mime_type or 'audio/ogg')
+        }
+        data = {
+            'messaging_product': 'whatsapp',
+            'type': mime_type or 'audio/ogg'
+        }
+
+        try:
+            resp = requests.post(url, headers=headers, files=files, data=data, timeout=25)
+            res_json = resp.json()
+            if resp.status_code in [200, 201] and res_json.get('id'):
+                logger.info(f"[Meta Cloud API] Audio uploaded successfully, media_id: {res_json.get('id')}")
+                return {"success": True, "media_id": res_json.get('id'), "raw": res_json}
+            else:
+                err = res_json.get('error', {}).get('message', 'Failed to upload audio to Meta')
+                logger.warning(f"[Meta Cloud API] Audio upload failed: {err}")
+                return {"success": False, "error": err, "details": res_json}
+        except Exception as e:
+            logger.error(f"[Meta Cloud API] Audio upload network error: {e}")
+            return {"success": False, "error": f"Network error uploading audio to Meta: {str(e)}"}
+
+    @classmethod
+    def download_whatsapp_media(cls, media_id: str, access_token: str, save_path: str = None, api_version: str = DEFAULT_API_VERSION) -> dict:
+        """
+        Downloads a media file (voice note, image, document) from Meta Cloud API.
+        Step 1: GET /{MEDIA_ID} to obtain download URL.
+        Step 2: GET {download_url} with Authorization: Bearer {access_token} to get binary bytes.
+        """
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{media_id.strip()}"
+        headers = {
+            "Authorization": f"Bearer {access_token.strip()}"
+        }
+
+        try:
+            meta_resp = requests.get(url, headers=headers, timeout=15)
+            if meta_resp.status_code != 200:
+                err = meta_resp.json().get('error', {}).get('message', 'Failed to fetch media metadata')
+                return {"success": False, "error": err}
+
+            media_meta = meta_resp.json()
+            download_url = media_meta.get('url')
+            mime_type = media_meta.get('mime_type', 'audio/ogg')
+
+            if not download_url:
+                return {"success": False, "error": "No download URL returned by Meta"}
+
+            # Step 2: Download binary data
+            bin_resp = requests.get(download_url, headers=headers, timeout=30)
+            if bin_resp.status_code != 200:
+                return {"success": False, "error": f"Failed to download media binary from Meta (HTTP {bin_resp.status_code})"}
+
+            audio_data = bin_resp.content
+
+            if save_path:
+                import os
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                with open(save_path, 'wb') as f:
+                    f.write(audio_data)
+
+            return {
+                "success": True,
+                "data": audio_data,
+                "mime_type": mime_type,
+                "file_size": len(audio_data)
+            }
+        except Exception as e:
+            logger.error(f"[Meta Media Download Error]: {e}")
+            return {"success": False, "error": str(e)}
+
+    @classmethod
     def send_whatsapp_template(cls, phone_number_id: str, access_token: str, to_phone: str, template_name: str, language_code: str = "en_US", components: list = None, api_version: str = DEFAULT_API_VERSION):
         """
         Sends an approved template message to start a conversation or notify customer.
