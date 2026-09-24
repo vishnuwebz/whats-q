@@ -9,6 +9,7 @@ import {
 import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { AutoWorkflowModal } from './AutoWorkflowModal';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 const META_LANGUAGES = [
   { code: 'en_US', label: 'English (US)' },
@@ -1006,16 +1007,16 @@ export const CreateTemplateView: React.FC = () => {
                   )}
 
                   {btn.type === 'PHONE_NUMBER' && (
-                    <input
-                      type="tel"
-                      value={btn.phone_number || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setButtons(prev => prev.map((b, i) => i === idx ? { ...b, phone_number: val } : b));
-                      }}
-                      placeholder="+919876543210"
-                      className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                    />
+                    <div className="w-56">
+                      <CountryPhoneInput
+                        size="sm"
+                        value={btn.phone_number || ''}
+                        onChange={(val) => {
+                          setButtons(prev => prev.map((b, i) => i === idx ? { ...b, phone_number: val } : b));
+                        }}
+                        placeholder="Phone number"
+                      />
+                    </div>
                   )}
 
                   {btn.type === 'COPY_CODE' && (
@@ -1229,12 +1230,10 @@ export const CreateTemplateView: React.FC = () => {
             </p>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Phone Number</label>
-              <input
-                type="tel"
+              <CountryPhoneInput
                 value={testPhoneNumber}
-                onChange={(e) => setTestPhoneNumber(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
+                onChange={(val) => setTestPhoneNumber(val)}
+                placeholder="Enter test phone number"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">

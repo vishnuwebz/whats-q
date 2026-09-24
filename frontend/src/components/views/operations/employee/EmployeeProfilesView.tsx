@@ -8,6 +8,7 @@ import {
   Building2, Heart, Award, Star, ChevronRight, X, PenTool,
   Plus, Trash2, Clock, Briefcase, Activity, Check, FileText
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const EmployeeProfilesView: React.FC = () => {
   const { employees, updateEmployee, addEmployee, deleteEmployee, addToast, openPdfEditor } = useQiyamStore();
@@ -756,13 +757,10 @@ export const EmployeeProfilesView: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-600 font-semibold mb-1">Mobile Phone *</label>
-                      <input
-                        type="text"
-                        required
+                      <CountryPhoneInput
                         value={editForm.phone}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                        placeholder="+91 90000 11123"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                        onChange={(val) => setEditForm({ ...editForm, phone: val })}
+                        required
                       />
                     </div>
                     <div>
@@ -824,12 +822,9 @@ export const EmployeeProfilesView: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-slate-600 font-semibold mb-1">Emergency Contact Phone *</label>
-                      <input
-                        type="text"
+                      <CountryPhoneInput
                         value={editForm.emergency_contact_phone}
-                        onChange={(e) => setEditForm({ ...editForm, emergency_contact_phone: e.target.value })}
-                        placeholder="+91 94471 10045"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                        onChange={(val) => setEditForm({ ...editForm, emergency_contact_phone: val })}
                       />
                     </div>
                   </div>
@@ -1096,13 +1091,10 @@ export const EmployeeProfilesView: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-600 font-semibold mb-1">Mobile Phone *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="+91 98765 43210"
+                      <CountryPhoneInput
                         value={addForm.phone}
-                        onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                        onChange={(val) => setAddForm({ ...addForm, phone: val })}
+                        required
                       />
                     </div>
                     <div>
@@ -1164,12 +1156,9 @@ export const EmployeeProfilesView: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-slate-600 font-semibold mb-1">Emergency Contact Phone</label>
-                      <input
-                        type="text"
-                        placeholder="+91 94471 00000"
+                      <CountryPhoneInput
                         value={addForm.emergency_contact_phone}
-                        onChange={(e) => setAddForm({ ...addForm, emergency_contact_phone: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                        onChange={(val) => setAddForm({ ...addForm, emergency_contact_phone: val })}
                       />
                     </div>
                   </div>

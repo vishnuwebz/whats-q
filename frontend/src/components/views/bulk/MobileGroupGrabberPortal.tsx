@@ -19,6 +19,7 @@ import {
 import { parseWhatsAppChatExport, parseGroupInviteLink, parseRawTextToContacts, sanitizeWhatsAppGroupLink } from './whatsappGroupUtils';
 import { initialMockWhatsAppGroups } from './whatsappGroupData';
 import { WhatsAppGroup } from '../../../types';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 interface MobileGroupGrabberPortalProps {
   sessionToken: string;
@@ -242,11 +243,12 @@ export const MobileGroupGrabberPortal: React.FC<MobileGroupGrabberPortalProps> =
           </div>
           <div>
             <label className="block text-[10px] text-slate-400 font-semibold mb-1">WhatsApp Number:</label>
-            <input
-              type="text"
+            <CountryPhoneInput
+              variant="dark"
+              size="sm"
               value={devicePhone}
-              onChange={(e) => setDevicePhone(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-white/20 text-emerald-300 font-mono text-xs font-semibold focus:outline-emerald-500"
+              onChange={(val) => setDevicePhone(val)}
+              placeholder="Device WhatsApp number"
             />
           </div>
         </div>

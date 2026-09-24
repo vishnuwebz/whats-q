@@ -24,6 +24,7 @@ import {
   X,
   FileText,
 } from 'lucide-react';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 interface WhatsAppNumberItem {
   id: string;
@@ -565,15 +566,11 @@ export const WhatsAppChannelSettings: React.FC = () => {
 
           <div>
             <label className="block font-bold text-slate-700 text-xs mb-1.5">Recipient Phone Number</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={testRecipient}
-                onChange={(e) => setTestRecipient(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 outline-none focus:border-emerald-500 transition"
-              />
-            </div>
+            <CountryPhoneInput
+              value={testRecipient}
+              onChange={(val) => setTestRecipient(val)}
+              placeholder="Recipient phone number"
+            />
           </div>
         </div>
 
@@ -819,13 +816,10 @@ export const WhatsAppChannelSettings: React.FC = () => {
             <form onSubmit={handleAddNumber} className="space-y-4 pt-4 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">WhatsApp Phone Number *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="+91 94470 55555"
+                <CountryPhoneInput
                   value={newNumberForm.phone}
-                  onChange={(e) => setNewNumberForm({ ...newNumberForm, phone: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-800 outline-none focus:border-emerald-500 transition"
+                  onChange={(val) => setNewNumberForm({ ...newNumberForm, phone: val })}
+                  required
                 />
               </div>
 

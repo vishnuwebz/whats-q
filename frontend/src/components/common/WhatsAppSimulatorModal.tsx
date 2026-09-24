@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { X, Send, Phone, User, MessageSquare, Image, CheckCircle2 } from 'lucide-react';
 import { CustomerAvatar } from './CustomerAvatar';
+import { CountryPhoneInput } from './CountryPhoneInput';
 
 export const WhatsAppSimulatorModal: React.FC = () => {
   const {
@@ -103,17 +104,11 @@ export const WhatsAppSimulatorModal: React.FC = () => {
               <label className="block font-semibold text-slate-700 mb-1">
                 WhatsApp Phone Number <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. +91 94963 00233"
-                  className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm sm:text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition font-mono"
-                  required
-                />
-              </div>
+              <CountryPhoneInput
+                value={phone}
+                onChange={(val) => setPhone(val)}
+                required
+              />
             </div>
           </div>
 

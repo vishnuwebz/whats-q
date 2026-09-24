@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { apiClient } from '@/api/client';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 interface LinkEmployeeWhatsAppModalProps {
   isOpen: boolean;
@@ -423,7 +424,7 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-800">
-                    WhatsApp Mobile Number (+91)
+                    WhatsApp Mobile Number
                   </label>
                   {connectionState === 'scanned' && (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
@@ -432,20 +433,11 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
                     </span>
                   )}
                 </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+91 . . ."
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none transition shadow-2xs ${
-                      connectionState === 'scanned'
-                        ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 font-bold'
-                        : 'border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
-                    }`}
-                  />
-                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                </div>
+                <CountryPhoneInput
+                  value={phoneNumber}
+                  onChange={(val) => setPhoneNumber(val)}
+                  placeholder="Employee phone number"
+                />
               </div>
 
               {/* Company Meta Cloud API Assurance Note */}

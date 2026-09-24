@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { Briefcase, Plus, Search, IndianRupee, ArrowRight, User, Phone, CheckCircle2, X, MessageSquare, Trash2, ExternalLink, Tag, Sparkles } from 'lucide-react';
 import { Deal } from '@/types';
 import { isDateWithinInterval } from '@/utils/dateFilter';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const DealsView: React.FC = () => {
   const { deals, addDeal, updateDeal, deleteDeal, openConversationForContact, setActiveTab, addToast, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
@@ -239,13 +240,10 @@ export const DealsView: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Contact Phone *</label>
-                  <input
-                    type="text"
-                    required
+                  <CountryPhoneInput
                     value={newDealForm.phone}
-                    onChange={(e) => setNewDealForm({ ...newDealForm, phone: e.target.value })}
-                    placeholder="e.g. +91 94470 55443"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-indigo-500"
+                    onChange={(val) => setNewDealForm({ ...newDealForm, phone: val })}
+                    required
                   />
                 </div>
               </div>

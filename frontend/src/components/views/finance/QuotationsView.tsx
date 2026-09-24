@@ -9,6 +9,7 @@ import {
   Building2, Percent, CheckCircle2, AlertCircle, ExternalLink,
   ChevronRight, RefreshCw, Layers, PenTool
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const QuotationsView: React.FC = () => {
   const {
@@ -1162,13 +1163,10 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">WhatsApp Phone Number</label>
-                    <input
-                      type="text"
+                    <CountryPhoneInput
                       value={formCustomerPhone}
-                      onChange={(e) => setFormCustomerPhone(e.target.value)}
-                      placeholder="+91 98765 43210"
+                      onChange={(val) => setFormCustomerPhone(val)}
                       required
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
 

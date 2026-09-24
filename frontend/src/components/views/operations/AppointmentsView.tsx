@@ -9,6 +9,7 @@ import {
   Phone, Send, ExternalLink, ShieldCheck, ChevronRight, FileText, Check,
   CreditCard, Sparkles, ArrowRight, RotateCcw, Copy, Radio
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const buildAppointmentReminderMessage = (
   apt: Appointment,
@@ -436,13 +437,10 @@ export const AppointmentsView: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Phone / WhatsApp *</label>
-                  <input
-                    type="text"
-                    required
+                  <CountryPhoneInput
                     value={bookForm.phone}
-                    onChange={(e) => setBookForm({ ...bookForm, phone: e.target.value })}
-                    placeholder="e.g. +91 98470 33221"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    onChange={(val) => setBookForm({ ...bookForm, phone: val })}
+                    required
                   />
                 </div>
               </div>

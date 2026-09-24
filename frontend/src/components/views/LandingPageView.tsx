@@ -38,6 +38,7 @@ import {
   Flame,
   CheckCheck
 } from 'lucide-react';
+import { CountryPhoneInput } from '../common/CountryPhoneInput';
 
 interface LandingPageViewProps {
   onLaunchApp?: () => void;
@@ -1263,14 +1264,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onLaunchApp })
                 }}
                 className="flex flex-col sm:flex-row gap-2"
               >
-                <div className="relative flex-1">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    placeholder="Enter your WhatsApp number..."
+                <div className="flex-1">
+                  <CountryPhoneInput
+                    variant="dark"
                     value={demoPhone}
-                    onChange={(e) => setDemoPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-400 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    onChange={(val) => setDemoPhone(val)}
+                    placeholder="Enter your WhatsApp number..."
                   />
                 </div>
                 <button

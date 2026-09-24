@@ -36,6 +36,7 @@ import { BulkContact, BulkRecipientList, BulkTemplateItem } from '../../../types
 import { MetaWalletCard } from './MetaWalletCard';
 import { WhatsAppGuidelinesModal } from './WhatsAppGuidelinesModal';
 import { SidebarToggle } from '../../layout/SidebarToggle';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 export const BulkSendMessageView: React.FC = () => {
   const {
@@ -1686,14 +1687,12 @@ export const BulkSendMessageView: React.FC = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                  Recipient WhatsApp Number (with Country Code)
+                  Recipient WhatsApp Number
                 </label>
-                <input
-                  type="text"
+                <CountryPhoneInput
                   value={testPhoneNumber}
-                  onChange={(e) => setTestPhoneNumber(e.target.value)}
-                  placeholder="+91 94963 00233"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  onChange={(val) => setTestPhoneNumber(val)}
+                  placeholder="Test recipient phone"
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
                   The message will be immediately dispatched to this number via the WhatsApp gateway.

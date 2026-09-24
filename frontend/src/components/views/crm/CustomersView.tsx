@@ -3,6 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Users, Search, Filter, Plus, Phone, Mail, MapPin, MessageSquare, X, UserPlus } from 'lucide-react';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const CustomersView: React.FC = () => {
   const { conversations, addCustomer, setActiveTab, setSelectedConversationId, addToast, globalFilter } = useQiyamStore();
@@ -243,13 +244,10 @@ export const CustomersView: React.FC = () => {
 
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">Phone / WhatsApp *</label>
-                <input
-                  type="text"
-                  required
+                <CountryPhoneInput
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="e.g. +91 97450 11223"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  onChange={(val) => setForm({ ...form, phone: val })}
+                  required
                 />
               </div>
 

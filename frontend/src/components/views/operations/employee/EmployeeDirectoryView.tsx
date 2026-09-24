@@ -8,6 +8,7 @@ import {
   X, Briefcase, ChevronRight, CheckCircle2, UserCheck,
   Building2, PhoneCall
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const EmployeeDirectoryView: React.FC = () => {
   const {
@@ -452,13 +453,10 @@ export const EmployeeDirectoryView: React.FC = () => {
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Mobile Phone *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="+91 98765 43210"
+                  <CountryPhoneInput
                     value={newEmployee.phone}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    onChange={(val) => setNewEmployee({ ...newEmployee, phone: val })}
+                    required
                   />
                 </div>
                 <div>

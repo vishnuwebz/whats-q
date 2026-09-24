@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertTriangle, User, MoreVertical, X, Phone,
   FileText, ArrowRight, ShieldCheck, ChevronRight
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const JobsView: React.FC = () => {
   const {
@@ -410,13 +411,10 @@ export const JobsView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Phone / WhatsApp *</label>
-                  <input
-                    type="text"
-                    required
+                  <CountryPhoneInput
                     value={newJobForm.phone}
-                    onChange={(e) => setNewJobForm({ ...newJobForm, phone: e.target.value })}
-                    placeholder="e.g. +91 98765 43210"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-amber-500"
+                    onChange={(val) => setNewJobForm({ ...newJobForm, phone: val })}
+                    required
                   />
                 </div>
                 <div className="space-y-1">

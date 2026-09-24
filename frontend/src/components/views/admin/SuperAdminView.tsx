@@ -59,6 +59,7 @@ import {
 } from 'lucide-react';
 import { PlatformTenant, PlatformAuditLog, PlatformPlanTier, TenantSidebarModule, TenantFeatureConfig } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 export const ALL_SIDEBAR_MODULES: {
   id: TenantSidebarModule;
@@ -2456,17 +2457,23 @@ export const SuperAdminView: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">Owner WhatsApp Phone *</label>
-                  <input
-                    type="text"
-                    required
+                  <CountryPhoneInput
                     value={newTenantForm.ownerPhone}
-                    onChange={(e) => setNewTenantForm({ ...newTenantForm, ownerPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
+                    onChange={(val) => setNewTenantForm({ ...newTenantForm, ownerPhone: val })}
+                    required
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">WABA Official Line (Optional)</label>
+                  <CountryPhoneInput
+                    value={newTenantForm.wabaPhone || ''}
+                    onChange={(val) => setNewTenantForm({ ...newTenantForm, wabaPhone: val })}
+                    placeholder="WABA connected number"
+                  />
+                </div>
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">Initial Meta Wallet (₹)</label>
                   <input
@@ -2476,19 +2483,20 @@ export const SuperAdminView: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Sidebar Preset</label>
-                  <select
-                    value={newTenantForm.selectedPreset}
-                    onChange={(e: any) => setNewTenantForm({ ...newTenantForm, selectedPreset: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
-                  >
-                    <option value="field_service">🛠️ Field Service (Jobs, CRM, Invoices)</option>
-                    <option value="retail">🛍️ Retail (Bulk, Keywords, Invoices)</option>
-                    <option value="minimal">⚡ Inbox Only (Lightweight)</option>
-                    <option value="full">🏢 Full Suite (All 14 Modules)</option>
-                  </select>
-                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Sidebar Preset</label>
+                <select
+                  value={newTenantForm.selectedPreset}
+                  onChange={(e: any) => setNewTenantForm({ ...newTenantForm, selectedPreset: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
+                >
+                  <option value="field_service">🛠️ Field Service (Jobs, CRM, Invoices)</option>
+                  <option value="retail">🛍️ Retail (Bulk, Keywords, Invoices)</option>
+                  <option value="minimal">⚡ Inbox Only (Lightweight)</option>
+                  <option value="full">🏢 Full Suite (All 14 Modules)</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

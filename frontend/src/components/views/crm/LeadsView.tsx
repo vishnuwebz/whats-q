@@ -10,6 +10,7 @@ import {
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
   IndianRupee, CheckCircle2, RefreshCw
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const ALL_LEAD_STAGES: Array<{
   id: Lead['stage'];
@@ -704,13 +705,10 @@ export const LeadsView: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Phone / WhatsApp *</label>
-                  <input
-                    type="text"
-                    required
+                  <CountryPhoneInput
                     value={newLeadForm.phone}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
-                    placeholder="e.g. +91 98470 12345"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    onChange={(val) => setNewLeadForm({ ...newLeadForm, phone: val })}
+                    required
                   />
                 </div>
               </div>

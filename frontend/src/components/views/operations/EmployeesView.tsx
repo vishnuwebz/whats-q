@@ -12,6 +12,7 @@ import {
   User, Zap, Fuel, Gift
 } from 'lucide-react';
 import { EMPLOYEE_NAV_TABS } from './employee/EmployeeSharedHeader';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const EmployeesView: React.FC = () => {
   const {
@@ -1307,13 +1308,10 @@ export const EmployeesView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">WhatsApp / Phone *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="+91 98765 43210"
+                  <CountryPhoneInput
                     value={newEmployee.phone}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-sm sm:text-xs"
+                    onChange={(val) => setNewEmployee({ ...newEmployee, phone: val })}
+                    required
                   />
                 </div>
 

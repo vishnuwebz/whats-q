@@ -7,6 +7,7 @@ import {
   PhoneCall, MessageSquare, Mail, Calendar, Clock, CheckCircle2,
   AlertCircle, MoreVertical, Plus, User, Search, Filter, X
 } from 'lucide-react';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const FollowupsView: React.FC = () => {
   const { followups, addFollowUp, updateFollowUp, deleteFollowUp, addToast, setActiveTab, openConversationForContact, globalFilter, globalDateInterval, targetHighlightId } = useQiyamStore();
@@ -328,12 +329,9 @@ export const FollowupsView: React.FC = () => {
 
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">Phone Number</label>
-                  <input
-                    type="text"
-                    placeholder="+91 98765 43210"
+                  <CountryPhoneInput
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none font-mono text-slate-800"
+                    onChange={(val) => setFormData({ ...formData, phone: val })}
                   />
                 </div>
 

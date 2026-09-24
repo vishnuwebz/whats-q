@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertCircle, Clock, Send, Eye, X, PenTool
 } from 'lucide-react';
 import { ConfirmShareInvoiceModal } from './ConfirmShareInvoiceModal';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const InvoicesView: React.FC = () => {
   const {
@@ -525,13 +526,10 @@ Please feel free to ask if you have any questions or require an itemized breakdo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Customer Phone / WhatsApp *</label>
-                  <input
-                    type="text"
-                    required
+                  <CountryPhoneInput
                     value={createForm.customer_phone}
-                    onChange={(e) => setCreateForm({ ...createForm, customer_phone: e.target.value })}
-                    placeholder="e.g. +91 89213 56789"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                    onChange={(val) => setCreateForm({ ...createForm, customer_phone: val })}
+                    required
                   />
                 </div>
                 <div className="space-y-1">
