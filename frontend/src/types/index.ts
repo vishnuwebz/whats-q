@@ -484,6 +484,32 @@ export interface Workflow {
   nodes: FlowNode[];
 }
 
+export interface KeywordRule {
+  id: string | number;
+  title: string;
+  triggered_count: number;
+  active: boolean;
+  keywords: string[];
+  reply: string;
+  attachment?: string;
+  action_type?: 'reply' | 'workflow' | 'both';
+  workflow?: string | number | null;
+  workflow_name?: string;
+}
+
+export interface DaySchedule {
+  day: string;
+  time: string;
+  enabled: boolean;
+}
+
+export interface WorkingHoursConfig {
+  id?: number;
+  schedule: DaySchedule[];
+  away_message: string;
+  is_active: boolean;
+}
+
 export interface AutomationLog {
   id: string | number;
   time_str: string;

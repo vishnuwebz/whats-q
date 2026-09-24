@@ -522,48 +522,10 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
 
     else:
         # Inbound Welcome Menu / Greeting Flow (Executed when customer sends "hi", "hello", or opens a chat)
-        # Attempt to load custom greeting & menu options from active Workflow in DB
-        custom_welcome_text = None
-        custom_menu_options = []
-        try:
-            from automation.models import Workflow
-            active_wfs = Workflow.objects.filter(status='active').order_by('-id')
-            welcome_wf = (
-                active_wfs.filter(name__icontains='welcome').first() or
-                active_wfs.filter(trigger_type__icontains='message').first() or
-                active_wfs.filter(name__icontains='inbound').first() or
-                active_wfs.filter(name__icontains='service').first() or
-                active_wfs.first()
-            )
-            if welcome_wf and welcome_wf.nodes and isinstance(welcome_wf.nodes, list):
-                for node in welcome_wf.nodes:
-                    if isinstance(node, dict):
-                        # Format 1: FlowGroup structure with items
-                        items = node.get('items', [])
-                        if isinstance(items, list):
-                            for it in items:
-                                if isinstance(it, dict):
-                                    if it.get('type') == 'message' and it.get('content') and not custom_welcome_text:
-                                        custom_welcome_text = it.get('content').strip()
-                                    elif it.get('type') == 'choice' and it.get('options') and not custom_menu_options:
-                                        for opt in it.get('options'):
-                                            if isinstance(opt, dict) and opt.get('label'):
-                                                custom_menu_options.append(opt.get('label'))
-                                            elif isinstance(opt, str) and opt.strip():
-                                                custom_menu_options.append(opt.strip())
-                        # Format 2: Flat visual nodes
-                        if not custom_welcome_text and node.get('type') in ['trigger', 'action', 'message']:
-                            title_l = node.get('title', '').lower()
-                            if any(k in title_l for k in ['welcome', 'greeting', 'inbound', 'message']):
-                                if node.get('subtitle'):
-                                    custom_welcome_text = node.get('subtitle').strip()
-                    if custom_welcome_text and custom_menu_options:
-                        break
-        except Exception as wf_err:
-            logger.warning(f"[evaluate_workflow_response] Error loading workflow template: {wf_err}")
-
         # Substitute template variables
         def substitute_vars(tpl):
+            if not tpl:
+                return ""
             res = tpl
             res = res.replace('{STAT_NAME}', cust_name).replace('{{customer_name}}', cust_name).replace('{cust_name}', cust_name).replace('{name}', cust_name).replace('{{name}}', cust_name)
             res = res.replace('{COMPANY_NAME}', company_name).replace('{{company_name}}', company_name).replace('{company_name}', company_name)
@@ -574,34 +536,146 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
                 res = res.replace('{booking_id}', booking_id).replace('{{booking_id}}', booking_id)
             return res
 
-        if custom_welcome_text:
-            cleaned_custom = substitute_vars(custom_welcome_text)
-            if custom_menu_options and not any(opt in cleaned_custom for opt in custom_menu_options[:2]):
-                opts_str = "\n".join(custom_menu_options)
-                reply_text = f"{cleaned_custom}\n\n{opts_str}\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!"
+        # 1. Check Working Hours (Outside Active Hours Away Message)
+        try:
+            from automation.models import WorkingHoursConfig
+            import datetime
+            wh_cfg = WorkingHoursConfig.objects.first()
+            if wh_cfg and wh_cfg.is_active and wh_cfg.away_message:
+                now_dt = datetime.datetime.now()
+                day_name = now_dt.strftime('%A')
+                day_entry = next((item for item in (wh_cfg.schedule or []) if item.get('day') == day_name), None)
+                if day_entry and not day_entry.get('enabled', True):
+                    reply_text = substitute_vars(wh_cfg.away_message)
+                    step_name = 'Outside Hours Away Message'
+                    return reply_text, None, step_name
+        except Exception as wh_err:
+            logger.warning(f"[evaluate_workflow_response] Working hours check: {wh_err}")
+
+        # 2. Check active Keyword Trigger Rules configured in Workflow Builder
+        matched_rule = None
+        try:
+            from automation.models import KeywordTriggerRule
+            active_rules = KeywordTriggerRule.objects.filter(active=True).order_by('-id')
+            for rule in active_rules:
+                for kw in (rule.keywords or []):
+                    k = str(kw).strip().lower()
+                    if not k:
+                        continue
+                    pattern = r'\b' + re.escape(k) + r'\b'
+                    if re.search(pattern, lower_text) or k in lower_text or k == clean_choice:
+                        matched_rule = rule
+                        break
+                if matched_rule:
+                    break
+        except Exception as kw_err:
+            logger.warning(f"[evaluate_workflow_response] Keyword rule error: {kw_err}")
+
+        if matched_rule:
+            matched_rule.triggered_count = (matched_rule.triggered_count or 0) + 1
+            matched_rule.save(update_fields=['triggered_count'])
+
+            # Automatically activate the linked workflow on this customer conversation!
+            if matched_rule.workflow_name or matched_rule.workflow:
+                target_wf_name = matched_rule.workflow_name or matched_rule.workflow.name
+                conv.active_workflow = target_wf_name
+                conv.save(update_fields=['active_workflow'])
+                try:
+                    emit_event('conversation.updated', ConversationSerializer(conv).data)
+                except Exception:
+                    pass
+
+            if matched_rule.reply and matched_rule.reply.strip():
+                reply_text = substitute_vars(matched_rule.reply.strip())
+                step_name = f"Keyword Rule: {matched_rule.title}"
+                if matched_rule.attachment:
+                    rich_card = {
+                        'type': 'attachment',
+                        'title': matched_rule.title,
+                        'fileName': matched_rule.attachment
+                    }
+            elif matched_rule.workflow and matched_rule.workflow.nodes:
+                for node in matched_rule.workflow.nodes:
+                    if isinstance(node, dict):
+                        items = node.get('items', [])
+                        if isinstance(items, list):
+                            for it in items:
+                                if isinstance(it, dict) and it.get('type') == 'message' and it.get('content'):
+                                    reply_text = substitute_vars(it.get('content'))
+                                    break
+                    if reply_text:
+                        break
+                step_name = f"Workflow: {matched_rule.workflow.name}"
+
+        # 3. If no keyword rule matched, attempt to load custom greeting & menu options from active Workflow in DB
+        if not reply_text:
+            custom_welcome_text = None
+            custom_menu_options = []
+            try:
+                from automation.models import Workflow
+                active_wfs = Workflow.objects.filter(status='active').order_by('-id')
+                welcome_wf = (
+                    active_wfs.filter(name__icontains='welcome').first() or
+                    active_wfs.filter(trigger_type__icontains='message').first() or
+                    active_wfs.filter(name__icontains='inbound').first() or
+                    active_wfs.filter(name__icontains='service').first() or
+                    active_wfs.first()
+                )
+                if welcome_wf and welcome_wf.nodes and isinstance(welcome_wf.nodes, list):
+                    for node in welcome_wf.nodes:
+                        if isinstance(node, dict):
+                            # Format 1: FlowGroup structure with items
+                            items = node.get('items', [])
+                            if isinstance(items, list):
+                                for it in items:
+                                    if isinstance(it, dict):
+                                        if it.get('type') == 'message' and it.get('content') and not custom_welcome_text:
+                                            custom_welcome_text = it.get('content').strip()
+                                        elif it.get('type') == 'choice' and it.get('options') and not custom_menu_options:
+                                            for opt in it.get('options'):
+                                                if isinstance(opt, dict) and opt.get('label'):
+                                                    custom_menu_options.append(opt.get('label'))
+                                                elif isinstance(opt, str) and opt.strip():
+                                                    custom_menu_options.append(opt.strip())
+                            # Format 2: Flat visual nodes
+                            if not custom_welcome_text and node.get('type') in ['trigger', 'action', 'message']:
+                                title_l = node.get('title', '').lower()
+                                if any(k in title_l for k in ['welcome', 'greeting', 'inbound', 'message']):
+                                    if node.get('subtitle'):
+                                        custom_welcome_text = node.get('subtitle').strip()
+                        if custom_welcome_text and custom_menu_options:
+                            break
+            except Exception as wf_err:
+                logger.warning(f"[evaluate_workflow_response] Error loading workflow template: {wf_err}")
+
+            if custom_welcome_text:
+                cleaned_custom = substitute_vars(custom_welcome_text)
+                if custom_menu_options and not any(opt in cleaned_custom for opt in custom_menu_options[:2]):
+                    opts_str = "\n".join(custom_menu_options)
+                    reply_text = f"{cleaned_custom}\n\n{opts_str}\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!"
+                else:
+                    reply_text = cleaned_custom
+            elif has_booking:
+                reply_text = (
+                    f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+                    f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
+                    f"1️⃣ Reschedule booking\n"
+                    f"2️⃣ Track specialist status\n"
+                    f"3️⃣ View quotation & pricing\n"
+                    f"4️⃣ Speak with an agent\n\n"
+                    f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+                )
             else:
-                reply_text = cleaned_custom
-        elif has_booking:
-            reply_text = (
-                f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
-                f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
-                f"1️⃣ Reschedule booking\n"
-                f"2️⃣ Track specialist status\n"
-                f"3️⃣ View quotation & pricing\n"
-                f"4️⃣ Speak with an agent\n\n"
-                f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
-            )
-        else:
-            reply_text = (
-                f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
-                f"How can we assist you today?\n"
-                f"1️⃣ Book a service or appointment\n"
-                f"2️⃣ Track existing request\n"
-                f"3️⃣ View quotation & pricing\n"
-                f"4️⃣ Speak with an agent\n\n"
-                f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
-            )
-        step_name = 'Welcome Menu'
+                reply_text = (
+                    f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+                    f"How can we assist you today?\n"
+                    f"1️⃣ Book a service or appointment\n"
+                    f"2️⃣ Track existing request\n"
+                    f"3️⃣ View quotation & pricing\n"
+                    f"4️⃣ Speak with an agent\n\n"
+                    f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+                )
+            step_name = 'Welcome Menu'
 
     # Increment runs count and log automation execution
     try:

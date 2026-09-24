@@ -1,5 +1,5 @@
-import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
-import { FlowGroup, GroupItem, KeywordRule } from '../components/views/automation/WorkflowBuilderView';
+import { WhatsAppTemplateItem, WhatsAppTemplateButton, KeywordRule } from '@/types';
+import { FlowGroup, GroupItem } from '../components/views/automation/WorkflowBuilderView';
 
 export interface TemplateAnalysis {
   detectedCategory: string;

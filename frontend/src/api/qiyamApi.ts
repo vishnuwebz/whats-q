@@ -25,6 +25,8 @@ import type {
   Appointment,
   AttendanceRecord,
   Expense,
+  KeywordRule,
+  WorkingHoursConfig,
 } from '../types';
 
 async function list<T>(endpoint: string): Promise<T[]> {
@@ -191,6 +193,34 @@ export const qiyamApi = {
 
   async fetchWorkflows(): Promise<Workflow[]> {
     return list<Workflow>('/automation/workflows/');
+  },
+
+  async fetchKeywordRules(): Promise<KeywordRule[]> {
+    return list<KeywordRule>('/automation/keyword-rules/');
+  },
+
+  async createKeywordRule(data: Partial<KeywordRule>): Promise<KeywordRule> {
+    return apiClient.post('/automation/keyword-rules/', data);
+  },
+
+  async updateKeywordRule(id: string | number, data: Partial<KeywordRule>): Promise<KeywordRule> {
+    return apiClient.put(`/automation/keyword-rules/${id}/`, data);
+  },
+
+  async deleteKeywordRule(id: string | number): Promise<boolean> {
+    return apiClient.delete(`/automation/keyword-rules/${id}/`);
+  },
+
+  async toggleKeywordRule(id: string | number): Promise<KeywordRule> {
+    return apiClient.post(`/automation/keyword-rules/${id}/toggle/`, {});
+  },
+
+  async fetchWorkingHours(): Promise<WorkingHoursConfig> {
+    return apiClient.get('/automation/working-hours/');
+  },
+
+  async saveWorkingHours(data: Partial<WorkingHoursConfig>): Promise<WorkingHoursConfig> {
+    return apiClient.put('/automation/working-hours/', data);
   },
 
   async fetchWorkflowLogs(): Promise<AutomationLog[]> {

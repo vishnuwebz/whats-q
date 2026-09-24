@@ -59,3 +59,37 @@ class Approval(models.Model):
 
     def __str__(self):
         return f"{self.request_id_str}: {self.title} ({self.status})"
+
+class KeywordTriggerRule(models.Model):
+    ACTION_CHOICES = [
+        ('reply', 'Reply with Message'),
+        ('workflow', 'Trigger Workflow'),
+        ('both', 'Reply and Trigger Workflow'),
+    ]
+
+    title = models.CharField(max_length=200)
+    triggered_count = models.IntegerField(default=0)
+    active = models.BooleanField(default=True)
+    keywords = models.JSONField(default=list)  # list of lowercase strings: ["hi", "hello", "menu"]
+    action_type = models.CharField(max_length=50, choices=ACTION_CHOICES, default='workflow')
+    workflow = models.ForeignKey(Workflow, on_delete=models.SET_NULL, null=True, blank=True, related_name='keyword_rules')
+    workflow_name = models.CharField(max_length=200, blank=True, default='')  # e.g. "Service Booking Flow"
+    reply = models.TextField(blank=True, default='')
+    attachment = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+
+    def __str__(self):
+        return f"{self.title} ({'ON' if self.active else 'OFF'})"
+
+class WorkingHoursConfig(models.Model):
+    schedule = models.JSONField(default=list)  # [{'day': 'Monday', 'time': '9:30 AM - 7:30 PM', 'enabled': True}, ...]
+    away_message = models.TextField(default="Hi there! Thanks for reaching out to WhatsQ. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!")
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Working Hours Config ({'Active' if self.is_active else 'Disabled'})"

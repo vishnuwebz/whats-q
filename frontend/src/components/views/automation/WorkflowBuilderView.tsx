@@ -10,10 +10,12 @@ import {
   ExternalLink, Sparkles, AlertCircle, ArrowRight, CornerDownRight,
   Move, Sliders, IndianRupee, RefreshCw, Eye, BookOpen, Info,
   ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe,
-  Upload, Link2
+  Upload, Link2, Search
 } from 'lucide-react';
 import { generateWorkflowFromTemplate } from '@/utils/templateWorkflowGenerator';
 import { SERVICE_BOOKING_FLOW_GROUPS, normalizeToFlowGroups } from '@/utils/serviceBookingFlow';
+import { KeywordRule, DaySchedule } from '@/types';
+export type { KeywordRule, DaySchedule };
 
 // Types for Flow Canvas
 export interface GroupChoiceOption {
@@ -57,23 +59,6 @@ export interface FlowGroup {
   items: GroupItem[];
 }
 
-// Types for Keyword Rules
-export interface KeywordRule {
-  id: string;
-  title: string;
-  triggered_count: number;
-  active: boolean;
-  keywords: string[];
-  reply: string;
-  attachment?: string;
-}
-
-export interface DaySchedule {
-  day: string;
-  time: string;
-  enabled: boolean;
-}
-
 export const WorkflowBuilderView: React.FC = () => {
   const {
     addToast,
@@ -84,6 +69,24 @@ export const WorkflowBuilderView: React.FC = () => {
     activeWorkflowGroups,
     templates,
     metaConfig,
+    keywordRules,
+    workingHours,
+    outsideHoursMessage,
+    toggleKeywordRule,
+    deleteKeywordRule,
+    addKeywordRule,
+    updateKeywordRule,
+    addKeywordToRule,
+    removeKeywordFromRule,
+    toggleWorkingDay,
+    updateWorkingDayTime,
+    setOutsideHoursMessage,
+    saveWorkingHoursConfig,
+    syncAutomationRules,
+    workflows,
+    setActiveWorkflowId,
+    setActiveWorkflowTitle,
+    setActiveWorkflowGroups,
   } = useQiyamStore();
 
   // Top Mode Switcher: 'canvas' | 'keyword_rules'
@@ -275,7 +278,26 @@ export const WorkflowBuilderView: React.FC = () => {
     keywords: '',
     reply: '',
     attachment: '',
+    workflow_name: '',
   });
+
+  // Edit Existing Rule Modal state
+  const [editingRule, setEditingRule] = useState<KeywordRule | null>(null);
+
+  // Search query for Keyword Rules
+  const [ruleSearchQuery, setRuleSearchQuery] = useState('');
+
+  // Live Syncing spinner state
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Edit Working Hour Day Time state
+  const [editingDayTime, setEditingDayTime] = useState<{ day: string; time: string } | null>(null);
+
+  // Working Hours Away Message local buffer
+  const [awayMessage, setAwayMessage] = useState(outsideHoursMessage);
+  useEffect(() => {
+    setAwayMessage(outsideHoursMessage);
+  }, [outsideHoursMessage]);
 
   // Inline Add Keyword state
   const [activeKeywordInputRuleId, setActiveKeywordInputRuleId] = useState<string | null>(null);
@@ -302,62 +324,6 @@ export const WorkflowBuilderView: React.FC = () => {
   }, [activeWorkflowTitle, activeWorkflowGroups]);
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId) || groups[0] || null;
-
-  // Initial Keyword Rules
-  const [keywordRules, setKeywordRules] = useState<KeywordRule[]>([
-    {
-      id: 'rule-welcome',
-      title: 'Inbound Greetings Auto-Responder ("Hi" / "Hello")',
-      triggered_count: 52,
-      active: true,
-      keywords: ['hi', 'hello', 'hey', 'start', 'greetings', 'menu', 'good morning', 'good evening'],
-      reply: '👋 *Welcome to {COMPANY_NAME}!* \nHello {STAT_NAME}! How can we assist you today?\n\n1️⃣ Reschedule / Book Service\n2️⃣ Live Specialist ETA\n3️⃣ Price Quotation\n4️⃣ Speak with Agent\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!'
-    },
-    {
-      id: 'rule-1',
-      title: 'Price List Auto-Reply',
-      triggered_count: 14,
-      active: true,
-      keywords: ['price', 'catalog', 'rate', 'cost', 'quotation'],
-      reply: 'Hello {STAT_NAME}! Here is our latest wholesale rate card & service pricing catalog.',
-      attachment: 'Rate-Card-Catalog.pdf'
-    },
-    {
-      id: 'rule-2',
-      title: 'Claim ₹500 Discount Auto-Responder',
-      triggered_count: 8,
-      active: true,
-      keywords: ['claim ₹500 discount', 'discount', 'claim 500', 'festival offer'],
-      reply: '🎉 *Congratulations!* Your ₹500 discount code is: *FEST500*\n\nApply this code on your next service booking to get flat ₹500 OFF instantly!\n\n🌐 Visit Store: https://qiyam.ventures'
-    },
-    {
-      id: 'rule-3',
-      title: 'Emergency Service Dispatch',
-      triggered_count: 24,
-      active: true,
-      keywords: ['emergency', 'urgent', 'breakdown', 'leakage', 'gas refill'],
-      reply: 'We have received your emergency request! 🛠️ A certified specialist has been notified and will call you within 5 minutes.'
-    },
-    {
-      id: 'rule-4',
-      title: 'Human Support Representative',
-      triggered_count: 18,
-      active: true,
-      keywords: ['talk to human', 'agent', 'support', 'customer executive'],
-      reply: 'Connecting you to our senior support desk. Our field coordinator will reply to you within 3 minutes! 📞'
-    }
-  ]);
-
-  // Working Hours
-  const [workingHours, setWorkingHours] = useState<DaySchedule[]>([
-    { day: 'Monday', time: '9:30 AM – 7:30 PM', enabled: true },
-    { day: 'Tuesday', time: '9:30 AM – 7:30 PM', enabled: true },
-    { day: 'Wednesday', time: '9:30 AM – 7:30 PM', enabled: true },
-    { day: 'Thursday', time: '9:30 AM – 7:30 PM', enabled: true },
-    { day: 'Friday', time: '9:30 AM – 7:30 PM', enabled: true },
-    { day: 'Saturday', time: '10:00 AM – 8:00 PM', enabled: true },
-    { day: 'Sunday', time: 'Closed', enabled: false },
-  ]);
 
   // =========================================================================
   // CANVAS PAN & CARD DRAGGING ENGINE (Seamless 360-degree Grab & Pan)
@@ -884,73 +850,208 @@ export const WorkflowBuilderView: React.FC = () => {
     addToast('Element configuration applied successfully!', 'success');
   };
 
-  // Toggle Keyword Rule Active
-  const handleToggleRule = (id: string) => {
-    setKeywordRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r))
+  // Open Workflow in Interactive Canvas
+  const handleOpenWorkflowInCanvas = (wfName: string) => {
+    if (!wfName) return;
+
+    const matchedWf = (workflows || []).find(
+      (w) => w.name.toLowerCase() === wfName.toLowerCase()
     );
+
+    let targetGroups: FlowGroup[] = [];
+
+    if (matchedWf && matchedWf.nodes && Array.isArray(matchedWf.nodes)) {
+      targetGroups = normalizeToFlowGroups(matchedWf.nodes, matchedWf.name);
+    } else if (
+      wfName.toLowerCase().includes('service') ||
+      wfName.toLowerCase().includes('booking') ||
+      wfName.toLowerCase().includes('welcome')
+    ) {
+      targetGroups = SERVICE_BOOKING_FLOW_GROUPS;
+    } else if (wfName.toLowerCase().includes('price') || wfName.toLowerCase().includes('quotation')) {
+      targetGroups = [
+        {
+          id: 'group-quo-1',
+          title: 'Group #1 - Price Quotation Menu',
+          x: 50,
+          y: 60,
+          items: [
+            {
+              id: 'item-quo-1',
+              type: 'message',
+              content: '💰 *Instant Price Quotation Generator*\nHello {STAT_NAME}! Select the service category below to view verified pricing or generate an immediate quote.'
+            },
+            {
+              id: 'item-quo-2',
+              type: 'choice',
+              question: 'Choose your requirement:',
+              options: [
+                { label: '❄️ AC Servicing & Chemical Wash (₹799)', targetGroup: 'group-quo-2' },
+                { label: '⚡ Gas Refill & Leakage Check (₹1,499)', targetGroup: 'group-quo-2' },
+                { label: '🏢 Commercial AMC Packages', targetGroup: 'group-quo-3' },
+                { label: '📄 Download Full PDF Rate Card', targetGroup: 'group-quo-4' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'group-quo-2',
+          title: 'Group #2 - Quotation Summary & Book',
+          x: 480,
+          y: 60,
+          items: [
+            {
+              id: 'item-quo-2-1',
+              type: 'message',
+              content: '✅ Selected Service: AC Maintenance\n💵 Standard Estimate: ₹799 + Taxes\n🕒 Estimated Duration: 60 Mins\n\nWould you like to book an appointment slot now?'
+            },
+            {
+              id: 'item-quo-2-2',
+              type: 'choice',
+              options: [
+                { label: 'Book Technician Slot', targetGroup: 'group-2' },
+                { label: 'Talk to Representative', targetGroup: 'group-5' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'group-quo-3',
+          title: 'Group #3 - Commercial AMC Inquiry',
+          x: 480,
+          y: 420,
+          items: [
+            {
+              id: 'item-quo-3-1',
+              type: 'message',
+              content: '🏢 *Commercial Annual Maintenance Contract (AMC)*\nWe offer priority dispatch, preventive maintenance, and zero-callout charges for corporate offices and retail outlets.'
+            }
+          ]
+        },
+        {
+          id: 'group-quo-4',
+          title: 'Group #4 - Rate Card Delivery',
+          x: 900,
+          y: 60,
+          items: [
+            {
+              id: 'item-quo-4-1',
+              type: 'message',
+              content: '📄 Sending complete 2026 Price Catalog & Tariff Card PDF right now!'
+            }
+          ]
+        }
+      ];
+    } else {
+      targetGroups = [
+        {
+          id: 'group-auto-1',
+          title: `Group #1 - ${wfName}`,
+          x: 80,
+          y: 80,
+          items: [
+            {
+              id: 'item-auto-1',
+              type: 'message',
+              content: `👋 Flow activated: *${wfName}*.\nHow can we help you?`
+            }
+          ]
+        }
+      ];
+    }
+
+    setBotTitle(wfName);
+    setGroups(targetGroups);
+    if (targetGroups.length > 0) {
+      setSelectedGroupId(targetGroups[0].id);
+    }
+    setActiveWorkflowTitle(wfName);
+    if (matchedWf) {
+      setActiveWorkflowId(matchedWf.id);
+    }
+    setActiveWorkflowGroups(targetGroups);
+    setActiveMode('canvas');
+    addToast(`⚡ Flow "${wfName}" opened in Interactive Canvas!`, 'success');
+  };
+
+  // Toggle Keyword Rule Active
+  const handleToggleRule = async (id: string | number) => {
+    await toggleKeywordRule(id);
   };
 
   // Delete Keyword Rule
-  const handleDeleteRule = (id: string) => {
-    setKeywordRules((prev) => prev.filter((r) => r.id !== id));
-    addToast('Keyword rule removed', 'info');
+  const handleDeleteRule = async (id: string | number) => {
+    await deleteKeywordRule(id);
   };
 
   // Inline Add Keyword to Rule
-  const handleAddKeywordToRule = (ruleId: string) => {
+  const handleAddKeywordToRule = async (ruleId: string | number) => {
     if (!inlineKeywordText.trim()) return;
-    setKeywordRules((prev) =>
-      prev.map((r) =>
-        r.id === ruleId
-          ? { ...r, keywords: [...r.keywords, inlineKeywordText.trim().toLowerCase()] }
-          : r
-      )
-    );
+    await addKeywordToRule(ruleId, inlineKeywordText.trim());
     setInlineKeywordText('');
     setActiveKeywordInputRuleId(null);
-    addToast('Keyword added', 'success');
   };
 
   // Remove Keyword from Rule
-  const handleRemoveKeyword = (ruleId: string, kwToRemove: string) => {
-    setKeywordRules((prev) =>
-      prev.map((r) =>
-        r.id === ruleId
-          ? { ...r, keywords: r.keywords.filter((k) => k !== kwToRemove) }
-          : r
-      )
-    );
+  const handleRemoveKeyword = async (ruleId: string | number, kwToRemove: string) => {
+    await removeKeywordFromRule(ruleId, kwToRemove);
+  };
+
+  // Update rule's assigned workflow
+  const handleUpdateRuleWorkflow = async (ruleId: string | number, newWorkflowName: string) => {
+    await updateKeywordRule(ruleId, {
+      workflow_name: newWorkflowName || undefined,
+      action_type: newWorkflowName ? 'workflow' : 'reply',
+    });
+    addToast(newWorkflowName ? `Linked to flow "${newWorkflowName}"` : 'Rule set to auto-reply only', 'info');
+  };
+
+  // Save edited rule from modal
+  const handleSaveEditedRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRule) return;
+    const kwList = Array.isArray(editingRule.keywords)
+      ? editingRule.keywords
+      : String(editingRule.keywords).split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
+
+    await updateKeywordRule(editingRule.id, {
+      title: editingRule.title,
+      reply: editingRule.reply,
+      keywords: kwList,
+      workflow_name: editingRule.workflow_name || undefined,
+      action_type: editingRule.workflow_name ? 'workflow' : 'reply',
+      attachment: editingRule.attachment || undefined,
+    });
+    setEditingRule(null);
+    addToast(`Rule "${editingRule.title}" updated successfully!`, 'success');
   };
 
   // Create New Rule Submit
-  const handleCreateRuleSubmit = (e: React.FormEvent) => {
+  const handleCreateRuleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRule.title.trim() || !newRule.keywords.trim()) {
       addToast('Please fill in title and keywords', 'warning');
       return;
     }
     const kwList = newRule.keywords.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
-    const created: KeywordRule = {
-      id: `rule-${Date.now()}`,
+    const created: Omit<KeywordRule, 'id'> = {
       title: newRule.title.trim(),
       triggered_count: 0,
       active: true,
       keywords: kwList,
       reply: newRule.reply.trim() || 'Automated reply from WhatsQ Assistant.',
-      attachment: newRule.attachment.trim() || undefined
+      attachment: newRule.attachment.trim() || undefined,
+      workflow_name: newRule.workflow_name.trim() || undefined,
+      action_type: newRule.workflow_name.trim() ? 'workflow' : 'reply',
     };
-    setKeywordRules([created, ...keywordRules]);
+    await addKeywordRule(created);
     setIsNewRuleModalOpen(false);
-    setNewRule({ title: '', keywords: '', reply: '', attachment: '' });
-    addToast(`Keyword Rule "${created.title}" created`, 'success');
+    setNewRule({ title: '', keywords: '', reply: '', attachment: '', workflow_name: '' });
   };
 
   // Toggle Working Hour day
   const handleToggleDay = (dayName: string) => {
-    setWorkingHours((prev) =>
-      prev.map((d) => (d.day === dayName ? { ...d, enabled: !d.enabled } : d))
-    );
+    toggleWorkingDay(dayName);
   };
 
   // Apply Pre-built Template Flow
@@ -1371,14 +1472,31 @@ export const WorkflowBuilderView: React.FC = () => {
     }
 
     // Check keyword rules
-    const matchedRule = keywordRules.find((r) =>
-      r.keywords.some((k) => txtLower.includes(k.toLowerCase().trim()))
+    const matchedRule = (keywordRules || []).find((r) =>
+      r.active && (r.keywords || []).some((k) => txtLower.includes(k.toLowerCase().trim()))
     );
     if (matchedRule) {
-      nextMessages.push({
-        sender: 'bot',
-        text: replaceSimulatedVars(matchedRule.reply, simulatedVars),
-      });
+      if (matchedRule.workflow_name) {
+        nextMessages.push({
+          sender: 'bot',
+          text: `⚡ *Workflow Triggered: [${matchedRule.workflow_name}]*\n\n${replaceSimulatedVars(matchedRule.reply, simulatedVars)}`,
+        });
+        if (matchedRule.workflow_name.toLowerCase().includes('booking') || matchedRule.workflow_name.toLowerCase().includes('service')) {
+          const firstGroup = SERVICE_BOOKING_FLOW_GROUPS[0];
+          if (firstGroup) {
+            setCurrentStep(firstGroup.id);
+            const extra = getMessagesFromGroup(firstGroup, simulatedVars);
+            if (extra.length > 0) {
+              nextMessages.push(...extra);
+            }
+          }
+        }
+      } else {
+        nextMessages.push({
+          sender: 'bot',
+          text: replaceSimulatedVars(matchedRule.reply, simulatedVars),
+        });
+      }
       setTestMessages(nextMessages);
       return;
     }
@@ -1633,6 +1751,21 @@ export const WorkflowBuilderView: React.FC = () => {
           >
             <BookOpen className="w-4 h-4 text-emerald-600" />
             <span>Templates</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setIsSyncing(true);
+              await syncAutomationRules();
+              setIsSyncing(false);
+            }}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+            title="Synchronize triggers, workflows and working hours with server"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Live Sync'}</span>
           </button>
 
           {activeMode === 'keyword_rules' ? (
@@ -2675,134 +2808,315 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* MODE 2: KEYWORD RULES TABLE                                               */}
       {/* ========================================================================= */}
       {activeMode === 'keyword_rules' && (
-        <div className="flex-1 p-6 overflow-y-auto font-sans space-y-6">
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto font-sans space-y-6">
+          {/* Top Quick Search & Control Strip matching screenshot */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search trigger rules by keyword, title, or flow name... (Ctrl + /)"
+                value={ruleSearchQuery}
+                onChange={(e) => setRuleSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400 font-sans"
+              />
+              {ruleSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setRuleSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsSyncing(true);
+                  await syncAutomationRules();
+                  setIsSyncing(false);
+                }}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50"
+                title="Synchronize trigger rules with backend database"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Live Sync'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsNewRuleModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Rule</span>
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left 2 Columns: Keyword Rules List */}
             <div className="lg:col-span-2 space-y-5">
-              {keywordRules.map((rule) => (
-                <div
-                  key={rule.id}
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-4"
-                >
-                  {/* Rule Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
-                        <MessageSquare className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-base text-slate-900">{rule.title}</h3>
-                        <div className="text-xs text-slate-500 font-medium">
-                          Triggered {rule.triggered_count} times
-                        </div>
-                      </div>
-                    </div>
+              {(() => {
+                const filteredRules = (keywordRules || []).filter((rule) => {
+                  if (!ruleSearchQuery.trim()) return true;
+                  const q = ruleSearchQuery.toLowerCase().trim();
+                  return (
+                    rule.title.toLowerCase().includes(q) ||
+                    (rule.workflow_name && rule.workflow_name.toLowerCase().includes(q)) ||
+                    rule.reply.toLowerCase().includes(q) ||
+                    (rule.keywords || []).some((k) => k.toLowerCase().includes(q))
+                  );
+                });
 
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-700">{rule.active ? 'ON' : 'OFF'}</span>
-                        <button
-                          onClick={() => handleToggleRule(rule.id)}
-                          className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                            rule.active ? 'bg-[#0B3B2C]' : 'bg-slate-300'
-                          }`}
-                        >
-                          <span
-                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-xs transition-transform transform ${
-                              rule.active ? 'translate-x-5' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
+                if (filteredRules.length === 0) {
+                  return (
+                    <div className="bg-white p-10 rounded-2xl border border-dashed border-slate-300 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                        <MessageSquare className="w-6 h-6" />
                       </div>
-
+                      <div className="font-bold text-slate-800 text-sm">
+                        {ruleSearchQuery ? 'No matching keyword trigger rules found' : 'No keyword trigger rules configured'}
+                      </div>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        {ruleSearchQuery
+                          ? 'Try searching with another keyword, flow title, or clear the search query.'
+                          : 'Create your first trigger rule to automatically respond when customers send specific words on WhatsApp.'}
+                      </p>
                       <button
-                        onClick={() => handleDeleteRule(rule.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition"
-                        title="Delete Rule"
+                        type="button"
+                        onClick={() => {
+                          if (ruleSearchQuery) {
+                            setRuleSearchQuery('');
+                          } else {
+                            setIsNewRuleModalOpen(true);
+                          }
+                        }}
+                        className="px-4 py-2 bg-[#0B3B2C] text-white text-xs font-bold rounded-xl shadow-xs transition hover:bg-[#072B1F] cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {ruleSearchQuery ? 'Clear Search' : '+ Create Trigger Rule'}
                       </button>
                     </div>
-                  </div>
+                  );
+                }
 
-                  {/* When Customer Says... */}
-                  <div className="space-y-1.5">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      WHEN CUSTOMER SAYS...
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {rule.keywords.map((kw, kIdx) => (
-                        <span
-                          key={kIdx}
-                          className="bg-slate-100 text-slate-700 font-medium text-xs px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5"
-                        >
-                          <span>{kw}</span>
-                          <button
-                            onClick={() => handleRemoveKeyword(rule.id, kw)}
-                            className="text-slate-400 hover:text-slate-700"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
+                return filteredRules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-4"
+                  >
+                    {/* Rule Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
+                          <MessageSquare className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-base text-slate-900">{rule.title}</h3>
+                            <button
+                              type="button"
+                              onClick={() => setEditingRule(rule)}
+                              className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                              title="Edit Rule Title & Reply"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-xs text-slate-500 font-medium">
+                            Triggered {rule.triggered_count} times
+                          </div>
+                        </div>
+                      </div>
 
-                      {activeKeywordInputRuleId === rule.id ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="text"
-                            placeholder="Type keyword and press Enter..."
-                            value={inlineKeywordText}
-                            onChange={(e) => setInlineKeywordText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddKeywordToRule(rule.id);
-                              }
-                            }}
-                            autoFocus
-                            className="text-xs px-3 py-1.5 border border-emerald-400 rounded-xl outline-none bg-white w-44"
-                          />
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-700">{rule.active ? 'ON' : 'OFF'}</span>
                           <button
-                            onClick={() => handleAddKeywordToRule(rule.id)}
-                            className="p-1 text-emerald-600 hover:text-emerald-700"
+                            type="button"
+                            onClick={() => handleToggleRule(rule.id)}
+                            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                              rule.active ? 'bg-[#0B3B2C]' : 'bg-slate-300'
+                            }`}
+                            title={rule.active ? 'Click to Disable Rule' : 'Click to Enable Rule'}
                           >
-                            <Check className="w-4 h-4" />
+                            <span
+                              className={`block w-4.5 h-4.5 rounded-full bg-white shadow-xs transition-transform transform ${
+                                rule.active ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
                           </button>
                         </div>
-                      ) : (
+
                         <button
-                          onClick={() => {
-                            setActiveKeywordInputRuleId(rule.id);
-                            setInlineKeywordText('');
-                          }}
-                          className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold px-2 py-1 rounded-lg border border-dashed border-emerald-300 hover:bg-emerald-50 transition cursor-pointer"
+                          type="button"
+                          onClick={() => handleDeleteRule(rule.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                          title="Delete Rule"
                         >
-                          + Add keyword
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Integrated Workflow Trigger Banner (Customer requirement!) */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 hover:bg-emerald-50/40 border border-slate-200 rounded-xl transition">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                          <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600 shrink-0" />
+                          <span>⚡ Triggers Workflow:</span>
+                        </div>
+                        <select
+                          value={rule.workflow_name || ''}
+                          onChange={(e) => handleUpdateRuleWorkflow(rule.id, e.target.value)}
+                          className="text-xs font-semibold px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800 shadow-2xs focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                        >
+                          <option value="">None (Auto-Reply Only)</option>
+                          <option value="Service Booking Flow">Service Booking Flow</option>
+                          <option value="Inbound Welcome & Service Flow">Inbound Welcome & Service Flow</option>
+                          <option value="Price Quotation Flow">Price Quotation Flow</option>
+                          <option value="Live Specialist Status & ETA">Live Specialist Status & ETA</option>
+                          <option value="Emergency Breakdown Service">Emergency Breakdown Service</option>
+                          <option value="Human Support Escalation">Human Support Escalation</option>
+                          {(workflows || [])
+                            .filter(
+                              (w) =>
+                                ![
+                                  'Service Booking Flow',
+                                  'Inbound Welcome & Service Flow',
+                                  'Price Quotation Flow',
+                                  'Live Specialist Status & ETA',
+                                  'Emergency Breakdown Service',
+                                  'Human Support Escalation',
+                                ].includes(w.name)
+                            )
+                            .map((w) => (
+                              <option key={w.id} value={w.name}>
+                                {w.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {rule.workflow_name && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWorkflowInCanvas(rule.workflow_name!)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-lg text-xs font-bold shadow-xs transition cursor-pointer active:scale-95 shrink-0"
+                          title="Open and edit this workflow in the visual interactive canvas"
+                        >
+                          <span>Open in Canvas</span>
+                          <ExternalLink className="w-3 h-3" />
                         </button>
                       )}
                     </div>
-                  </div>
 
-                  {/* Reply With... */}
-                  <div className="space-y-1.5">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      REPLY WITH...
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-800 leading-relaxed font-sans whitespace-pre-line">
-                      {rule.reply}
-                    </div>
-
-                    {rule.attachment && (
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5">
-                          <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{rule.attachment}</span>
-                        </span>
+                    {/* When Customer Says... */}
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        WHEN CUSTOMER SAYS...
                       </div>
-                    )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(rule.keywords || []).map((kw, kIdx) => (
+                          <span
+                            key={kIdx}
+                            className="bg-slate-100 text-slate-700 font-medium text-xs px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5"
+                          >
+                            <span>{kw}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveKeyword(rule.id, kw)}
+                              className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                              title={`Remove keyword "${kw}"`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+
+                        {activeKeywordInputRuleId === String(rule.id) ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              placeholder="Type keyword & press Enter..."
+                              value={inlineKeywordText}
+                              onChange={(e) => setInlineKeywordText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddKeywordToRule(rule.id);
+                                } else if (e.key === 'Escape') {
+                                  setActiveKeywordInputRuleId(null);
+                                }
+                              }}
+                              autoFocus
+                              className="text-xs px-3 py-1.5 border border-emerald-400 rounded-xl outline-none bg-white w-44"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddKeywordToRule(rule.id)}
+                              className="p-1 text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                              title="Add Keyword"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveKeywordInputRuleId(null)}
+                              className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                              title="Cancel"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveKeywordInputRuleId(String(rule.id));
+                              setInlineKeywordText('');
+                            }}
+                            className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold px-2.5 py-1 rounded-lg border border-dashed border-emerald-300 hover:bg-emerald-50 transition cursor-pointer"
+                          >
+                            + Add keyword
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Reply With... */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          REPLY WITH...
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingRule(rule)}
+                          className="text-[11px] text-emerald-700 hover:underline font-semibold cursor-pointer"
+                        >
+                          Edit Reply
+                        </button>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-800 leading-relaxed font-sans whitespace-pre-line">
+                        {rule.reply}
+                      </div>
+
+                      {rule.attachment && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                            <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{rule.attachment}</span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
 
             {/* Right Column: Working Hours Card */}
@@ -2819,18 +3133,70 @@ export const WorkflowBuilderView: React.FC = () => {
 
                 {/* Day Schedule List */}
                 <div className="divide-y divide-slate-100">
-                  {workingHours.map((wh) => (
-                    <div key={wh.day} className="py-3 flex items-center justify-between text-xs">
-                      <div>
+                  {(workingHours || []).map((wh) => (
+                    <div key={wh.day} className="py-3 flex items-center justify-between text-xs gap-2">
+                      <div className="flex-1 min-w-0">
                         <div className="font-bold text-slate-800">{wh.day}</div>
-                        <div className="text-slate-500 text-[11px] font-mono mt-0.5">{wh.time}</div>
+                        {editingDayTime?.day === wh.day ? (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <input
+                              type="text"
+                              value={editingDayTime.time}
+                              onChange={(e) => setEditingDayTime({ ...editingDayTime, time: e.target.value })}
+                              className="text-[11px] font-mono px-2 py-0.5 border border-emerald-400 rounded bg-white outline-none w-36"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  updateWorkingDayTime(wh.day, editingDayTime.time);
+                                  setEditingDayTime(null);
+                                  addToast(`Updated ${wh.day} hours`, 'success');
+                                } else if (e.key === 'Escape') {
+                                  setEditingDayTime(null);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateWorkingDayTime(wh.day, editingDayTime.time);
+                                setEditingDayTime(null);
+                                addToast(`Updated ${wh.day} hours`, 'success');
+                              }}
+                              className="p-1 text-emerald-700 hover:text-emerald-800 cursor-pointer"
+                              title="Save time"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingDayTime(null)}
+                              className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                              title="Cancel"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-slate-500 text-[11px] font-mono truncate">{wh.time}</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditingDayTime({ day: wh.day, time: wh.time })}
+                              className="p-0.5 text-slate-400 hover:text-emerald-700 transition cursor-pointer"
+                              title="Edit operating hours"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <input
                         type="checkbox"
                         checked={wh.enabled}
                         onChange={() => handleToggleDay(wh.day)}
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer accent-[#0B3B2C]"
+                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer accent-[#0B3B2C] shrink-0"
+                        title={wh.enabled ? 'Operating' : 'Closed'}
                       />
                     </div>
                   ))}
@@ -2843,14 +3209,21 @@ export const WorkflowBuilderView: React.FC = () => {
                   </label>
                   <textarea
                     rows={3}
-                    defaultValue="Hi there! Thanks for reaching out to WhatsQ. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!"
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={awayMessage}
+                    onChange={(e) => {
+                      setAwayMessage(e.target.value);
+                      setOutsideHoursMessage(e.target.value);
+                    }}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed font-sans"
+                    placeholder="Enter message to send when customer messages outside working hours..."
                   />
                   <button
-                    onClick={() => addToast('Working hours & away message saved', 'success')}
-                    className="w-full py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+                    type="button"
+                    onClick={() => saveWorkingHoursConfig(workingHours, awayMessage)}
+                    className="w-full py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    Save Working Hours
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Working Hours</span>
                   </button>
                 </div>
               </div>
@@ -4115,6 +4488,45 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  ⚡ Trigger Workflow (When Keywords Match)
+                </label>
+                <select
+                  value={newRule.workflow_name || ''}
+                  onChange={(e) => setNewRule({ ...newRule, workflow_name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs font-semibold text-slate-800 cursor-pointer"
+                >
+                  <option value="">None (Auto-Reply Only)</option>
+                  <option value="Service Booking Flow">Service Booking Flow</option>
+                  <option value="Inbound Welcome & Service Flow">Inbound Welcome & Service Flow</option>
+                  <option value="Price Quotation Flow">Price Quotation Flow</option>
+                  <option value="Live Specialist Status & ETA">Live Specialist Status & ETA</option>
+                  <option value="Emergency Breakdown Service">Emergency Breakdown Service</option>
+                  <option value="Human Support Escalation">Human Support Escalation</option>
+                  {(workflows || [])
+                    .filter(
+                      (w) =>
+                        ![
+                          'Service Booking Flow',
+                          'Inbound Welcome & Service Flow',
+                          'Price Quotation Flow',
+                          'Live Specialist Status & ETA',
+                          'Emergency Breakdown Service',
+                          'Human Support Escalation',
+                        ].includes(w.name)
+                    )
+                    .map((w) => (
+                      <option key={w.id} value={w.name}>
+                        {w.name}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  When a customer message matches, this workflow is automatically attached to the chat conversation.
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-slate-700 font-semibold mb-1">Attachment (Optional File/PDF)</label>
                 <input
                   type="text"
@@ -4138,6 +4550,142 @@ export const WorkflowBuilderView: React.FC = () => {
                   className="px-5 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-semibold shadow-sm transition cursor-pointer"
                 >
                   Save & Enable Rule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* EDIT KEYWORD TRIGGER RULE MODAL                                           */}
+      {/* ========================================================================= */}
+      {editingRule && (
+        <div className="fixed inset-0 z-[70] overflow-hidden flex items-center justify-center p-3 sm:p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+            onClick={() => setEditingRule(null)}
+          />
+
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl z-10 overflow-hidden font-sans border border-slate-200 max-h-[92dvh] flex flex-col">
+            <div className="p-4 sm:p-5 bg-[#0B3B2C] text-white flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="font-bold text-base">Edit Keyword Trigger Rule</h3>
+                <p className="text-xs text-emerald-300">Modify triggers, assigned workflow & automated response</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingRule(null)}
+                className="p-1 rounded-lg text-emerald-200 hover:text-white cursor-pointer shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedRule} className="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Rule Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingRule.title}
+                  onChange={(e) => setEditingRule({ ...editingRule, title: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  ⚡ Trigger Workflow (When Keywords Match)
+                </label>
+                <select
+                  value={editingRule.workflow_name || ''}
+                  onChange={(e) => setEditingRule({ ...editingRule, workflow_name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs font-semibold text-slate-800 cursor-pointer"
+                >
+                  <option value="">None (Auto-Reply Only)</option>
+                  <option value="Service Booking Flow">Service Booking Flow</option>
+                  <option value="Inbound Welcome & Service Flow">Inbound Welcome & Service Flow</option>
+                  <option value="Price Quotation Flow">Price Quotation Flow</option>
+                  <option value="Live Specialist Status & ETA">Live Specialist Status & ETA</option>
+                  <option value="Emergency Breakdown Service">Emergency Breakdown Service</option>
+                  <option value="Human Support Escalation">Human Support Escalation</option>
+                  {(workflows || [])
+                    .filter(
+                      (w) =>
+                        ![
+                          'Service Booking Flow',
+                          'Inbound Welcome & Service Flow',
+                          'Price Quotation Flow',
+                          'Live Specialist Status & ETA',
+                          'Emergency Breakdown Service',
+                          'Human Support Escalation',
+                        ].includes(w.name)
+                    )
+                    .map((w) => (
+                      <option key={w.id} value={w.name}>
+                        {w.name}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  When matched, this workflow takes over customer interactions in conversations.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Trigger Keywords (separated by comma) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={Array.isArray(editingRule.keywords) ? editingRule.keywords.join(', ') : editingRule.keywords}
+                  onChange={(e) =>
+                    setEditingRule({
+                      ...editingRule,
+                      keywords: e.target.value.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean),
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Automated Reply Message *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={editingRule.reply}
+                  onChange={(e) => setEditingRule({ ...editingRule, reply: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Attachment (Optional File/PDF)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rate-Card-Catalog.pdf"
+                  value={editingRule.attachment || ''}
+                  onChange={(e) => setEditingRule({ ...editingRule, attachment: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-xs"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingRule(null)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl font-semibold shadow-sm transition cursor-pointer"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

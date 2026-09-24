@@ -9,7 +9,8 @@ import {
   MetaWalletInfo, MetaWalletTransaction,
   SuppressionRecord,
   RoleDefinition, RoleModule, RolePermissionAction, RecordScope,
-  LinkedEmployeeDevice, PdfEditorDocument, PdfCanvasElement
+  LinkedEmployeeDevice, PdfEditorDocument, PdfCanvasElement,
+  KeywordRule, DaySchedule, WorkingHoursConfig
 } from '../types';
 import { apiClient } from '../api/client';
 import { mapConversation, mapMessage } from '../api/mappers';
@@ -290,6 +291,76 @@ function persistCache<T>(key: string, data: T[]) {
   if (typeof window === 'undefined' || !Array.isArray(data) || data.length === 0) return;
   try {
     localStorage.setItem(`whatsq_${key}_cache`, JSON.stringify(data));
+  } catch {}
+}
+
+export const INITIAL_KEYWORD_RULES: KeywordRule[] = [
+  {
+    id: 1,
+    title: 'Inbound Greetings Auto-Responder ("Hi" / "Hello")',
+    triggered_count: 52,
+    active: true,
+    keywords: ['hi', 'hello', 'hey', 'start', 'greetings', 'menu', 'good morning', 'good evening'],
+    action_type: 'workflow',
+    workflow_name: 'Service Booking Flow',
+    reply: '👋 *Welcome to {COMPANY_NAME}!* \nHello {STAT_NAME}! How can we assist you today?\n\n1️⃣ Reschedule / Book Service\n2️⃣ Live Specialist ETA\n3️⃣ Price Quotation\n4️⃣ Speak with Agent\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!'
+  },
+  {
+    id: 2,
+    title: 'Price List Auto-Reply',
+    triggered_count: 14,
+    active: true,
+    keywords: ['price', 'catalog', 'rate', 'cost', 'quotation'],
+    action_type: 'reply',
+    workflow_name: 'Price Quotation Flow',
+    reply: 'Hello {STAT_NAME}! Here is our latest wholesale rate card & service pricing catalog.'
+  },
+  {
+    id: 3,
+    title: 'Service Booking & Appointment Trigger',
+    triggered_count: 28,
+    active: true,
+    keywords: ['book', 'appointment', 'schedule', 'service', 'repair', 'ac repair', 'booking'],
+    action_type: 'workflow',
+    workflow_name: 'Service Booking Flow',
+    reply: "👋 *Welcome to {COMPANY_NAME}!* Let's get your appointment scheduled right away."
+  },
+  {
+    id: 4,
+    title: 'Live Specialist Status & ETA',
+    triggered_count: 9,
+    active: true,
+    keywords: ['track', 'technician', 'specialist', 'status', 'eta', 'where', 'location'],
+    action_type: 'reply',
+    reply: '📍 *Live Specialist Status*\nYour assigned technician is on duty and will reach within 15-20 minutes!'
+  }
+];
+
+export const INITIAL_WORKING_HOURS: DaySchedule[] = [
+  { day: 'Monday', time: '9:30 AM - 7:30 PM', enabled: true },
+  { day: 'Tuesday', time: '9:30 AM - 7:30 PM', enabled: true },
+  { day: 'Wednesday', time: '9:30 AM - 7:30 PM', enabled: true },
+  { day: 'Thursday', time: '9:30 AM - 7:30 PM', enabled: true },
+  { day: 'Friday', time: '9:30 AM - 7:30 PM', enabled: true },
+  { day: 'Saturday', time: '10:00 AM - 8:00 PM', enabled: true },
+  { day: 'Sunday', time: 'Closed', enabled: false },
+];
+
+export const DEFAULT_AWAY_MESSAGE = "Hi there! Thanks for reaching out to WhatsQ. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!";
+
+function getStoredAwayMessage(): string {
+  if (typeof window === 'undefined') return DEFAULT_AWAY_MESSAGE;
+  try {
+    const raw = localStorage.getItem('whatsq_outside_hours_message_cache');
+    if (raw && raw.trim()) return raw;
+  } catch {}
+  return DEFAULT_AWAY_MESSAGE;
+}
+
+function persistAwayMessage(msg: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('whatsq_outside_hours_message_cache', msg);
   } catch {}
 }
 
@@ -699,6 +770,23 @@ interface QiyamState {
   activeWorkflowGroups: any[] | null;
   setActiveWorkflowGroups: (groups: any[] | null) => void;
   saveWorkflow: (wf: { id?: string | number; name: string; description?: string; trigger_type?: string; nodes: any[]; edges?: any[] }) => Promise<Workflow>;
+
+  keywordRules: KeywordRule[];
+  workingHours: DaySchedule[];
+  outsideHoursMessage: string;
+  setKeywordRules: (rules: KeywordRule[]) => void;
+  addKeywordRule: (rule: Partial<KeywordRule>) => Promise<KeywordRule>;
+  updateKeywordRule: (id: string | number, partial: Partial<KeywordRule>) => Promise<void>;
+  deleteKeywordRule: (id: string | number) => Promise<void>;
+  toggleKeywordRule: (id: string | number) => Promise<void>;
+  addKeywordToRule: (ruleId: string | number, kw: string) => Promise<void>;
+  removeKeywordFromRule: (ruleId: string | number, kw: string) => Promise<void>;
+  setWorkingHours: (hours: DaySchedule[]) => void;
+  toggleWorkingDay: (dayName: string) => void;
+  updateWorkingDayTime: (dayName: string, time: string) => void;
+  setOutsideHoursMessage: (msg: string) => void;
+  saveWorkingHoursConfig: (hours?: DaySchedule[], msg?: string) => Promise<void>;
+  syncAutomationRules: () => Promise<void>;
 
   syncStatus: 'connected' | 'reconnecting' | 'offline';
   setSyncStatus: (status: 'connected' | 'reconnecting' | 'offline') => void;
@@ -1947,6 +2035,186 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
   },
 
+  setKeywordRules: (rules) => {
+    persistCache('keywordRules', rules);
+    set({ keywordRules: rules });
+  },
+
+  addKeywordRule: async (ruleData) => {
+    try {
+      const res = await qiyamApi.createKeywordRule(ruleData);
+      const createdRule: KeywordRule = (res && res.id) ? res : {
+        id: `rule-${Date.now()}`,
+        title: ruleData.title || 'New Trigger Rule',
+        triggered_count: 0,
+        active: true,
+        keywords: ruleData.keywords || [],
+        reply: ruleData.reply || '',
+        attachment: ruleData.attachment,
+        action_type: ruleData.action_type || 'workflow',
+        workflow_name: ruleData.workflow_name || 'Service Booking Flow',
+      };
+      set((state) => {
+        const next = [createdRule, ...state.keywordRules];
+        persistCache('keywordRules', next);
+        return { keywordRules: next };
+      });
+      get().addToast(`Rule "${createdRule.title}" created successfully!`, 'success');
+      return createdRule;
+    } catch {
+      const fallbackRule: KeywordRule = {
+        id: `rule-${Date.now()}`,
+        title: ruleData.title || 'New Trigger Rule',
+        triggered_count: 0,
+        active: true,
+        keywords: ruleData.keywords || [],
+        reply: ruleData.reply || '',
+        attachment: ruleData.attachment,
+        action_type: ruleData.action_type || 'workflow',
+        workflow_name: ruleData.workflow_name || 'Service Booking Flow',
+      };
+      set((state) => {
+        const next = [fallbackRule, ...state.keywordRules];
+        persistCache('keywordRules', next);
+        return { keywordRules: next };
+      });
+      get().addToast(`Rule "${fallbackRule.title}" created!`, 'success');
+      return fallbackRule;
+    }
+  },
+
+  updateKeywordRule: async (id, partial) => {
+    set((state) => {
+      const next = state.keywordRules.map((r) => r.id === id ? { ...r, ...partial } : r);
+      persistCache('keywordRules', next);
+      return { keywordRules: next };
+    });
+    try {
+      await qiyamApi.updateKeywordRule(id, partial);
+    } catch {}
+  },
+
+  deleteKeywordRule: async (id) => {
+    set((state) => {
+      const next = state.keywordRules.filter((r) => r.id !== id);
+      persistCache('keywordRules', next);
+      return { keywordRules: next };
+    });
+    try {
+      await qiyamApi.deleteKeywordRule(id);
+    } catch {}
+    get().addToast('Keyword rule removed', 'info');
+  },
+
+  toggleKeywordRule: async (id) => {
+    set((state) => {
+      const next = state.keywordRules.map((r) => r.id === id ? { ...r, active: !r.active } : r);
+      persistCache('keywordRules', next);
+      return { keywordRules: next };
+    });
+    try {
+      await qiyamApi.toggleKeywordRule(id);
+    } catch {}
+  },
+
+  addKeywordToRule: async (ruleId, kw) => {
+    const cleanKw = kw.trim().toLowerCase();
+    if (!cleanKw) return;
+    const rule = get().keywordRules.find((r) => r.id === ruleId);
+    if (!rule || rule.keywords.includes(cleanKw)) return;
+    const nextKeywords = [...rule.keywords, cleanKw];
+    set((state) => {
+      const next = state.keywordRules.map((r) => r.id === ruleId ? { ...r, keywords: nextKeywords } : r);
+      persistCache('keywordRules', next);
+      return { keywordRules: next };
+    });
+    try {
+      await qiyamApi.updateKeywordRule(ruleId, { keywords: nextKeywords });
+    } catch {}
+    get().addToast(`Keyword "${cleanKw}" added`, 'success');
+  },
+
+  removeKeywordFromRule: async (ruleId, kw) => {
+    const rule = get().keywordRules.find((r) => r.id === ruleId);
+    if (!rule) return;
+    const nextKeywords = rule.keywords.filter((k) => k !== kw);
+    set((state) => {
+      const next = state.keywordRules.map((r) => r.id === ruleId ? { ...r, keywords: nextKeywords } : r);
+      persistCache('keywordRules', next);
+      return { keywordRules: next };
+    });
+    try {
+      await qiyamApi.updateKeywordRule(ruleId, { keywords: nextKeywords });
+    } catch {}
+  },
+
+  setWorkingHours: (hours) => {
+    persistCache('workingHours', hours);
+    set({ workingHours: hours });
+  },
+
+  toggleWorkingDay: (dayName) => {
+    set((state) => {
+      const next = state.workingHours.map((d) => d.day === dayName ? { ...d, enabled: !d.enabled } : d);
+      persistCache('workingHours', next);
+      qiyamApi.saveWorkingHours({ schedule: next }).catch(() => {});
+      return { workingHours: next };
+    });
+  },
+
+  updateWorkingDayTime: (dayName, time) => {
+    set((state) => {
+      const next = state.workingHours.map((d) => d.day === dayName ? { ...d, time } : d);
+      persistCache('workingHours', next);
+      qiyamApi.saveWorkingHours({ schedule: next }).catch(() => {});
+      return { workingHours: next };
+    });
+  },
+
+  setOutsideHoursMessage: (msg) => {
+    persistAwayMessage(msg);
+    set({ outsideHoursMessage: msg });
+  },
+
+  saveWorkingHoursConfig: async (hours, msg) => {
+    const schedule = hours || get().workingHours;
+    const awayMessage = msg !== undefined ? msg : get().outsideHoursMessage;
+    persistCache('workingHours', schedule);
+    persistAwayMessage(awayMessage);
+    set({ workingHours: schedule, outsideHoursMessage: awayMessage });
+    try {
+      await qiyamApi.saveWorkingHours({ schedule, away_message: awayMessage });
+      get().addToast('Working hours & away message saved to server!', 'success');
+    } catch {
+      get().addToast('Working hours saved locally!', 'info');
+    }
+  },
+
+  syncAutomationRules: async () => {
+    try {
+      const [rules, wh, wfs] = await Promise.all([
+        qiyamApi.fetchKeywordRules(),
+        qiyamApi.fetchWorkingHours(),
+        qiyamApi.fetchWorkflows(),
+      ]);
+      if (Array.isArray(rules) && rules.length > 0) {
+        set({ keywordRules: rules });
+        persistCache('keywordRules', rules);
+      }
+      if (wh && Array.isArray(wh.schedule) && wh.schedule.length > 0) {
+        set({ workingHours: wh.schedule, outsideHoursMessage: wh.away_message || get().outsideHoursMessage });
+        persistCache('workingHours', wh.schedule);
+        if (wh.away_message) persistAwayMessage(wh.away_message);
+      }
+      if (Array.isArray(wfs) && wfs.length > 0) {
+        set({ workflows: wfs });
+      }
+      get().addToast('Live Sync: Workflows & trigger rules synchronized!', 'success');
+    } catch {
+      get().addToast('Live Sync completed with cached configuration.', 'info');
+    }
+  },
+
   isSidebarCollapsed: typeof window !== 'undefined' && localStorage.getItem('whatsq_sidebar_collapsed') === 'true',
   toggleSidebarCollapse: () => set((state) => {
     const next = !state.isSidebarCollapsed;
@@ -2267,6 +2535,9 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   workflows: [],
   workflowLogs: [],
   approvals: [],
+  keywordRules: getStoredCache('keywordRules', INITIAL_KEYWORD_RULES),
+  workingHours: getStoredCache('workingHours', INITIAL_WORKING_HOURS),
+  outsideHoursMessage: getStoredAwayMessage(),
   knowledgeArticles: getStoredCache('knowledgeArticles', DEFAULT_KNOWLEDGE_ARTICLES),
   templates: getStoredCache('templates', INITIAL_TEMPLATES),
   integrations: INITIAL_INTEGRATIONS,
@@ -2324,6 +2595,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       qiyamApi.fetchIntentMetrics(),      // 26
       qiyamApi.fetchDailyMetrics(),       // 27
       qiyamApi.fetchQuotations(),         // 28
+      qiyamApi.fetchKeywordRules(),       // 29
+      qiyamApi.fetchWorkingHours(),       // 30
     ]);
 
     const current = get();
@@ -2406,6 +2679,23 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     (current.quotations || []).forEach((q) => quoMap.set(q.quotation_number || String(q.id), q));
     const quotations = Array.from(quoMap.values());
     persistCache('quotations', quotations);
+
+    const keywordRules = safeVal(29, current.keywordRules, INITIAL_KEYWORD_RULES, 'keywordRules');
+    let workingHours = current.workingHours;
+    let outsideHoursMessage = current.outsideHoursMessage;
+    if (results[30] && results[30].status === 'fulfilled') {
+      const whVal = (results[30] as any).value;
+      if (whVal) {
+        if (Array.isArray(whVal.schedule) && whVal.schedule.length > 0) {
+          workingHours = whVal.schedule;
+          persistCache('workingHours', workingHours);
+        }
+        if (whVal.away_message) {
+          outsideHoursMessage = whVal.away_message;
+          persistAwayMessage(outsideHoursMessage);
+        }
+      }
+    }
 
     // If all calls rejected, mark backend offline, but preserve current data
     const allRejected = results.every((r) => r.status === 'rejected');
@@ -2596,6 +2886,9 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       workflows,
       workflowLogs,
       approvals,
+      keywordRules,
+      workingHours,
+      outsideHoursMessage,
       knowledgeArticles,
       integrations: (integrations && integrations.length > 0)
         ? integrations.map((i) => {

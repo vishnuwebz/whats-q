@@ -1,7 +1,8 @@
 from rest_framework import serializers, viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Workflow, WorkflowTemplate, AutomationLog, Approval
+from rest_framework.decorators import action
+from .models import Workflow, WorkflowTemplate, AutomationLog, Approval, KeywordTriggerRule, WorkingHoursConfig
 import datetime
 
 class WorkflowSerializer(serializers.ModelSerializer):
@@ -29,6 +30,16 @@ class ApprovalSerializer(serializers.ModelSerializer):
         model = Approval
         fields = '__all__'
 
+class KeywordTriggerRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KeywordTriggerRule
+        fields = '__all__'
+
+class WorkingHoursConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkingHoursConfig
+        fields = '__all__'
+
 class WorkflowViewSet(viewsets.ModelViewSet):
     queryset = Workflow.objects.all().order_by('-id')
     serializer_class = WorkflowSerializer
@@ -44,6 +55,54 @@ class AutomationLogViewSet(viewsets.ModelViewSet):
 class ApprovalViewSet(viewsets.ModelViewSet):
     queryset = Approval.objects.all().order_by('-id')
     serializer_class = ApprovalSerializer
+
+class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
+    queryset = KeywordTriggerRule.objects.all().order_by('-updated_at')
+    serializer_class = KeywordTriggerRuleSerializer
+
+    @action(detail=True, methods=['post'])
+    def toggle(self, request, pk=None):
+        rule = self.get_object()
+        rule.active = not rule.active
+        rule.save(update_fields=['active', 'updated_at'])
+        return Response(self.get_serializer(rule).data)
+
+class WorkingHoursView(APIView):
+    def get(self, request):
+        cfg = WorkingHoursConfig.objects.first()
+        if not cfg:
+            cfg = WorkingHoursConfig.objects.create(
+                schedule=[
+                    {'day': 'Monday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                    {'day': 'Tuesday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                    {'day': 'Wednesday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                    {'day': 'Thursday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                    {'day': 'Friday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                    {'day': 'Saturday', 'time': '10:00 AM - 8:00 PM', 'enabled': True},
+                    {'day': 'Sunday', 'time': 'Closed', 'enabled': False},
+                ],
+                away_message='Hi there! Thanks for reaching out to WhatsQ. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!',
+                is_active=True
+            )
+        return Response(WorkingHoursConfigSerializer(cfg).data)
+
+    def put(self, request):
+        cfg = WorkingHoursConfig.objects.first()
+        if not cfg:
+            cfg = WorkingHoursConfig()
+        
+        if 'schedule' in request.data:
+            cfg.schedule = request.data['schedule']
+        if 'away_message' in request.data:
+            cfg.away_message = request.data['away_message']
+        if 'is_active' in request.data:
+            cfg.is_active = request.data['is_active']
+        
+        cfg.save()
+        return Response(WorkingHoursConfigSerializer(cfg).data)
+
+    def post(self, request):
+        return self.put(request)
 
 class ExecuteWorkflowView(APIView):
     """
