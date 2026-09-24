@@ -23,6 +23,21 @@ interface SidebarMenuItem {
   keywords: string;
 }
 
+export interface SidebarTenantItem {
+  id: string;
+  name: string;
+  branch: string;
+  status: string;
+  phone: string;
+  initial: string;
+  color: string;
+  staffCount: number;
+  sidebarModules: string[];
+  trialConfigDays?: number;
+  activeTrials?: any;
+  addonPurchases?: any;
+}
+
 const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'landing', title: 'Landing Page Showcase', category: 'Main', icon: Globe, keywords: 'landing website marketing showcase public portal' },
   { tab: 'dashboard', title: 'Dashboard', category: 'Main', icon: LayoutDashboard, keywords: 'home overview analytics metrics' },
@@ -190,10 +205,14 @@ export const Sidebar: React.FC = () => {
   );
 
   useEffect(() => {
-    const handleWorkspaceSync = () => {
+    const handleWorkspaceSync = (e?: any) => {
       if (typeof window !== 'undefined') {
         setBrandTitle(localStorage.getItem('whatsq_workspace_name') || 'Qiyam Business OS');
         setBrandLogo(localStorage.getItem('whatsq_brand_logo'));
+        const newId = e?.detail?.tenantId || e?.detail?.id || localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id');
+        if (newId) {
+          setActiveTenantId(newId);
+        }
       }
     };
     const handleTenantsSync = () => {
@@ -235,7 +254,13 @@ export const Sidebar: React.FC = () => {
 
   // Tenant / Organization Switcher state
   const [isTenantOpen, setIsTenantOpen] = useState(false);
-  const [tenants, setTenants] = useState(() => {
+  // Design-aligned New Branch creator state
+  const [isCreatingBranch, setIsCreatingBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('CoolFix Calicut North');
+  const [newBranchLocation, setNewBranchLocation] = useState('Calicut North • Hub');
+  const [newBranchPhone, setNewBranchPhone] = useState('+91 94963 00233');
+  const [newBranchColor, setNewBranchColor] = useState('from-emerald-500 to-teal-600');
+  const [tenants, setTenants] = useState<SidebarTenantItem[]>(() => {
     try {
       const stored = localStorage.getItem('whatsq_platform_tenants');
       if (stored) {
@@ -327,7 +352,7 @@ export const Sidebar: React.FC = () => {
   });
   const [activeTenantId, setActiveTenantId] = useState(() => {
     try {
-      return localStorage.getItem('whatsq_active_tenant_id') || 'TN2345';
+      return localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id') || 'TN2345';
     } catch {
       return 'TN2345';
     }
@@ -395,11 +420,115 @@ export const Sidebar: React.FC = () => {
     try {
       localStorage.setItem('whatsq_active_tenant_id', tenant.id);
       localStorage.setItem('whatsq_active_workspace_id', tenant.id);
-      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: tenant.id } }));
+      localStorage.setItem('whatsq_workspace_name', tenant.name);
+      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: tenant.id, id: tenant.id, name: tenant.name } }));
       window.dispatchEvent(new Event('storage'));
     } catch {}
     setIsTenantOpen(false);
+    setIsCreatingBranch(false);
     addToast(`Switched active organization to ${tenant.name} (${tenant.id})`, 'success');
+  };
+
+  const handleCreateBranchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = newBranchName.trim();
+    if (!trimmedName) {
+      addToast('Please enter an organization or branch name', 'error');
+      return;
+    }
+    const newId = `TN${Math.floor(1000 + Math.random() * 9000)}`;
+    const newTenant: SidebarTenantItem = {
+      id: newId,
+      name: trimmedName,
+      branch: newBranchLocation.trim() || 'Regional Hub',
+      status: 'Active',
+      phone: newBranchPhone.trim() || '+91 94963 00233',
+      initial: trimmedName.charAt(0).toUpperCase(),
+      color: newBranchColor,
+      staffCount: 1,
+      sidebarModules: [
+        'dashboard',
+        'conversations',
+        'messenger',
+        'crm',
+        'branches',
+        'ops',
+        'finance',
+        'automation',
+        'ai',
+        'analytics',
+        'integrations',
+        'roles',
+        'settings',
+        'settings-backup',
+      ],
+      trialConfigDays: 14,
+      activeTrials: {},
+      addonPurchases: {},
+    };
+
+    try {
+      const stored = localStorage.getItem('whatsq_platform_tenants');
+      const parsed = stored ? JSON.parse(stored) : [];
+      const platformTenantFormat = {
+        id: newId,
+        businessName: trimmedName,
+        initials: trimmedName.slice(0, 2).toUpperCase(),
+        branch: newBranchLocation.trim() || 'Regional Hub',
+        ownerName: 'Branch Administrator',
+        ownerEmail: `admin@${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'branch'}.in`,
+        ownerPhone: newBranchPhone.trim() || '+91 94963 00233',
+        tier: 'growth' as const,
+        amount: 5999,
+        billingCycle: 'monthly' as const,
+        createdAt: new Date().toISOString().split('T')[0],
+        lastPaymentDate: new Date().toISOString().split('T')[0],
+        lastPaymentAmount: 5999,
+        nextPaymentDueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+        paymentStatus: 'paid' as const,
+        metaWalletBalance: 2500,
+        metaWalletCurrency: '₹',
+        metaWalletStatus: 'healthy' as const,
+        metaDailyLimit: 10000,
+        metaTier: 'Tier 2 (10k/day)',
+        activeLicenses: 5,
+        maxLicenses: 15,
+        onlineStaffCount: 1,
+        status: 'active' as const,
+        wabaStatus: 'connected' as const,
+        wabaPhone: newBranchPhone.trim() || '+91 94963 00233',
+        wabaId: `109891595932${Math.floor(1000 + Math.random() * 9000)}`,
+        wabaQualityScore: 'HIGH' as const,
+        wabaLatencyMs: 40,
+        lastWebhookPing: '1s ago',
+        messagesSentThisMonth: 120,
+        monthlyMessageLimit: 50000,
+        color: newBranchColor,
+        trialConfigDays: 14,
+        features: {
+          multiAccount: true,
+          botBuilder: true,
+          interactiveButtons: true,
+          customBranding: true,
+          aiAssistant: true,
+          bulkCampaigns: true,
+          voiceNotes: true,
+          apiWebhooks: true,
+        },
+        sidebarModules: newTenant.sidebarModules as any,
+      };
+      const updatedList = Array.isArray(parsed) ? [...parsed, platformTenantFormat] : [platformTenantFormat];
+      localStorage.setItem('whatsq_platform_tenants', JSON.stringify(updatedList));
+      window.dispatchEvent(new CustomEvent('whatsq_tenants_updated', { detail: updatedList }));
+    } catch (err) {
+      console.error(err);
+    }
+
+    setTenants((prev) => [...prev, newTenant]);
+    handleSelectTenant(newTenant);
+    setIsCreatingBranch(false);
+    setIsTenantOpen(false);
+    addToast(`🎉 Created new branch: ${trimmedName} (${newId})`, 'success');
   };
 
   // Help Modal
@@ -2105,143 +2234,254 @@ export const Sidebar: React.FC = () => {
           {/* Header */}
           <div className="p-4 border-b border-[#1E293B] flex items-center justify-between bg-[#111C33]">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-                <Building2 className="w-4 h-4" />
-              </div>
+              {isCreatingBranch ? (
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingBranch(false)}
+                  className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+                  title="Back to Organizations list"
+                >
+                  <ArrowRight className="w-4 h-4 rotate-180" />
+                </button>
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <Building2 className="w-4 h-4" />
+                </div>
+              )}
               <div>
-                <h3 className="text-sm font-bold text-white">Switch Organization & Branch</h3>
-                <p className="text-[11px] text-slate-400">Multi-tenant Cloud Workspace</p>
+                <h3 className="text-sm font-bold text-white">
+                  {isCreatingBranch ? 'Create New Branch / Workspace' : 'Switch Organization & Branch'}
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  {isCreatingBranch ? 'Configure workspace location & identity' : 'Multi-tenant Cloud Workspace'}
+                </p>
               </div>
             </div>
             <button
-              onClick={() => setIsTenantOpen(false)}
+              onClick={() => {
+                setIsTenantOpen(false);
+                setIsCreatingBranch(false);
+              }}
               className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Organizations List */}
-          <div className="p-3 space-y-2 max-h-[360px] overflow-y-auto">
-            {tenants.map((t) => {
-              const isCurrent = t.id === activeTenantId;
-              return (
+          {isCreatingBranch ? (
+            /* ── Design-Aligned New Branch Form ── */
+            <div className="p-4 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+              {/* Live Preview Card */}
+              <div className="p-3 bg-[#111C33]/70 rounded-xl border border-[#1E293B] flex items-center gap-3">
                 <div
-                  key={t.id}
-                  onClick={() => handleSelectTenant(t)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
-                    isCurrent
-                      ? 'bg-emerald-950/40 border-emerald-500/50 shadow-sm'
-                      : 'bg-[#111C33]/50 hover:bg-[#162544] border-[#1E293B] hover:border-slate-600'
-                  }`}
+                  className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${newBranchColor} text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${t.color} text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0`}
-                    >
-                      {t.initial}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white group-hover:text-emerald-300 transition-colors">
-                          {t.name}
-                        </span>
-                        {isCurrent && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            Active
-                          </span>
-                        )}
-                        {t.id === 'TN-EXPIRED-DEMO' && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                            All Add-ons Expired
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
-                        <span>ID: {t.id}</span>
-                        <span>•</span>
-                        <span className="font-sans text-slate-300">{t.branch}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-2">
-                        <span>{t.phone}</span>
-                        <span>•</span>
-                        <span>{t.staffCount} Staff Members</span>
-                      </div>
-                    </div>
+                  {(newBranchName.trim() || 'W').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-white text-xs truncate">
+                    {newBranchName.trim() || 'New Branch Name'}
                   </div>
-
-                  <div className="shrink-0 ml-2">
-                    {isCurrent ? (
-                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs">
-                        <Check className="w-3.5 h-3.5" />
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 group-hover:text-emerald-400 font-medium opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
-                        Switch <ArrowRight className="w-3 h-3" />
-                      </span>
-                    )}
+                  <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono truncate">
+                    <span>ID: Auto-generated</span>
+                    <span>•</span>
+                    <span className="font-sans text-emerald-400">{newBranchLocation.trim() || 'Regional Hub'}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                    {newBranchPhone.trim() || '+91 94963 00233'} • 1 Staff Member
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                  Active
+                </span>
+              </div>
 
-          {/* Footer Actions */}
-          <div className="p-3 border-t border-[#1E293B] bg-[#070D18] flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsTenantOpen(false);
-                handleTabClick('settings');
-              }}
-              className="px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer flex items-center gap-1.5"
-            >
-              <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span>Workspace Settings</span>
-            </button>
+              {/* Form Input Fields */}
+              <form onSubmit={handleCreateBranchSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Organization / Branch Name <span className="text-emerald-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={newBranchName}
+                    onChange={(e) => setNewBranchName(e.target.value)}
+                    placeholder="e.g., CoolFix Calicut North"
+                    className="w-full px-3 py-2 bg-[#070D18] border border-[#1E293B] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none transition"
+                  />
+                </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                const newName = prompt('Enter new Organization / Branch name:', 'CoolFix Calicut North');
-                if (newName && newName.trim()) {
-                  const newId = `TN${Math.floor(1000 + Math.random() * 9000)}`;
-                  const newTenant = {
-                    id: newId,
-                    name: newName.trim(),
-                    branch: 'Regional Hub',
-                    status: 'Active',
-                    phone: '+91 98765 43299',
-                    initial: newName.trim().charAt(0).toUpperCase(),
-                    color: 'from-teal-500 to-emerald-600',
-                    staffCount: 1,
-                    sidebarModules: [
-                      'dashboard',
-                      'conversations',
-                      'messenger',
-                      'crm',
-                      'branches',
-                      'ops',
-                      'finance',
-                      'automation',
-                      'ai',
-                      'analytics',
-                      'integrations',
-                      'roles',
-                      'settings',
-                      'settings-backup',
-                    ],
-                  };
-                  setTenants((prev) => [...prev, newTenant]);
-                  handleSelectTenant(newTenant);
-                }
-              }}
-              className="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Branch</span>
-            </button>
-          </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Branch Location / Hub Tag
+                  </label>
+                  <input
+                    type="text"
+                    value={newBranchLocation}
+                    onChange={(e) => setNewBranchLocation(e.target.value)}
+                    placeholder="e.g., Calicut North • Hub"
+                    className="w-full px-3 py-2 bg-[#070D18] border border-[#1E293B] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Primary WhatsApp Business Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={newBranchPhone}
+                    onChange={(e) => setNewBranchPhone(e.target.value)}
+                    placeholder="+91 94963 00233"
+                    className="w-full px-3 py-2 bg-[#070D18] border border-[#1E293B] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none transition"
+                  />
+                </div>
+
+                {/* Theme Color Picker */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Avatar Theme Gradient
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[
+                      { label: 'Emerald', color: 'from-emerald-500 to-teal-600', ring: 'ring-emerald-400' },
+                      { label: 'Teal', color: 'from-teal-500 to-cyan-600', ring: 'ring-teal-400' },
+                      { label: 'Blue', color: 'from-blue-500 to-indigo-600', ring: 'ring-blue-400' },
+                      { label: 'Purple', color: 'from-purple-500 to-pink-600', ring: 'ring-purple-400' },
+                      { label: 'Amber', color: 'from-amber-500 to-orange-600', ring: 'ring-amber-400' },
+                      { label: 'Rose', color: 'from-rose-500 to-red-600', ring: 'ring-rose-400' },
+                    ].map((c) => (
+                      <button
+                        key={c.label}
+                        type="button"
+                        onClick={() => setNewBranchColor(c.color)}
+                        className={`w-6 h-6 rounded-full bg-gradient-to-tr ${c.color} transition cursor-pointer flex items-center justify-center ${
+                          newBranchColor === c.color ? `ring-2 ${c.ring} ring-offset-2 ring-offset-[#0F172A] scale-110` : 'opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        {newBranchColor === c.color && <Check className="w-3 h-3 text-white" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-3 border-t border-[#1E293B] flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingBranch(false)}
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#1E293B] hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-md shadow-emerald-900/40"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create & Switch</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            /* ── Organizations List View ── */
+            <>
+              <div className="p-3 space-y-2 max-h-[360px] overflow-y-auto">
+                {tenants.map((t) => {
+                  const isCurrent = t.id === activeTenantId;
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => handleSelectTenant(t)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                        isCurrent
+                          ? 'bg-emerald-950/40 border-emerald-500/50 shadow-sm'
+                          : 'bg-[#111C33]/50 hover:bg-[#162544] border-[#1E293B] hover:border-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${t.color} text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0`}
+                        >
+                          {t.initial}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white group-hover:text-emerald-300 transition-colors">
+                              {t.name}
+                            </span>
+                            {isCurrent && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                Active
+                              </span>
+                            )}
+                            {t.id === 'TN-EXPIRED-DEMO' && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                All Add-ons Expired
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
+                            <span>ID: {t.id}</span>
+                            <span>•</span>
+                            <span className="font-sans text-slate-300">{t.branch}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-2">
+                            <span>{t.phone}</span>
+                            <span>•</span>
+                            <span>{t.staffCount} Staff Members</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 ml-2">
+                        {isCurrent ? (
+                          <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 group-hover:text-emerald-400 font-medium opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
+                            Switch <ArrowRight className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-3 border-t border-[#1E293B] bg-[#070D18] flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTenantOpen(false);
+                    handleTabClick('settings');
+                  }}
+                  className="px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Workspace Settings</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingBranch(true);
+                    setNewBranchName('CoolFix Calicut North');
+                    setNewBranchLocation('Calicut North • Regional Hub');
+                    setNewBranchPhone('+91 94963 00233');
+                  }}
+                  className="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Branch</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )}

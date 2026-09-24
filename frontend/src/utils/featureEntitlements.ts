@@ -166,21 +166,21 @@ export const MODULE_PRICING_CATALOG: Record<TenantSidebarModule, ModulePricingIn
  * Maps a concrete navigation tab to its parent Module
  */
 export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
-  if (tab === 'dashboard' || tab === 'super-admin') return 'dashboard';
+  if (tab === 'dashboard' || tab === 'super-admin' || tab === 'landing') return 'dashboard';
   if (tab === 'conversations') return 'conversations';
 
   if (tab.startsWith('bulk-')) return 'messenger';
   if (tab.startsWith('crm-')) return 'crm';
-  if (tab.startsWith('branches-')) return 'branches';
-  if (tab.startsWith('ops-')) return 'ops';
+  if (tab === 'branches' || tab.startsWith('branches-') || tab === 'automation-branches') return 'branches';
+  if (tab.startsWith('ops-') || tab === 'automation-approvals') return 'ops';
   if (tab.startsWith('finance-')) return 'finance';
   if (tab.startsWith('automation-')) return 'automation';
-  if (tab.startsWith('ai-')) return 'ai';
+  if (tab.startsWith('ai-') || tab === 'template-hub' || tab === 'template-create') return 'ai';
   if (tab === 'analytics') return 'analytics';
   if (tab === 'integrations') return 'integrations';
   if (tab === 'roles') return 'roles';
   if (tab === 'settings-backup') return 'settings-backup';
-  if (tab === 'settings') return 'settings';
+  if (tab === 'settings' || tab === 'settings-whatsapp') return 'settings';
 
   return null;
 };
@@ -455,7 +455,7 @@ export const isModuleUnlockedForTenant = (
   trialRecord?: TenantTrialRecord;
   addonRecord?: TenantAddonPurchase;
 } => {
-  if (!tenant) return { isUnlocked: true, reason: 'plan' };
+  if (!tenant) return { isUnlocked: false, reason: 'locked' };
 
   // 1. Included in tenant's base sidebar modules
   const inBasePlan = Array.isArray(tenant.sidebarModules) && tenant.sidebarModules.includes(moduleId);
@@ -528,14 +528,31 @@ export const getStoredTenants = (): PlatformTenant[] => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure the demo expired tenant is available
-        const hasExpiredDemo = parsed.some((t: any) => t.id === 'TN-EXPIRED-DEMO');
-        if (!hasExpiredDemo) {
+        // Ensure the demo expired tenant is available and correctly expired
+        const existingIdx = parsed.findIndex((t: any) => t.id === 'TN-EXPIRED-DEMO');
+        if (existingIdx === -1) {
           const merged = [...parsed, DEMO_EXPIRED_TENANT];
           try {
             localStorage.setItem('whatsq_platform_tenants', JSON.stringify(merged));
           } catch {}
           return merged;
+        } else {
+          // If DEMO_EXPIRED_TENANT exists in storage, make sure it has the expired addonPurchases and activeTrials,
+          // and that its sidebarModules does not erroneously include locked modules like analytics
+          const existing = parsed[existingIdx];
+          const hasUnlockedLockedModules = existing.sidebarModules && existing.sidebarModules.includes('analytics');
+          if (hasUnlockedLockedModules || !existing.activeTrials || !existing.addonPurchases) {
+            parsed[existingIdx] = {
+              ...DEMO_EXPIRED_TENANT,
+              ...existing,
+              sidebarModules: ['dashboard', 'conversations', 'settings'],
+              activeTrials: DEMO_EXPIRED_TENANT.activeTrials,
+              addonPurchases: DEMO_EXPIRED_TENANT.addonPurchases,
+            };
+            try {
+              localStorage.setItem('whatsq_platform_tenants', JSON.stringify(parsed));
+            } catch {}
+          }
         }
         return parsed;
       }
@@ -753,17 +770,18 @@ export const useActiveTenant = () => {
   const [tenants, setTenants] = useState<PlatformTenant[]>(() => getStoredTenants());
   const [activeTenantId, setActiveTenantId] = useState<string>(() => {
     try {
-      const stored = localStorage.getItem('whatsq_active_workspace_id');
+      const stored = localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id');
       if (stored) return stored;
     } catch {}
     return 'TN2345';
   });
 
   useEffect(() => {
-    const handleSync = () => {
+    const handleSync = (e?: any) => {
       setTenants(getStoredTenants());
       try {
-        const stored = localStorage.getItem('whatsq_active_workspace_id');
+        const fromEvt = e?.detail?.tenantId || e?.detail?.id;
+        const stored = fromEvt || localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id');
         if (stored) setActiveTenantId(stored);
       } catch {}
     };
@@ -789,7 +807,7 @@ export const useActiveTenant = () => {
     };
   }, []);
 
-  const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0] || null;
+  const activeTenant = tenants.find((t) => t.id === activeTenantId) || (tenants.length > 0 ? tenants[0] : null);
 
   return { activeTenant, activeTenantId, tenants };
 };

@@ -807,7 +807,9 @@ export const SuperAdminView: React.FC = () => {
     try {
       localStorage.setItem('whatsq_workspace_name', tenant.businessName);
       localStorage.setItem('whatsq_active_tenant_id', tenant.id);
-      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: tenant }));
+      localStorage.setItem('whatsq_active_workspace_id', tenant.id);
+      window.dispatchEvent(new CustomEvent('whatsq_workspace_updated', { detail: { tenantId: tenant.id, id: tenant.id, ...tenant } }));
+      window.dispatchEvent(new Event('storage'));
       addToast(`Switched active organization to "${tenant.businessName}" (${tenant.id})`, 'success');
     } catch {
       addToast(`Switched to ${tenant.businessName}`, 'success');
