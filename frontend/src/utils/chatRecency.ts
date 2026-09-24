@@ -1,6 +1,39 @@
 import { Conversation, WhatsAppMessage } from '../types';
 
 /**
+ * Checks if a string contains an explicit calendar date (e.g. "Yesterday", "May 12", "2026-09-23", etc.)
+ * rather than only a time ("10:30 AM") or a relative transient string ("Just now").
+ */
+export function hasExplicitDate(raw?: string | null): boolean {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'just now') return false;
+  // If it's time-only, it has no explicit date
+  if (/^\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM)?$/i.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Merges time from a time string into an existing Date object.
+ */
+export function mergeTimeIntoDate(baseDate: Date, timeStr?: string | null): Date {
+  const result = new Date(baseDate);
+  if (!timeStr) return result;
+  const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const ampm = match[4]?.toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    result.setHours(hours, minutes, 0, 0);
+  }
+  return result;
+}
+
+/**
  * Parses any date/time string representation from messages, conversations, or ISO timestamps.
  */
 export function parseAnyDate(raw?: string | null): Date | null {
@@ -12,14 +45,58 @@ export function parseAnyDate(raw?: string | null): Date | null {
     return new Date();
   }
 
-  if (trimmed.toLowerCase() === 'yesterday') {
+  // Handle "Yesterday" with optional time, e.g. "Yesterday", "Yesterday 05:34 PM", "yesterday, 5:34 pm", "yesterday at 10:30 AM"
+  const yesterdayMatch = trimmed.match(/^yesterday(?:[,\s]+at)?[,\s]*(?:(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
+  if (yesterdayMatch) {
     const d = new Date();
     d.setDate(d.getDate() - 1);
+    if (yesterdayMatch[1] && yesterdayMatch[2]) {
+      let hours = parseInt(yesterdayMatch[1], 10);
+      const minutes = parseInt(yesterdayMatch[2], 10);
+      const ampm = yesterdayMatch[4]?.toUpperCase();
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      d.setHours(hours, minutes, 0, 0);
+    }
     return d;
   }
 
-  if (trimmed.toLowerCase() === 'today') {
-    return new Date();
+  // Handle "Today" with optional time, e.g. "Today", "Today 05:34 PM", "today at 10:30 AM"
+  const todayMatch = trimmed.match(/^today(?:[,\s]+at)?[,\s]*(?:(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
+  if (todayMatch) {
+    const d = new Date();
+    if (todayMatch[1] && todayMatch[2]) {
+      let hours = parseInt(todayMatch[1], 10);
+      const minutes = parseInt(todayMatch[2], 10);
+      const ampm = todayMatch[4]?.toUpperCase();
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      d.setHours(hours, minutes, 0, 0);
+    }
+    return d;
+  }
+
+  // Handle weekday names with optional time: "Monday 10:30 AM", "Wed 05:34 PM"
+  const weekdayMatch = trimmed.match(/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue|Wed|Thu|Fri|Sat)(?:[,\s]+at)?[,\s]*(?:(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
+  if (weekdayMatch) {
+    const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const targetIdx = dayNames.findIndex(n => weekdayMatch[1].toLowerCase().startsWith(n));
+    if (targetIdx !== -1) {
+      const d = new Date();
+      const currentDay = d.getDay();
+      let diff = currentDay - targetIdx;
+      if (diff <= 0) diff += 7; // Previous occurrence within past week
+      d.setDate(d.getDate() - diff);
+      if (weekdayMatch[2] && weekdayMatch[3]) {
+        let hours = parseInt(weekdayMatch[2], 10);
+        const minutes = parseInt(weekdayMatch[3], 10);
+        const ampm = weekdayMatch[5]?.toUpperCase();
+        if (ampm === 'PM' && hours < 12) hours += 12;
+        if (ampm === 'AM' && hours === 12) hours = 0;
+        d.setHours(hours, minutes, 0, 0);
+      }
+      return d;
+    }
   }
 
   // Check for time-only format: "10:30 AM", "12:17 PM", "14:30"
@@ -59,56 +136,101 @@ export function parseAnyDate(raw?: string | null): Date | null {
 
 /**
  * Resolves the most accurate Date object for a message, taking into account
- * parent conversation context if the message timestamp is only a time.
+ * parent conversation context and sibling messages in the same thread.
  */
 export function getMessageDateObj(msg: WhatsAppMessage, conv?: Conversation | null): Date {
   if (!msg) return new Date();
 
-  // 1. Inspect msg.created_at ISO timestamp (Highest priority: exact creation time of this message)
+  // 1. If message.timestamp itself has an explicit date (e.g. "Yesterday", "Yesterday 05:34 PM", "May 12, 2024 10:30 AM")
+  if (msg.timestamp && hasExplicitDate(msg.timestamp)) {
+    const d = parseAnyDate(msg.timestamp);
+    if (d && !isNaN(d.getTime())) return d;
+  }
+
+  // 2. Inspect msg.created_at ISO timestamp
   if (msg.created_at) {
     const d = parseAnyDate(msg.created_at);
-    if (d) return d;
-  }
-
-  // 2. If message timestamp has full date information (e.g. "May 12, 2024 10:30 AM" or "2024-05-12")
-  if (msg.timestamp) {
-    const trimmed = msg.timestamp.trim();
-    if (/[a-zA-Z]{3,}|\d{4}|\/|-/.test(trimmed) && !/^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(trimmed)) {
-      const d = parseAnyDate(trimmed);
-      if (d) return d;
-    }
-  }
-
-  // 3. If parent conversation has an explicit historical contact date (e.g. "May 12, 2024 10:32 AM" or "May 10")
-  // Only check if it's NOT a relative transient string like "Just now"
-  const convDateRaw = (conv?.first_contact_date && conv.first_contact_date.toLowerCase() !== 'just now')
-    ? conv.first_contact_date
-    : (conv?.last_contact_date && conv.last_contact_date.toLowerCase() !== 'just now' ? conv.last_contact_date : null);
-
-  if (convDateRaw) {
-    const convDate = parseAnyDate(convDateRaw);
-    if (convDate) {
-      if (msg.timestamp) {
-        const timeMatch = msg.timestamp.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-        if (timeMatch) {
-          let hours = parseInt(timeMatch[1], 10);
-          const minutes = parseInt(timeMatch[2], 10);
-          const ampm = timeMatch[3]?.toUpperCase();
-          if (ampm === 'PM' && hours < 12) hours += 12;
-          if (ampm === 'AM' && hours === 12) hours = 0;
-          const merged = new Date(convDate);
-          merged.setHours(hours, minutes, 0, 0);
-          return merged;
+    if (d && !isNaN(d.getTime())) {
+      // Guard: If conversation was explicitly marked as 'yesterday', but created_at on server happened today
+      // (e.g. from seed or re-sync), respect the conversation's explicit 'yesterday' status!
+      if (conv?.last_contact_date?.trim().toLowerCase() === 'yesterday') {
+        const now = new Date();
+        if (d.toDateString() === now.toDateString()) {
+          const yest = new Date(now);
+          yest.setDate(now.getDate() - 1);
+          return mergeTimeIntoDate(yest, msg.timestamp);
         }
       }
-      return convDate;
+      return d;
     }
   }
 
-  // 4. Message timestamp fallback
+  // 3. Look at sibling messages in the SAME conversation thread!
+  // If adjacent messages in the same conversation have an explicit date or created_at,
+  // this message belongs to the exact same thread timeline!
+  if (conv?.messages && conv.messages.length > 0) {
+    const msgIdx = conv.messages.findIndex((m) => m === msg || String(m.id) === String(msg.id));
+    // Check preceding messages first (closest earlier message)
+    if (msgIdx > 0) {
+      for (let i = msgIdx - 1; i >= 0; i--) {
+        const prev = conv.messages[i];
+        if (prev.created_at) {
+          const d = parseAnyDate(prev.created_at);
+          if (d && !isNaN(d.getTime())) return mergeTimeIntoDate(d, msg.timestamp);
+        }
+        if (prev.timestamp && hasExplicitDate(prev.timestamp)) {
+          const d = parseAnyDate(prev.timestamp);
+          if (d && !isNaN(d.getTime())) return mergeTimeIntoDate(d, msg.timestamp);
+        }
+      }
+    }
+    // Check subsequent messages (closest next message)
+    if (msgIdx >= 0 && msgIdx < conv.messages.length - 1) {
+      for (let i = msgIdx + 1; i < conv.messages.length; i++) {
+        const next = conv.messages[i];
+        if (next.created_at) {
+          const d = parseAnyDate(next.created_at);
+          if (d && !isNaN(d.getTime())) return mergeTimeIntoDate(d, msg.timestamp);
+        }
+        if (next.timestamp && hasExplicitDate(next.timestamp)) {
+          const d = parseAnyDate(next.timestamp);
+          if (d && !isNaN(d.getTime())) return mergeTimeIntoDate(d, msg.timestamp);
+        }
+      }
+    }
+  }
+
+  // 4. Conversation candidates: Prioritize conv.last_contact_date over first_contact_date!
+  // Note: Django models default first_contact_date to 'May 12, 2024', so we check last_contact_date first.
+  const candidates: (string | undefined | null)[] = [
+    conv?.last_contact_date,
+    conv?.updated_at,
+  ];
+  if (conv?.first_contact_date && !conv.first_contact_date.includes('May 12, 2024')) {
+    candidates.push(conv.first_contact_date);
+  }
+
+  for (const cand of candidates) {
+    if (cand && hasExplicitDate(cand)) {
+      const d = parseAnyDate(cand);
+      if (d && !isNaN(d.getTime())) {
+        return mergeTimeIntoDate(d, msg.timestamp);
+      }
+    }
+  }
+
+  // Fallback check on first_contact_date if no last_contact_date existed
+  if (conv?.first_contact_date && hasExplicitDate(conv.first_contact_date)) {
+    const d = parseAnyDate(conv.first_contact_date);
+    if (d && !isNaN(d.getTime())) {
+      return mergeTimeIntoDate(d, msg.timestamp);
+    }
+  }
+
+  // 5. Message timestamp fallback
   if (msg.timestamp) {
     const d = parseAnyDate(msg.timestamp);
-    if (d) return d;
+    if (d && !isNaN(d.getTime())) return d;
   }
 
   return new Date();

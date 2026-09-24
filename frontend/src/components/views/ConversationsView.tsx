@@ -362,6 +362,16 @@ export const ConversationsView: React.FC = () => {
     const groupEls = container.querySelectorAll<HTMLElement>('.message-day-group');
     if (groupEls.length === 0) return;
 
+    // If scrolled to the bottom, ensure floating pill reflects the latest message group label
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 40;
+    if (isAtBottom && messageGroups.length > 0) {
+      const latestLabel = messageGroups[messageGroups.length - 1].label;
+      if (latestLabel && latestLabel !== activeFloatingDate) {
+        setActiveFloatingDate(latestLabel);
+      }
+      return;
+    }
+
     const containerTop = container.getBoundingClientRect().top;
 
     let matchedLabel = '';
@@ -377,7 +387,7 @@ export const ConversationsView: React.FC = () => {
     if (matchedLabel && matchedLabel !== activeFloatingDate) {
       setActiveFloatingDate(matchedLabel);
     }
-  }, [activeFloatingDate]);
+  }, [activeFloatingDate, messageGroups]);
 
   const filteredConversations = sortConversationsByRecency(
     conversations.filter((c) => {

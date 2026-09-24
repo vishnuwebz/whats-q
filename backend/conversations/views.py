@@ -2331,6 +2331,9 @@ class WhatsAppWebhookView(APIView):
                                             conv = c
                                             break
 
+                        now_time = datetime.datetime.now().strftime('%I:%M %p')
+                        now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+
                         if not conv:
                             conv = Conversation.objects.create(
                                 phone_number=f"+{clean_sender}",
@@ -2341,6 +2344,8 @@ class WhatsAppWebhookView(APIView):
                                 lead_owner='Ramesh Kumar',
                                 lead_stage='New Lead',
                                 source='WhatsApp Cloud API',
+                                first_contact_date=now_full,
+                                last_contact_date=now_full,
                                 location='Kozhikode, Kerala',
                                 tags=['WhatsApp Inbound'],
                                 notes='Initiated contact via Meta WhatsApp Cloud API.',
@@ -2350,9 +2355,6 @@ class WhatsAppWebhookView(APIView):
                             )
                         elif profile_name != 'WhatsApp Customer' and conv.contact_name in ['WhatsApp Customer', '']:
                             conv.contact_name = profile_name
-
-                        now_time = datetime.datetime.now().strftime('%I:%M %p')
-                        now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
 
                         created_msg = Message.objects.create(
                             conversation=conv,

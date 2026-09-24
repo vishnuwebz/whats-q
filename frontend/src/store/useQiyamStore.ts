@@ -21,7 +21,7 @@ import {
   SearchResult,
   WorkspaceSettings,
 } from '../api/qiyamApi';
-import { sortConversationsByRecency } from '../utils/chatRecency';
+import { sortConversationsByRecency, hasExplicitDate, parseAnyDate } from '../utils/chatRecency';
 import {
   initialMetaWallet,
   initialWalletTransactions,
@@ -1790,10 +1790,36 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       const isCurrent = String(state.selectedConversationId) === String(conversationId);
       const newUnreadCount = isCurrent ? 0 : (conv.unread_count || 0) + (message.sender === 'customer' ? 1 : 0);
 
+      const resolvedLastContact = (() => {
+        if (message.created_at) {
+          const d = parseAnyDate(message.created_at);
+          if (d && !isNaN(d.getTime())) {
+            const now = new Date();
+            if (d.toDateString() === now.toDateString()) {
+              return message.timestamp || 'Just now';
+            }
+            const yest = new Date(now);
+            yest.setDate(now.getDate() - 1);
+            if (d.toDateString() === yest.toDateString()) {
+              return 'Yesterday';
+            }
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          }
+        }
+        if (message.timestamp && hasExplicitDate(message.timestamp)) {
+          return message.timestamp;
+        }
+        // If message timestamp is time-only (e.g. "05:34 PM"), do not overwrite an explicit historical date!
+        if (conv.last_contact_date && hasExplicitDate(conv.last_contact_date)) {
+          return conv.last_contact_date;
+        }
+        return message.timestamp || conv.last_contact_date || 'Just now';
+      })();
+
       const updatedConv: Conversation = {
         ...conv,
         messages: updatedMessages,
-        last_contact_date: message.timestamp || conv.last_contact_date,
+        last_contact_date: resolvedLastContact,
         unread_count: newUnreadCount,
       };
 
@@ -2623,8 +2649,15 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
               String(m.id).startsWith('msg-') && !sConv.messages.some((sm) => sm.text === m.text && sm.sender === m.sender)
             );
 
+            // Preserve local historical last_contact_date if server returned empty or non-explicit (time-only) date
+            let preservedLastContact = sConv.last_contact_date;
+            if (!hasExplicitDate(sConv.last_contact_date) && hasExplicitDate(localConv.last_contact_date)) {
+              preservedLastContact = localConv.last_contact_date;
+            }
+
             return {
               ...sConv,
+              last_contact_date: preservedLastContact,
               messages: [...sConv.messages, ...optimisticMsgs],
             };
           });
