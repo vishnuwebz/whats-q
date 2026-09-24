@@ -345,35 +345,30 @@ export const ConversationsView: React.FC = () => {
     return groups;
   }, [currentConv?.id, currentConv?.messages, currentConv?.last_contact_date]);
 
-  // Set initial floating date based on latest messages in conversation
-  React.useEffect(() => {
-    if (messageGroups.length > 0) {
-      setActiveFloatingDate(messageGroups[messageGroups.length - 1].label);
-    } else {
-      setActiveFloatingDate('');
-    }
-  }, [currentConv?.id, messageGroups]);
-
-  // Dynamically update floating date pill on scroll exactly like official WhatsApp
-  const handleMessagesScroll = React.useCallback(() => {
+  // Dynamically compute floating date pill strictly based on current visible scroll position
+  const updateFloatingDate = React.useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
     const groupEls = container.querySelectorAll<HTMLElement>('.message-day-group');
-    if (groupEls.length === 0) return;
+    if (groupEls.length === 0) {
+      setActiveFloatingDate('');
+      return;
+    }
 
-    // If scrolled to the bottom, ensure floating pill reflects the latest message group label
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 40;
+    // Only if the container is genuinely scrollable and scrolled to the bottom
+    const isScrollable = container.scrollHeight > container.clientHeight + 30;
+    const isAtBottom = isScrollable && (container.scrollHeight - container.scrollTop - container.clientHeight < 30);
+
     if (isAtBottom && messageGroups.length > 0) {
       const latestLabel = messageGroups[messageGroups.length - 1].label;
-      if (latestLabel && latestLabel !== activeFloatingDate) {
+      if (latestLabel) {
         setActiveFloatingDate(latestLabel);
       }
       return;
     }
 
     const containerTop = container.getBoundingClientRect().top;
-
     let matchedLabel = '';
     for (let i = 0; i < groupEls.length; i++) {
       const el = groupEls[i];
@@ -384,10 +379,31 @@ export const ConversationsView: React.FC = () => {
       }
     }
 
-    if (matchedLabel && matchedLabel !== activeFloatingDate) {
+    if (!matchedLabel && groupEls.length > 0) {
+      matchedLabel = groupEls[0].getAttribute('data-day-label') || '';
+    }
+
+    if (matchedLabel) {
       setActiveFloatingDate(matchedLabel);
     }
-  }, [activeFloatingDate, messageGroups]);
+  }, [messageGroups]);
+
+  // When switching conversations, initialize floating date to visible messages after auto-scroll completes
+  React.useEffect(() => {
+    if (!currentConv?.id) {
+      setActiveFloatingDate('');
+      return;
+    }
+    const timer = setTimeout(() => {
+      updateFloatingDate();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [currentConv?.id, updateFloatingDate]);
+
+  // Dynamically update floating date pill on scroll exactly like official WhatsApp
+  const handleMessagesScroll = React.useCallback(() => {
+    updateFloatingDate();
+  }, [updateFloatingDate]);
 
   const filteredConversations = sortConversationsByRecency(
     conversations.filter((c) => {

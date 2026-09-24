@@ -204,7 +204,6 @@ export function getMessageDateObj(msg: WhatsAppMessage, conv?: Conversation | nu
   // Note: Django models default first_contact_date to 'May 12, 2024', so we check last_contact_date first.
   const candidates: (string | undefined | null)[] = [
     conv?.last_contact_date,
-    conv?.updated_at,
   ];
   if (conv?.first_contact_date && !conv.first_contact_date.includes('May 12, 2024')) {
     candidates.push(conv.first_contact_date);
