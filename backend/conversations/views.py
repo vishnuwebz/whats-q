@@ -282,17 +282,42 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
     Evaluates customer inbound message against the active workflow decision tree.
     Properly matches numeric choices ('1', '1️⃣', '2', '2️⃣', '3', '3️⃣', '4', '4️⃣', 'option 1'...),
     keywords, slot rescheduling follow-ups, agent handover, and booking confirmations.
+    Dynamically loads the company name from MetaWhatsAppConfig or Workspace, and respects
+    any custom welcome flow / keyword rules configured in the Workflow Builder.
     """
     lower_text = text_body.strip().lower()
     clean_choice = re.sub(r'[^a-zA-Z0-9]', '', lower_text)
 
-    # Option 1: Reschedule Booking
+    # 1. Resolve Company Name dynamically (White-label & Multi-tenant)
+    company_name = 'Our Support Team'
+    try:
+        from conversations.models import MetaWhatsAppConfig
+        cfg = MetaWhatsAppConfig.objects.first()
+        if cfg and cfg.business_name and cfg.business_name.strip():
+            company_name = cfg.business_name.strip()
+    except Exception:
+        pass
+    if company_name in ['Our Support Team', 'CoolFix Services', '']:
+        try:
+            from users.models import Workspace
+            ws = Workspace.objects.first()
+            if ws and ws.name and ws.name.strip():
+                company_name = ws.name.strip()
+        except Exception:
+            pass
+    if not company_name or company_name == 'CoolFix Services':
+        company_name = 'Our Support Team'
+
+    # Check if contact has an authentic booking/service history
+    has_booking = bool(service_name and booking_id and str(booking_id).strip() and str(service_name).strip())
+
+    # Option 1: Reschedule Booking / New Booking
     is_option_1 = (
         clean_choice in ['1', 'one'] or
         '1️⃣' in text_body or
         'option 1' in lower_text or
         'opt 1' in lower_text or
-        any(w in lower_text for w in ['reschedule', 're-schedule', 'change date', 'change time', 'postpone', 'new slot', 'different date', 'different time'])
+        any(w in lower_text for w in ['reschedule', 're-schedule', 'change date', 'change time', 'postpone', 'new slot', 'different date', 'different time', 'book service', 'new booking'])
     )
 
     # Slot Reschedule Follow-up (Customer replied with specific date/time after choosing reschedule)
@@ -306,13 +331,13 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         (conv.lead_stage in ['Reschedule Requested', 'Slot Selection'] or conv.status == 'in_progress')
     )
 
-    # Option 2: Track Technician Status & ETA
+    # Option 2: Track Specialist Status & ETA
     is_option_2 = (
         clean_choice in ['2', 'two'] or
         '2️⃣' in text_body or
         'option 2' in lower_text or
         'opt 2' in lower_text or
-        any(w in lower_text for w in ['track', 'technician', 'where', 'status', 'eta', 'arrived', 'reach', 'live location', 'map', 'coming'])
+        any(w in lower_text for w in ['track', 'technician', 'specialist', 'where', 'status', 'eta', 'arrived', 'reach', 'live location', 'map', 'coming'])
     )
 
     # Option 3: View Quotation & Pricing
@@ -321,7 +346,7 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         '3️⃣' in text_body or
         'option 3' in lower_text or
         'opt 3' in lower_text or
-        any(w in lower_text for w in ['price', 'cost', 'rate', 'quote', 'charges', 'quotation', 'amount', 'pricing', 'estimate', 'fee', 'bill'])
+        any(w in lower_text for w in ['price', 'cost', 'rate', 'quote', 'charges', 'quotation', 'amount', 'pricing', 'estimate', 'fee', 'bill', 'catalog'])
     )
 
     # Option 4: Speak with an Agent / Human Handover
@@ -332,6 +357,9 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         'opt 4' in lower_text or
         any(w in lower_text for w in ['agent', 'human', 'speak', 'call', 'contact', 'support', 'representative', 'operator', 'person', 'help', 'talk', 'someone'])
     )
+
+    # Confirm Booking
+    is_confirm = any(w in lower_text for w in ['confirm', 'accept quote', 'proceed', 'approve', 'lock slot', 'book now'])
 
     # Voice Note Inbound Detection
     is_voice_note = (
@@ -346,10 +374,11 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
     step_name = 'Inbound Received'
 
     if is_voice_note:
+        srv_mention = f" regarding *{service_name}* (Booking {booking_id})" if has_booking else ""
         reply_text = (
             f"🎙️ *Voice Note Received*\n\n"
-            f"Hi {cust_name}, thank you! We have received your voice note regarding *{service_name}* (Booking {booking_id}).\n\n"
-            f"Our service team is listening to your audio message and will reply to you promptly."
+            f"Hi {cust_name}, thank you! We have received your voice note{srv_mention}.\n\n"
+            f"Our team at {company_name} is listening to your audio message and will reply to you promptly."
         )
         rich_card = {
             'type': 'agent_handover',
@@ -364,18 +393,19 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Voice Note Handover'
 
     elif is_reschedule_slot:
+        srv_mention = f" *{service_name}* (Booking {booking_id})" if has_booking else " service request"
         reply_text = (
             f"✅ *Appointment Slot Updated!*\n\n"
-            f"Hi {cust_name}, your *{service_name}* (Booking {booking_id}) has been updated to your requested slot: *{text_body.strip()}*.\n\n"
+            f"Hi {cust_name}, your{srv_mention} has been updated to your requested slot: *{text_body.strip()}*.\n\n"
             f"Specialist *{technician_name}* ({tech_phone}) has been notified and will arrive promptly."
         )
         rich_card = {
             'type': 'booking',
             'title': 'Slot Rescheduled',
             'date': text_body.strip(),
-            'service': service_name,
+            'service': service_name or 'General Service',
             'amount': est_val_num,
-            'bookingId': booking_id,
+            'bookingId': booking_id or '#APT',
             'actionText': 'View Booking'
         }
         conv.status = 'open'
@@ -383,21 +413,26 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Slot Updated'
 
     elif is_option_1:
+        if has_booking:
+            header_slot = f"your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
+        else:
+            header_slot = f"schedule your upcoming service or consultation with *{company_name}*.\n\n"
+
         reply_text = (
-            f"📅 *Reschedule Your Appointment*\n\n"
-            f"Hi {cust_name}, your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
-            f"Please reply with your preferred new date and time (e.g., *\"Thursday 2:00 PM\"*), or choose one of our upcoming open slots:\n"
+            f"📅 *Schedule / Reschedule Appointment*\n\n"
+            f"Hi {cust_name}, {header_slot}"
+            f"Please reply with your preferred date and time (e.g., *\"Tomorrow 2:00 PM\"*), or choose one of our upcoming open slots:\n"
             f"1️⃣ Tomorrow 02:00 PM\n"
             f"2️⃣ Friday 10:30 AM\n"
             f"3️⃣ Saturday 11:00 AM\n\n"
-            f"Our team will immediately confirm the new slot for you!"
+            f"Our team will immediately confirm the slot for you!"
         )
         rich_card = {
             'type': 'reschedule',
             'title': 'Reschedule Requested',
             'currentSlot': slot_time,
-            'service': service_name,
-            'bookingId': booking_id,
+            'service': service_name or 'Service Request',
+            'bookingId': booking_id or '#NEW',
             'actionText': 'Select New Slot'
         }
         conv.status = 'in_progress'
@@ -405,22 +440,30 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Option 1: Reschedule'
 
     elif is_option_2:
-        reply_text = (
-            f"📍 *Live Technician Status*\n\n"
-            f"Hi {cust_name}, your assigned service specialist is *{technician_name}* ({tech_phone}).\n\n"
-            f"• Service: *{service_name}* (Booking {booking_id})\n"
-            f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
-            f"• Estimated Arrival: *15-20 minutes*\n\n"
-            f"Track technician live on map:\n"
-            f"https://coolfix.in/track/{booking_id.replace('#', '')}"
-        )
+        tracking_url = f"https://track.whatsq.in/{str(booking_id).replace('#', '')}" if booking_id else "https://track.whatsq.in/live"
+        if has_booking:
+            reply_text = (
+                f"📍 *Live Technician Status*\n\n"
+                f"Hi {cust_name}, your assigned specialist is *{technician_name}* ({tech_phone}).\n\n"
+                f"• Service: *{service_name}* (Booking {booking_id})\n"
+                f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
+                f"• Estimated Arrival: *15-20 minutes*\n\n"
+                f"Track technician live on map:\n"
+                f"{tracking_url}"
+            )
+        else:
+            reply_text = (
+                f"📍 *Live Technician Status*\n\n"
+                f"Hi {cust_name}, our field specialist *{technician_name}* ({tech_phone}) is on duty for *{company_name}*.\n\n"
+                f"You currently have no active dispatch. To schedule an appointment or book a service, reply *1*!"
+            )
         rich_card = {
             'type': 'tracking',
-            'title': 'Technician En Route',
+            'title': 'Specialist Status',
             'technician': technician_name,
             'phone': tech_phone,
-            'service': service_name,
-            'bookingId': booking_id,
+            'service': service_name or 'General Service',
+            'bookingId': booking_id or '#SRV',
             'eta': '15-20 mins',
             'actionText': 'Track Live Map'
         }
@@ -429,8 +472,8 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
     elif is_option_4:
         reply_text = (
             f"👨‍💼 *Connecting with Support Specialist*\n\n"
-            f"Hi {cust_name}, our senior operations specialist *{technician_name}* has been assigned to your chat and will assist you directly.\n\n"
-            f"Priority Helpline: *{tech_phone}* / 1800-QIYAM-FIX."
+            f"Hi {cust_name}, our senior specialist *{technician_name}* has been assigned to your chat and will assist you directly on behalf of *{company_name}*.\n\n"
+            f"Direct Helpline: *{tech_phone}*."
         )
         rich_card = {
             'type': 'agent_handover',
@@ -445,29 +488,32 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Option 4: Agent Handover'
 
     elif is_option_3:
+        srv_label = f"*{service_name}*" if service_name else "our professional services"
         reply_text = (
             f"💰 *Service Quotation & Pricing*\n\n"
-            f"Hi {cust_name}, here is the official estimate for *{service_name}*:\n"
+            f"Hi {cust_name}, here is the official estimate for {srv_label}:\n"
             f"• Inspection & Diagnostics: ₹800\n"
             f"• Labour & Service: ₹2,000\n"
             f"• *Total Estimated Amount: {est_price}*\n\n"
-            f"To approve and reserve your technician slot, reply *CONFIRM*!"
+            f"To approve and reserve your specialist slot, reply *CONFIRM*!"
         )
         step_name = 'Option 3: Quotation & Pricing'
 
     elif is_confirm:
+        srv_str = f" for *{service_name}*" if service_name else ""
+        b_str = f" {booking_id}" if booking_id else ""
         reply_text = (
             f"✅ *Booking Confirmed!*\n\n"
-            f"Thank you {cust_name}! Your booking {booking_id} for *{service_name}* on *{slot_time}* is confirmed.\n\n"
+            f"Thank you {cust_name}! Your booking{b_str}{srv_str} on *{slot_time}* is confirmed.\n\n"
             f"Specialist *{technician_name}* will arrive at your premises on time."
         )
         rich_card = {
             'type': 'booking',
             'title': 'Booking Confirmed',
             'date': slot_time,
-            'service': service_name,
+            'service': service_name or 'Confirmed Service',
             'amount': est_val_num,
-            'bookingId': booking_id,
+            'bookingId': booking_id or '#CONF',
             'actionText': 'View Details'
         }
         conv.status = 'open'
@@ -475,21 +521,96 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Booking Confirmed'
 
     else:
-        reply_text = (
-            f"👋 *Welcome to CoolFix Services, {cust_name}!* \n\n"
-            f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
-            f"1️⃣ Reschedule booking\n"
-            f"2️⃣ Track technician status\n"
-            f"3️⃣ View quotation & pricing\n"
-            f"4️⃣ Speak with an agent\n\n"
-            f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
-        )
+        # Inbound Welcome Menu / Greeting Flow (Executed when customer sends "hi", "hello", or opens a chat)
+        # Attempt to load custom greeting & menu options from active Workflow in DB
+        custom_welcome_text = None
+        custom_menu_options = []
+        try:
+            from automation.models import Workflow
+            active_wfs = Workflow.objects.filter(status='active').order_by('-id')
+            welcome_wf = (
+                active_wfs.filter(name__icontains='welcome').first() or
+                active_wfs.filter(trigger_type__icontains='message').first() or
+                active_wfs.filter(name__icontains='inbound').first() or
+                active_wfs.filter(name__icontains='service').first() or
+                active_wfs.first()
+            )
+            if welcome_wf and welcome_wf.nodes and isinstance(welcome_wf.nodes, list):
+                for node in welcome_wf.nodes:
+                    if isinstance(node, dict):
+                        # Format 1: FlowGroup structure with items
+                        items = node.get('items', [])
+                        if isinstance(items, list):
+                            for it in items:
+                                if isinstance(it, dict):
+                                    if it.get('type') == 'message' and it.get('content') and not custom_welcome_text:
+                                        custom_welcome_text = it.get('content').strip()
+                                    elif it.get('type') == 'choice' and it.get('options') and not custom_menu_options:
+                                        for opt in it.get('options'):
+                                            if isinstance(opt, dict) and opt.get('label'):
+                                                custom_menu_options.append(opt.get('label'))
+                                            elif isinstance(opt, str) and opt.strip():
+                                                custom_menu_options.append(opt.strip())
+                        # Format 2: Flat visual nodes
+                        if not custom_welcome_text and node.get('type') in ['trigger', 'action', 'message']:
+                            title_l = node.get('title', '').lower()
+                            if any(k in title_l for k in ['welcome', 'greeting', 'inbound', 'message']):
+                                if node.get('subtitle'):
+                                    custom_welcome_text = node.get('subtitle').strip()
+                    if custom_welcome_text and custom_menu_options:
+                        break
+        except Exception as wf_err:
+            logger.warning(f"[evaluate_workflow_response] Error loading workflow template: {wf_err}")
+
+        # Substitute template variables
+        def substitute_vars(tpl):
+            res = tpl
+            res = res.replace('{STAT_NAME}', cust_name).replace('{{customer_name}}', cust_name).replace('{cust_name}', cust_name).replace('{name}', cust_name).replace('{{name}}', cust_name)
+            res = res.replace('{COMPANY_NAME}', company_name).replace('{{company_name}}', company_name).replace('{company_name}', company_name)
+            res = res.replace('CoolFix Services', company_name).replace('CoolFix', company_name)
+            if service_name:
+                res = res.replace('{service_name}', service_name).replace('{{service_name}}', service_name)
+            if booking_id:
+                res = res.replace('{booking_id}', booking_id).replace('{{booking_id}}', booking_id)
+            return res
+
+        if custom_welcome_text:
+            cleaned_custom = substitute_vars(custom_welcome_text)
+            if custom_menu_options and not any(opt in cleaned_custom for opt in custom_menu_options[:2]):
+                opts_str = "\n".join(custom_menu_options)
+                reply_text = f"{cleaned_custom}\n\n{opts_str}\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!"
+            else:
+                reply_text = cleaned_custom
+        elif has_booking:
+            reply_text = (
+                f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+                f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
+                f"1️⃣ Reschedule booking\n"
+                f"2️⃣ Track specialist status\n"
+                f"3️⃣ View quotation & pricing\n"
+                f"4️⃣ Speak with an agent\n\n"
+                f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+            )
+        else:
+            reply_text = (
+                f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+                f"How can we assist you today?\n"
+                f"1️⃣ Book a service or appointment\n"
+                f"2️⃣ Track existing request\n"
+                f"3️⃣ View quotation & pricing\n"
+                f"4️⃣ Speak with an agent\n\n"
+                f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+            )
         step_name = 'Welcome Menu'
 
     # Increment runs count and log automation execution
     try:
         from automation.models import Workflow, AutomationLog
-        w = Workflow.objects.filter(name__icontains='Booking').first() or Workflow.objects.first()
+        w = (
+            Workflow.objects.filter(status='active', name__icontains='Welcome').first() or
+            Workflow.objects.filter(status='active', name__icontains='Booking').first() or
+            Workflow.objects.first()
+        )
         if w:
             w.runs_this_month = (w.runs_this_month or 0) + 1
             w.save(update_fields=['runs_this_month'])
@@ -2344,9 +2465,9 @@ class WhatsAppWebhookView(APIView):
 
                             # Extract individualized variables
                             cust_name = conv.contact_name if conv.contact_name and conv.contact_name != 'WhatsApp Customer' else (profile_name if profile_name != 'WhatsApp Customer' else 'Valued Customer')
-                            service_name = conv.service_needed or (apt.service if apt else (job.service if job else 'AC Repair & Service'))
-                            booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '#B4821')
-                            technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Ramesh Kumar'))
+                            service_name = conv.service_needed or (apt.service if apt else (job.service if job else ''))
+                            booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '')
+                            technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Support Desk'))
 
                             tech_phone = '+91 98471 23456'
                             if Employee:
@@ -2576,9 +2697,9 @@ class SimulateWhatsAppMessageView(APIView):
                 job = Job.objects.filter(customer_name__icontains=contact_name).order_by('-id').first()
 
         cust_name = contact_name if contact_name and contact_name != 'WhatsApp Customer' else 'Valued Customer'
-        service_name = conv.service_needed or (apt.service if apt else (job.service if job else 'AC Repair & Service'))
-        booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '#B4821')
-        technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Ramesh Kumar'))
+        service_name = conv.service_needed or (apt.service if apt else (job.service if job else ''))
+        booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '')
+        technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Support Desk'))
         tech_phone = '+91 98471 23456'
         slot_time = f"{apt.date_str} at {apt.time_str}" if apt else "Tomorrow at 10:30 AM"
         est_val_num = int(conv.estimated_value) if conv.estimated_value else (int(apt.amount) if apt else 2800)

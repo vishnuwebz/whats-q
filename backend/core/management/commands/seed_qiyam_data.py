@@ -207,7 +207,7 @@ class Command(BaseCommand):
                     'phone_number_id': '109823485721982',
                     'waba_id': '891238472918234',
                     'api_version': 'v21.0',
-                    'business_name': 'CoolFix Services',
+                    'business_name': 'Qiyam Business Solutions',
                     'business_phone_display': '+91 98765 43210',
                     'auto_reply_enabled': True,
                     'dual_mode_enabled': True,

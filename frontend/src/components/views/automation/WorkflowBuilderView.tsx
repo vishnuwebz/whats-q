@@ -83,6 +83,7 @@ export const WorkflowBuilderView: React.FC = () => {
     activeWorkflowTitle,
     activeWorkflowGroups,
     templates,
+    metaConfig,
   } = useQiyamStore();
 
   // Top Mode Switcher: 'canvas' | 'keyword_rules'
@@ -173,7 +174,7 @@ export const WorkflowBuilderView: React.FC = () => {
   }, [isFullscreen]);
 
   // Bot Title
-  const [botTitle, setBotTitle] = useState('Chatbot 1');
+  const [botTitle, setBotTitle] = useState('Inbound Welcome & Service Flow');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   // Canvas Scrolling & Panning State (Grab & Pan anywhere)
@@ -280,190 +281,8 @@ export const WorkflowBuilderView: React.FC = () => {
   const [activeKeywordInputRuleId, setActiveKeywordInputRuleId] = useState<string | null>(null);
   const [inlineKeywordText, setInlineKeywordText] = useState('');
 
-  // Initial Flow Groups (Exact structure from Screenshot 1 & 2)
-  const [groups, setGroups] = useState<FlowGroup[]>([
-    {
-      id: 'group-1',
-      title: 'Group #1',
-      x: 40,
-      y: 40,
-      items: [
-        {
-          id: 'item-1-1',
-          type: 'message',
-          content: 'Hi {STAT_NAME}! Greetings from ARC LLC. Our smart counselor will guide you through the process.'
-        },
-        {
-          id: 'item-1-2',
-          type: 'choice',
-          question: 'Is {STAT_NAME} your correct name?',
-          options: [
-            { label: 'Yes', targetGroup: 'group-3' },
-            { label: 'No', targetGroup: 'group-2' },
-            { label: 'Default', targetGroup: 'group-4' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'group-2',
-      title: 'Group #2',
-      x: 400,
-      y: 40,
-      items: [
-        { id: 'item-2-1', type: 'message', content: 'What is your good name ?' },
-        { id: 'item-2-2', type: 'collect', varName: 'name' },
-        { id: 'item-2-3', type: 'message', content: 'Okay {name}! What is your age ?' },
-        { id: 'item-2-4', type: 'collect', varName: 'Age' },
-        { id: 'item-2-5', type: 'message', content: 'Please enter your email address' },
-        { id: 'item-2-6', type: 'collect', varName: 'mail' }
-      ]
-    },
-    {
-      id: 'group-3',
-      title: 'Group #3',
-      x: 760,
-      y: 40,
-      items: [
-        {
-          id: 'item-3-1',
-          type: 'choice',
-          question: 'What is the purpose of your travel ?',
-          options: [
-            { label: 'Study abroad', targetGroup: 'group-7' },
-            { label: 'Work abroad', targetGroup: 'group-6' },
-            { label: 'Migrate', targetGroup: 'group-5' },
-            { label: 'Default', targetGroup: 'group-4' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'group-4',
-      title: 'Group #4',
-      x: 760,
-      y: 420,
-      items: [
-        { id: 'item-4-1', type: 'message', content: 'Please select 1 from the options provided.' },
-        { id: 'item-4-2', type: 'jump', targetGroup: 'group-3' }
-      ]
-    },
-    {
-      id: 'group-5',
-      title: 'Group #5',
-      x: 1120,
-      y: 420,
-      items: [
-        {
-          id: 'item-5-1',
-          type: 'choice',
-          question: 'Hello To which country ?',
-          options: [
-            { label: 'Canada' },
-            { label: 'UK' },
-            { label: 'Australia' },
-            { label: 'Germany' },
-            { label: 'USA' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'group-6',
-      title: 'Group #6',
-      x: 1120,
-      y: 40,
-      items: [
-        {
-          id: 'item-6-1',
-          type: 'choice',
-          question: 'What is your current education qualification?',
-          options: [
-            { label: 'Plus-two' },
-            { label: 'UG' },
-            { label: 'PG' },
-            { label: 'Default' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'group-7',
-      title: 'Group #7',
-      x: 1480,
-      y: 40,
-      items: [
-        {
-          id: 'item-7-1',
-          type: 'choice',
-          question: 'Field of study',
-          content: 'Select preferred field from the following list.',
-          footer: 'Admissions Desk',
-          buttonLabel: 'Select Course',
-          varName: 'field_of_study',
-          options: [
-            { label: 'Computer Science', targetGroup: 'group-8' },
-            { label: 'Business Studies', targetGroup: 'group-8' },
-            { label: 'Medical Studies', targetGroup: 'group-8' },
-            { label: 'Law & Order', targetGroup: 'group-8' },
-            { label: 'Humanities', targetGroup: 'group-8' },
-            { label: 'Art', targetGroup: 'group-8' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'group-8',
-      title: 'Group #8',
-      x: 1840,
-      y: 40,
-      items: [
-        {
-          id: 'item-8-1',
-          type: 'payment',
-          content: 'University Application Fee Checkout',
-          provider: 'STRIPE',
-          currency: 'INR',
-          amount: 3999,
-          quantity: 1,
-          varName: 'payment_status',
-          successTarget: 'group-9',
-          failedTarget: 'group-10'
-        }
-      ]
-    },
-    {
-      id: 'group-9',
-      title: 'Group #9',
-      x: 2200,
-      y: 40,
-      items: [
-        {
-          id: 'item-9-1',
-          type: 'message',
-          content: '🎉 Payment of ₹3,999 confirmed via Stripe! Your application ID is #UQ-2026. A counselor will review your application.'
-        }
-      ]
-    },
-    {
-      id: 'group-10',
-      title: 'Group #10',
-      x: 2200,
-      y: 300,
-      items: [
-        {
-          id: 'item-10-1',
-          type: 'message',
-          content: '⚠️ Payment was not completed or was cancelled. Please try again to reserve your slot.'
-        },
-        {
-          id: 'item-10-2',
-          type: 'jump',
-          targetGroup: 'group-8'
-        }
-      ]
-    }
-  ]);
+  // Initial Flow Groups (Defaults to the dynamic Service Booking / Welcome Flow)
+  const [groups, setGroups] = useState<FlowGroup[]>(SERVICE_BOOKING_FLOW_GROUPS);
 
   // Active Selected Node & Drag-and-Drop state
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>('group-1');
@@ -475,7 +294,7 @@ export const WorkflowBuilderView: React.FC = () => {
     if (activeWorkflowTitle) {
       setBotTitle(activeWorkflowTitle);
     }
-    const safeGroups = normalizeToFlowGroups(activeWorkflowGroups, activeWorkflowTitle || 'Service Booking Flow');
+    const safeGroups = normalizeToFlowGroups(activeWorkflowGroups, activeWorkflowTitle || 'Inbound Welcome & Service Flow');
     setGroups(safeGroups);
     if (safeGroups.length > 0) {
       setSelectedGroupId(safeGroups[0].id);
@@ -487,29 +306,37 @@ export const WorkflowBuilderView: React.FC = () => {
   // Initial Keyword Rules
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>([
     {
+      id: 'rule-welcome',
+      title: 'Inbound Greetings Auto-Responder ("Hi" / "Hello")',
+      triggered_count: 52,
+      active: true,
+      keywords: ['hi', 'hello', 'hey', 'start', 'greetings', 'menu', 'good morning', 'good evening'],
+      reply: '👋 *Welcome to {COMPANY_NAME}!* \nHello {STAT_NAME}! How can we assist you today?\n\n1️⃣ Reschedule / Book Service\n2️⃣ Live Specialist ETA\n3️⃣ Price Quotation\n4️⃣ Speak with Agent\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!'
+    },
+    {
       id: 'rule-1',
       title: 'Price List Auto-Reply',
-      triggered_count: 0,
+      triggered_count: 14,
       active: true,
-      keywords: ['price', 'catalog', 'rate'],
-      reply: 'Hello! Here is our latest wholesale rate card catalog PDF.',
+      keywords: ['price', 'catalog', 'rate', 'cost', 'quotation'],
+      reply: 'Hello {STAT_NAME}! Here is our latest wholesale rate card & service pricing catalog.',
       attachment: 'Rate-Card-Catalog.pdf'
     },
     {
       id: 'rule-2',
       title: 'Claim ₹500 Discount Auto-Responder',
-      triggered_count: 1,
+      triggered_count: 8,
       active: true,
       keywords: ['claim ₹500 discount', 'discount', 'claim 500', 'festival offer'],
-      reply: '🎉 *Congratulations!* Your ₹500 discount code is: *FEST500*\n\nApply this code on your next purchase to get flat ₹500 OFF instantly!\n\n🌐 Visit Store: https://qiyam.ventures'
+      reply: '🎉 *Congratulations!* Your ₹500 discount code is: *FEST500*\n\nApply this code on your next service booking to get flat ₹500 OFF instantly!\n\n🌐 Visit Store: https://qiyam.ventures'
     },
     {
       id: 'rule-3',
-      title: 'Emergency AC Service Dispatch',
+      title: 'Emergency Service Dispatch',
       triggered_count: 24,
       active: true,
-      keywords: ['ac breakdown', 'emergency', 'leakage', 'gas refill'],
-      reply: 'We have received your emergency request! 🛠️ A certified technician has been notified and will call you within 5 minutes.'
+      keywords: ['emergency', 'urgent', 'breakdown', 'leakage', 'gas refill'],
+      reply: 'We have received your emergency request! 🛠️ A certified specialist has been notified and will call you within 5 minutes.'
     },
     {
       id: 'rule-4',
@@ -1294,8 +1121,10 @@ export const WorkflowBuilderView: React.FC = () => {
       result = result.split(`{${key}}`).join(vars[key]);
       result = result.split(`{STAT_${key.toUpperCase()}}`).join(vars[key]);
     });
-    // Fallback common variables
-    result = result.replace(/{STAT_NAME}|{name}/gi, vars.name || 'Rahul');
+    // Dynamic Company Branding & Customer variables
+    const companyDisplayName = metaConfig?.business_name || 'Qiyam Business Solutions';
+    result = result.replace(/{COMPANY_NAME}|{company_name}|{{company_name}}/gi, companyDisplayName);
+    result = result.replace(/{STAT_NAME}|{name}|{{name}}|{{customer_name}}/gi, vars.name || 'Rahul');
     result = result.replace(/{customer}|{customer_name}/gi, vars.customer || 'Customer');
     return result;
   };
@@ -3848,29 +3677,34 @@ export const WorkflowBuilderView: React.FC = () => {
                   </div>
 
                   {/* Insert Variable Buttons */}
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="text-[11px] text-slate-400 font-medium">Insert Variable:</span>
-                    {['{name}', '{email}', '{phone}', '{field_of_study}', '{amount}'].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => {
-                          const cur = configModal.draftItem.mediaCaption || configModal.draftItem.content || '';
-                          const next = cur + ' ' + v;
-                          setConfigModal({
-                            ...configModal,
-                            draftItem: {
-                              ...configModal.draftItem,
-                              content: next,
-                              mediaCaption: next,
-                            }
-                          });
-                        }}
-                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded border border-slate-200 text-[10px] font-mono transition cursor-pointer"
-                      >
-                        {v}
-                      </button>
-                    ))}
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] text-slate-400 font-medium">Insert Variable:</span>
+                      {['{COMPANY_NAME}', '{STAT_NAME}', '{name}', '{phone}', '{service_name}', '{booking_id}'].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => {
+                            const cur = configModal.draftItem.mediaCaption || configModal.draftItem.content || '';
+                            const next = cur + ' ' + v;
+                            setConfigModal({
+                              ...configModal,
+                              draftItem: {
+                                ...configModal.draftItem,
+                                content: next,
+                                mediaCaption: next,
+                              }
+                            });
+                          }}
+                          className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-200 text-[10px] font-mono font-semibold transition cursor-pointer"
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      💡 <strong>{"{COMPANY_NAME}"}</strong> dynamically inserts your company name from Settings. <strong>{"{STAT_NAME}"}</strong> inserts the customer's WhatsApp name.
+                    </p>
                   </div>
                 </div>
               )}

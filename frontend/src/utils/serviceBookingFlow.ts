@@ -1,4 +1,4 @@
-﻿import { FlowGroup } from '@/types';
+import { FlowGroup } from '@/types';
 
 export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
   {
@@ -10,15 +10,15 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
       {
         id: 'item-1-1',
         type: 'message',
-        content: '🤖 *WhatsQ Intelligent Service Assistant*\nHello {STAT_NAME}! Welcome to Qiyam Ventures. We provide certified HVAC, electrical, and appliance care across Kerala.\n\nHow can we help you today?'
+        content: '👋 *Welcome to {COMPANY_NAME}!* \nHello {STAT_NAME}! Welcome to our customer support. How can we assist you today?'
       },
       {
         id: 'item-1-2',
         type: 'choice',
         question: 'Please select an option from our service menu:',
         options: [
-          { label: '1️⃣ Reschedule Booking', targetGroup: 'group-2' },
-          { label: '2️⃣ Live Technician ETA', targetGroup: 'group-3' },
+          { label: '1️⃣ Reschedule / Book Service', targetGroup: 'group-2' },
+          { label: '2️⃣ Live Specialist ETA', targetGroup: 'group-3' },
           { label: '3️⃣ Price Quotation', targetGroup: 'group-4' },
           { label: '4️⃣ Speak with Agent', targetGroup: 'group-5' },
           { label: '✅ Confirm Booking', targetGroup: 'group-6' }
@@ -52,14 +52,14 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
   },
   {
     id: 'group-3',
-    title: 'Group #3 - Live Technician Status & ETA',
+    title: 'Group #3 - Live Specialist Status & ETA',
     x: 420,
     y: 400,
     items: [
       {
         id: 'item-3-1',
         type: 'message',
-        content: '📍 *Live Technician Status & ETA*\nSenior Specialist Ramesh Kumar is en route 🛵.\nEstimated Arrival: 15-20 minutes.\nLive GPS Tracking: https://coolfix.in/track/QUO-2024-0037\nPriority Contact: +91 98765 43210'
+        content: '📍 *Live Specialist Status & ETA*\nSenior Specialist Ramesh Kumar is en route 🛵.\nEstimated Arrival: 15-20 minutes.\nLive GPS Tracking: https://track.whatsq.in/QUO-2024-0037\nPriority Contact: +91 98471 23456'
       },
       {
         id: 'item-3-2',
@@ -105,7 +105,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
       {
         id: 'item-5-1',
         type: 'message',
-        content: '👨‍💼 *Connecting with Operations Support*\nSenior Specialist Ramesh Kumar has been assigned to your chat thread.\nStatus: In Progress • CRM Stage: Agent Assigned\nPriority Helpline: 1800-QIYAM-FIX.'
+        content: '👨‍💼 *Connecting with Operations Support*\nSenior Specialist Ramesh Kumar has been assigned to your chat thread.\nStatus: In Progress • CRM Stage: Agent Assigned\nPriority Helpline: +91 98471 23456.'
       },
       {
         id: 'item-5-2',
@@ -123,7 +123,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
       {
         id: 'item-6-1',
         type: 'message',
-        content: '✅ *Booking Confirmed!*\nThank you for choosing Qiyam Ventures. Your service appointment is locked on our schedule.\n\nBooking ID: QUO-2024-0037\nAssigned Specialist: Ramesh Kumar\nOur certified technician will arrive on time.'
+        content: '✅ *Booking Confirmed!*\nThank you for choosing {COMPANY_NAME}. Your service appointment is locked on our schedule.\n\nBooking ID: QUO-2024-0037\nAssigned Specialist: Ramesh Kumar\nOur certified technician will arrive on time.'
       }
     ]
   },
@@ -153,18 +153,50 @@ export const normalizeToFlowGroups = (
   rawNodes: any[] | null | undefined,
   workflowTitle?: string
 ): FlowGroup[] => {
+  // If rawNodes already contains valid flow groups (saved by user), ALWAYS prioritize them!
+  if (rawNodes && Array.isArray(rawNodes) && rawNodes.length > 0) {
+    const isFlowGroupFormat = rawNodes.every(
+      (n) => n && typeof n === 'object' && Array.isArray(n.items)
+    );
+    if (isFlowGroupFormat) {
+      return rawNodes.map((g, idx) => ({
+        id: g.id || `group-${idx + 1}`,
+        title: g.title || `Group #${idx + 1}`,
+        x: typeof g.x === 'number' ? g.x : 40 + idx * 360,
+        y: typeof g.y === 'number' ? g.y : 40,
+        items: Array.isArray(g.items)
+          ? g.items.map((it: any, itIdx: number) => ({
+              id: it.id || `item-${idx + 1}-${itIdx + 1}`,
+              type: it.type || 'message',
+              content: it.content,
+              question: it.question,
+              options: Array.isArray(it.options) ? it.options : undefined,
+              varName: it.varName,
+              targetGroup: it.targetGroup,
+              provider: it.provider,
+              currency: it.currency,
+              amount: it.amount,
+              quantity: it.quantity,
+              successTarget: it.successTarget,
+              failedTarget: it.failedTarget,
+              footer: it.footer,
+              buttonLabel: it.buttonLabel,
+            }))
+          : [],
+      }));
+    }
+  }
+
   const isServiceBooking = Boolean(
     workflowTitle &&
     (workflowTitle.toLowerCase().includes('service booking') ||
+     workflowTitle.toLowerCase().includes('welcome') ||
+     workflowTitle.toLowerCase().includes('inbound') ||
      workflowTitle.toLowerCase().includes('service flow') ||
      workflowTitle.toLowerCase().includes('booking flow'))
   );
 
-  if (isServiceBooking) {
-    return SERVICE_BOOKING_FLOW_GROUPS;
-  }
-
-  if (!rawNodes || !Array.isArray(rawNodes) || rawNodes.length === 0) {
+  if (isServiceBooking || !rawNodes || !Array.isArray(rawNodes) || rawNodes.length === 0) {
     return SERVICE_BOOKING_FLOW_GROUPS;
   }
 
