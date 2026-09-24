@@ -122,57 +122,73 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
   const ModIcon = modInfo.icon;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 via-slate-100/70 to-emerald-50/30 overflow-y-auto p-4 sm:p-6 lg:p-8 font-sans">
-      <div className="max-w-4xl mx-auto w-full my-auto space-y-6">
-
-        {/* ── Top Hero / Gating Header ── */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 shadow-inner border border-amber-200">
-            <Lock className="w-7 h-7 text-amber-700" />
-          </div>
-
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
-              <ModIcon className="w-3.5 h-3.5 text-amber-700" />
-              <span>{modInfo.category} • Feature Locked</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Unlock {modInfo.label}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
-              {modInfo.description}. This module is currently turned off for <strong>{activeTenant?.businessName || 'your workspace'}</strong>.
-            </p>
-          </div>
-
-          {/* Billing Cycle Toggle */}
-          <div className="inline-flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                billingCycle === 'monthly'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Monthly Billing
-            </button>
-            <button
-              onClick={() => setBillingCycle('annually')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                billingCycle === 'annually'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span>Annual Billing</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-extrabold">Save 20%</span>
-            </button>
-          </div>
+    <div className="relative w-full h-full flex-1 overflow-hidden font-sans bg-slate-900/5">
+      {/* ── 1. Blurred Background Feature View (Preview Teaser) ── */}
+      {children && (
+        <div
+          className="absolute inset-0 w-full h-full overflow-hidden select-none pointer-events-none filter blur-[6px] opacity-70 scale-[1.01] transition-all duration-300"
+          aria-hidden="true"
+          tabIndex={-1}
+        >
+          {children}
         </div>
+      )}
+
+      {/* ── 2. Subtle Frosted Glass Backdrop Tint ── */}
+      <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[2px] pointer-events-none" />
+
+      {/* ── 3. Paywall Gate Overlay & Modal (Scrollable) ── */}
+      <div className="relative z-10 w-full h-full overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-start">
+        <div className="max-w-4xl mx-auto w-full my-auto space-y-6 py-6">
+
+          {/* ── Top Hero / Gating Header (Frosted Glass Panel) ── */}
+          <div className="text-center space-y-3 bg-white/95 backdrop-blur-xl p-6 sm:p-7 rounded-3xl border border-white/80 shadow-2xl shadow-slate-950/10 max-w-2xl mx-auto">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-100/90 text-amber-800 shadow-inner border border-amber-200">
+              <Lock className="w-7 h-7 text-amber-700" />
+            </div>
+
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-2xs">
+                <ModIcon className="w-3.5 h-3.5 text-amber-700" />
+                <span>{modInfo.category} • Feature Locked</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Unlock {modInfo.label}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
+                {modInfo.description}. This module is currently turned off for <strong>{activeTenant?.businessName || 'your workspace'}</strong>.
+              </p>
+            </div>
+
+            {/* Billing Cycle Toggle */}
+            <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  billingCycle === 'monthly'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Monthly Billing
+              </button>
+              <button
+                onClick={() => setBillingCycle('annually')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  billingCycle === 'annually'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Annual Billing</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-extrabold">Save 20%</span>
+              </button>
+            </div>
+          </div>
 
         {/* Expired Status Banner (for Demo Client or any expired tenant) */}
         {(isAddonExpired || isTrialExpired) && (
-          <div className="bg-rose-50/90 border border-rose-200 rounded-2xl p-4 flex items-start gap-3.5 shadow-xs text-left animate-in fade-in">
+          <div className="bg-rose-50/95 backdrop-blur-xl border border-rose-200/90 rounded-2xl p-4 flex items-start gap-3.5 shadow-xl shadow-rose-950/5 text-left animate-in fade-in">
             <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
               <AlertCircle className="w-5 h-5 text-rose-600" />
             </div>
@@ -204,7 +220,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 items-stretch">
 
           {/* Option 1: Standalone Add-on (User Request: "or if they need that only specific feature that estimated amount need to pay for that feature as an addon feature instead of bundle of features") */}
-          <div className="bg-white rounded-2xl border-2 border-emerald-500 shadow-xl p-5 flex flex-col justify-between relative overflow-hidden group">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl border-2 border-emerald-500 shadow-2xl shadow-emerald-950/10 p-5 flex flex-col justify-between relative overflow-hidden group">
             <div className={`absolute top-0 right-0 ${isAddonExpired ? 'bg-rose-600' : 'bg-emerald-600'} text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl shadow-xs`}>
               {isAddonExpired ? 'Add-On Expired • Renew' : 'Recommended Add-On'}
             </div>
@@ -261,8 +277,8 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
             </div>
           </div>
 
-          {/* Option 2: Temporary Access (Trial Version) (User Request: "or take a trail version of it so they will get a temporary access and admin can configure the temporary access period and before ending they must notified and also after end they msut notified") */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+          {/* Option 2: Temporary Access (Trial Version) */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-950/5 p-5 flex flex-col justify-between">
             <div className="space-y-4">
               <div>
                 <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Temporary Access</span>
@@ -334,7 +350,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
           </div>
 
           {/* Option 3: Full Plan Bundle (Growth / Enterprise) */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-950/5 p-5 flex flex-col justify-between">
             <div className="space-y-4">
               <div>
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Full Suite Bundle</span>
@@ -386,7 +402,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
         </div>
 
         {/* ── Footer Help / WhatsApp contact ── */}
-        <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 text-xs text-slate-600 gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-950/5 text-xs text-slate-600 gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Need custom enterprise licensing or customized pricing? We can tailor an add-on bundle for your team.</span>
@@ -404,5 +420,6 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
 
       </div>
     </div>
-  );
+  </div>
+);
 };
