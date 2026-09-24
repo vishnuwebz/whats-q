@@ -19,6 +19,25 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
   const richCard = richCardRaw
     ? (Object.fromEntries(Object.entries(richCardRaw).filter(([k]) => k !== 'reactions')) as WhatsAppMessage['richCard'])
     : undefined;
+  const rawText = String(raw.text || '');
+  const isVoice = Boolean(
+    raw.isVoiceNote ||
+    raw.is_voice_note ||
+    richCardRaw?.type === 'voice_note' ||
+    richCardRaw?.is_voice ||
+    rawText.includes('🎙️') ||
+    rawText.toLowerCase().includes('voice note')
+  );
+  const audioDuration =
+    (raw.audioDuration as number) ||
+    (raw.audio_duration as number) ||
+    (richCardRaw?.duration as number) ||
+    (richCardRaw?.audioDuration as number) ||
+    (() => {
+      const match = rawText.match(/\((\d+)\s*s(?:\s+audio)?\)/i);
+      return match ? parseInt(match[1], 10) : undefined;
+    })();
+
   return {
     id: raw.id as string | number,
     sender: raw.sender as WhatsAppMessage['sender'],
@@ -27,10 +46,14 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     sender_phone: (raw.sender_phone as string) || undefined,
     isTemplate: Boolean(raw.is_template || raw.isTemplate),
     workflowName: (raw.workflow_name as string) || (raw.workflowName as string) || undefined,
-    text: String(raw.text || ''),
+    text: rawText,
     timestamp: String(raw.timestamp || ''),
     created_at: raw.created_at ? String(raw.created_at) : undefined,
     status: ['sent', 'delivered', 'read', 'pending'].includes(status) ? status : 'sent',
+    isVoiceNote: isVoice,
+    audioUrl: (raw.audioUrl as string) || (raw.audio_url as string) || (richCardRaw?.audioUrl as string) || (richCardRaw?.audio_url as string) || undefined,
+    audioDuration,
+    waveform: (raw.waveform as number[]) || (richCardRaw?.waveform as number[]) || undefined,
     richCard,
     reactions,
   };

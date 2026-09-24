@@ -85,8 +85,31 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
       { id: 'm2', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Sure! I can help you with that. Please share your location so I can check service availability.', timestamp: '10:30 AM', status: 'read' },
       { id: 'm3', sender: 'customer', text: '45, Park Street, Koyilandy', timestamp: '10:31 AM', status: 'read' },
       { id: 'm4', sender: 'bot', senderName: 'Qiyam AI Assistant', text: 'Great! We are available at your location. The charges will be ₹2,800. Shall I book it for you?', timestamp: '10:31 AM', status: 'read' },
-      { id: 'm5', sender: 'customer', text: 'Yes, please.', timestamp: '10:32 AM', status: 'delivered' },
-      { id: 'm6', sender: 'customer', text: 'Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #APT-1023', timestamp: '10:32 AM', status: 'delivered' }
+      { id: 'm5', sender: 'customer', text: 'Yes, please.', timestamp: '10:32 AM', status: 'read' },
+      { id: 'm6', sender: 'customer', text: 'Booking confirmed for tomorrow between 10:00 AM - 12:00 PM. You will receive a reminder. Booking ID: #APT-1023', timestamp: '10:32 AM', status: 'read' },
+      {
+        id: 'm-voice-in',
+        sender: 'customer',
+        text: '🎙️ Voice note (0:06)',
+        timestamp: '10:33 AM',
+        status: 'read',
+        isVoiceNote: true,
+        audioDuration: 6,
+        waveform: [20, 35, 60, 45, 80, 95, 70, 50, 65, 85, 90, 40, 30, 55, 75, 90, 60, 45, 30, 60, 80, 70, 50, 30, 20]
+      },
+      {
+        id: 'm-voice-out',
+        sender: 'agent',
+        senderName: 'Rahul Mehta',
+        sender_device: 'Meta Cloud API',
+        sender_phone: '+91 94963 00233',
+        text: '🎙️ Voice note (0:04)',
+        timestamp: '10:34 AM',
+        status: 'read',
+        isVoiceNote: true,
+        audioDuration: 4,
+        waveform: [15, 30, 55, 70, 85, 90, 65, 45, 60, 80, 75, 40, 25, 50, 70, 85, 50, 35, 20, 50, 65, 40, 25, 15]
+      }
     ]
   },
   {
@@ -530,7 +553,18 @@ interface QiyamState {
   updateEmployeeDevice: (deviceId: string | number, updates: Partial<LinkedEmployeeDevice>) => Promise<any>;
   unlinkEmployeeDevice: (deviceId: string | number) => Promise<void>;
   setActiveSenderDeviceId: (id: string | number | 'meta_cloud') => void;
-  sendMessage: (conversationId: string | number, text: string, sender?: 'agent' | 'customer' | 'bot', senderDeviceId?: string | number | 'meta_cloud') => Promise<void>;
+  sendMessage: (
+    conversationId: string | number,
+    text: string,
+    sender?: 'agent' | 'customer' | 'bot',
+    senderDeviceId?: string | number | 'meta_cloud',
+    voicePayload?: {
+      audioUrl?: string;
+      audioDuration?: number;
+      waveform?: number[];
+      isVoiceNote?: boolean;
+    }
+  ) => Promise<void>;
   sendTemplateMessage: (conversationId: string | number, templateId: string | number, variables: Record<string, string>) => Promise<void>;
   simulateInboundWhatsApp: (name: string, phone: string, text: string) => Promise<void>;
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
@@ -2619,7 +2653,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     set({ searchResults: results });
   },
 
-  sendMessage: async (conversationId, text, sender = 'agent', senderDeviceId) => {
+  sendMessage: async (conversationId, text, sender = 'agent', senderDeviceId, voicePayload) => {
     const tempId = `msg-${Date.now()}`;
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -2658,6 +2692,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       ? (employeeDevice.employee_name || employeeDevice.device_label)
       : (sender === 'agent' ? 'Rahul Mehta' : 'Qiyam AI Assistant');
 
+    const isVoice = Boolean(
+      voicePayload?.isVoiceNote ||
+      voicePayload?.audioUrl ||
+      text.includes('🎙️') ||
+      text.toLowerCase().includes('voice note')
+    );
+
     // 1. Optimistic message with initial 'sent' status (single tick)
     const optimisticMsg: WhatsAppMessage = {
       id: tempId,
@@ -2669,6 +2710,17 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       timestamp: nowTime,
       created_at: new Date().toISOString(),
       status: 'sent',
+      isVoiceNote: isVoice,
+      audioUrl: voicePayload?.audioUrl,
+      audioDuration: voicePayload?.audioDuration,
+      waveform: voicePayload?.waveform,
+      richCard: isVoice ? {
+        type: 'voice_note',
+        title: 'Voice Note',
+        duration: voicePayload?.audioDuration,
+        audioUrl: voicePayload?.audioUrl,
+        waveform: voicePayload?.waveform,
+      } : undefined,
     };
 
     set((state) => {
@@ -2702,6 +2754,12 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         sender_device_id: isEmployeeDevice ? targetDeviceId : undefined,
         contact_name: parentConv?.contact_name,
         phone_number: parentConv?.phone_number,
+        rich_card: isVoice ? {
+          type: 'voice_note',
+          audioUrl: voicePayload?.audioUrl,
+          duration: voicePayload?.audioDuration,
+          waveform: voicePayload?.waveform,
+        } : undefined,
       });
       if (res && res.id && res.success !== false) {
         // Update optimistic message with real backend message ID and status

@@ -76,10 +76,14 @@ export interface WhatsAppMessage {
   status: 'sent' | 'delivered' | 'read' | 'pending';
   isTemplate?: boolean;
   workflowName?: string;
+  isVoiceNote?: boolean;
+  audioUrl?: string;
+  audioDuration?: number;
+  waveform?: number[];
   reactions?: { emoji: string; from: 'customer' | 'agent' | 'bot' | 'system' }[];
   richCard?: {
-    type: 'booking' | 'payment' | 'quotation';
-    title: string;
+    type: 'booking' | 'payment' | 'quotation' | 'voice_note' | string;
+    title?: string;
     date?: string;
     time?: string;
     service?: string;
@@ -87,6 +91,9 @@ export interface WhatsAppMessage {
     bookingId?: string;
     invoiceId?: string;
     actionText?: string;
+    audioUrl?: string;
+    duration?: number;
+    waveform?: number[];
   };
 }
 

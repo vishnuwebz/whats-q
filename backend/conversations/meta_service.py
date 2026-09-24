@@ -496,6 +496,44 @@ class MetaWhatsAppService:
             return {"success": False, "error": f"Network error: {str(e)}"}
 
     @classmethod
+    def send_whatsapp_audio(cls, phone_number_id: str, access_token: str, to_phone: str, audio_url: str = None, media_id: str = None, api_version: str = DEFAULT_API_VERSION):
+        """
+        Sends a WhatsApp audio / voice note message.
+        POST /{PHONE_NUMBER_ID}/messages
+        """
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
+        headers = cls.get_headers(access_token)
+
+        clean_phone = cls.clean_phone_number(to_phone)
+
+        audio_payload = {}
+        if media_id:
+            audio_payload["id"] = media_id
+        elif audio_url:
+            audio_payload["link"] = audio_url
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_phone,
+            "type": "audio",
+            "audio": audio_payload
+        }
+
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            data = resp.json()
+            if resp.status_code in [200, 201]:
+                msg_id = data.get("messages", [{}])[0].get("id")
+                return {"success": True, "message_id": msg_id, "raw": data}
+            else:
+                err = data.get("error", {}).get("message", "Failed to send WhatsApp audio message")
+                return {"success": False, "error": err, "details": data}
+        except Exception as e:
+            return {"success": False, "error": f"Network error: {str(e)}"}
+
+    @classmethod
     def send_whatsapp_template(cls, phone_number_id: str, access_token: str, to_phone: str, template_name: str, language_code: str = "en_US", components: list = None, api_version: str = DEFAULT_API_VERSION):
         """
         Sends an approved template message to start a conversation or notify customer.

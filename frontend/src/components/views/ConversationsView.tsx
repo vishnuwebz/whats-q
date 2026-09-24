@@ -18,6 +18,7 @@ import { ManualOptOutModal } from './conversations/ManualOptOutModal';
 import { ChatWorkflowModal } from './conversations/ChatWorkflowModal';
 import { LinkEmployeeWhatsAppModal } from './conversations/LinkEmployeeWhatsAppModal';
 import { EditEmployeeDeviceModal } from './conversations/EditEmployeeDeviceModal';
+import { VoiceNotePlayer } from './conversations/VoiceNotePlayer';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { Conversation, LinkedEmployeeDevice } from '@/types';
 import { apiClient } from '@/api/client';
@@ -114,6 +115,9 @@ export const ConversationsView: React.FC = () => {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const recordTimerRef = React.useRef<any>(null);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
+  const audioStreamRef = React.useRef<MediaStream | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -464,28 +468,140 @@ export const ConversationsView: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const startVoiceRecording = async () => {
+    if (!currentConv) return;
+    audioChunksRef.current = [];
+
+    // Attempt real browser mic recording via MediaRecorder
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStreamRef.current = stream;
+
+        let mimeType = '';
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = 'audio/webm';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          mimeType = 'audio/ogg;codecs=opus';
+        }
+
+        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        recorder.start(100);
+      }
+    } catch (err) {
+      console.warn('Microphone permission blocked or unavailable, using simulated voice recording:', err);
+    }
+
+    setIsRecordingVoice(true);
+    setRecordSeconds(1);
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    recordTimerRef.current = setInterval(() => {
+      setRecordSeconds((s) => s + 1);
+    }, 1000);
+    addToast('Recording voice message... Speak into your mic', 'info');
+  };
+
+  const handleCancelVoiceRecording = () => {
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      audioStreamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecordingVoice(false);
+    setRecordSeconds(0);
+    addToast('Voice message discarded', 'info');
+  };
+
+  const handleSendVoiceRecording = () => {
+    if (!currentConv) return;
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+
+    const duration = Math.max(1, recordSeconds || 2);
+
+    // Dynamic amplitude waveform
+    const sampleWaveform = [
+      20, 35, 60, 45, 80, 95, 70, 50, 65, 85, 90, 40, 30, 55, 75, 90, 60, 45, 30, 60, 80, 70, 50, 30, 20
+    ].map((val) => Math.min(100, Math.max(15, Math.floor(val * (0.8 + Math.random() * 0.4)))));
+
+    const finalizeAndSend = (audioUrl?: string) => {
+      sendMessage(
+        currentConv.id,
+        `🎙️ Voice note (${duration}s)`,
+        'agent',
+        activeSenderDeviceId,
+        {
+          audioUrl,
+          audioDuration: duration,
+          waveform: sampleWaveform,
+          isVoiceNote: true,
+        }
+      );
+      addToast(`Voice note (${duration}s) sent to ${currentConv.contact_name}!`, 'success');
+      setIsRecordingVoice(false);
+      setRecordSeconds(0);
+    };
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.onstop = () => {
+        try {
+          const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          const audioUrl = URL.createObjectURL(blob);
+          finalizeAndSend(audioUrl);
+        } catch {
+          finalizeAndSend();
+        }
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((track) => track.stop());
+          audioStreamRef.current = null;
+        }
+      };
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        finalizeAndSend();
+      }
+    } else {
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+      }
+      finalizeAndSend();
+    }
+  };
+
   const handleToggleVoiceRecording = () => {
     if (!currentConv) return;
     if (isRecordingVoice) {
-      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-      setIsRecordingVoice(false);
-      const duration = recordSeconds || 2;
-      sendMessage(currentConv.id, `🎙️ *Voice Note* (${duration}s audio)`, 'agent', activeSenderDeviceId);
-      addToast(`Voice note (${duration}s) sent to ${currentConv.contact_name}!`, 'success');
-      setRecordSeconds(0);
+      handleSendVoiceRecording();
     } else {
-      setIsRecordingVoice(true);
-      setRecordSeconds(1);
-      recordTimerRef.current = setInterval(() => {
-        setRecordSeconds((s) => s + 1);
-      }, 1000);
-      addToast('Recording voice note... Click again to send', 'info');
+      startVoiceRecording();
     }
   };
 
   React.useEffect(() => {
     return () => {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
     };
   }, []);
 
@@ -1943,7 +2059,40 @@ export const ConversationsView: React.FC = () => {
                                   <span>Qiyam AI Assistant</span>
                                 </div>
                               )}
-                              <div className="whitespace-pre-wrap break-words">{msg.text}</div>
+                              {(() => {
+                                const isVoice = Boolean(
+                                  msg.isVoiceNote ||
+                                  msg.richCard?.type === 'voice_note' ||
+                                  msg.audioUrl ||
+                                  msg.text?.includes('Voice Note') ||
+                                  msg.text?.includes('Voice note') ||
+                                  msg.text?.includes('🎙️')
+                                );
+
+                                if (isVoice) {
+                                  let durationVal = msg.audioDuration || (msg.richCard as any)?.duration;
+                                  if (!durationVal && msg.text) {
+                                    const match = msg.text.match(/\((\d+)\s*s(?:\s+audio)?\)/i);
+                                    if (match) durationVal = parseInt(match[1], 10);
+                                  }
+                                  const resolvedDuration = durationVal || 4;
+
+                                  return (
+                                    <div className="py-0.5">
+                                      <VoiceNotePlayer
+                                        audioUrl={msg.audioUrl || (msg.richCard as any)?.audioUrl}
+                                        duration={resolvedDuration}
+                                        waveform={msg.waveform || (msg.richCard as any)?.waveform}
+                                        isOutgoing={!isCustomer}
+                                        senderAvatar={isCustomer ? currentConv?.avatar : undefined}
+                                        senderName={isCustomer ? currentConv?.contact_name : (msg.senderName || 'You')}
+                                      />
+                                    </div>
+                                  );
+                                }
+
+                                return <div className="whitespace-pre-wrap break-words">{msg.text}</div>;
+                              })()}
 
                               {/* Rich Confirmation Card */}
                               {msg.richCard && msg.richCard.type === 'booking' && (
@@ -2397,22 +2546,39 @@ export const ConversationsView: React.FC = () => {
 
                 {/* Active Voice Recording UI vs Text Input */}
                 {isRecordingVoice ? (
-                  <div className="flex-1 flex items-center justify-between px-4 py-2 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 animate-pulse">
-                    <div className="flex items-center gap-2 font-bold">
+                  <div className="flex-1 flex items-center justify-between px-3 sm:px-4 py-2 bg-rose-50/90 border border-rose-200 rounded-xl text-xs">
+                    {/* Pulsing red dot + Recording timer */}
+                    <div className="flex items-center gap-2 font-mono font-bold text-rose-600 shrink-0">
                       <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-                      <span>Recording Voice Note ({recordSeconds}s)...</span>
+                      <span>{Math.floor(recordSeconds / 60)}:{(recordSeconds % 60).toString().padStart(2, '0')}</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-                        setIsRecordingVoice(false);
-                        setRecordSeconds(0);
-                      }}
-                      className="text-slate-500 hover:text-slate-800 font-semibold px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      Cancel
-                    </button>
+
+                    {/* Live Equalizer Waveform animation */}
+                    <div className="flex items-center gap-1 px-3 h-6 flex-1 justify-center max-w-[200px]">
+                      {[40, 75, 95, 30, 85, 60, 100, 45, 90, 35, 75, 55, 80, 65, 90].map((h, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            height: `${Math.max(20, (h * ((recordSeconds % 3) + 1)) % 100)}%`,
+                            transition: 'height 150ms ease-in-out',
+                          }}
+                          className="w-[2.5px] bg-rose-500 rounded-full"
+                        />
+                      ))}
+                    </div>
+
+                    {/* Trash / Cancel & Send Controls */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleCancelVoiceRecording}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:text-rose-800 hover:bg-rose-100 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                        title="Discard recording"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Cancel</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <input
@@ -2430,7 +2596,7 @@ export const ConversationsView: React.FC = () => {
                   onClick={handleToggleVoiceRecording}
                   title={isRecordingVoice ? 'Stop & Send Voice Note' : 'Record Voice Note'}
                   className={`hidden sm:flex p-2 rounded-lg transition-all shrink-0 cursor-pointer ${
-                    isRecordingVoice ? 'bg-rose-500 text-white animate-bounce' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                    isRecordingVoice ? 'bg-rose-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <Mic className="w-5 h-5" />
@@ -2443,10 +2609,11 @@ export const ConversationsView: React.FC = () => {
                   onClick={(e) => {
                     if (isRecordingVoice) {
                       e.preventDefault();
-                      handleToggleVoiceRecording();
+                      handleSendVoiceRecording();
                     }
                   }}
                   className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white flex items-center justify-center shadow-md shadow-emerald-700/20 transition-all active:scale-95 shrink-0 cursor-pointer"
+                  title={isRecordingVoice ? 'Send Voice Note' : 'Send Message'}
                 >
                   <Send className="w-4 h-4" />
                 </button>
