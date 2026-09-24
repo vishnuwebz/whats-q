@@ -122,9 +122,9 @@ export const DraggableScrollRow: React.FC<DraggableScrollRowProps> = ({
     };
   }, [updateScrollBounds]);
 
-  // Start drag on mousedown
+  // Start drag on mousedown (left click or middle wheel button click)
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 && e.button !== 1) return;
     const el = containerRef.current;
     if (!el) return;
 
@@ -183,12 +183,13 @@ export const DraggableScrollRow: React.FC<DraggableScrollRowProps> = ({
       {/* Scrollable & Draggable Inner Container */}
       <div
         ref={containerRef}
+        data-draggable-scroll="true"
         onMouseDown={handleMouseDown}
         onDragStart={handleDragStart}
         onClickCapture={handleClickCapture}
         onScroll={updateScrollBounds}
-        className={`flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full select-none ${
-          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        className={`flex items-center gap-1.5 overflow-x-auto scrollbar-hide scrollbar-none no-scrollbar scroll-smooth w-full select-none ${
+          isDragging ? 'cursor-grabbing' : (canScrollLeft || canScrollRight ? 'cursor-grab' : '')
         } ${innerClassName}`}
         style={{
           WebkitOverflowScrolling: 'touch',

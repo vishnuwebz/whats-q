@@ -20,6 +20,7 @@ import { LinkEmployeeWhatsAppModal } from './conversations/LinkEmployeeWhatsAppM
 import { EditEmployeeDeviceModal } from './conversations/EditEmployeeDeviceModal';
 import { VoiceNotePlayer } from './conversations/VoiceNotePlayer';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
+import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
 import { Conversation, LinkedEmployeeDevice } from '@/types';
 import { apiClient } from '@/api/client';
 import {
@@ -1233,7 +1234,13 @@ export const ConversationsView: React.FC = () => {
         {/* Pane 1: Conversation List (Left 320px on desktop, full width on mobile) */}
         <div className={`w-full md:w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 ${isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           {/* Filter Tabs */}
-          <div className="px-3 pt-3 border-b border-slate-100 flex items-center gap-1 overflow-x-auto scrollbar-none text-[11px] font-semibold text-slate-600">
+          <DraggableScrollRow
+            showArrows={false}
+            fadeEdges={true}
+            className="border-b border-slate-100 shrink-0"
+            innerClassName="px-3 pt-3 flex items-center gap-1 text-[11px] font-semibold text-slate-600 scrollbar-hide scrollbar-none no-scrollbar"
+            wheelMultiplier={1.2}
+          >
             <button
               onClick={() => setActiveFilterTab('all')}
               className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all ${
@@ -1284,7 +1291,7 @@ export const ConversationsView: React.FC = () => {
               <Trash2 className="w-3 h-3" />
               <span>Trash ({counts.deleted})</span>
             </button>
-          </div>
+          </DraggableScrollRow>
 
           {/* Search Box & Filter Controls */}
           <div className="p-3 border-b border-slate-100 flex items-center gap-2 relative">
@@ -2442,7 +2449,10 @@ export const ConversationsView: React.FC = () => {
               </div>
 
               {/* Quick Action Chips Bar */}
-              <div className="px-5 py-2 bg-white border-t border-slate-200/60 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
+              <div
+                data-draggable-scroll="true"
+                className="px-5 py-2 bg-white border-t border-slate-200/60 flex items-center gap-2 overflow-x-auto scrollbar-hide scrollbar-none no-scrollbar text-xs"
+              >
                 <span className="text-[11px] font-semibold text-slate-400 shrink-0">Quick Actions:</span>
                 <button
                   onClick={() => {
