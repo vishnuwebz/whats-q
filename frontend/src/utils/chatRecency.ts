@@ -64,7 +64,13 @@ export function parseAnyDate(raw?: string | null): Date | null {
 export function getMessageDateObj(msg: WhatsAppMessage, conv?: Conversation | null): Date {
   if (!msg) return new Date();
 
-  // 1. If message timestamp has full date information (e.g. "May 12, 2024 10:30 AM")
+  // 1. Inspect msg.created_at ISO timestamp (Highest priority: exact creation time of this message)
+  if (msg.created_at) {
+    const d = parseAnyDate(msg.created_at);
+    if (d) return d;
+  }
+
+  // 2. If message timestamp has full date information (e.g. "May 12, 2024 10:30 AM" or "2024-05-12")
   if (msg.timestamp) {
     const trimmed = msg.timestamp.trim();
     if (/[a-zA-Z]{3,}|\d{4}|\/|-/.test(trimmed) && !/^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(trimmed)) {
@@ -73,12 +79,15 @@ export function getMessageDateObj(msg: WhatsAppMessage, conv?: Conversation | nu
     }
   }
 
-  // 2. If parent conversation has an explicit historical contact date (e.g. "May 12, 2024 10:32 AM" or "May 10")
-  if (conv?.last_contact_date || conv?.first_contact_date) {
-    const convDateRaw = conv.last_contact_date || conv.first_contact_date;
+  // 3. If parent conversation has an explicit historical contact date (e.g. "May 12, 2024 10:32 AM" or "May 10")
+  // Only check if it's NOT a relative transient string like "Just now"
+  const convDateRaw = (conv?.first_contact_date && conv.first_contact_date.toLowerCase() !== 'just now')
+    ? conv.first_contact_date
+    : (conv?.last_contact_date && conv.last_contact_date.toLowerCase() !== 'just now' ? conv.last_contact_date : null);
+
+  if (convDateRaw) {
     const convDate = parseAnyDate(convDateRaw);
     if (convDate) {
-      // If msg.timestamp has a time component (e.g. "10:30 AM"), merge the conversation's date with the message time
       if (msg.timestamp) {
         const timeMatch = msg.timestamp.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
         if (timeMatch) {
@@ -94,12 +103,6 @@ export function getMessageDateObj(msg: WhatsAppMessage, conv?: Conversation | nu
       }
       return convDate;
     }
-  }
-
-  // 3. Inspect msg.created_at ISO timestamp
-  if (msg.created_at) {
-    const d = parseAnyDate(msg.created_at);
-    if (d) return d;
   }
 
   // 4. Message timestamp fallback
@@ -123,36 +126,43 @@ export function getMessageDayKey(d: Date): string {
 
 /**
  * Formats the centered WhatsApp date chip label:
- * - "Today"
- * - "Yesterday"
- * - "Monday, May 13, 2024"
+ * - "TODAY"
+ * - "YESTERDAY"
+ * - "MONDAY", "TUESDAY", etc. (within 7 days)
+ * - "14 SEPTEMBER 2026" / "12 MAY 2024"
  */
 export function formatMessageDateGroup(d: Date): string {
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
-  if (isToday) return 'Today';
+  if (isToday) return 'TODAY';
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if (d.toDateString() === yesterday.toDateString()) return 'YESTERDAY';
+
+  const diffTime = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  // If within last 6 days, official WhatsApp shows uppercase weekday name (e.g. "MONDAY", "TUESDAY")
+  if (diffDays >= 0 && diffDays < 7) {
+    return d.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+  }
 
   const currentYear = now.getFullYear();
   const msgYear = d.getFullYear();
 
   if (currentYear === msgYear) {
     return d.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'short',
       day: 'numeric',
-    });
+      month: 'long',
+    }).toUpperCase();
   }
 
   return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
     day: 'numeric',
+    month: 'long',
     year: 'numeric',
-  });
+  }).toUpperCase();
 }
 
 /**

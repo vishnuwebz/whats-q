@@ -567,7 +567,7 @@ interface QiyamState {
     }
   ) => Promise<void>;
   sendTemplateMessage: (conversationId: string | number, templateId: string | number, variables: Record<string, string>) => Promise<void>;
-  simulateInboundWhatsApp: (name: string, phone: string, text: string) => Promise<void>;
+  simulateInboundWhatsApp: (name: string, phone: string, text: string, avatar?: string) => Promise<void>;
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
   submitTemplateToMeta: (templateId: string | number) => Promise<boolean>;
   syncTemplatesWithMeta: () => Promise<void>;
@@ -2789,8 +2789,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
   },
 
-  simulateInboundWhatsApp: async (name, phone, text) => {
-    const res = await apiClient.post('/conversations/simulate/', { name, phone, text });
+  simulateInboundWhatsApp: async (name, phone, text, avatar) => {
+    const res = await apiClient.post('/conversations/simulate/', { name, phone, text, avatar });
     if (res?.conversation) {
       const conv = mapConversation(res.conversation as Record<string, unknown>);
       set((state) => {
@@ -2800,10 +2800,10 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           : [conv, ...state.conversations];
         return { conversations, selectedConversationId: conv.id };
       });
-      get().addToast(`New WhatsApp message from ${name}`, 'info');
+      get().addToast(`WhatsApp chat with ${name || phone} started`, 'success');
       return;
     }
-    get().addToast(res?.error || 'Simulation failed', 'error');
+    get().addToast(res?.error || 'Failed to start WhatsApp conversation', 'error');
   },
 
   sendTemplateMessage: async (conversationId, templateId, variables) => {

@@ -1669,7 +1669,7 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => setIsSimulatorOpen(true)}
             className="w-9 h-9 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition border border-emerald-500/30 cursor-pointer"
-            title={`Active Outbound Sender: ${activeOutboundLine} (Click to Simulate)`}
+            title={`Active Outbound Sender: ${activeOutboundLine} (Click to Start Chat)`}
           >
             <MessageSquare className="w-4 h-4" />
           </button>

@@ -3,7 +3,7 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
-  Smile, Mic, CheckCheck, Clock, UserCheck, Calendar,
+  Smile, Mic, CheckCheck, Clock, UserCheck,
   ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
@@ -113,6 +113,10 @@ export const ConversationsView: React.FC = () => {
     });
   };
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const messagesContainerRef = React.useRef<HTMLDivElement>(null);
+  const [activeFloatingDate, setActiveFloatingDate] = useState<string>('');
+  const typingTimerRef = React.useRef<any>(null);
+  const isTypingEmittedRef = React.useRef<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const recordTimerRef = React.useRef<any>(null);
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
@@ -340,6 +344,40 @@ export const ConversationsView: React.FC = () => {
 
     return groups;
   }, [currentConv?.id, currentConv?.messages, currentConv?.last_contact_date]);
+
+  // Set initial floating date based on latest messages in conversation
+  React.useEffect(() => {
+    if (messageGroups.length > 0) {
+      setActiveFloatingDate(messageGroups[messageGroups.length - 1].label);
+    } else {
+      setActiveFloatingDate('');
+    }
+  }, [currentConv?.id, messageGroups]);
+
+  // Dynamically update floating date pill on scroll exactly like official WhatsApp
+  const handleMessagesScroll = React.useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const groupEls = container.querySelectorAll<HTMLElement>('.message-day-group');
+    if (groupEls.length === 0) return;
+
+    const containerTop = container.getBoundingClientRect().top;
+
+    let matchedLabel = '';
+    for (let i = 0; i < groupEls.length; i++) {
+      const el = groupEls[i];
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom >= containerTop + 35) {
+        matchedLabel = el.getAttribute('data-day-label') || '';
+        break;
+      }
+    }
+
+    if (matchedLabel && matchedLabel !== activeFloatingDate) {
+      setActiveFloatingDate(matchedLabel);
+    }
+  }, [activeFloatingDate]);
 
   const filteredConversations = sortConversationsByRecency(
     conversations.filter((c) => {
@@ -616,9 +654,37 @@ export const ConversationsView: React.FC = () => {
     };
   }, []);
 
+  const handleInputChange = (text: string) => {
+    setInputText(text);
+
+    if (!currentConv) return;
+
+    if (text.trim().length > 0) {
+      if (!isTypingEmittedRef.current) {
+        isTypingEmittedRef.current = true;
+        apiClient.post(`/conversations/${currentConv.id}/typing/`, { is_typing: true }).catch(() => {});
+      }
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        isTypingEmittedRef.current = false;
+        apiClient.post(`/conversations/${currentConv.id}/typing/`, { is_typing: false }).catch(() => {});
+      }, 3000);
+    } else if (isTypingEmittedRef.current) {
+      isTypingEmittedRef.current = false;
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      apiClient.post(`/conversations/${currentConv.id}/typing/`, { is_typing: false }).catch(() => {});
+    }
+  };
+
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !currentConv) return;
+
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (isTypingEmittedRef.current) {
+      isTypingEmittedRef.current = false;
+      apiClient.post(`/conversations/${currentConv.id}/typing/`, { is_typing: false }).catch(() => {});
+    }
 
     sendMessage(currentConv.id, inputText, 'agent', activeSenderDeviceId);
     setInputText('');
@@ -1575,13 +1641,13 @@ export const ConversationsView: React.FC = () => {
                       {/* Real Customer WhatsApp Presence Status Badge (Read-only real data) */}
                       <div
                         className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all duration-300 select-none ${
-                          isCustomerReallyOnline
+                          typingUsers[currentConv.id] || isCustomerReallyOnline
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-slate-100 text-slate-500 border-slate-200'
                         }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                          isCustomerReallyOnline
+                          typingUsers[currentConv.id] || isCustomerReallyOnline
                             ? 'bg-emerald-500 animate-pulse ring-1 ring-emerald-300'
                             : 'bg-slate-400'
                         }`} />
@@ -1595,13 +1661,8 @@ export const ConversationsView: React.FC = () => {
                       </div>
                     </div>
                     {typingUsers[currentConv.id] ? (
-                      <div className="text-[11px] sm:text-xs text-emerald-600 font-bold flex items-center gap-1.5 animate-pulse mt-0.5">
-                        <span>typing</span>
-                        <span className="flex gap-0.5 items-center">
-                          <span className="w-1 h-1 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1 h-1 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1 h-1 rounded-full bg-emerald-600 animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </span>
+                      <div className="text-[11px] sm:text-xs text-emerald-600 font-medium tracking-wide flex items-center gap-1 mt-0.5 animate-in fade-in duration-150">
+                        <span>typing...</span>
                       </div>
                     ) : (
                       <div className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 truncate">
@@ -1845,7 +1906,20 @@ export const ConversationsView: React.FC = () => {
               )}
 
               {/* Chat Messages Body */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleMessagesScroll}
+                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 relative"
+              >
+                {/* Official WhatsApp Dynamic Sticky Floating Date Header */}
+                {activeFloatingDate && (
+                  <div className="sticky top-1 z-20 flex justify-center pointer-events-none select-none transition-all duration-200">
+                    <div className="inline-flex items-center px-3.5 py-1 rounded-lg bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xs text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                      {activeFloatingDate}
+                    </div>
+                  </div>
+                )}
+
                 {messageGroups.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 space-y-2">
                     <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
@@ -1853,12 +1927,16 @@ export const ConversationsView: React.FC = () => {
                   </div>
                 ) : (
                   messageGroups.map((group) => (
-                    <div key={group.dayKey} className="space-y-4">
-                      {/* WhatsApp Sticky Centered Date Chip */}
-                      <div className="flex justify-center my-3 sticky top-1 z-10 select-none pointer-events-none">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xs text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
-                          <Calendar className="w-3 h-3 text-emerald-600" />
-                          <span>{group.label}</span>
+                    <div
+                      key={group.dayKey}
+                      data-day-key={group.dayKey}
+                      data-day-label={group.label}
+                      className="message-day-group space-y-4"
+                    >
+                      {/* In-stream WhatsApp Centered Date Divider */}
+                      <div className="flex justify-center my-3 select-none pointer-events-none">
+                        <div className="inline-flex items-center px-3.5 py-1 rounded-lg bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                          {group.label}
                         </div>
                       </div>
 
@@ -2204,16 +2282,15 @@ export const ConversationsView: React.FC = () => {
                   ))
                 )}
 
-                {/* Real-time WhatsApp Client Typing Bubble */}
+                {/* Real-time WhatsApp Client Typing Bubble (Official 3-Dot Wave Animation) */}
                 {typingUsers[currentConv.id] && (
-                  <div className="flex items-start gap-2 pt-1 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                    <div className="bg-white rounded-2xl rounded-tl-xs px-3.5 py-2.5 shadow-sm border border-slate-200 flex items-center gap-2">
-                      <span className="flex gap-1 items-center">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-medium italic">{currentConv.contact_name || 'Customer'} is typing...</span>
+                  <div className="flex items-start gap-2 pt-1 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                    <div className="relative bg-white text-slate-800 rounded-2xl rounded-tl-xs px-4 py-3 shadow-xs border border-slate-200/80 flex items-center">
+                      <div className="flex items-center gap-1.5 h-3.5">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }} />
+                        <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '180ms', animationDuration: '1s' }} />
+                        <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '360ms', animationDuration: '1s' }} />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2595,7 +2672,7 @@ export const ConversationsView: React.FC = () => {
                   <input
                     type="text"
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     placeholder="Type a message or use WhatsApp template..."
                     className="flex-1 min-w-0 px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />

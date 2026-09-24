@@ -2498,9 +2498,12 @@ class SimulateWhatsAppMessageView(APIView):
     Simulates incoming WhatsApp customer message and triggers AI Intent understanding & Auto responses
     """
     def post(self, request):
-        phone = request.data.get('phone', '+91 98765 43210')
-        contact_name = request.data.get('name', 'Amit Verma')
-        text = request.data.get('text', 'I need AC service tomorrow.')
+        phone = (request.data.get('phone') or '').strip()
+        if not phone:
+            return Response({'error': 'Phone number is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        contact_name = (request.data.get('name') or 'WhatsApp Customer').strip()
+        text = (request.data.get('text') or 'Hello').strip()
+        avatar = (request.data.get('avatar') or '').strip()
         
         now_time = datetime.datetime.now().strftime('%I:%M %p')
         now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
@@ -2509,26 +2512,35 @@ class SimulateWhatsAppMessageView(APIView):
             phone_number=phone,
             defaults={
                 'contact_name': contact_name,
-                'avatar': '',
+                'avatar': avatar,
                 'category': 'Lead',
                 'status': 'open',
                 'lead_owner': 'Ramesh Kumar',
                 'lead_stage': 'New Lead',
                 'source': 'WhatsApp',
-                'location': 'Koyilandy, Kerala',
-                'tags': ['AC Service', 'High Value'],
-                'notes': 'Customer requested service via WhatsApp. Needs AC repair.',
-                'service_needed': 'AC Repair',
-                'estimated_value': 2800.0,
+                'location': 'Kozhikode, Kerala',
+                'tags': ['New Contact'],
+                'notes': 'Conversation initiated via WhatsApp.',
+                'service_needed': 'General Inquiry',
+                'estimated_value': 0.0,
                 'active_workflow': 'Service Booking Flow',
                 'is_online': True,
                 'last_seen': 'Just now'
             }
         )
 
-        conv.is_online = True
-        conv.last_seen = 'Just now'
-        conv.save()
+        if not created:
+            if contact_name and contact_name != 'WhatsApp Customer':
+                conv.contact_name = contact_name
+            if avatar:
+                conv.avatar = avatar
+            conv.is_online = True
+            conv.last_seen = 'Just now'
+            conv.save()
+        else:
+            conv.is_online = True
+            conv.last_seen = 'Just now'
+            conv.save()
 
         emit_event('conversation.presence', {
             'conversation_id': conv.id,
