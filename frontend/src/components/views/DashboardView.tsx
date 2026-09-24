@@ -267,7 +267,7 @@ export const DashboardView: React.FC = () => {
       <Header
         title="Dashboard"
         subtitle="Good morning, Rahul! Here's what's happening in your business today."
-        primaryActionLabel="New Booking"
+        primaryActionLabel="New WhatsApp Chat"
         onPrimaryAction={() => {
           setActiveTab('conversations');
           setIsSimulatorOpen(true);
