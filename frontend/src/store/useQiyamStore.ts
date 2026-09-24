@@ -3018,7 +3018,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           templateName: c.template_name || '',
           messageText: c.message_text || '',
           cost: c.cost || 0,
-          status: c.status || 'COMPLETED',
+          status: (c.status || 'QUEUED').toUpperCase() as any,
           createdBy: c.created_by || '',
           createdAt: c.created_at || new Date().toISOString(),
           createdOn: c.created_at
@@ -3038,6 +3038,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           })),
         }));
         set({ bulkCampaigns: mapped });
+
+        // Auto-poll progress if any campaign is currently active
+        const hasActive = mapped.some((c) => c.status === 'RUNNING' || c.status === 'QUEUED');
+        if (hasActive) {
+          setTimeout(() => {
+            get().fetchBulkCampaigns();
+          }, 2500);
+        }
       }
     } catch (err) {
       // Silently fail — no fake data, just empty list

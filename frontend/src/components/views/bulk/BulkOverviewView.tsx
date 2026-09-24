@@ -47,14 +47,14 @@ export const BulkOverviewView: React.FC = () => {
   const [isExtractorOpen, setIsExtractorOpen] = useState(false);
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
 
-  // Computed metrics
+  // Computed metrics — real data only
   const totalCampaigns = bulkCampaigns.length;
   const totalSent = bulkCampaigns.reduce((acc, c) => acc + (c.totalRecipients || c.recipients || 0), 0);
-  const totalDelivered = bulkCampaigns.reduce((acc, c) => acc + (c.deliveredCount || Math.round((c.totalRecipients || 0) * 0.98)), 0);
-  const totalRead = bulkCampaigns.reduce((acc, c) => acc + (c.readCount || Math.round((c.deliveredCount || 0) * 0.82)), 0);
+  const totalDelivered = bulkCampaigns.reduce((acc, c) => acc + (c.deliveredCount || 0), 0);
+  const totalRead = bulkCampaigns.reduce((acc, c) => acc + (c.readCount || 0), 0);
 
-  const avgDeliveryRate = totalSent > 0 ? ((totalDelivered / totalSent) * 100).toFixed(1) : '98.4';
-  const avgReadRate = totalDelivered > 0 ? ((totalRead / totalDelivered) * 100).toFixed(1) : '82.6';
+  const avgDeliveryRate = totalSent > 0 ? ((totalDelivered / totalSent) * 100).toFixed(1) : '0.0';
+  const avgReadRate = totalDelivered > 0 ? ((totalRead / totalDelivered) * 100).toFixed(1) : '0.0';
 
   const totalAudienceReach = bulkRecipientLists.reduce((acc, l) => acc + (l.contactCount || l.contacts || 0), 0);
 
@@ -434,8 +434,17 @@ export const BulkOverviewView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {bulkCampaigns.slice(0, 5).map((campaign) => {
                     const sent = campaign.totalRecipients || campaign.recipients || 0;
-                    const delivered = campaign.deliveredCount || Math.round(sent * 0.98);
-                    const pct = sent > 0 ? Math.round((delivered / sent) * 100) : 100;
+                    const delivered = campaign.deliveredCount || 0;
+                    const pct = sent > 0 ? Math.round((delivered / sent) * 100) : 0;
+                    const st = (campaign.status || 'QUEUED').toUpperCase();
+                    const statusConfig =
+                      st === 'COMPLETED'
+                        ? { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Completed' }
+                        : st === 'RUNNING' || st === 'SENDING'
+                        ? { bg: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500 animate-pulse', label: 'Running' }
+                        : st === 'FAILED'
+                        ? { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Failed' }
+                        : { bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: 'Queued' };
 
                     return (
                       <tr key={campaign.id} className="hover:bg-slate-50/80 transition-colors">
@@ -470,9 +479,9 @@ export const BulkOverviewView: React.FC = () => {
                         </td>
 
                         <td className="py-3 px-3">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            {campaign.status || 'Completed'}
+                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${statusConfig.bg}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+                            {statusConfig.label}
                           </span>
                         </td>
 

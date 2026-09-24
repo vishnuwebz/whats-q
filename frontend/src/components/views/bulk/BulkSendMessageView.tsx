@@ -1225,20 +1225,35 @@ export const BulkSendMessageView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {bulkCampaigns.slice(0, 3).map((camp) => (
-                      <tr key={camp.id} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 font-semibold text-slate-800">{camp.name}</td>
-                        <td className="py-2.5 text-slate-500">{camp.totalRecipients.toLocaleString()}</td>
-                        <td className="py-2.5 text-emerald-700 font-bold">
-                          {((camp.deliveredCount / camp.totalRecipients) * 100).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            {camp.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {bulkCampaigns.slice(0, 3).map((camp) => {
+                      const total = camp.totalRecipients || camp.recipients || 0;
+                      const delivered = camp.deliveredCount || 0;
+                      const pct = total > 0 ? ((delivered / total) * 100).toFixed(1) : '0.0';
+                      const st = (camp.status || 'QUEUED').toUpperCase();
+                      const statusBadge =
+                        st === 'COMPLETED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : st === 'RUNNING' || st === 'SENDING'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200 animate-pulse'
+                          : st === 'FAILED'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200';
+
+                      return (
+                        <tr key={camp.id} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 font-semibold text-slate-800">{camp.name}</td>
+                          <td className="py-2.5 text-slate-500">{total.toLocaleString()}</td>
+                          <td className={`py-2.5 font-bold ${delivered > 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
+                            {pct}%
+                          </td>
+                          <td className="py-2.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusBadge}`}>
+                              {st}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -865,22 +865,28 @@ export const BulkCampaignHistoryView: React.FC = () => {
                                 {rec.phone}
                               </td>
                               <td className="p-2.5">
-                                <span
-                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                    rec.status === 'READ'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : rec.status === 'DELIVERED'
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : rec.status === 'SENT'
-                                      ? 'bg-cyan-100 text-cyan-800'
-                                      : rec.status === 'QUEUED'
-                                      ? 'bg-amber-100 text-amber-800'
-                                      : 'bg-rose-100 text-rose-800'
-                                  }`}
-                                  title={rec.errorReason || ''}
-                                >
-                                  {rec.status}
-                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                  <span
+                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold w-fit ${
+                                      rec.status === 'READ'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : rec.status === 'DELIVERED'
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : rec.status === 'SENT'
+                                        ? 'bg-cyan-100 text-cyan-800'
+                                        : rec.status === 'QUEUED'
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-rose-100 text-rose-800'
+                                    }`}
+                                  >
+                                    {rec.status}
+                                  </span>
+                                  {rec.status === 'FAILED' && rec.errorReason && (
+                                    <span className="text-[10px] text-rose-600 font-normal leading-tight max-w-[220px] truncate" title={rec.errorReason}>
+                                      {rec.errorReason}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2.5 text-right text-slate-400 font-mono text-[10px]">
                                 {rec.time || '—'}

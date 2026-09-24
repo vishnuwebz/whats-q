@@ -166,6 +166,15 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('campaign.updated', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing campaign.updated event:', err);
+        }
+      });
+
       this.eventSource.onerror = () => {
         console.warn('[RealtimeSync] Event stream connection dropped. Reconnecting with exponential backoff...');
         if (this.eventSource) {
@@ -252,6 +261,11 @@ class RealtimeSyncManager {
         if (event.data && event.data.id) {
           store.applyRealtimeConversation(event.data);
         }
+        break;
+      }
+
+      case 'campaign.updated': {
+        store.fetchBulkCampaigns();
         break;
       }
 

@@ -2973,6 +2973,260 @@ class BulkCampaignSerializer(serializers.ModelSerializer):
         ]
 
 
+def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4, max_delay=1.2, batch_size=25, sleep_seconds=5.0):
+    """
+    Direct Asynchronous WhatsApp Dispatch Worker for Bulk Campaigns.
+    Iterates through campaign.logs with status='QUEUED', performs real WhatsApp dispatch
+    via Meta Cloud API (primary) or connected Baileys accounts, updates recipient log rows
+    with genuine delivery/error states, and completes the campaign.
+    """
+    import django
+    import random
+    django.db.connections.close_all()
+
+    try:
+        campaign = BulkCampaign.objects.filter(id=campaign_id).first()
+        if not campaign:
+            logger.error(f"[BulkCampaignWorker] Campaign {campaign_id} not found.")
+            return
+
+        campaign.status = 'RUNNING'
+        campaign.save(update_fields=['status'])
+
+        meta_cfg = MetaWhatsAppConfig.objects.first()
+        meta_ready = bool(
+            meta_cfg and
+            meta_cfg.access_token and
+            meta_cfg.phone_number_id and
+            meta_cfg.connection_status == 'connected'
+        )
+
+        active_devices = list(LinkedEmployeeDevice.objects.filter(is_active=True, status='connected'))
+        if account_ids:
+            acc_str_set = {str(a) for a in account_ids}
+            matched_devices = [d for d in active_devices if str(d.id) in acc_str_set or d.phone_number in acc_str_set]
+            if matched_devices:
+                active_devices = matched_devices
+
+        # Check template in WhatsAppTemplate if template_name provided
+        template_obj = None
+        if campaign.template_name:
+            template_obj = WhatsAppTemplate.objects.filter(name=campaign.template_name).first()
+
+        queued_logs = list(campaign.logs.filter(status='QUEUED').order_by('id'))
+        logger.info(f"[BulkCampaignWorker] Starting dispatch for campaign {campaign.id} ({len(queued_logs)} queued recipients). Meta ready: {meta_ready}")
+
+        delivered = campaign.delivered_count
+        failed = campaign.failed_count
+        sent = 0
+
+        for log in queued_logs:
+            # Batch sleep cycle check
+            if sent > 0 and sent % batch_size == 0:
+                time.sleep(sleep_seconds)
+
+            # Jitter delay
+            if sent > 0 and min_delay > 0:
+                delay = random.uniform(min_delay, max_delay)
+                time.sleep(delay)
+
+            clean_phone = MetaWhatsAppService.clean_phone_number(log.phone)
+            recipient_name = (log.name or 'Customer').strip()
+
+            # Personalize text
+            personalized_text = campaign.message_text or ''
+            if recipient_name:
+                personalized_text = re.sub(r'\{\{name\}\}|\[name\]|\{\{Name\}\}|\[Name\]', recipient_name, personalized_text, flags=re.IGNORECASE)
+            personalized_text = re.sub(r'\{\{phone\}\}|\[phone\]|\{\{Phone\}\}|\[Phone\]', log.phone, personalized_text, flags=re.IGNORECASE)
+
+            success = False
+            err_msg = ''
+            remote_msg_id = ''
+
+            # 1. Primary: Meta WhatsApp Cloud API
+            if meta_ready:
+                if campaign.template_name:
+                    # Meta template dispatch
+                    components = []
+                    if template_obj and template_obj.variables:
+                        components.append({
+                            "type": "body",
+                            "parameters": [{"type": "text", "text": recipient_name}]
+                        })
+
+                    lang = 'en'
+                    if template_obj and template_obj.language:
+                        lang = template_obj.language
+                    elif campaign.template_name in ['hello_world', 'service_booking_confirmed', 'service_providing']:
+                        lang = 'en_US'
+
+                    if lang.lower() == 'english':
+                        lang = 'en_US' if campaign.template_name in ['hello_world', 'service_booking_confirmed', 'service_providing'] else 'en'
+
+                    meta_res = MetaWhatsAppService.send_whatsapp_template(
+                        phone_number_id=meta_cfg.phone_number_id,
+                        access_token=meta_cfg.access_token,
+                        to_phone=clean_phone,
+                        template_name=campaign.template_name,
+                        language_code=lang,
+                        components=components if components else None,
+                        api_version=meta_cfg.api_version or 'v21.0'
+                    )
+
+                    if meta_res.get('success'):
+                        success = True
+                        remote_msg_id = meta_res.get('message_id', '')
+                    else:
+                        err_msg = meta_res.get('error', 'Template dispatch failed')
+                        # If template doesn't exist on Meta, fallback to direct text
+                        if '#132001' in err_msg or 'does not exist' in err_msg.lower():
+                            text_res = MetaWhatsAppService.send_whatsapp_text(
+                                phone_number_id=meta_cfg.phone_number_id,
+                                access_token=meta_cfg.access_token,
+                                to_phone=clean_phone,
+                                text=personalized_text or f"Update from {meta_cfg.business_phone_display}",
+                                api_version=meta_cfg.api_version or 'v21.0'
+                            )
+                            if text_res.get('success'):
+                                success = True
+                                remote_msg_id = text_res.get('message_id', '')
+                                err_msg = ''
+                            else:
+                                err_msg = text_res.get('error', err_msg)
+                else:
+                    # Freeform text message
+                    meta_res = MetaWhatsAppService.send_whatsapp_text(
+                        phone_number_id=meta_cfg.phone_number_id,
+                        access_token=meta_cfg.access_token,
+                        to_phone=clean_phone,
+                        text=personalized_text or 'Greetings from Qiyam!',
+                        api_version=meta_cfg.api_version or 'v21.0'
+                    )
+                    if meta_res.get('success'):
+                        success = True
+                        remote_msg_id = meta_res.get('message_id', '')
+                    else:
+                        err_msg = meta_res.get('error', 'Message dispatch failed')
+
+            # 2. Secondary fallback: Baileys connected device
+            if not success and active_devices:
+                try:
+                    ensure_baileys_service(wait_until_ready=False)
+                    dev = active_devices[sent % len(active_devices)]
+                    baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data={
+                        'accountId': dev.session_token or f'acc-{dev.id}',
+                        'recipientPhone': clean_phone,
+                        'messageText': personalized_text,
+                    })
+                    if baileys_res.get('success'):
+                        success = True
+                        remote_msg_id = baileys_res.get('result', {}).get('messageId') or f"wa-emp-{dev.id}-{int(time.time() * 1000)}"
+                        err_msg = ''
+                except Exception as be:
+                    if not err_msg:
+                        err_msg = str(be)
+
+            if not meta_ready and not active_devices:
+                err_msg = "No connected WhatsApp sender configured (Meta Cloud API or Employee Device)"
+
+            # Update log row
+            now = datetime.datetime.now(datetime.timezone.utc)
+            if success:
+                log.status = 'DELIVERED'
+                log.error_reason = ''
+                log.sent_at = now
+                log.save(update_fields=['status', 'error_reason', 'sent_at'])
+                delivered += 1
+            else:
+                log.status = 'FAILED'
+                clean_err = err_msg
+                if '#131047' in err_msg or '24 hours' in err_msg.lower():
+                    clean_err = "24-hour customer window expired. Use an approved Meta template or connect a WhatsApp web device."
+                elif '#131026' in err_msg:
+                    clean_err = "Message undeliverable. Number may not be active on WhatsApp."
+                elif '#132001' in err_msg:
+                    clean_err = f"Template '{campaign.template_name}' is not approved on Meta."
+                log.error_reason = clean_err[:500]
+                log.sent_at = now
+                log.save(update_fields=['status', 'error_reason', 'sent_at'])
+                failed += 1
+
+            sent += 1
+            campaign.delivered_count = delivered
+            campaign.failed_count = failed
+            campaign.save(update_fields=['delivered_count', 'failed_count'])
+
+            # Log to Conversation and Message history
+            try:
+                conv, _ = Conversation.objects.get_or_create(
+                    phone_number=clean_phone,
+                    defaults={
+                        'contact_name': recipient_name,
+                        'platform': 'whatsapp',
+                        'status': 'open',
+                    }
+                )
+                time_str = datetime.datetime.now().strftime('%I:%M %p')
+                msg_rec = Message.objects.create(
+                    conversation=conv,
+                    sender='agent',
+                    sender_name=campaign.created_by or 'Broadcast System',
+                    text=personalized_text or campaign.template_name or 'Broadcast Message',
+                    timestamp=time_str,
+                    status='delivered' if success else 'failed',
+                    meta_message_id=remote_msg_id or f"camp-{campaign.id}-{log.id}",
+                )
+                emit_event('message.created', {
+                    'conversation_id': conv.id,
+                    'message': {
+                        'id': msg_rec.id,
+                        'text': msg_rec.text,
+                        'sender': 'agent',
+                        'status': 'delivered' if success else 'failed',
+                        'timestamp': time_str,
+                    }
+                })
+                emit_event('conversation.updated', {
+                    'conversation_id': conv.id,
+                    'last_message': (msg_rec.text or '')[:80],
+                    'last_message_time': time_str,
+                })
+            except Exception as ce:
+                logger.debug(f"[BulkCampaignWorker] Conversation log skipped: {ce}")
+
+        # Update final campaign status
+        if delivered > 0:
+            campaign.status = 'COMPLETED'
+        elif failed > 0:
+            campaign.status = 'FAILED'
+        else:
+            campaign.status = 'COMPLETED'
+
+        campaign.completed_at = datetime.datetime.now(datetime.timezone.utc)
+        campaign.save(update_fields=['status', 'completed_at', 'delivered_count', 'failed_count'])
+
+        logger.info(f"[BulkCampaignWorker] Campaign {campaign.id} completed. Delivered: {delivered}, Failed: {failed}, Status: {campaign.status}")
+
+        emit_event('campaign.updated', {
+            'campaign_id': campaign.id,
+            'status': campaign.status,
+            'delivered_count': campaign.delivered_count,
+            'failed_count': campaign.failed_count,
+            'total_recipients': campaign.total_recipients,
+        })
+
+    except Exception as e:
+        logger.error(f"[BulkCampaignWorker] Fatal error dispatching campaign {campaign_id}: {e}", exc_info=True)
+        try:
+            camp = BulkCampaign.objects.filter(id=campaign_id).first()
+            if camp:
+                camp.status = 'FAILED'
+                camp.completed_at = datetime.datetime.now(datetime.timezone.utc)
+                camp.save(update_fields=['status', 'completed_at'])
+        except Exception:
+            pass
+
+
 class BulkCampaignViewSet(viewsets.ModelViewSet):
     """
     Real Campaign API. Stores every broadcast to DB so history is persistent.
@@ -2996,13 +3250,30 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
         active_campaigns = BulkCampaign.objects.filter(status__in=['QUEUED', 'RUNNING'])
         if not active_campaigns.exists():
             return
+
+        import datetime as dt
+        for camp in active_campaigns:
+            queued_count = camp.logs.filter(status='QUEUED').count()
+            if queued_count == 0:
+                # All logs have finished processing
+                if camp.delivered_count > 0:
+                    camp.status = 'COMPLETED'
+                elif camp.failed_count > 0:
+                    camp.status = 'FAILED'
+                else:
+                    camp.status = 'COMPLETED'
+                if not camp.completed_at:
+                    camp.completed_at = dt.datetime.now(dt.timezone.utc)
+                camp.save(update_fields=['status', 'completed_at'])
+
+        # Optional sync with external gateway if running
         try:
             req = urllib.request.Request(
                 f'{BAILEYS_GATEWAY_URL}/api/campaigns',
                 headers={'Content-Type': 'application/json'},
                 method='GET',
             )
-            with urllib.request.urlopen(req, timeout=2) as resp:
+            with urllib.request.urlopen(req, timeout=1) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
                 gw_campaigns = {c.get('id'): c for c in data.get('campaigns', [])}
 
@@ -3016,7 +3287,6 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
                         camp.delivered_count = int(gw_camp.get('deliveredCount', camp.delivered_count))
                         camp.failed_count = int(gw_camp.get('failedCount', camp.failed_count))
                         if gw_status == 'COMPLETED' and not camp.completed_at:
-                            import datetime as dt
                             camp.completed_at = dt.datetime.now(dt.timezone.utc)
                         camp.save()
         except Exception as e:
@@ -3033,9 +3303,7 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
     def launch(self, request):
         """
         Launches a real broadcast campaign.
-        Expects:
-          name, category, audience_list_name, template_name, message_text,
-          contacts: [{name, phone}, ...], cost (optional)
+        Dispatches in an async background worker thread via Meta Cloud API or connected devices.
         """
         data = request.data
         name = data.get('name', '').strip()
@@ -3061,11 +3329,14 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
             category=category,
             audience_list_name=audience_list_name,
             total_recipients=len(contacts),
+            delivered_count=0,
+            failed_count=0,
             template_name=template_name,
             message_text=message_text,
             cost=cost,
             status='RUNNING',
             created_by=data.get('created_by', 'Admin'),
+            gateway_campaign_id=f'camp-{int(time.time() * 1000)}',
         )
 
         # Create log rows (QUEUED) for each contact
@@ -3079,53 +3350,22 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
             for c in contacts
         ])
 
-        # Now call the WhatsApp gateway to actually send
-        gateway_campaign_id = None
-        try:
-            ensure_baileys_service(wait_until_ready=True)
-            payload = json.dumps({
-                'id': f'camp-{campaign.id}',
-                'name': name,
-                'accountIds': data.get('account_ids', []),
-                'template': {
-                    'messageText': message_text,
-                    'templateName': template_name,
-                },
-                'targetContacts': [
-                    {'name': c.get('name', ''), 'phone': c.get('phone', '')}
-                    for c in contacts
-                ],
-                'minDelay': int(data.get('min_delay', 4)),
-                'maxDelay': int(data.get('max_delay', 8)),
-                'batchSize': int(data.get('batch_size', 25)),
-                'sleepSeconds': int(data.get('sleep_seconds', 30)),
-            }).encode('utf-8')
+        # Spawn asynchronous background dispatch worker
+        t = threading.Thread(
+            target=_dispatch_bulk_campaign_worker,
+            args=(
+                campaign.id,
+                data.get('account_ids', []),
+                float(data.get('min_delay', 0.4)),
+                float(data.get('max_delay', 1.2)),
+                int(data.get('batch_size', 25)),
+                float(data.get('sleep_seconds', 5.0)),
+            ),
+            daemon=True
+        )
+        t.start()
 
-            gw_req = urllib.request.Request(
-                f'{BAILEYS_GATEWAY_URL}/api/campaigns/start',
-                data=payload,
-                headers={'Content-Type': 'application/json'},
-                method='POST',
-            )
-            with urllib.request.urlopen(gw_req, timeout=15) as resp:
-                gw_data = json.loads(resp.read().decode('utf-8'))
-                gateway_campaign_id = gw_data.get('campaign', {}).get('id') or f'camp-{campaign.id}'
-
-            campaign.gateway_campaign_id = gateway_campaign_id
-            campaign.save(update_fields=['gateway_campaign_id'])
-
-            logger.info(f'[BulkCampaign] Launched campaign {campaign.id} "{name}" → gateway {gateway_campaign_id}')
-
-        except Exception as e:
-            logger.error(f'[BulkCampaign] Gateway launch failed for campaign {campaign.id}: {e}')
-            # Don't fail — we still record the campaign. Mark it as failed.
-            campaign.status = 'FAILED'
-            campaign.save(update_fields=['status'])
-            return Response({
-                'success': False,
-                'error': f'WhatsApp gateway error: {str(e)}',
-                'campaign_id': campaign.id,
-            }, status=500)
+        logger.info(f'[BulkCampaign] Launched background dispatch worker for campaign {campaign.id} "{name}" with {len(contacts)} contacts')
 
         return Response({
             'success': True,
@@ -3135,7 +3375,7 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def update_status(self, request, pk=None):
         """
-        Called by the gateway (or polling) to update campaign progress/completion.
+        Called by gateway or background polling to update campaign progress/completion.
         Expects: status, sent_count, delivered_count, failed_count
         """
         try:
@@ -3160,7 +3400,7 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def retry_failed(self, request, pk=None):
         """
-        Retries all failed recipients of this campaign by re-dispatching to WhatsApp gateway.
+        Retries all failed recipients of this campaign by re-dispatching them in the background.
         """
         try:
             campaign = self.get_object()
@@ -3171,8 +3411,7 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
         if not failed_logs.exists():
             return Response({'success': False, 'message': 'No failed recipients found for this campaign.'}, status=400)
 
-        contacts = [{'name': l.name, 'phone': l.phone} for l in failed_logs]
-        failed_count = len(contacts)
+        failed_count = failed_logs.count()
 
         # Reset failed logs to QUEUED
         failed_logs.update(status='QUEUED', error_reason='')
@@ -3180,34 +3419,20 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
         campaign.failed_count = max(0, campaign.failed_count - failed_count)
         campaign.save(update_fields=['status', 'failed_count'])
 
-        # Dispatch retry to gateway
-        try:
-            ensure_baileys_service(wait_until_ready=True)
-            import time
-            payload = json.dumps({
-                'id': f'camp-{campaign.id}-retry-{int(time.time())}',
-                'name': f'{campaign.name} (Retry)',
-                'template': {
-                    'messageText': campaign.message_text,
-                    'templateName': campaign.template_name,
-                },
-                'targetContacts': contacts,
-                'minDelay': 3,
-                'maxDelay': 6,
-                'batchSize': 20,
-                'sleepSeconds': 15,
-            }).encode('utf-8')
-
-            gw_req = urllib.request.Request(
-                f'{BAILEYS_GATEWAY_URL}/api/campaigns/start',
-                data=payload,
-                headers={'Content-Type': 'application/json'},
-                method='POST',
-            )
-            urllib.request.urlopen(gw_req, timeout=15)
-        except Exception as e:
-            logger.error(f'[BulkCampaign] Retry failed to gateway: {e}')
-            return Response({'success': False, 'error': f'Gateway error: {str(e)}'}, status=500)
+        # Spawn asynchronous background dispatch worker for retry
+        t = threading.Thread(
+            target=_dispatch_bulk_campaign_worker,
+            args=(
+                campaign.id,
+                None,
+                0.3,
+                1.0,
+                20,
+                5.0,
+            ),
+            daemon=True
+        )
+        t.start()
 
         return Response({
             'success': True,
