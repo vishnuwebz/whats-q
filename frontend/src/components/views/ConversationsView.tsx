@@ -18,6 +18,7 @@ import { ManualOptOutModal } from './conversations/ManualOptOutModal';
 import { ChatWorkflowModal } from './conversations/ChatWorkflowModal';
 import { LinkEmployeeWhatsAppModal } from './conversations/LinkEmployeeWhatsAppModal';
 import { EditEmployeeDeviceModal } from './conversations/EditEmployeeDeviceModal';
+import { LinkedDevicesDetailsModal } from './conversations/LinkedDevicesDetailsModal';
 import { VoiceNotePlayer } from './conversations/VoiceNotePlayer';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
@@ -86,6 +87,7 @@ export const ConversationsView: React.FC = () => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isLinkDeviceModalOpen, setIsLinkDeviceModalOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<LinkedEmployeeDevice | null>(null);
+  const [isDevicesDetailsModalOpen, setIsDevicesDetailsModalOpen] = useState(false);
   const [isLineSelectorOpen, setIsLineSelectorOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
@@ -1238,10 +1240,16 @@ export const ConversationsView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-semibold">
-              <span>📱</span>
-              <span>{linkedDevices.length} Employee Phone{linkedDevices.length === 1 ? '' : 's'} Linked</span>
-            </span>
+            <button
+              type="button"
+              onClick={() => setIsDevicesDetailsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 hover:border-emerald-300 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs hover:shadow-xs group active:scale-95"
+              title="Click to view full details of all linked employee WhatsApp phones"
+            >
+              <span className="text-xs group-hover:scale-110 transition-transform">📱</span>
+              <span className="font-bold">{linkedDevices.length} Employee Phone{linkedDevices.length === 1 ? '' : 's'} Linked</span>
+              <ChevronRight className="w-3 h-3 text-emerald-600/70 group-hover:text-emerald-800 group-hover:translate-x-0.5 transition-all" />
+            </button>
 
             <span className="hidden sm:inline text-slate-300">•</span>
 
@@ -3006,6 +3014,19 @@ export const ConversationsView: React.FC = () => {
       <LinkEmployeeWhatsAppModal
         isOpen={isLinkDeviceModalOpen}
         onClose={() => setIsLinkDeviceModalOpen(false)}
+      />
+
+      {/* Linked Employee Devices Details Modal */}
+      <LinkedDevicesDetailsModal
+        isOpen={isDevicesDetailsModalOpen}
+        onClose={() => setIsDevicesDetailsModalOpen(false)}
+        onOpenLinkModal={() => {
+          setIsDevicesDetailsModalOpen(false);
+          setIsLinkDeviceModalOpen(true);
+        }}
+        onEditDevice={(device) => {
+          setEditingDevice(device);
+        }}
       />
 
       {/* Edit Linked Employee Device Modal */}
