@@ -17,7 +17,11 @@ import {
   Check,
   Building2,
   ShieldCheck,
-  Bot
+  Bot,
+  AlertCircle,
+  ArrowRight,
+  ExternalLink,
+  MessageCircle
 } from 'lucide-react';
 import { CustomerAvatar } from './CustomerAvatar';
 import { CountryPhoneInput } from './CountryPhoneInput';
@@ -26,6 +30,8 @@ export const WhatsAppSimulatorModal: React.FC = () => {
   const {
     isSimulatorOpen,
     setIsSimulatorOpen,
+    conversations,
+    setSelectedConversationId,
     startOutboundWhatsAppChat,
     simulateInboundWhatsApp,
     templates,
@@ -58,6 +64,38 @@ export const WhatsAppSimulatorModal: React.FC = () => {
 
   // Business phone display
   const businessPhoneDisplay = metaConfig?.business_phone_display || '+91 94963 00233';
+
+  // Find if phone number already exists in conversations
+  const existingConversation = useMemo(() => {
+    const rawInput = (phone || '').trim();
+    const cleanDigits = rawInput.replace(/\D/g, '');
+    if (!cleanDigits || cleanDigits.length < 7) return null;
+
+    const inputLast10 = cleanDigits.slice(-10);
+
+    return (conversations || []).find((c) => {
+      const cDigits = (c.phone_number || '').replace(/\D/g, '');
+      if (!cDigits || cDigits.length < 7) return false;
+      const cLast10 = cDigits.slice(-10);
+      return cLast10 === inputLast10;
+    });
+  }, [phone, conversations]);
+
+  // When an existing conversation is found, auto-fill contact name if empty
+  useEffect(() => {
+    if (existingConversation && !name.trim() && existingConversation.contact_name) {
+      setName(existingConversation.contact_name);
+    }
+  }, [existingConversation]);
+
+  // Jump directly to that existing chat page
+  const handleGoToExistingChat = (conv: any) => {
+    if (!conv || !conv.id) return;
+    setSelectedConversationId(conv.id);
+    setActiveTab('conversations');
+    setIsSimulatorOpen(false);
+    addToast(`Opened existing chat with ${conv.contact_name || conv.phone_number}`, 'info');
+  };
 
   // Available sender lines
   const senderOptions = useMemo(() => {
@@ -353,25 +391,71 @@ export const WhatsAppSimulatorModal: React.FC = () => {
             </div>
           </div>
 
+          {/* Existing Conversation Alert Banner */}
+          {existingConversation && (
+            <div className="p-3 sm:p-3.5 bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-300 rounded-xl text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-xs text-amber-950">
+                      This number is already in your conversations!
+                    </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300/80">
+                      {existingConversation.messages?.length || 0} messages
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-snug mt-0.5">
+                    An active chat already exists with <strong className="font-semibold text-amber-950">{existingConversation.contact_name || 'Customer'}</strong> ({existingConversation.phone_number}).
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleGoToExistingChat(existingConversation)}
+                className="w-full sm:w-auto px-3.5 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs rounded-xl transition-all shadow-sm shadow-amber-800/25 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>Click here to go to that chat page</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Contact Live Card Preview */}
           <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3 min-w-0">
               <CustomerAvatar
-                name={name || 'New Customer'}
-                avatar={avatarUrl}
+                name={name || existingConversation?.contact_name || 'New Customer'}
+                avatar={avatarUrl || existingConversation?.avatar}
                 phone={phone}
                 size="md"
                 showPresence={false}
               />
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-slate-800 text-xs truncate">
-                    {name || 'New WhatsApp Recipient'}
+                    {name || existingConversation?.contact_name || 'New WhatsApp Recipient'}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                    <CheckCircle2 className="w-2.5 h-2.5" />
-                    <span>WhatsApp Verified</span>
-                  </span>
+                  {existingConversation ? (
+                    <button
+                      type="button"
+                      onClick={() => handleGoToExistingChat(existingConversation)}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition cursor-pointer shrink-0"
+                      title="Click to go to that chat page"
+                    >
+                      <MessageCircle className="w-2.5 h-2.5 text-amber-700" />
+                      <span>Existing Chat • Open Here ➔</span>
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      <span>WhatsApp Verified</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
                   {phone || 'Enter number (e.g. +91 94963 00233)'}
@@ -674,6 +758,17 @@ export const WhatsAppSimulatorModal: React.FC = () => {
               >
                 Cancel
               </button>
+
+              {existingConversation && (
+                <button
+                  type="button"
+                  onClick={() => handleGoToExistingChat(existingConversation)}
+                  className="px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl font-bold transition cursor-pointer text-xs flex items-center gap-1.5 shadow-xs"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Go to Existing Chat</span>
+                </button>
+              )}
 
               <button
                 type="submit"
