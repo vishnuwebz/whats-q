@@ -212,6 +212,51 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <div className="flex items-center gap-1.5 sm:gap-2 w-max ml-auto pr-1 shrink-0">
 
+          {/* Live Sync / Manual Re-sync */}
+          <button
+            onClick={async () => {
+              if (isSyncingManual) return;
+              setIsSyncingManual(true);
+              try {
+                await Promise.allSettled([
+                  store.loadInitialData(),
+                  store.fetchVersionInfo(),
+                ]);
+                addToast('Synced latest workspace records with server!', 'success');
+              } catch {
+                addToast('Workspace data synchronized', 'info');
+              } finally {
+                setTimeout(() => setIsSyncingManual(false), 600);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border shrink-0 whitespace-nowrap cursor-pointer hover:shadow-xs active:scale-95 ${
+              store.syncStatus === 'connected'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70'
+                : store.syncStatus === 'reconnecting'
+                ? 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse hover:bg-amber-100/70'
+                : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70'
+            }`}
+            title={`Real-time sync: ${store.syncStatus === 'connected' ? 'Connected' : store.syncStatus === 'reconnecting' ? 'Reconnecting...' : 'Offline'} • Click to refresh`}
+          >
+            <RefreshCw className={`w-3 h-3 shrink-0 ${isSyncingManual ? 'animate-spin text-emerald-600' : (store.syncStatus === 'connected' ? 'text-emerald-600' : 'text-slate-500')}`} />
+            <span>
+              {isSyncingManual ? 'Syncing...' : store.syncStatus === 'connected' ? 'Live Sync' : store.syncStatus === 'reconnecting' ? 'Reconnecting' : 'Offline'}
+            </span>
+          </button>
+
+          {/* Update Available Badge */}
+          {versionInfo?.update_available && (
+            <button
+              onClick={() => triggerForceHardRefresh('Header badge clicked')}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-xs animate-pulse"
+              title="New system deployment ready! Click to Hard Refresh now"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Hard Refresh</span>
+            </button>
+          )}
+
           {/* Date Range */}
           <div className="relative shrink-0">
             <button
@@ -272,51 +317,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <HelpCircle className="w-4 h-4" />
           </button>
-
-          {/* Live Sync / Manual Re-sync */}
-          <button
-            onClick={async () => {
-              if (isSyncingManual) return;
-              setIsSyncingManual(true);
-              try {
-                await Promise.allSettled([
-                  store.loadInitialData(),
-                  store.fetchVersionInfo(),
-                ]);
-                addToast('Synced latest workspace records with server!', 'success');
-              } catch {
-                addToast('Workspace data synchronized', 'info');
-              } finally {
-                setTimeout(() => setIsSyncingManual(false), 600);
-              }
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border shrink-0 whitespace-nowrap cursor-pointer hover:shadow-xs active:scale-95 ${
-              store.syncStatus === 'connected'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70'
-                : store.syncStatus === 'reconnecting'
-                ? 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse hover:bg-amber-100/70'
-                : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70'
-            }`}
-            title={`Real-time sync: ${store.syncStatus === 'connected' ? 'Connected' : store.syncStatus === 'reconnecting' ? 'Reconnecting...' : 'Offline'} • Click to refresh`}
-          >
-            <RefreshCw className={`w-3 h-3 shrink-0 ${isSyncingManual ? 'animate-spin text-emerald-600' : (store.syncStatus === 'connected' ? 'text-emerald-600' : 'text-slate-500')}`} />
-            <span>
-              {isSyncingManual ? 'Syncing...' : store.syncStatus === 'connected' ? 'Live Sync' : store.syncStatus === 'reconnecting' ? 'Reconnecting' : 'Offline'}
-            </span>
-          </button>
-
-          {/* Update Available Badge */}
-          {versionInfo?.update_available && (
-            <button
-              onClick={() => triggerForceHardRefresh('Header badge clicked')}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-xs animate-pulse"
-              title="New system deployment ready! Click to Hard Refresh now"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>Hard Refresh</span>
-            </button>
-          )}
 
         </div>{/* end w-max inner */}
         </div>{/* end overflow-x-auto */}
