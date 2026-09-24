@@ -2845,6 +2845,241 @@ class SimulateWhatsAppMessageView(APIView):
             'bot_reply': bot_msg_data
         }, status=status.HTTP_200_OK)
 
+class StartWhatsAppChatView(APIView):
+    """
+    Initiates a REAL outbound WhatsApp conversation with a customer.
+    Creates or retrieves the Conversation thread, sends the outbound message/template
+    via Meta Cloud API or Linked Baileys Device, and returns the conversation + outbound message.
+    Endpoint: POST /api/conversations/start-chat/
+    """
+    def post(self, request):
+        phone = (request.data.get('phone') or '').strip()
+        if not phone:
+            return Response({'error': 'Customer WhatsApp phone number is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        contact_name = (request.data.get('name') or '').strip() or 'WhatsApp Customer'
+        text = (request.data.get('text') or '').strip()
+        template_id = request.data.get('template_id')
+        variables = request.data.get('variables', {})
+        sender_device_id = request.data.get('sender_device_id')
+        avatar = (request.data.get('avatar') or '').strip()
+
+        if not text and not template_id:
+            return Response({'error': 'Please provide an outbound message or select a WhatsApp template.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        clean_digits = re.sub(r'\D', '', phone)
+        last_10 = clean_digits[-10:] if len(clean_digits) >= 10 else clean_digits
+
+        # 1. Retrieve or create Conversation thread
+        conv = Conversation.objects.filter(phone_number__endswith=last_10).first() if last_10 else None
+        if not conv:
+            conv = Conversation.objects.filter(phone_number=phone).first()
+
+        now_time = datetime.datetime.now().strftime('%I:%M %p')
+        now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+
+        if not conv:
+            import urllib.parse
+            encoded_name = urllib.parse.quote_plus(contact_name)
+            conv = Conversation.objects.create(
+                phone_number=phone,
+                contact_name=contact_name,
+                avatar=avatar or f"https://ui-avatars.com/api/?name={encoded_name}&background=0D9488&color=fff",
+                category='Customer',
+                status='in_progress',
+                lead_owner='Rahul Mehta',
+                lead_stage='Active Chat',
+                source='WhatsApp',
+                location='Kozhikode, Kerala',
+                tags=['Outbound Contact'],
+                notes='Direct WhatsApp conversation initiated.',
+                service_needed='General Inquiry',
+                is_online=True,
+                last_seen='Online',
+                last_contact_date=now_full
+            )
+        else:
+            if contact_name and contact_name != 'WhatsApp Customer' and conv.contact_name in ['WhatsApp Customer', 'New Contact', '']:
+                conv.contact_name = contact_name
+            if avatar:
+                conv.avatar = avatar
+            conv.last_contact_date = now_full
+            conv.status = 'in_progress'
+            conv.save()
+
+        # 2. Suppression Defense check
+        if (conv.is_opted_out or conv.is_blocked) and not request.data.get('force', False):
+            reason = "opted out (STOP)" if conv.is_opted_out else "blocked"
+            return Response({
+                'error': f"Cannot send message: Contact has {reason} on WhatsApp. Sending to suppressed contacts violates WhatsApp Business Policy."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. Resolve Sender Device / Line
+        is_employee_device = False
+        sender_device = 'Meta Cloud API'
+        sender_phone = '+91 94963 00233'
+        sender_name = 'Rahul Mehta'
+        dev = None
+
+        if sender_device_id and str(sender_device_id) != 'meta_cloud':
+            if str(sender_device_id).isdigit():
+                dev = LinkedEmployeeDevice.objects.filter(pk=int(sender_device_id)).first()
+            if not dev:
+                dev = LinkedEmployeeDevice.objects.filter(device_label=str(sender_device_id)).first()
+            if dev:
+                is_employee_device = True
+                sender_device = dev.device_label
+                sender_phone = dev.phone_number
+                sender_name = dev.employee_name or dev.device_label
+                dev.last_active = datetime.datetime.now()
+                dev.save(update_fields=['last_active'])
+
+        if not is_employee_device:
+            cfg = MetaWhatsAppConfig.objects.first()
+            if cfg and cfg.business_phone_display:
+                sender_phone = cfg.business_phone_display
+
+        # 4. Outbound dispatch & message record
+        meta_msg_id = f"wa-out-{int(time.time() * 1000)}"
+        dispatched = False
+        dispatch_error = None
+        rendered_text = text
+        is_tmpl = False
+
+        if template_id:
+            try:
+                template = WhatsAppTemplate.objects.get(pk=template_id)
+                is_tmpl = True
+                rendered_text = template.body_text or template.body or ''
+                if variables and isinstance(variables, dict):
+                    for k, v in variables.items():
+                        rendered_text = rendered_text.replace(f"{{{{{k}}}}}", str(v))
+
+                cfg = MetaWhatsAppConfig.objects.first()
+                if cfg and cfg.access_token and cfg.phone_number_id and cfg.connection_status == 'connected':
+                    var_indices = re.findall(r'\{\{(\d+)\}\}', template.body_text or template.body or '')
+                    if var_indices and not variables:
+                        variables = {}
+                    for v_idx in var_indices:
+                        if v_idx not in variables or not variables[v_idx]:
+                            variables[v_idx] = (template.body_variables or {}).get(v_idx, f"Sample {v_idx}")
+
+                    components = []
+                    if template.header_type == 'TEXT' and template.header_text and '{{' in template.header_text:
+                        header_val = template.header_sample or 'Update'
+                        components.append({
+                            "type": "header",
+                            "parameters": [{"type": "text", "text": header_val}]
+                        })
+
+                    if variables:
+                        body_params = []
+                        for k in sorted(variables.keys(), key=lambda x: int(x) if str(x).isdigit() else 99):
+                            body_params.append({"type": "text", "text": str(variables[k])})
+                        components.append({"type": "body", "parameters": body_params})
+
+                    lang = template.language or 'en'
+                    if lang.lower() == 'english':
+                        lang = 'en_US' if template.name == 'hello_world' else 'en'
+
+                    meta_res = MetaWhatsAppService.send_whatsapp_template(
+                        phone_number_id=cfg.phone_number_id,
+                        access_token=cfg.access_token,
+                        to_phone=conv.phone_number,
+                        template_name=template.name,
+                        language_code=lang,
+                        components=components if components else None,
+                        api_version=cfg.api_version
+                    )
+                    if meta_res.get('success'):
+                        meta_msg_id = meta_res.get('message_id', meta_msg_id)
+                        dispatched = True
+                    else:
+                        dispatch_error = meta_res.get('error')
+                        logger.warning(f"[StartWhatsAppChat] Template dispatch note: {dispatch_error}")
+            except WhatsAppTemplate.DoesNotExist:
+                return Response({'error': 'Selected WhatsApp template was not found.'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Direct text message
+            if is_employee_device and dev:
+                clean_recipient = re.sub(r'[^\d]', '', conv.phone_number or '')
+                baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data={
+                    'accountId': dev.session_token or f'acc-{dev.id}',
+                    'recipientPhone': clean_recipient,
+                    'messageText': text,
+                })
+                if baileys_res.get('success'):
+                    res_obj = baileys_res.get('result', {})
+                    meta_msg_id = res_obj.get('messageId') or meta_msg_id
+                    dispatched = True
+                else:
+                    dispatch_error = baileys_res.get('error')
+                    logger.warning(f"[StartWhatsAppChat] Baileys dispatch note: {dispatch_error}")
+            else:
+                cfg = MetaWhatsAppConfig.objects.first()
+                if cfg and cfg.access_token and cfg.phone_number_id and cfg.connection_status == 'connected':
+                    m_res = MetaWhatsAppService.send_whatsapp_text(
+                        phone_number_id=cfg.phone_number_id,
+                        access_token=cfg.access_token,
+                        to_phone=conv.phone_number,
+                        text=text,
+                        api_version=cfg.api_version
+                    )
+                    if m_res.get('success'):
+                        meta_msg_id = m_res.get('message_id', meta_msg_id)
+                        dispatched = True
+                    else:
+                        dispatch_error = m_res.get('error')
+                        logger.warning(f"[StartWhatsAppChat] Meta Cloud dispatch note: {dispatch_error}")
+
+        # 5. Create Outbound Message record (sender='agent', displayed on right)
+        msg_rich_card = None
+        if is_tmpl:
+            msg_rich_card = {
+                'type': 'template',
+                'is_template': True,
+                'workflow_name': conv.active_workflow or 'Service Booking Flow'
+            }
+
+        msg = Message.objects.create(
+            conversation=conv,
+            sender='agent',
+            sender_name=f"{sender_name} (Template)" if is_tmpl else sender_name,
+            sender_device=sender_device,
+            sender_phone=sender_phone,
+            text=rendered_text,
+            timestamp=now_time,
+            status='delivered' if dispatched else 'sent',
+            meta_message_id=meta_msg_id,
+            rich_card=msg_rich_card
+        )
+
+        conv.save(update_fields=['last_contact_date', 'status'])
+
+        msg_data = MessageSerializer(msg).data
+        conv_data = ConversationSerializer(conv).data
+
+        emit_event('message.created', {
+            'conversation_id': conv.id,
+            'message': msg_data
+        })
+        emit_event('conversation.updated', {
+            'id': conv.id,
+            'contact_name': conv.contact_name,
+            'phone_number': conv.phone_number,
+            'last_message': rendered_text,
+            'last_contact_date': now_full,
+            'unread_count': 0
+        })
+
+        return Response({
+            'status': 'success',
+            'conversation': conv_data,
+            'message': msg_data,
+            'dispatched': dispatched,
+            'dispatch_error': dispatch_error
+        }, status=status.HTTP_200_OK)
+
 class WhatsAppMediaProxyView(APIView):
     """
     Proxies and streams WhatsApp voice notes and media from Meta Cloud API or local disk cache.

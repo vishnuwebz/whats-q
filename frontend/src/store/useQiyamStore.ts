@@ -638,6 +638,15 @@ interface QiyamState {
     }
   ) => Promise<void>;
   sendTemplateMessage: (conversationId: string | number, templateId: string | number, variables: Record<string, string>) => Promise<void>;
+  startOutboundWhatsAppChat: (params: {
+    name?: string;
+    phone: string;
+    text?: string;
+    templateId?: string | number;
+    variables?: Record<string, string>;
+    senderDeviceId?: string | number;
+    avatar?: string;
+  }) => Promise<{ success: boolean; conversationId?: string | number; error?: string }>;
   simulateInboundWhatsApp: (name: string, phone: string, text: string, avatar?: string) => Promise<void>;
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
   submitTemplateToMeta: (templateId: string | number) => Promise<boolean>;
@@ -3112,6 +3121,50 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       }
     } catch (e) {
       console.warn('Backend send message notice:', e);
+    }
+  },
+
+  startOutboundWhatsAppChat: async (params) => {
+    try {
+      const res: any = await apiClient.post('/conversations/start-chat/', {
+        phone: params.phone,
+        name: params.name,
+        text: params.text,
+        template_id: params.templateId,
+        variables: params.variables,
+        sender_device_id: params.senderDeviceId,
+        avatar: params.avatar,
+      });
+
+      if (res && res.status === 'success' && res.conversation) {
+        const conv = mapConversation(res.conversation as Record<string, unknown>);
+        set((state) => {
+          const exists = state.conversations.some((c) => String(c.id) === String(conv.id));
+          const conversations = exists
+            ? state.conversations.map((c) => (String(c.id) === String(conv.id) ? conv : c))
+            : [conv, ...state.conversations];
+          return { conversations, selectedConversationId: conv.id, activeTab: 'conversations' };
+        });
+
+        const targetName = params.name || params.phone;
+        if (res.dispatched) {
+          get().addToast(`Outbound WhatsApp message dispatched to ${targetName}!`, 'success');
+        } else if (res.dispatch_error) {
+          get().addToast(`Chat opened, but WhatsApp delivery note: ${res.dispatch_error}`, 'warning');
+        } else {
+          get().addToast(`WhatsApp chat with ${targetName} started!`, 'success');
+        }
+
+        return { success: true, conversationId: conv.id };
+      } else {
+        const err = res?.error || 'Failed to start WhatsApp chat';
+        get().addToast(err, 'error');
+        return { success: false, error: err };
+      }
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to start outbound WhatsApp chat';
+      get().addToast(msg, 'error');
+      return { success: false, error: msg };
     }
   },
 

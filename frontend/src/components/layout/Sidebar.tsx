@@ -1804,10 +1804,11 @@ export const Sidebar: React.FC = () => {
             </div>
             <button
               onClick={() => setIsSimulatorOpen(true)}
-              className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-medium shadow transition-all cursor-pointer"
-              title="Simulate Inbound WhatsApp Message"
+              className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-medium shadow transition-all cursor-pointer flex items-center gap-1"
+              title="Start New WhatsApp Chat"
             >
-              Simulate
+              <MessageSquare className="w-3 h-3" />
+              <span>New Chat</span>
             </button>
           </div>
         )}
@@ -2219,8 +2220,8 @@ export const Sidebar: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <MessageSquare className="w-4 h-4 text-teal-400" />
                   <div>
-                    <div className="font-semibold text-xs">WhatsApp Cloud Simulator</div>
-                    <div className="text-[10px] text-slate-400">Simulate incoming customer queries & AI bots</div>
+                    <div className="font-semibold text-xs">New WhatsApp Chat & Sandbox</div>
+                    <div className="text-[10px] text-slate-400">Send real WhatsApp messages or test bot flows</div>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-teal-400 transition" />

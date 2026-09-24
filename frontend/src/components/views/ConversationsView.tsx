@@ -1487,9 +1487,10 @@ export const ConversationsView: React.FC = () => {
                 )}
                 <button
                   onClick={() => setIsSimulatorOpen(true)}
-                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
                 >
-                  + Start Simulated Chat
+                  <Send className="w-3 h-3" />
+                  <span>+ Start WhatsApp Chat</span>
                 </button>
               </div>
             ) : (
@@ -1629,10 +1630,10 @@ export const ConversationsView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsSimulatorOpen(true)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-700/20 transition cursor-pointer flex items-center gap-2"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-700/20 transition cursor-pointer flex items-center gap-2"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>Simulate WhatsApp Inbound</span>
+                <Send className="w-4 h-4" />
+                <span>Start New WhatsApp Chat</span>
               </button>
             </div>
           ) : (
