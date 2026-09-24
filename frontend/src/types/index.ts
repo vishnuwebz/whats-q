@@ -246,6 +246,8 @@ export interface Conversation {
   is_opted_out?: boolean;
   suppression_reason?: string;
   suppression_date?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
 }
 
 export interface Lead {

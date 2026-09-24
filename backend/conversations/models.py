@@ -71,6 +71,8 @@ class Conversation(models.Model):
     is_blocked = models.BooleanField(default=False)
     is_opted_out = models.BooleanField(default=False)
     suppression_reason = models.CharField(max_length=255, blank=True, default='')
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

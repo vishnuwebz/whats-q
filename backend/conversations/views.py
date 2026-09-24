@@ -862,7 +862,16 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         from django.db.models import Max, F
-        return Conversation.objects.annotate(
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() in ['true', '1']
+        only_deleted = self.request.query_params.get('only_deleted', 'false').lower() in ['true', '1']
+
+        qs = Conversation.objects.all()
+        if only_deleted:
+            qs = qs.filter(is_deleted=True)
+        elif not include_deleted:
+            qs = qs.filter(is_deleted=False)
+
+        return qs.annotate(
             latest_msg_time=Max('messages__created_at')
         ).order_by(
             F('latest_msg_time').desc(nulls_last=True),
@@ -872,10 +881,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         # Resilient auto-seed defense: If database is ever empty on listing conversations, auto-seed demo data
-        if not Conversation.objects.exists():
+        if not Conversation.objects.filter(is_deleted=False).exists():
             try:
                 from django.core.management import call_command
-                logger.info("No conversations found in database. Auto-seeding initial Qiyam data...")
+                logger.info("No active conversations found in database. Auto-seeding initial Qiyam data...")
                 call_command('seed_qiyam_data')
             except Exception as e:
                 logger.error(f"Failed to auto-seed conversations: {e}")
@@ -883,6 +892,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
+        permanent = (
+            request.query_params.get('permanent', 'false').lower() in ['true', '1'] or
+            bool(request.data and request.data.get('permanent', False))
+        )
         try:
             conv = None
             if str(pk).isdigit():
@@ -895,19 +908,70 @@ class ConversationViewSet(viewsets.ModelViewSet):
             if conv:
                 conv_id = conv.id
                 contact_name = conv.contact_name
-                conv.messages.all().delete()
-                conv.delete()
+                if permanent:
+                    conv.messages.all().delete()
+                    conv.delete()
+                    logger.info(f"Conversation {pk} ({contact_name}) permanently purged.")
+                    msg = f"Conversation with {contact_name} permanently deleted."
+                else:
+                    conv.is_deleted = True
+                    conv.deleted_at = datetime.datetime.now()
+                    conv.save(update_fields=['is_deleted', 'deleted_at'])
+                    logger.info(f"Conversation {pk} ({contact_name}) moved to trash (soft deleted).")
+                    msg = f"Conversation with {contact_name} moved to trash."
+
                 try:
                     from core.events import event_bus
-                    event_bus.publish('conversation.deleted', {'id': conv_id, 'contact_name': contact_name})
+                    event_bus.publish('conversation.deleted', {'id': conv_id, 'contact_name': contact_name, 'permanent': permanent})
                 except Exception:
                     pass
-                logger.info(f"Conversation {pk} ({contact_name}) permanently deleted.")
-                return Response({'success': True, 'message': f"Conversation with {contact_name} deleted."}, status=status.HTTP_200_OK)
+                return Response({'success': True, 'message': msg, 'is_deleted': not permanent}, status=status.HTTP_200_OK)
             return Response({'success': True, 'message': 'Conversation already removed or not found.'}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Failed to delete conversation {pk}: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        Retrieves / restores a soft-deleted conversation back to active inbox.
+        """
+        conv = None
+        if str(pk).isdigit():
+            conv = Conversation.objects.filter(pk=int(pk)).first()
+        if not conv:
+            conv = Conversation.objects.filter(contact_name=pk).first()
+        if not conv:
+            conv = Conversation.objects.filter(phone_number=pk).first()
+
+        if not conv:
+            return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        conv.is_deleted = False
+        conv.deleted_at = None
+        conv.save(update_fields=['is_deleted', 'deleted_at'])
+
+        try:
+            from core.events import event_bus
+            event_bus.publish('conversation.restored', {'id': conv.id, 'contact_name': conv.contact_name})
+        except Exception:
+            pass
+
+        logger.info(f"Conversation {conv.id} ({conv.contact_name}) restored from trash.")
+        return Response({
+            'success': True,
+            'message': f"Conversation with {conv.contact_name} retrieved successfully.",
+            'conversation': ConversationSerializer(conv).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def deleted_threads(self, request):
+        """
+        Returns all soft-deleted conversations in the trash bin.
+        """
+        qs = Conversation.objects.filter(is_deleted=True).order_by('-deleted_at', '-updated_at')
+        serializer = ConversationSerializer(qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
     def resubscribe(self, request):
@@ -2727,6 +2791,9 @@ class SimulateWhatsAppMessageView(APIView):
         )
 
         if not created:
+            if getattr(conv, 'is_deleted', False):
+                conv.is_deleted = False
+                conv.deleted_at = None
             if contact_name and contact_name != 'WhatsApp Customer':
                 conv.contact_name = contact_name
             if avatar:
@@ -2899,6 +2966,9 @@ class StartWhatsAppChatView(APIView):
                 last_contact_date=now_full
             )
         else:
+            if getattr(conv, 'is_deleted', False):
+                conv.is_deleted = False
+                conv.deleted_at = None
             if contact_name and contact_name != 'WhatsApp Customer' and conv.contact_name in ['WhatsApp Customer', 'New Contact', '']:
                 conv.contact_name = contact_name
             if avatar:

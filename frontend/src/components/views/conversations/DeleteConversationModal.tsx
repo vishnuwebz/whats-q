@@ -57,10 +57,10 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
 
           <div className="text-center space-y-1.5 mb-5">
             <h3 className="text-base sm:text-lg font-bold text-slate-900">
-              Delete Conversation?
+              Move to Trash?
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-              Are you sure you want to permanently delete this chat thread? This is useful for clearing test chats, duplicates, or spam conversations.
+              Are you sure you want to move this conversation to Trash? You can retrieve it anytime from the Trash tab, or start a new chat with this number.
             </p>
           </div>
 
@@ -103,11 +103,11 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
             )}
           </div>
 
-          {/* Warning Banner */}
+          {/* Safe Archival Notice Banner */}
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs mb-6">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <span className="font-bold">Permanent Deletion:</span> All messages, timeline notes, and attachments associated with this chat will be removed from your shared inbox and database. This cannot be undone.
+              <span className="font-bold">Safe Archival:</span> This conversation will be removed from your active inbox and moved to the Trash tab. All previous messages, timeline history, and media remain safely preserved. You can retrieve it at any time, or starting a new chat with this number will automatically bring it back.
             </div>
           </div>
 
@@ -130,12 +130,12 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Deleting...</span>
+                  <span>Moving...</span>
                 </>
               ) : (
                 <>
                   <Trash2 className="w-4 h-4" />
-                  <span>Delete Conversation</span>
+                  <span>Move to Trash</span>
                 </>
               )}
             </button>

@@ -247,23 +247,35 @@ export function addDeletedConversationId(id: string | number) {
   }
 }
 
+export function removeDeletedConversationId(id: string | number) {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = getDeletedConversationIds();
+    const strId = String(id);
+    const updated = list.filter((item) => item !== strId);
+    localStorage.setItem(DELETED_CONVERSATIONS_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore storage error
+  }
+}
+
 function getStoredConversations(): Conversation[] {
   const deletedIds = getDeletedConversationIds();
   if (typeof window === 'undefined') {
-    return DEFAULT_SEED_CONVERSATIONS.filter((c) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name));
+    return DEFAULT_SEED_CONVERSATIONS.filter((c) => !deletedIds.includes(String(c.id)));
   }
   try {
     const raw = localStorage.getItem(CONVERSATIONS_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.filter((c: Conversation) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name));
+        return parsed.filter((c: Conversation) => !deletedIds.includes(String(c.id)));
       }
     }
   } catch (e) {
     // Ignore cache parse errors
   }
-  return DEFAULT_SEED_CONVERSATIONS.filter((c) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name));
+  return DEFAULT_SEED_CONVERSATIONS.filter((c) => !deletedIds.includes(String(c.id)));
 }
 
 function persistConversations(convs: Conversation[]) {
@@ -507,7 +519,9 @@ interface QiyamState {
   markConversationAsRead: (id: string | number) => Promise<void>;
   markAllConversationsAsRead: () => Promise<void>;
   toggleConversationWorkflow: (conversationId: string | number, isPaused: boolean, workflowName?: string) => Promise<void>;
-  deleteConversation: (id: string | number) => Promise<boolean>;
+  deleteConversation: (id: string | number, permanent?: boolean) => Promise<boolean>;
+  restoreConversation: (id: string | number) => Promise<boolean>;
+  fetchDeletedConversations: () => Promise<void>;
   isSimulatorOpen: boolean;
   setIsSimulatorOpen: (open: boolean) => void;
   isNewWorkflowModalOpen: boolean;
@@ -524,6 +538,7 @@ interface QiyamState {
   setSelectedTemplateId: (id: string | number | null) => void;
 
   conversations: Conversation[];
+  deletedConversations: Conversation[];
   leads: Lead[];
   deals: Deal[];
   followups: FollowUp[];
@@ -2370,46 +2385,103 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
   },
 
-  deleteConversation: async (id: string | number) => {
+  deleteConversation: async (id: string | number, permanent: boolean = false) => {
     const strId = String(id);
     addDeletedConversationId(id);
 
-    let deletedContactName = '';
+    let deletedTarget: Conversation | undefined;
     set((state) => {
-      const target = state.conversations.find((c) => String(c.id) === strId || c.contact_name === strId);
-      if (target) {
-        deletedContactName = target.contact_name;
-        addDeletedConversationId(target.id);
-        if (target.contact_name) addDeletedConversationId(target.contact_name);
+      deletedTarget = state.conversations.find((c) => String(c.id) === strId);
+      if (deletedTarget) {
+        addDeletedConversationId(deletedTarget.id);
       }
       const remaining = state.conversations.filter(
-        (c) => String(c.id) !== strId && c.contact_name !== strId
+        (c) => String(c.id) !== strId
       );
       persistConversations(remaining);
 
-      const isCurrentDeleted = String(state.selectedConversationId) === strId || (target && String(state.selectedConversationId) === String(target.id));
+      const nextDeleted = deletedTarget
+        ? [{ ...deletedTarget, is_deleted: true }, ...(state.deletedConversations || []).filter((c) => String(c.id) !== strId)]
+        : (state.deletedConversations || []);
+
+      const isCurrentDeleted = String(state.selectedConversationId) === strId;
       const nextSelectedId = isCurrentDeleted
         ? (remaining[0]?.id ?? '')
         : state.selectedConversationId;
 
       return {
         conversations: remaining,
+        deletedConversations: nextDeleted,
         selectedConversationId: nextSelectedId,
       };
     });
 
-    // Instant toast feedback!
+    const contactName = deletedTarget?.contact_name || 'Contact';
     get().addToast(
-      `Conversation with ${deletedContactName || 'contact'} deleted successfully.`,
-      'success'
+      `Conversation with ${contactName} moved to Trash. You can retrieve it anytime.`,
+      'info'
     );
 
-    // Non-blocking background sync with backend
-    qiyamApi.deleteConversation(id).catch((e) => {
+    qiyamApi.deleteConversation(id, permanent).catch((e) => {
       console.warn('Backend delete conversation notice:', e);
     });
 
     return true;
+  },
+
+  restoreConversation: async (id: string | number) => {
+    const strId = String(id);
+    removeDeletedConversationId(id);
+
+    let restoredTarget: Conversation | undefined;
+    set((state) => {
+      restoredTarget = (state.deletedConversations || []).find((c) => String(c.id) === strId);
+      const remainingDeleted = (state.deletedConversations || []).filter((c) => String(c.id) !== strId);
+
+      const alreadyExists = state.conversations.some((c) => String(c.id) === strId);
+      const updatedConversations = alreadyExists
+        ? state.conversations
+        : restoredTarget
+        ? [{ ...restoredTarget, is_deleted: false }, ...state.conversations]
+        : state.conversations;
+
+      persistConversations(updatedConversations);
+
+      return {
+        conversations: updatedConversations,
+        deletedConversations: remainingDeleted,
+        selectedConversationId: strId,
+      };
+    });
+
+    get().addToast(
+      `Conversation with ${restoredTarget?.contact_name || 'contact'} retrieved successfully!`,
+      'success'
+    );
+
+    try {
+      const res = await qiyamApi.restoreConversation(id);
+      if (res?.conversation) {
+        const mapped = mapConversation(res.conversation);
+        set((state) => ({
+          conversations: state.conversations.map((c) => (String(c.id) === strId ? mapped : c)),
+        }));
+      }
+      return true;
+    } catch (e) {
+      console.warn('Backend restore conversation notice:', e);
+      return false;
+    }
+  },
+
+  fetchDeletedConversations: async () => {
+    try {
+      const raw = await qiyamApi.fetchDeletedConversations();
+      const mapped = (raw || []).map((c: any) => mapConversation(c));
+      set({ deletedConversations: mapped });
+    } catch (e) {
+      console.warn('Could not load deleted conversations:', e);
+    }
   },
   isSimulatorOpen: false,
   setIsSimulatorOpen: (open) => set({ isSimulatorOpen: open }),
@@ -2525,6 +2597,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   conversations: getStoredConversations(),
+  deletedConversations: [],
   leads: getStoredCache('leads', INITIAL_LEADS),
   deals: getStoredCache('deals', INITIAL_DEALS),
   followups: [],
@@ -2920,6 +2993,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     get().fetchLinkedDevices();
     get().fetchBulkCampaigns();
     get().fetchBulkTemplates();
+    get().fetchDeletedConversations();
 
     if (selectedConversationId) {
       get().markConversationAsRead(selectedConversationId);
@@ -2938,7 +3012,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       const serverConvs = await qiyamApi.fetchConversations();
       const deletedIds = getDeletedConversationIds();
       const filteredServerConvs = (serverConvs || []).filter(
-        (c) => !deletedIds.includes(String(c.id)) && !deletedIds.includes(c.contact_name)
+        (c) => !deletedIds.includes(String(c.id))
       );
       if (filteredServerConvs && filteredServerConvs.length > 0) {
         set((state) => {
@@ -2967,7 +3041,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           // Preserve local conversations that haven't synced yet (e.g. newly created for appointments or offline)
           const localOnly = state.conversations.filter(
             (local) => !filteredServerConvs.some((sConv) => String(sConv.id) === String(local.id)) &&
-              !deletedIds.includes(String(local.id)) && !deletedIds.includes(local.contact_name)
+              !deletedIds.includes(String(local.id))
           );
           const allMerged = [...localOnly, ...merged];
           const sortedMerged = sortConversationsByRecency(allMerged);
@@ -3067,21 +3141,38 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     set((state) => {
       const convIndex = state.conversations.findIndex((c) => String(c.id) === String(conversationId));
-      if (convIndex === -1) return {};
+      let conv: Conversation | undefined;
+      let nextDeleted = state.deletedConversations || [];
 
-      const conv = state.conversations[convIndex];
+      if (convIndex !== -1) {
+        conv = state.conversations[convIndex];
+      } else {
+        const delConv = (state.deletedConversations || []).find((c) => String(c.id) === String(conversationId));
+        if (delConv) {
+          conv = { ...delConv, is_deleted: false };
+          removeDeletedConversationId(conversationId);
+          nextDeleted = nextDeleted.filter((c) => String(c.id) !== String(conversationId));
+        }
+      }
+      if (!conv) return {};
+
       const updatedConv: Conversation = {
         ...conv,
+        is_deleted: false,
         last_contact_date: 'Just now',
         messages: [...conv.messages, optimisticMsg],
       };
 
-      const nextConversations = [...state.conversations];
-      nextConversations.splice(convIndex, 1);
-      nextConversations.unshift(updatedConv);
+      const nextConversations = [
+        updatedConv,
+        ...state.conversations.filter((c) => String(c.id) !== String(conversationId)),
+      ];
+      persistConversations(nextConversations);
 
       return {
         conversations: nextConversations,
+        deletedConversations: nextDeleted,
+        selectedConversationId: conv.id,
       };
     });
 
@@ -3138,12 +3229,20 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
       if (res && res.status === 'success' && res.conversation) {
         const conv = mapConversation(res.conversation as Record<string, unknown>);
+        removeDeletedConversationId(conv.id);
         set((state) => {
+          const remainingDeleted = (state.deletedConversations || []).filter((c) => String(c.id) !== String(conv.id));
           const exists = state.conversations.some((c) => String(c.id) === String(conv.id));
           const conversations = exists
-            ? state.conversations.map((c) => (String(c.id) === String(conv.id) ? conv : c))
-            : [conv, ...state.conversations];
-          return { conversations, selectedConversationId: conv.id, activeTab: 'conversations' };
+            ? state.conversations.map((c) => (String(c.id) === String(conv.id) ? { ...conv, is_deleted: false } : c))
+            : [{ ...conv, is_deleted: false }, ...state.conversations];
+          persistConversations(conversations);
+          return {
+            conversations,
+            deletedConversations: remainingDeleted,
+            selectedConversationId: conv.id,
+            activeTab: 'conversations',
+          };
         });
 
         const targetName = params.name || params.phone;
@@ -3172,12 +3271,19 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const res = await apiClient.post('/conversations/simulate/', { name, phone, text, avatar });
     if (res?.conversation) {
       const conv = mapConversation(res.conversation as Record<string, unknown>);
+      removeDeletedConversationId(conv.id);
       set((state) => {
-        const exists = state.conversations.some((c) => c.id === conv.id);
+        const remainingDeleted = (state.deletedConversations || []).filter((c) => String(c.id) !== String(conv.id));
+        const exists = state.conversations.some((c) => String(c.id) === String(conv.id));
         const conversations = exists
-          ? state.conversations.map((c) => (c.id === conv.id ? conv : c))
-          : [conv, ...state.conversations];
-        return { conversations, selectedConversationId: conv.id };
+          ? state.conversations.map((c) => (String(c.id) === String(conv.id) ? { ...conv, is_deleted: false } : c))
+          : [{ ...conv, is_deleted: false }, ...state.conversations];
+        persistConversations(conversations);
+        return {
+          conversations,
+          deletedConversations: remainingDeleted,
+          selectedConversationId: conv.id,
+        };
       });
       get().addToast(`WhatsApp chat with ${name || phone} started`, 'success');
       return;

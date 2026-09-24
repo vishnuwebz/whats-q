@@ -74,9 +74,12 @@ export const ConversationsView: React.FC = () => {
     activeSenderDeviceId,
     setActiveSenderDeviceId,
     unlinkEmployeeDevice,
+    deletedConversations,
+    restoreConversation,
+    fetchDeletedConversations,
   } = useQiyamStore();
 
-  const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam'>('all');
+  const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam' | 'deleted'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -151,10 +154,15 @@ export const ConversationsView: React.FC = () => {
 
   const { globalFilter } = useQiyamStore();
 
-  const currentConv = (conversations && conversations.length > 0)
-    ? conversations.find(
+  const allAvailableConvs = useMemo(
+    () => [...conversations, ...(deletedConversations || [])],
+    [conversations, deletedConversations]
+  );
+
+  const currentConv = (allAvailableConvs && allAvailableConvs.length > 0)
+    ? allAvailableConvs.find(
         (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
-      ) || conversations[0]
+      ) || (activeFilterTab === 'deleted' ? deletedConversations[0] : conversations[0]) || null
     : null;
 
   const handleOpenWorkflowBuilder = (wfName: string = 'Service Booking Flow') => {
@@ -253,11 +261,17 @@ export const ConversationsView: React.FC = () => {
   React.useEffect(() => {
     if (selectedConversationId) {
       setIsMobileChatOpen(true);
-      const target = conversations.find(
+      const target = allAvailableConvs.find(
         (c) => String(c.id) === String(selectedConversationId) || c.contact_name === selectedConversationId
       );
       if (target) {
-        if (activeFilterTab !== 'all' && target.status !== activeFilterTab) {
+        if (target.is_deleted) {
+          if (activeFilterTab !== 'deleted') {
+            setActiveFilterTab('deleted');
+          }
+        } else if (activeFilterTab === 'deleted') {
+          setActiveFilterTab('all');
+        } else if (activeFilterTab !== 'all' && target.status !== activeFilterTab) {
           setActiveFilterTab('all');
         }
         if (isAnyDateFilterActive) {
@@ -265,7 +279,11 @@ export const ConversationsView: React.FC = () => {
         }
       }
     }
-  }, [selectedConversationId, conversations]);
+  }, [selectedConversationId, allAvailableConvs]);
+
+  React.useEffect(() => {
+    fetchDeletedConversations();
+  }, [fetchDeletedConversations]);
 
   // Active real-time synchronizer: keeps conversation thread lively even across multi-worker servers
   React.useEffect(() => {
@@ -297,6 +315,7 @@ export const ConversationsView: React.FC = () => {
     in_progress: conversations.filter((c) => c.status === 'in_progress').length,
     waiting: conversations.filter((c) => c.status === 'waiting').length,
     resolved: conversations.filter((c) => c.status === 'resolved').length,
+    deleted: (deletedConversations || []).length,
   };
 
   const availableMonths = useMemo(() => {
@@ -405,9 +424,10 @@ export const ConversationsView: React.FC = () => {
     updateFloatingDate();
   }, [updateFloatingDate]);
 
+  const sourceConvs = activeFilterTab === 'deleted' ? (deletedConversations || []) : conversations;
   const filteredConversations = sortConversationsByRecency(
-    conversations.filter((c) => {
-      if (activeFilterTab !== 'all' && c.status !== activeFilterTab) return false;
+    sourceConvs.filter((c) => {
+      if (activeFilterTab !== 'all' && activeFilterTab !== 'deleted' && c.status !== activeFilterTab) return false;
       if (globalFilter.status && globalFilter.status !== 'all' && c.status !== globalFilter.status) return false;
 
       const lastMsg = (c.messages && c.messages.length > 0) ? c.messages[c.messages.length - 1] : null;
@@ -1138,14 +1158,27 @@ export const ConversationsView: React.FC = () => {
           >
             Dispatch Job
           </button>
-          <button
-            onClick={() => setConversationToDelete(currentConv)}
-            title="Delete this conversation"
-            className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Conversation</span>
-          </button>
+          {currentConv?.is_deleted ? (
+            <button
+              onClick={async () => {
+                if (currentConv) await restoreConversation(currentConv.id);
+              }}
+              title="Retrieve this conversation back to active inbox"
+              className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Retrieve Conversation</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setConversationToDelete(currentConv)}
+              title="Delete this conversation"
+              className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Conversation</span>
+            </button>
+          )}
         </div>
       </>
     );
@@ -1240,6 +1273,16 @@ export const ConversationsView: React.FC = () => {
               }`}
             >
               Resolved ({counts.resolved})
+            </button>
+            <button
+              onClick={() => setActiveFilterTab('deleted')}
+              className={`pb-2.5 px-2 border-b-2 whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                activeFilterTab === 'deleted' ? 'border-amber-600 text-amber-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+              title="Deleted conversations (Trash bin)"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Trash ({counts.deleted})</span>
             </button>
           </div>
 
@@ -1472,9 +1515,15 @@ export const ConversationsView: React.FC = () => {
                   <MessageSquare className="w-6 h-6" />
                 </div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-700">No Conversations</h5>
+                  <h5 className="font-bold text-xs text-slate-700">
+                    {activeFilterTab === 'deleted' ? 'Trash is Empty' : 'No Conversations'}
+                  </h5>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {searchQuery || isAnyDateFilterActive ? 'No chats match this date/time filter.' : 'Incoming WhatsApp messages will appear here.'}
+                    {activeFilterTab === 'deleted'
+                      ? 'Deleted conversations will appear here so you can retrieve them anytime.'
+                      : searchQuery || isAnyDateFilterActive
+                      ? 'No chats match this date/time filter.'
+                      : 'Incoming WhatsApp messages will appear here.'}
                   </p>
                 </div>
                 {isAnyDateFilterActive && (
@@ -1593,19 +1642,34 @@ export const ConversationsView: React.FC = () => {
                             {conv.unread_count}
                           </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConversationToDelete(conv);
-                          }}
-                          title={`Delete conversation with ${conv.contact_name || 'customer'}`}
-                          className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all cursor-pointer shrink-0 ${
-                            (conv.unread_count || 0) > 0 ? 'ml-1' : 'ml-auto'
-                          }`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {conv.is_deleted || activeFilterTab === 'deleted' ? (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await restoreConversation(conv.id);
+                            }}
+                            title={`Retrieve conversation with ${conv.contact_name || 'customer'}`}
+                            className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-105 active:scale-95"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>Retrieve</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConversationToDelete(conv);
+                            }}
+                            title={`Delete conversation with ${conv.contact_name || 'customer'}`}
+                            className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all cursor-pointer shrink-0 ${
+                              (conv.unread_count || 0) > 0 ? 'ml-1' : 'ml-auto'
+                            }`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1777,16 +1841,29 @@ export const ConversationsView: React.FC = () => {
                                 </div>
                               </button>
 
-                              <button
-                                onClick={() => {
-                                  setIsHeaderMenuOpen(false);
-                                  setConversationToDelete(currentConv);
-                                }}
-                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
-                                <span className="font-semibold">Delete Conversation</span>
-                              </button>
+                              {currentConv.is_deleted ? (
+                                <button
+                                  onClick={async () => {
+                                    setIsHeaderMenuOpen(false);
+                                    await restoreConversation(currentConv.id);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 transition-colors text-left cursor-pointer"
+                                >
+                                  <RotateCcw className="w-4 h-4 text-emerald-600 shrink-0" />
+                                  <span className="font-semibold">Retrieve Conversation</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setIsHeaderMenuOpen(false);
+                                    setConversationToDelete(currentConv);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
+                                  <span className="font-semibold">Delete Conversation</span>
+                                </button>
+                              )}
 
                               <div className="border-t border-slate-100 my-1" />
 
@@ -1836,13 +1913,26 @@ export const ConversationsView: React.FC = () => {
                         <FileText className="w-3.5 h-3.5" />
                         <span>Send Quotation</span>
                       </button>
-                      <button
-                        onClick={() => setConversationToDelete(currentConv)}
-                        className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                        title="Delete Conversation"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {currentConv.is_deleted ? (
+                        <button
+                          onClick={async () => {
+                            await restoreConversation(currentConv.id);
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:border-emerald-300 rounded-lg border border-emerald-200 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                          title="Retrieve conversation back to active inbox"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Retrieve</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setConversationToDelete(currentConv)}
+                          className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                          title="Delete Conversation"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
 
                       {/* Minimize Options Button */}
                       <button
@@ -1866,6 +1956,33 @@ export const ConversationsView: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Soft Deleted / Trash Notice Banner */}
+              {currentConv.is_deleted && (
+                <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 shrink-0 shadow-2xs text-xs text-amber-900">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-amber-950">This conversation is in Trash.</span>{' '}
+                      <span className="text-amber-800 hidden sm:inline">
+                        All previous messages are safely preserved. You can retrieve it anytime to bring it back to your active inbox.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await restoreConversation(currentConv.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Retrieve Conversation</span>
+                  </button>
+                </div>
+              )}
 
               {/* Suppression / Opt-Out & Blocked Live Compliance Warning Banner */}
               {currentSuppression && (

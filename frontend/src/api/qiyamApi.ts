@@ -109,13 +109,33 @@ export const qiyamApi = {
     }
   },
 
-  async deleteConversation(id: string | number): Promise<boolean> {
+  async deleteConversation(id: string | number, permanent: boolean = false): Promise<boolean> {
     try {
-      await apiClient.delete(`/conversations/threads/${id}/`);
+      await apiClient.delete(`/conversations/threads/${id}/${permanent ? '?permanent=true' : ''}`);
       return true;
     } catch (e) {
       console.warn('Could not delete conversation on backend:', e);
       return false;
+    }
+  },
+
+  async restoreConversation(id: string | number): Promise<any> {
+    try {
+      const res = await apiClient.post(`/conversations/threads/${id}/restore/`, {});
+      return res;
+    } catch (e) {
+      console.warn('Could not restore conversation on backend:', e);
+      return null;
+    }
+  },
+
+  async fetchDeletedConversations(): Promise<Conversation[]> {
+    try {
+      const res: any = await apiClient.get('/conversations/threads/deleted_threads/');
+      return Array.isArray(res) ? res : res?.results || [];
+    } catch (e) {
+      console.warn('Could not fetch deleted conversations:', e);
+      return [];
     }
   },
 

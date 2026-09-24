@@ -21,7 +21,8 @@ import {
   AlertCircle,
   ArrowRight,
   ExternalLink,
-  MessageCircle
+  MessageCircle,
+  RotateCcw
 } from 'lucide-react';
 import { CustomerAvatar } from './CustomerAvatar';
 import { CountryPhoneInput } from './CountryPhoneInput';
@@ -31,6 +32,8 @@ export const WhatsAppSimulatorModal: React.FC = () => {
     isSimulatorOpen,
     setIsSimulatorOpen,
     conversations,
+    deletedConversations,
+    restoreConversation,
     setSelectedConversationId,
     startOutboundWhatsAppChat,
     simulateInboundWhatsApp,
@@ -65,8 +68,8 @@ export const WhatsAppSimulatorModal: React.FC = () => {
   // Business phone display
   const businessPhoneDisplay = metaConfig?.business_phone_display || '+91 94963 00233';
 
-  // Find if phone number already exists in conversations
-  const existingConversation = useMemo(() => {
+  // Find if phone number already exists in active conversations or trash
+  const existingActiveConversation = useMemo(() => {
     const rawInput = (phone || '').trim();
     const cleanDigits = rawInput.replace(/\D/g, '');
     if (!cleanDigits || cleanDigits.length < 7) return null;
@@ -81,6 +84,25 @@ export const WhatsAppSimulatorModal: React.FC = () => {
     });
   }, [phone, conversations]);
 
+  const existingDeletedConversation = useMemo(() => {
+    if (existingActiveConversation) return null;
+    const rawInput = (phone || '').trim();
+    const cleanDigits = rawInput.replace(/\D/g, '');
+    if (!cleanDigits || cleanDigits.length < 7) return null;
+
+    const inputLast10 = cleanDigits.slice(-10);
+
+    return (deletedConversations || []).find((c) => {
+      const cDigits = (c.phone_number || '').replace(/\D/g, '');
+      if (!cDigits || cDigits.length < 7) return false;
+      const cLast10 = cDigits.slice(-10);
+      return cLast10 === inputLast10;
+    });
+  }, [phone, deletedConversations, existingActiveConversation]);
+
+  const existingConversation = existingActiveConversation || existingDeletedConversation;
+  const isExistingInTrash = Boolean(existingDeletedConversation);
+
   // When an existing conversation is found, auto-fill contact name if empty
   useEffect(() => {
     if (existingConversation && !name.trim() && existingConversation.contact_name) {
@@ -88,13 +110,21 @@ export const WhatsAppSimulatorModal: React.FC = () => {
     }
   }, [existingConversation]);
 
-  // Jump directly to that existing chat page
-  const handleGoToExistingChat = (conv: any) => {
+  // Jump directly to that existing chat page (retrieving if it was in trash)
+  const handleGoToExistingChat = async (conv: any) => {
     if (!conv || !conv.id) return;
+    if (conv.is_deleted || isExistingInTrash) {
+      await restoreConversation(conv.id);
+    }
     setSelectedConversationId(conv.id);
     setActiveTab('conversations');
     setIsSimulatorOpen(false);
-    addToast(`Opened existing chat with ${conv.contact_name || conv.phone_number}`, 'info');
+    addToast(
+      isExistingInTrash
+        ? `Retrieved conversation with ${conv.contact_name || conv.phone_number} from Trash!`
+        : `Opened existing chat with ${conv.contact_name || conv.phone_number}`,
+      'info'
+    );
   };
 
   // Available sender lines
@@ -396,19 +426,33 @@ export const WhatsAppSimulatorModal: React.FC = () => {
             <div className="p-3 sm:p-3.5 bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-300 rounded-xl text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="flex items-start gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 shadow-2xs">
-                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                  {isExistingInTrash ? (
+                    <RotateCcw className="w-4 h-4 text-amber-700" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-amber-700" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-xs text-amber-950">
-                      This number is already in your conversations!
+                      {isExistingInTrash
+                        ? 'This conversation was moved to Trash (deleted)!'
+                        : 'This number is already in your conversations!'}
                     </span>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300/80">
-                      {existingConversation.messages?.length || 0} messages
+                      {existingConversation.messages?.length || 0} messages preserved
                     </span>
                   </div>
                   <p className="text-[11px] text-amber-800 leading-snug mt-0.5">
-                    An active chat already exists with <strong className="font-semibold text-amber-950">{existingConversation.contact_name || 'Customer'}</strong> ({existingConversation.phone_number}).
+                    {isExistingInTrash ? (
+                      <>
+                        A previous conversation with <strong className="font-semibold text-amber-950">{existingConversation.contact_name || 'Customer'}</strong> ({existingConversation.phone_number}) is in Trash. Click below to retrieve it or send a message to restore it automatically.
+                      </>
+                    ) : (
+                      <>
+                        An active chat already exists with <strong className="font-semibold text-amber-950">{existingConversation.contact_name || 'Customer'}</strong> ({existingConversation.phone_number}).
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -418,9 +462,18 @@ export const WhatsAppSimulatorModal: React.FC = () => {
                 onClick={() => handleGoToExistingChat(existingConversation)}
                 className="w-full sm:w-auto px-3.5 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs rounded-xl transition-all shadow-sm shadow-amber-800/25 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>Click here to go to that chat page</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                {isExistingInTrash ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Retrieve & Open Chat</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Click here to go to that chat page</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
               </button>
             </div>
           )}
