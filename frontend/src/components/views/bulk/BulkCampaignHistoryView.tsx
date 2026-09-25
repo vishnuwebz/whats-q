@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Info,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkCampaign } from '../../../types';
@@ -52,9 +53,28 @@ export const BulkCampaignHistoryView: React.FC = () => {
     deleteBulkCampaign,
     retryFailedCampaign,
     duplicateCampaign,
+    conversations,
+    setSelectedConversationId,
     setActiveTab,
     addToast,
   } = useQiyamStore();
+
+  const handleOpenInInbox = (phone?: string) => {
+    if (!phone) {
+      setActiveTab('conversations');
+      return;
+    }
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const conv = (conversations || []).find((c) => {
+      const cPhone = (c.phone_number || '').replace(/[^0-9]/g, '');
+      return cleanPhone.length >= 7 && (cPhone.includes(cleanPhone) || cleanPhone.includes(cPhone));
+    });
+    if (conv) {
+      setSelectedConversationId(conv.id);
+    }
+    setQueueInspection(null);
+    setActiveTab('conversations');
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -946,18 +966,31 @@ export const BulkCampaignHistoryView: React.FC = () => {
                                     onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold w-fit cursor-pointer transition hover:opacity-85 ${
                                       rec.status === 'READ'
-                                        ? 'bg-blue-100 text-blue-800'
+                                        ? 'bg-blue-100 text-blue-800 border border-blue-200 hover:ring-2 hover:ring-blue-300'
                                         : rec.status === 'DELIVERED'
-                                        ? 'bg-emerald-100 text-emerald-800'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:ring-2 hover:ring-emerald-300'
                                         : rec.status === 'SENT'
-                                        ? 'bg-cyan-100 text-cyan-800'
+                                        ? 'bg-cyan-100 text-cyan-800 border border-cyan-200 hover:ring-2 hover:ring-cyan-300'
                                         : rec.status === 'QUEUED'
                                         ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:ring-2 hover:ring-amber-300 shadow-2xs'
                                         : 'bg-rose-100 text-rose-800 border border-rose-300 hover:ring-2 hover:ring-rose-300 shadow-2xs'
                                     }`}
-                                    title={rec.status === 'QUEUED' ? "Click to view why queued, reason and solution" : rec.status === 'FAILED' ? "Click to view failure details and solution" : "Click to view status report"}
+                                    title={
+                                      rec.status === 'DELIVERED'
+                                        ? 'Click to view delivery receipt & handset confirmation'
+                                        : rec.status === 'READ'
+                                        ? 'Click to view customer read confirmation & audit'
+                                        : rec.status === 'SENT'
+                                        ? 'Click to view Meta network transit report'
+                                        : rec.status === 'QUEUED'
+                                        ? 'Click to view why queued, reason and solution'
+                                        : 'Click to view failure details, reason and solution'
+                                    }
                                   >
                                     <span>{rec.status}</span>
+                                    {rec.status === 'DELIVERED' && <CheckCheck className="w-2.5 h-2.5 text-emerald-700" />}
+                                    {rec.status === 'READ' && <CheckCheck className="w-2.5 h-2.5 text-blue-700" />}
+                                    {rec.status === 'SENT' && <Check className="w-2.5 h-2.5 text-cyan-700" />}
                                     {rec.status === 'QUEUED' && <HelpCircle className="w-2.5 h-2.5 text-amber-700" />}
                                     {rec.status === 'FAILED' && <AlertCircle className="w-2.5 h-2.5 text-rose-700" />}
                                   </button>
@@ -971,7 +1004,34 @@ export const BulkCampaignHistoryView: React.FC = () => {
                                       className="text-[9px] text-amber-700 font-medium cursor-pointer hover:underline inline-flex items-center gap-0.5"
                                       onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
                                     >
-                                      <span>Why queued? Click for solution</span>
+                                      <span>Why queued? Click for reason</span>
+                                      <span>→</span>
+                                    </span>
+                                  )}
+                                  {rec.status === 'DELIVERED' && (
+                                    <span
+                                      className="text-[9px] text-emerald-700 font-medium cursor-pointer hover:underline inline-flex items-center gap-0.5"
+                                      onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
+                                    >
+                                      <span>Delivery confirmed</span>
+                                      <span>→</span>
+                                    </span>
+                                  )}
+                                  {rec.status === 'READ' && (
+                                    <span
+                                      className="text-[9px] text-blue-700 font-medium cursor-pointer hover:underline inline-flex items-center gap-0.5"
+                                      onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
+                                    >
+                                      <span>Read by customer</span>
+                                      <span>→</span>
+                                    </span>
+                                  )}
+                                  {rec.status === 'SENT' && (
+                                    <span
+                                      className="text-[9px] text-cyan-700 font-medium cursor-pointer hover:underline inline-flex items-center gap-0.5"
+                                      onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
+                                    >
+                                      <span>In transit</span>
                                       <span>→</span>
                                     </span>
                                   )}
@@ -1139,190 +1199,424 @@ export const BulkCampaignHistoryView: React.FC = () => {
         </div>
       )}
 
-      {/* QUEUE STATUS & DIAGNOSTIC INSPECTION MODAL */}
-      {queueInspection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="px-5 py-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-amber-200 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
-                  <Clock className="w-5 h-5" />
+      {/* STATUS DIAGNOSTIC & AUDIT INSPECTION MODAL */}
+      {queueInspection && (() => {
+        const rawStatus = (queueInspection.recipient?.status || queueInspection.campaign.status || 'QUEUED').toUpperCase();
+        const isDelivered = rawStatus === 'DELIVERED';
+        const isRead = rawStatus === 'READ';
+        const isSent = rawStatus === 'SENT';
+        const isQueued = rawStatus === 'QUEUED';
+        const isFailed = rawStatus === 'FAILED' || rawStatus === 'ERROR';
+
+        const title = isDelivered
+          ? 'Delivery Confirmation & Handset Audit'
+          : isRead
+          ? 'Read Receipt & Engagement Audit'
+          : isSent
+          ? 'Meta Dispatch & Network Transit Report'
+          : isQueued
+          ? 'Queue Diagnostic & Scheduling Report'
+          : 'Message Failure & Error Diagnostic';
+
+        const subtitle = isDelivered
+          ? 'Confirmed received on customer device via Meta Cloud API webhook'
+          : isRead
+          ? 'Customer opened and read this broadcast message (Blue Tick verified)'
+          : isSent
+          ? 'Accepted by Meta Graph API and traversing WhatsApp global transit network'
+          : isQueued
+          ? 'Held safely in outbound queue with anti-ban rate limiting'
+          : 'Meta Cloud API rejected delivery attempt or number unreachable';
+
+        const headerBg = isDelivered
+          ? 'from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-200'
+          : isRead
+          ? 'from-blue-500/10 via-blue-500/5 to-transparent border-blue-200'
+          : isSent
+          ? 'from-cyan-500/10 via-cyan-500/5 to-transparent border-cyan-200'
+          : isQueued
+          ? 'from-amber-500/10 via-amber-500/5 to-transparent border-amber-200'
+          : 'from-rose-500/10 via-rose-500/5 to-transparent border-rose-200';
+
+        const iconBg = isDelivered
+          ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+          : isRead
+          ? 'bg-blue-100 border-blue-300 text-blue-700'
+          : isSent
+          ? 'bg-cyan-100 border-cyan-300 text-cyan-700'
+          : isQueued
+          ? 'bg-amber-100 border-amber-300 text-amber-700'
+          : 'bg-rose-100 border-rose-300 text-rose-700';
+
+        const badgeClass = isDelivered
+          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+          : isRead
+          ? 'bg-blue-100 text-blue-800 border-blue-300'
+          : isSent
+          ? 'bg-cyan-100 text-cyan-800 border-cyan-300'
+          : isQueued
+          ? 'bg-amber-100 text-amber-800 border-amber-300'
+          : 'bg-rose-100 text-rose-800 border-rose-300';
+
+        const StatusIcon = isDelivered
+          ? CheckCheck
+          : isRead
+          ? CheckCheck
+          : isSent
+          ? Check
+          : isQueued
+          ? Clock
+          : AlertCircle;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+              {/* Header */}
+              <div className={`px-5 py-4 bg-gradient-to-r ${headerBg} border-b flex items-center justify-between`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${iconBg}`}>
+                    <StatusIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-sm">{title}</h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                        {rawStatus}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Campaign: <span className="font-semibold text-slate-700">{queueInspection.campaign.name}</span> (#{queueInspection.campaign.id})
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-sm">
-                      Queue Diagnostic Report
-                    </h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                      QUEUED
+                <button
+                  onClick={() => setQueueInspection(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
+                {/* Snapshot */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/90 grid grid-cols-2 gap-2.5 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Contact / Recipient</span>
+                    <span className="font-bold text-slate-800">
+                      {queueInspection.recipient?.name || 'All Target Recipients'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Campaign: <span className="font-semibold text-slate-700">{queueInspection.campaign.name}</span> (#{queueInspection.campaign.id})
-                  </p>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Phone Number</span>
+                    <span className="font-mono font-semibold text-slate-800">
+                      {queueInspection.recipient?.phone || queueInspection.campaign.audienceListName || 'Audience Group'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Template Name</span>
+                    <span className="font-mono text-slate-800 truncate block">
+                      {queueInspection.campaign.templateName || 'None (Freeform)'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Current State</span>
+                    <span className={`font-bold ${isDelivered ? 'text-emerald-700' : isRead ? 'text-blue-700' : isSent ? 'text-cyan-700' : isQueued ? 'text-amber-700' : 'text-rose-700'}`}>
+                      {rawStatus}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => setQueueInspection(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Content */}
-            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
-              {/* Snapshot */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/90 grid grid-cols-2 gap-2.5 text-[11px]">
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Contact / Recipient</span>
-                  <span className="font-bold text-slate-800">
-                    {queueInspection.recipient?.name || 'All Queued Recipients'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Phone Number</span>
-                  <span className="font-mono font-semibold text-slate-800">
-                    {queueInspection.recipient?.phone || queueInspection.campaign.audienceListName || 'Audience Group'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Template Name</span>
-                  <span className="font-mono text-slate-800 truncate block">
-                    {queueInspection.campaign.templateName || 'None (Freeform)'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Current State</span>
-                  <span className="font-bold text-amber-700">
-                    {queueInspection.recipient?.status || queueInspection.campaign.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* 1. Why it's been queued */}
-              <div className="space-y-1.5">
-                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px] font-bold">1</span>
-                  <span>Why is this message in "QUEUED" status?</span>
-                </div>
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-amber-950 text-[11px] leading-relaxed">
-                  WhatsApp and Meta Cloud API enforce strict anti-spam rate limits. Dispatches are placed in a controlled queue so a background worker can send each contact sequentially with anti-ban jitter delays.
-                </div>
-              </div>
-
-              {/* 2. What's the reason */}
-              <div className="space-y-1.5">
-                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center text-[10px] font-bold">2</span>
-                  <span>What is the exact reason it is still queued?</span>
-                </div>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[11px] text-slate-700">
-                  {queueInspection.campaign.status === 'RUNNING' ? (
-                    <div className="flex items-start gap-2 text-blue-900">
-                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Worker Actively Processing:</strong> This campaign is currently running. This recipient is waiting in line and will be dispatched as soon as previous contacts finish.
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <div className="flex items-start gap-2 text-slate-900">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <strong>Worker Cycle Halted Before Completion:</strong> The campaign finished its initial run, but this recipient was not delivered.
-                        </div>
-                      </div>
-                      <div className="pl-6 text-slate-600 space-y-1">
-                        <p>This happened because:</p>
-                        <ul className="list-disc pl-4 space-y-0.5 text-slate-600">
-                          <li>
-                            <strong>Template Parameters:</strong> Meta templates with multiple dynamic variables require an exact parameter list for all placeholders ({`{{1}}`}, {`{{2}}`}, etc.).
-                          </li>
-                          <li>
-                            <strong>Worker Interruption:</strong> The background dispatch worker encountered a mismatch or was interrupted before processing this queue item.
-                          </li>
-                        </ul>
+                {/* 1. What does this status mean? */}
+                <div className="space-y-1.5">
+                  <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      isDelivered ? 'bg-emerald-100 text-emerald-800' : isRead ? 'bg-blue-100 text-blue-800' : isSent ? 'bg-cyan-100 text-cyan-800' : isQueued ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                    }`}>1</span>
+                    <span>
+                      {isDelivered && 'What does "DELIVERED" status mean?'}
+                      {isRead && 'What does "READ" status mean?'}
+                      {isSent && 'What does "SENT" status mean?'}
+                      {isQueued && 'Why is this message in "QUEUED" status?'}
+                      {isFailed && 'Why did this message fail to send?'}
+                    </span>
+                  </div>
+                  <div className={`p-3 rounded-xl border text-[11px] leading-relaxed ${
+                    isDelivered
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                      : isRead
+                      ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                      : isSent
+                      ? 'bg-cyan-50/70 border-cyan-200 text-cyan-950'
+                      : isQueued
+                      ? 'bg-amber-50/70 border-amber-200 text-amber-950'
+                      : 'bg-rose-50/70 border-rose-200 text-rose-950'
+                  }`}>
+                    {isDelivered && (
+                      <p>
+                        The message was successfully transmitted through Meta WhatsApp Cloud API and confirmed received on the recipient's phone/handset. WhatsApp acknowledged reception with a <strong>Double Grey Tick (✓✓)</strong> delivery receipt sent back to our server.
+                      </p>
+                    )}
+                    {isRead && (
+                      <p>
+                        The customer has opened and viewed this WhatsApp message on their device. Meta Cloud API delivered a real-time <strong>Blue Double Tick (✓✓)</strong> read receipt confirmation webhook.
+                      </p>
+                    )}
+                    {isSent && (
+                      <p>
+                        The message was validated, accepted, and dispatched by Meta Cloud API servers (<strong>Single Tick ✓</strong>). It has left WhatsQ's servers and is traversing WhatsApp's worldwide delivery network.
+                      </p>
+                    )}
+                    {isQueued && (
+                      <p>
+                        WhatsApp and Meta Cloud API enforce strict anti-spam rate limits. Dispatches are placed in a controlled queue so a background worker can send each contact sequentially with anti-ban jitter delays.
+                      </p>
+                    )}
+                    {isFailed && (
+                      <div className="space-y-1.5">
+                        <p>
+                          Meta WhatsApp Cloud API or the cellular gateway rejected the delivery attempt.
+                        </p>
                         {queueInspection.recipient?.errorReason && (
-                          <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 font-mono text-[10px]">
-                            Gateway Error: {queueInspection.recipient.errorReason}
+                          <div className="p-2 bg-rose-100 border border-rose-300 rounded-lg text-rose-900 font-mono text-[10px]">
+                            <strong>Meta Error:</strong> {queueInspection.recipient.errorReason}
                           </div>
                         )}
                       </div>
-                    </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Detailed Breakdown / Root Cause */}
+                <div className="space-y-1.5">
+                  <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-800 flex items-center justify-center text-[10px] font-bold">2</span>
+                    <span>
+                      {isDelivered && 'Meta Cloud Delivery Pipeline Details'}
+                      {isRead && 'Customer Engagement Insights'}
+                      {isSent && 'Why is it in transit / not delivered yet?'}
+                      {isQueued && 'What is the exact reason it is still queued?'}
+                      {isFailed && 'Diagnosed Root Cause'}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[11px] text-slate-700">
+                    {isDelivered && (
+                      <ul className="space-y-1.5 text-slate-600">
+                        <li className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span><strong>Handset Delivery Confirmed:</strong> Recipient's phone was online and WhatsApp background service received the full template payload without drops.</span>
+                        </li>
+                        <li className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span><strong>Meta WABA Sender:</strong> Dispatched from registered WABA (+91 94963 00233).</span>
+                        </li>
+                        <li className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span><strong>Encryption & Compliance:</strong> End-to-end encrypted via official WhatsApp Cloud API protocol.</span>
+                        </li>
+                        {queueInspection.recipient?.time && (
+                          <li className="flex items-start gap-1.5 font-mono text-[10px] text-slate-500">
+                            <span>• Delivery Timestamp: {queueInspection.recipient.time}</span>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                    {isRead && (
+                      <ul className="space-y-1.5 text-slate-600">
+                        <li className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                          <span><strong>High Engagement:</strong> Customer physically tapped into the chat thread and reviewed the message.</span>
+                        </li>
+                        <li className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                          <span><strong>Interactive Buttons:</strong> Template CTAs (Visit Website, Quick Reply, Call) are rendered on the customer screen.</span>
+                        </li>
+                        {queueInspection.recipient?.time && (
+                          <li className="flex items-start gap-1.5 font-mono text-[10px] text-slate-500">
+                            <span>• Read Timestamp: {queueInspection.recipient.time}</span>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                    {isSent && (
+                      <ul className="space-y-1.5 text-slate-600">
+                        <li className="flex items-start gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-cyan-600 shrink-0 mt-0.5" />
+                          <span><strong>Recipient Temporarily Offline:</strong> The customer's device is currently switched off, in flight mode, or out of data coverage.</span>
+                        </li>
+                        <li className="flex items-start gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-cyan-600 shrink-0 mt-0.5" />
+                          <span><strong>Automated Meta Retry:</strong> WhatsApp servers hold the message in queue and will deliver it the second the handset reconnects to the network (retained for up to 30 days).</span>
+                        </li>
+                      </ul>
+                    )}
+                    {isQueued && (
+                      <>
+                        {queueInspection.campaign.status === 'RUNNING' ? (
+                          <div className="flex items-start gap-2 text-blue-900">
+                            <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0 mt-0.5" />
+                            <div>
+                              <strong>Worker Actively Processing:</strong> This campaign is currently running. This recipient is waiting in line and will be dispatched as soon as previous contacts finish.
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex items-start gap-2 text-slate-900">
+                              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <strong>Worker Cycle Halted Before Completion:</strong> The campaign finished its initial run, but this recipient was not delivered.
+                              </div>
+                            </div>
+                            <div className="pl-6 text-slate-600 space-y-1">
+                              <p>This happened because:</p>
+                              <ul className="list-disc pl-4 space-y-0.5 text-slate-600">
+                                <li>
+                                  <strong>Template Parameters:</strong> Meta templates with multiple dynamic variables require an exact parameter list for all placeholders ({`{{1}}`}, {`{{2}}`}, etc.).
+                                </li>
+                                <li>
+                                  <strong>Worker Interruption:</strong> The background dispatch worker encountered a mismatch or was interrupted before processing this queue item.
+                                </li>
+                              </ul>
+                              {queueInspection.recipient?.errorReason && (
+                                <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 font-mono text-[10px]">
+                                  Gateway Error: {queueInspection.recipient.errorReason}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {isFailed && (
+                      <div className="space-y-1 text-slate-600">
+                        <p>Common Meta Cloud API rejection causes:</p>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                          <li><strong>Invalid/Unregistered Number:</strong> Phone number is not active on WhatsApp or lacks country code (+91, etc.).</li>
+                          <li><strong>DND / Opt-Out:</strong> Recipient previously unsubscribed or blocked business broadcasts.</li>
+                          <li><strong>Meta Conversation Credits:</strong> Insufficient conversation balance in your Meta WhatsApp Manager wallet.</li>
+                          <li><strong>Template Format:</strong> Parameters mismatch in dynamic variable slots.</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Next Steps / Solutions */}
+                <div className="space-y-1.5">
+                  <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      isDelivered || isRead ? 'bg-emerald-100 text-emerald-800' : isSent ? 'bg-cyan-100 text-cyan-800' : 'bg-emerald-100 text-emerald-800'
+                    }`}>3</span>
+                    <span>
+                      {isDelivered && 'What happens next?'}
+                      {isRead && 'Recommended Action'}
+                      {isSent && 'What action is required?'}
+                      {isQueued && 'What is the solution?'}
+                      {isFailed && 'How to resolve and retry?'}
+                    </span>
+                  </div>
+                  <div className={`p-3 rounded-xl border space-y-2 text-[11px] ${
+                    isDelivered || isRead || isQueued
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                      : isSent
+                      ? 'bg-cyan-50/70 border-cyan-200 text-cyan-950'
+                      : 'bg-slate-50 border-slate-200 text-slate-800'
+                  }`}>
+                    {isDelivered && (
+                      <div className="space-y-1 text-emerald-900">
+                        <p><strong>1. Live Read Transition:</strong> As soon as the customer unlocks their phone and opens this chat, Meta webhook will automatically update this badge to <strong>READ (Blue Tick)</strong>.</p>
+                        <p><strong>2. Unified Inbox Replies:</strong> Any replies, questions, or button taps from this customer will appear immediately in your <strong>Unified Inbox</strong>.</p>
+                      </div>
+                    )}
+                    {isRead && (
+                      <div className="space-y-1 text-blue-950">
+                        <p><strong>Lead is actively warm:</strong> The customer has viewed the message. You can open their conversation thread in the Unified Inbox to continue the discussion or trigger an automated workflow.</p>
+                      </div>
+                    )}
+                    {isSent && (
+                      <div className="space-y-1 text-cyan-950">
+                        <p><strong>No manual action needed:</strong> The message is safe in WhatsApp's delivery queue and will transition to DELIVERED the moment the recipient connects to data.</p>
+                      </div>
+                    )}
+                    {isQueued && (
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>Click "Retry & Dispatch Now" Below:</strong>
+                            <p className="text-emerald-800 mt-0.5">
+                              Our upgraded backend dispatcher auto-formats variables and dispatches immediately to queued contacts!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {isFailed && (
+                      <div className="space-y-1.5 text-slate-700">
+                        <p>1. Check that the phone number is in international E.164 format (e.g. <code>+91 94963 00233</code>).</p>
+                        <p>2. Verify your Meta WhatsApp Business Wallet in Settings.</p>
+                        <p>3. Click <strong>Retry Failed Messages</strong> below to attempt re-delivery.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setQueueInspection(null)}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
+                >
+                  Close
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {(isDelivered || isRead) && queueInspection.recipient?.phone && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInInbox(queueInspection.recipient?.phone)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition cursor-pointer"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>Open Chat in Inbox</span>
+                    </button>
+                  )}
+
+                  {(isQueued || isFailed) && (
+                    <button
+                      onClick={async () => {
+                        if (!queueInspection) return;
+                        setIsRetrying(true);
+                        try {
+                          const success = await retryFailedCampaign(queueInspection.campaign.id);
+                          if (success) {
+                            addToast(`Re-dispatched campaign "${queueInspection.campaign.name}"! Logs will update live.`, 'success');
+                            setQueueInspection(null);
+                          }
+                        } catch (err: any) {
+                          addToast(err?.message || 'Failed to dispatch retry', 'error');
+                        } finally {
+                          setIsRetrying(false);
+                        }
+                      }}
+                      disabled={isRetrying}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition cursor-pointer disabled:opacity-50"
+                    >
+                      {isRetrying ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Repeat className="w-4 h-4" />
+                      )}
+                      <span>{isFailed ? 'Retry Failed Messages' : 'Retry & Dispatch Now'}</span>
+                    </button>
                   )}
                 </div>
               </div>
-
-              {/* 3. What's the solution */}
-              <div className="space-y-1.5">
-                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">3</span>
-                  <span>What is the solution?</span>
-                </div>
-                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-[11px] text-emerald-950">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong>1. Click "Retry & Dispatch Now" Below:</strong>
-                      <p className="text-emerald-800 mt-0.5">
-                        Our upgraded backend worker automatically formats all template variables and auto-retries matching language codes (en / en_US). Clicking the button below will immediately re-dispatch the queued contacts!
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 pt-1 border-t border-emerald-200/60">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong>2. Meta WhatsApp Cloud API Ready:</strong>
-                      <p className="text-emerald-800 mt-0.5">
-                        Ensure your WhatsApp business account is connected under <strong>Settings</strong> with sufficient conversation wallet credits.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
-              <button
-                onClick={() => setQueueInspection(null)}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
-              >
-                Close
-              </button>
-
-              <button
-                onClick={async () => {
-                  if (!queueInspection) return;
-                  setIsRetrying(true);
-                  try {
-                    const success = await retryFailedCampaign(queueInspection.campaign.id);
-                    if (success) {
-                      addToast(`Re-dispatched campaign "${queueInspection.campaign.name}"! Logs will update live.`, 'success');
-                      setQueueInspection(null);
-                    }
-                  } catch (err: any) {
-                    addToast(err?.message || 'Failed to dispatch retry', 'error');
-                  } finally {
-                    setIsRetrying(false);
-                  }
-                }}
-                disabled={isRetrying}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition cursor-pointer disabled:opacity-50"
-              >
-                {isRetrying ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Repeat className="w-4 h-4" />
-                )}
-                <span>Retry & Dispatch Now</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
