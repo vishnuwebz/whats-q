@@ -453,6 +453,17 @@ export const BulkTemplatesView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <a
+              href="https://business.facebook.com/latest/whatsapp_manager/message_templates?business_id=1029836994795053&asset_id=4567067243541240&tab=message-templates&childRoute=templates&nav_ref=whatsapp_manager"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#1877F2]/30 bg-[#1877F2]/10 text-xs font-bold text-[#1877F2] hover:bg-[#1877F2]/20 transition shadow-xs"
+              title="Open Official Meta WhatsApp Manager on Facebook Business Suite"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-[#1877F2]" />
+              <span>Facebook Meta Manager</span>
+            </a>
+
             <button
               onClick={handleSync}
               disabled={isSyncing}
@@ -653,15 +664,37 @@ export const BulkTemplatesView: React.FC = () => {
 
                 {/* Card footer actions */}
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-                  <button
-                    onClick={() => {
-                      setSelectedTemplate(tmpl);
-                      setIsDrawerOpen(true);
-                    }}
-                    className="text-emerald-700 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    Preview Drawer
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedTemplate(tmpl);
+                        setIsDrawerOpen(true);
+                      }}
+                      className="text-emerald-700 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      Preview Drawer
+                    </button>
+                    <span className="text-slate-300">•</span>
+                    <a
+                      href={`https://business.facebook.com/latest/whatsapp_manager/message_templates?business_id=1029836994795053&asset_id=4567067243541240&tab=message-templates&childRoute=templates&filters=${encodeURIComponent(JSON.stringify({
+                        date_range: 7,
+                        language: [],
+                        quality: [],
+                        search_text: tmpl.name,
+                        sort_direction: 'descending',
+                        sort_key: 'lastUpdatedTime',
+                        status: ['APPROVED', 'IN_APPEAL', 'PAUSED', 'PENDING', 'REJECTED'],
+                        tag: []
+                      }))}&nav_ref=whatsapp_manager`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#1877F2] font-semibold hover:underline flex items-center gap-1 cursor-pointer text-xs"
+                      title={`Open "${tmpl.name}" on Facebook Meta WhatsApp Manager`}
+                    >
+                      <ExternalLink className="w-3 h-3 text-[#1877F2]" />
+                      <span>Check on Meta</span>
+                    </a>
+                  </div>
 
                   <div className="flex items-center gap-1.5">
                     <button
@@ -865,6 +898,26 @@ export const BulkTemplatesView: React.FC = () => {
                     </>
                   )}
                 </button>
+
+                <a
+                  href={`https://business.facebook.com/latest/whatsapp_manager/message_templates?business_id=1029836994795053&asset_id=4567067243541240&tab=message-templates&childRoute=templates&filters=${encodeURIComponent(JSON.stringify({
+                    date_range: 7,
+                    language: [],
+                    quality: [],
+                    search_text: selectedTemplate.name,
+                    sort_direction: 'descending',
+                    sort_key: 'lastUpdatedTime',
+                    status: ['APPROVED', 'IN_APPEAL', 'PAUSED', 'PENDING', 'REJECTED'],
+                    tag: []
+                  }))}&nav_ref=whatsapp_manager`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2 px-3 bg-[#1877F2] hover:bg-[#1877F2]/90 active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  title={`Open "${selectedTemplate.name}" in Facebook Meta WhatsApp Manager`}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>View Live on Facebook Meta Manager</span>
+                </a>
               </div>
 
               {/* Dynamic Variable Schema Breakdown */}

@@ -42,6 +42,26 @@ export const TemplateHubView: React.FC = () => {
   const [workflowTemplateTarget, setWorkflowTemplateTarget] = useState<Partial<WhatsAppTemplateItem> | null>(null);
   const [isAutoWorkflowModalOpen, setIsAutoWorkflowModalOpen] = useState(false);
 
+  // Official Meta WhatsApp Manager URL generator for Facebook Business Suite
+  const getMetaManagerUrl = (templateName?: string) => {
+    const businessId = '1029836994795053';
+    const assetId = metaConfig?.waba_id || '4567067243541240';
+    if (templateName) {
+      const filters = encodeURIComponent(JSON.stringify({
+        date_range: 7,
+        language: [],
+        quality: [],
+        search_text: templateName,
+        sort_direction: 'descending',
+        sort_key: 'lastUpdatedTime',
+        status: ['APPROVED', 'IN_APPEAL', 'PAUSED', 'PENDING', 'REJECTED'],
+        tag: []
+      }));
+      return `https://business.facebook.com/latest/whatsapp_manager/message_templates?business_id=${businessId}&asset_id=${assetId}&tab=message-templates&childRoute=templates&filters=${filters}&nav_ref=whatsapp_manager`;
+    }
+    return `https://business.facebook.com/latest/whatsapp_manager/message_templates?business_id=${businessId}&asset_id=${assetId}&tab=message-templates&childRoute=templates&nav_ref=whatsapp_manager`;
+  };
+
   // Test Send Modal
   const [showTestSendModal, setShowTestSendModal] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState('+91 98765 43210');
@@ -203,10 +223,21 @@ export const TemplateHubView: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <a
+                href={getMetaManagerUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] border border-[#1877F2]/30 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                title="Open Official Meta WhatsApp Manager on Facebook Business Suite"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Facebook Meta Manager</span>
+              </a>
+
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>Sync with Meta</span>
@@ -214,7 +245,7 @@ export const TemplateHubView: React.FC = () => {
 
               <button
                 onClick={() => setIsConfigModalOpen(true)}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5 text-slate-600" />
                 <span>Meta Setup</span>
@@ -318,7 +349,7 @@ export const TemplateHubView: React.FC = () => {
                             ? 'bg-red-50 text-red-700 border-red-200'
                             : 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}>
-                          {tmpl.meta_status || tmpl.status}
+                          {isApproved ? 'Active (Approved)' : (tmpl.meta_status || tmpl.status)}
                         </span>
                       </div>
                     </div>
@@ -400,6 +431,17 @@ export const TemplateHubView: React.FC = () => {
                         <Smartphone className="w-3 h-3" />
                         <span>{isSelected ? 'Previewing' : 'Preview'}</span>
                       </button>
+
+                      <a
+                        href={getMetaManagerUrl(tmpl.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] border border-[#1877F2]/30 font-bold rounded-lg text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                        title={`Check live approval & analytics for "${tmpl.name}" on Meta WhatsApp Manager`}
+                      >
+                        <ExternalLink className="w-3 h-3 text-[#1877F2]" />
+                        <span>Check on Meta</span>
+                      </a>
 
                       <button
                         type="button"
@@ -566,24 +608,38 @@ export const TemplateHubView: React.FC = () => {
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleLiveVerify(activeTemplate.id)}
-                  disabled={isVerifying === String(activeTemplate.id)}
-                  className="py-1 px-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg shadow-xs transition flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-60"
-                >
-                  {isVerifying === String(activeTemplate.id) ? (
-                    <>
-                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-2.5 h-2.5" />
-                      <span>⚡ Check Meta</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <a
+                    href={getMetaManagerUrl(activeTemplate.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-1 px-2.5 bg-[#1877F2] hover:bg-[#1877F2]/90 active:scale-95 text-white font-bold text-[10px] rounded-lg shadow-xs transition flex items-center justify-center gap-1 cursor-pointer"
+                    title={`Check exact live status for "${activeTemplate.name}" on Facebook Meta WhatsApp Manager`}
+                  >
+                    <ExternalLink className="w-2.5 h-2.5" />
+                    <span>Facebook Status</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => handleLiveVerify(activeTemplate.id)}
+                    disabled={isVerifying === String(activeTemplate.id)}
+                    className="py-1 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg shadow-xs transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60"
+                    title="Live check directly on Meta Graph API"
+                  >
+                    {isVerifying === String(activeTemplate.id) ? (
+                      <>
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        <span>API Check</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
