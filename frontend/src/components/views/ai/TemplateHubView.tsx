@@ -137,19 +137,21 @@ export const TemplateHubView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-hidden font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full overflow-y-auto font-sans">
       {/* Top Header */}
-      <Header
-        title="Meta WhatsApp Template Hub"
-        subtitle="Manage, review, test-send, and live-preview all official WhatsApp Cloud API templates."
-        primaryActionLabel="Create New Template"
-        onPrimaryAction={handleCreateNew}
-      />
+      <div className="sticky top-0 z-20 bg-white">
+        <Header
+          title="Meta WhatsApp Template Hub"
+          subtitle="Manage, review, test-send, and live-preview all official WhatsApp Cloud API templates."
+          primaryActionLabel="Create New Template"
+          onPrimaryAction={handleCreateNew}
+        />
+      </div>
 
       {/* Main Two-Pane Split Layout: Left Templates List + Right Live Smartphone Preview */}
-      <div className="flex-1 flex overflow-hidden border-t border-slate-200">
+      <div className="flex-1 flex flex-col xl:flex-row border-t border-slate-200 min-h-0">
         {/* LEFT PANE: TEMPLATE GALLERY & FILTERS */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/50">
+        <div className="flex-1 min-w-0 bg-slate-50/50 flex flex-col">
           {/* Top Status Banner & Actions */}
           <div className="p-4 border-b border-slate-200 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
@@ -248,8 +250,8 @@ export const TemplateHubView: React.FC = () => {
             </div>
           </div>
 
-          {/* Scrollable Templates Cards Grid */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
+          {/* Templates Cards Grid */}
+          <div className="p-4 sm:p-5 space-y-3.5 flex-1">
             {filtered.map((tmpl) => {
               const isSelected = String(tmpl.id) === String(activeTemplate?.id);
               const isApproved = (tmpl.meta_status || tmpl.status) === 'APPROVED' || tmpl.status === 'Active';
@@ -382,6 +384,26 @@ export const TemplateHubView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
+                          setSelectedTemplateId(tmpl.id);
+                          const el = document.getElementById('live-smartphone-preview-pane');
+                          if (el && window.innerWidth < 1280) {
+                            el.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }}
+                        className={`px-2.5 py-1 font-bold rounded-lg text-[11px] flex items-center gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                        }`}
+                        title="Live preview in smartphone"
+                      >
+                        <Smartphone className="w-3 h-3" />
+                        <span>{isSelected ? 'Previewing' : 'Preview'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
                           setWorkflowTemplateTarget(tmpl);
                           setIsAutoWorkflowModalOpen(true);
                         }}
@@ -460,25 +482,28 @@ export const TemplateHubView: React.FC = () => {
         </div>
 
         {/* RIGHT PANE: DEDICATED STICKY SMARTPHONE PREVIEW */}
-        <div className="w-[450px] bg-[#0F172A]/5 p-6 flex flex-col items-center justify-between border-l border-slate-200 shrink-0 overflow-y-auto select-none">
+        <div
+          id="live-smartphone-preview-pane"
+          className="w-full xl:w-[390px] 2xl:w-[420px] bg-slate-100/70 p-4 sm:p-5 flex flex-col items-center justify-start gap-3 border-t xl:border-t-0 xl:border-l border-slate-200 shrink-0 xl:sticky xl:top-[69px] xl:max-h-[calc(100vh-69px)] xl:overflow-y-auto"
+        >
           {/* Top Control Bar */}
-          <div className="w-full flex items-center justify-between mb-4 text-xs">
-            <div>
+          <div className="w-full flex items-center justify-between text-xs bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-xs">
+            <div className="min-w-0 pr-2">
               <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                <Smartphone className="w-4 h-4 text-emerald-600" />
-                <span>Live Smartphone Preview</span>
+                <Smartphone className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate">Live Smartphone Preview</span>
               </span>
-              <span className="text-[10px] text-slate-500 font-mono block truncate max-w-[200px]">
+              <span className="text-[10px] text-slate-500 font-mono block truncate max-w-[190px]">
                 {activeTemplate?.name || 'Select a template'}
               </span>
             </div>
 
-            <div className="flex items-center bg-white rounded-lg p-0.5 border border-slate-200 text-[10px]">
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-[10px] shrink-0">
               <button
                 type="button"
                 onClick={() => setPreviewMode('sample')}
-                className={`px-2 py-0.5 rounded font-bold transition-all ${
-                  previewMode === 'sample' ? 'bg-emerald-600 text-white' : 'text-slate-500'
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  previewMode === 'sample' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Sample Data
@@ -486,8 +511,8 @@ export const TemplateHubView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPreviewMode('raw')}
-                className={`px-2 py-0.5 rounded font-bold transition-all ${
-                  previewMode === 'raw' ? 'bg-emerald-600 text-white' : 'text-slate-500'
+                className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                  previewMode === 'raw' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Raw {"{{x}}"}
@@ -497,7 +522,7 @@ export const TemplateHubView: React.FC = () => {
 
           {/* Real Meta Cloud Verification Pipeline Panel */}
           {activeTemplate && (
-            <div className="w-full mb-4 bg-slate-900 border border-slate-700/80 rounded-2xl p-3.5 text-white text-xs shadow-md space-y-2.5">
+            <div className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl p-3 text-white text-xs shadow-md space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
@@ -508,8 +533,8 @@ export const TemplateHubView: React.FC = () => {
                       <span>Meta Cloud API Pipeline</span>
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     </div>
-                    <div className="text-[9px] text-slate-400">
-                      WABA: Qiyam Business Solutions (+91 94963 00233)
+                    <div className="text-[9px] text-slate-400 font-mono">
+                      {activeTemplate.meta_template_id ? `ID: ${activeTemplate.meta_template_id}` : 'Meta Verified Template'}
                     </div>
                   </div>
                 </div>
@@ -529,98 +554,76 @@ export const TemplateHubView: React.FC = () => {
                   {activeTemplate.meta_status === 'PENDING' && (
                     <Clock className="w-2.5 h-2.5 animate-spin" />
                   )}
-                  {(activeTemplate.meta_status || activeTemplate.status) === 'APPROVED' || activeTemplate.status === 'Active' ? 'META APPROVED' : (activeTemplate.meta_status || activeTemplate.status)}
+                  {(activeTemplate.meta_status || activeTemplate.status) === 'APPROVED' || activeTemplate.status === 'Active' ? 'APPROVED' : (activeTemplate.meta_status || activeTemplate.status)}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[10px] bg-white/5 p-2 rounded-xl border border-white/10">
-                <div>
-                  <span className="text-slate-400 block text-[9px] font-semibold">META TEMPLATE ID</span>
-                  <div className="flex items-center gap-1 font-mono font-bold text-slate-200 mt-0.5">
-                    <span className="truncate max-w-[100px]">{activeTemplate.meta_template_id || 'Generating...'}</span>
-                    {activeTemplate.meta_template_id && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(activeTemplate.meta_template_id || '');
-                          setCopiedId(true);
-                          setTimeout(() => setCopiedId(false), 2000);
-                          addToast('Meta Template ID copied!', 'success');
-                        }}
-                        className="text-slate-400 hover:text-white transition p-0.5 cursor-pointer"
-                        title="Copy Meta Template ID"
-                      >
-                        {copiedId ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-slate-400 block text-[9px] font-semibold">META QUALITY</span>
-                  <span className="font-bold text-emerald-400 mt-0.5 block">
+              <div className="flex items-center justify-between gap-2 text-[10px] bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/10">
+                <div className="min-w-0 flex-1">
+                  <span className="text-slate-400 block text-[8px] font-semibold tracking-wider uppercase">META QUALITY</span>
+                  <span className="font-bold text-emerald-400 text-[10px] block truncate">
                     {activeTemplate.quality_score === 'GREEN' ? 'High (Green)' : activeTemplate.quality_score || 'High (Green)'}
                   </span>
                 </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => handleLiveVerify(activeTemplate.id)}
-                disabled={isVerifying === String(activeTemplate.id)}
-                className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-[11px] rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
-              >
-                {isVerifying === String(activeTemplate.id) ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>Verifying live on Meta Graph API...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3 h-3" />
-                    <span>⚡ Live Check on Meta</span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleLiveVerify(activeTemplate.id)}
+                  disabled={isVerifying === String(activeTemplate.id)}
+                  className="py-1 px-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg shadow-xs transition flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-60"
+                >
+                  {isVerifying === String(activeTemplate.id) ? (
+                    <>
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-2.5 h-2.5" />
+                      <span>⚡ Check Meta</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
           {/* Smartphone Frame Container */}
-          <div className="w-[320px] h-[580px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20 shrink-0">
+          <div className="w-[300px] sm:w-[310px] h-[480px] sm:h-[500px] bg-slate-900 rounded-[36px] p-2.5 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20 shrink-0">
             {/* Camera / Speaker Notch */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-black rounded-full z-30 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-slate-900 ml-auto mr-2" />
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-3 bg-black rounded-full z-30 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-900 ml-auto mr-2" />
             </div>
 
             {/* Screen */}
-            <div className="flex-1 bg-[#EFEAE2] rounded-[30px] flex flex-col overflow-hidden relative">
+            <div className="flex-1 bg-[#EFEAE2] rounded-[26px] flex flex-col overflow-hidden relative">
               {/* WhatsApp Top Header */}
-              <div className="bg-[#075E54] text-white pt-6 pb-2 px-3 flex items-center gap-2 shadow-md shrink-0 z-10">
-                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-[11px]">
+              <div className="bg-[#075E54] text-white pt-5 pb-2 px-3 flex items-center gap-2 shadow-md shrink-0 z-10">
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-[10px]">
                   CF
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    <h4 className="font-bold text-xs truncate">CoolFix Services</h4>
+                    <h4 className="font-bold text-[11px] truncate">CoolFix Services</h4>
                     <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
                   </div>
-                  <p className="text-[9px] text-white/70">WhatsApp Official Account</p>
+                  <p className="text-[8px] text-white/70">WhatsApp Official Account</p>
                 </div>
               </div>
 
               {/* Chat Wallpaper & Message Bubble Area */}
               <div
-                className="flex-1 p-3 overflow-y-auto space-y-2 flex flex-col justify-end"
+                className="flex-1 p-2.5 overflow-y-auto space-y-2 flex flex-col justify-start"
                 style={{
                   backgroundImage: `radial-gradient(#CBD5E1 1px, transparent 1px)`,
                   backgroundSize: '16px 16px',
                 }}
               >
                 {activeTemplate ? (
-                  <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-slate-200/60 overflow-hidden max-w-[270px]">
+                  <div className="bg-white rounded-2xl rounded-tl-none shadow-md border border-slate-200/60 overflow-hidden max-w-[260px] animate-in fade-in duration-150">
                     {/* Header */}
                     {activeTemplate.header_type === 'TEXT' && activeTemplate.header_text && (
-                      <div className="p-3 pb-1 font-bold text-xs text-slate-900">
+                      <div className="p-2.5 pb-1 font-bold text-[11px] text-slate-900">
                         {previewMode === 'sample' && activeTemplate.header_text.includes('{{1}}')
                           ? activeTemplate.header_text.replace('{{1}}', activeTemplate.header_sample || 'Sample Header')
                           : activeTemplate.header_text}
@@ -628,7 +631,7 @@ export const TemplateHubView: React.FC = () => {
                     )}
 
                     {['IMAGE', 'VIDEO'].includes(activeTemplate.header_type || '') && (
-                      <div className="relative h-32 bg-slate-200 overflow-hidden">
+                      <div className="relative h-28 bg-slate-200 overflow-hidden">
                         <img
                           src={activeTemplate.header_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800'}
                           alt="Template Header Media"
@@ -641,28 +644,28 @@ export const TemplateHubView: React.FC = () => {
                     )}
 
                     {activeTemplate.header_type === 'DOCUMENT' && (
-                      <div className="p-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-red-500 shrink-0" />
-                        <span className="text-[11px] font-bold text-slate-700 truncate">Document.pdf</span>
+                      <div className="p-2 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                        <span className="text-[10px] font-bold text-slate-700 truncate">Document.pdf</span>
                       </div>
                     )}
 
                     {/* Body Text */}
-                    <div className="p-3 text-[11px] text-slate-800 space-y-1">
+                    <div className="p-2.5 text-[10.5px] text-slate-800 space-y-1">
                       {renderActiveBody()}
                     </div>
 
                     {/* Footer Text */}
                     {activeTemplate.footer_text && (
-                      <div className="px-3 pb-1 text-[9px] text-slate-400 font-medium">
+                      <div className="px-2.5 pb-1 text-[8.5px] text-slate-400 font-medium">
                         {activeTemplate.footer_text}
                       </div>
                     )}
 
                     {/* Timestamp & Read Ticks */}
-                    <div className="px-3 pb-2 flex items-center justify-end gap-1 text-[9px] text-slate-400">
+                    <div className="px-2.5 pb-1.5 flex items-center justify-end gap-1 text-[8px] text-slate-400">
                       <span>10:30 AM</span>
-                      <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                      <CheckCheck className="w-3 h-3 text-[#53bdeb]" />
                     </div>
 
                     {/* Buttons */}
@@ -673,7 +676,7 @@ export const TemplateHubView: React.FC = () => {
                             key={i}
                             type="button"
                             onClick={() => addToast(`Clicked "${b.text}" in preview`, 'info')}
-                            className="w-full py-2 px-3 text-[11px] font-bold text-[#00a884] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5"
+                            className="w-full py-1.5 px-2.5 text-[10px] font-bold text-[#00a884] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             {b.type === 'URL' && <ExternalLink className="w-3 h-3 text-[#00a884]" />}
                             {b.type === 'PHONE_NUMBER' && <Phone className="w-3 h-3 text-[#00a884]" />}
@@ -695,23 +698,23 @@ export const TemplateHubView: React.FC = () => {
 
           {/* Bottom Action Bar for Active Template */}
           {activeTemplate && (
-            <div className="w-full mt-4 flex flex-col gap-2">
+            <div className="w-full flex flex-col gap-2">
               <div className="flex items-center justify-center gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => handleEdit(activeTemplate)}
-                  className="flex-1 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                  className="flex-1 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer text-xs"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  <Edit3 className="w-3 h-3" />
                   <span>Edit Template</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setShowTestSendModal(true)}
-                  className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                  className="flex-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer text-xs"
                 >
-                  <Send className="w-3.5 h-3.5 text-slate-600" />
+                  <Send className="w-3 h-3 text-slate-600" />
                   <span>Send Test</span>
                 </button>
               </div>
@@ -722,10 +725,10 @@ export const TemplateHubView: React.FC = () => {
                   setWorkflowTemplateTarget(activeTemplate);
                   setIsAutoWorkflowModalOpen(true);
                 }}
-                className="w-full py-2.5 bg-[#0B3B2C] bg-gradient-to-r from-[#0B3B2C] to-[#0D4B38] hover:from-[#072B1F] hover:to-[#0B3B2C] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 active:scale-95 transition-all cursor-pointer text-xs"
+                className="w-full py-2 bg-[#0B3B2C] bg-gradient-to-r from-[#0B3B2C] to-[#0D4B38] hover:from-[#072B1F] hover:to-[#0B3B2C] text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 active:scale-95 transition-all cursor-pointer text-xs"
               >
                 <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                <span>⚡ Auto-Build Workflow from Template</span>
+                <span>⚡ Auto-Build Workflow</span>
               </button>
             </div>
           )}
