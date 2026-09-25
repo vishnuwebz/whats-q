@@ -41,6 +41,85 @@ import { WhatsAppGuidelinesModal } from './WhatsAppGuidelinesModal';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
+interface ExtractedVariable {
+  index: number;
+  key: string;
+  label: string;
+  sample: string;
+}
+
+const extractTemplateVariables = (bodyText: string, bodyVariables?: Record<string, string>): ExtractedVariable[] => {
+  if (!bodyText) return [];
+  const matches = Array.from(bodyText.matchAll(/\{\{(\d+)\}\}/g));
+  const seen = new Set<number>();
+  const list: ExtractedVariable[] = [];
+
+  for (const m of matches) {
+    const num = parseInt(m[1], 10);
+    if (seen.has(num)) continue;
+    seen.add(num);
+
+    let label = `Variable {{${num}}}`;
+    const escaped = `\\{\\{${num}\\}\\}`;
+
+    // Pattern 1: "Label: {{num}}" or "Label - {{num}}"
+    const colonMatch = bodyText.match(new RegExp(`([A-Za-z0-9\\s/&_#\\-\\(\\)]{2,35})[:\\-–]\\s*${escaped}`, 'i'));
+    if (colonMatch && colonMatch[1]) {
+      label = colonMatch[1].trim();
+    } else {
+      // Pattern 2: "Hello {{num}}" or "Hi {{num}}" or "Dear {{num}}"
+      const greetingMatch = bodyText.match(new RegExp(`(?:Hello|Hi|Dear|Welcome)\\s+${escaped}`, 'i'));
+      if (greetingMatch || num === 1) {
+        label = 'Customer / Recipient Name';
+      }
+    }
+
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+
+    const sample =
+      bodyVariables?.[String(num)] ||
+      (num === 1
+        ? 'Customer Name'
+        : label.toLowerCase().includes('date')
+        ? 'Tomorrow'
+        : label.toLowerCase().includes('time')
+        ? '10:30 AM'
+        : label.toLowerCase().includes('service')
+        ? 'Comprehensive Service'
+        : label.toLowerCase().includes('reason')
+        ? 'Customer requested reschedule'
+        : label.toLowerCase().includes('amount') || label.toLowerCase().includes('price')
+        ? '1,200'
+        : label.toLowerCase().includes('id') || label.toLowerCase().includes('booking')
+        ? 'BK-2026-001'
+        : `Value ${num}`);
+
+    list.push({
+      index: num,
+      key: String(num),
+      label,
+      sample,
+    });
+  }
+
+  // If no {{num}} in bodyText but bodyVariables has keys
+  if (list.length === 0 && bodyVariables && typeof bodyVariables === 'object') {
+    Object.keys(bodyVariables).forEach((k) => {
+      const num = parseInt(k, 10);
+      if (!isNaN(num)) {
+        list.push({
+          index: num,
+          key: k,
+          label: `Variable {{${k}}}`,
+          sample: bodyVariables[k] || `Value ${k}`,
+        });
+      }
+    });
+  }
+
+  return list.sort((a, b) => a.index - b.index);
+};
+
 export const BulkSendMessageView: React.FC = () => {
   const {
     bulkCampaigns,
@@ -60,6 +139,8 @@ export const BulkSendMessageView: React.FC = () => {
     setDraftCampaign,
     selectedBroadcastListId,
     setSelectedBroadcastListId,
+    selectedBulkTemplateId,
+    setSelectedBulkTemplateId,
     updateRecipientList,
   } = useQiyamStore();
 
@@ -83,6 +164,15 @@ export const BulkSendMessageView: React.FC = () => {
       setSelectedBroadcastListId(null);
     }
   }, [selectedBroadcastListId, setSelectedBroadcastListId]);
+
+  // Auto-populate when selecting a template from /bulk/templates
+  React.useEffect(() => {
+    if (selectedBulkTemplateId) {
+      setSelectedTemplateId(selectedBulkTemplateId);
+      setMessageType('template');
+      setSelectedBulkTemplateId(null);
+    }
+  }, [selectedBulkTemplateId, setSelectedBulkTemplateId]);
 
   // Auto-populate when repeating/duplicating an existing campaign
   React.useEffect(() => {
@@ -149,9 +239,11 @@ export const BulkSendMessageView: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     bulkTemplates[0]?.id || ''
   );
-  const [variable1, setVariable1] = useState('Valued Customer');
-  const [variable2, setVariable2] = useState('OFFER2026');
-  const [variable3, setVariable3] = useState('Sunday Midnight');
+  const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({
+    '1': '{{name}}',
+    '2': 'OFFER2026',
+    '3': 'Sunday Midnight',
+  });
   const [freeformText, setFreeformText] = useState(
     'Hello {{name}}, thank you for contacting Qiyam Business Solutions! How may we assist you today?'
   );
@@ -259,6 +351,25 @@ export const BulkSendMessageView: React.FC = () => {
     );
   }, [bulkTemplates, selectedTemplateId]);
 
+  const extractedVariables = useMemo(() => {
+    return extractTemplateVariables(activeTemplate.bodyText || activeTemplate.body || '', activeTemplate.bodyVariables);
+  }, [activeTemplate]);
+
+  // Sync template variables when active template changes
+  React.useEffect(() => {
+    if (extractedVariables.length > 0) {
+      setTemplateVariables((prev) => {
+        const next: Record<string, string> = { ...prev };
+        extractedVariables.forEach((v) => {
+          if (!next[v.key]) {
+            next[v.key] = v.index === 1 ? '{{name}}' : (v.sample || `Value ${v.index}`);
+          }
+        });
+        return next;
+      });
+    }
+  }, [extractedVariables]);
+
   // Cost calculation based strictly on selected contacts
   const audienceCount = activeSelectedIds.size;
   const costPerConv = metaWallet.conversationPricing[category] || 0.78;
@@ -268,14 +379,27 @@ export const BulkSendMessageView: React.FC = () => {
   // Live preview text generator
   const livePreviewBody = useMemo(() => {
     if (messageType === 'freeform') {
-      return freeformText.replace('{{name}}', variable1);
+      return freeformText.replace(/\{\{name\}\}|\[name\]/gi, templateVariables['1'] === '{{name}}' ? 'Arshil' : (templateVariables['1'] || 'Valued Customer'));
     }
-    let text = activeTemplate.bodyText || '';
-    text = text.replace(/\{\{1\}\}/g, variable1);
-    text = text.replace(/\{\{2\}\}/g, variable2);
-    text = text.replace(/\{\{3\}\}/g, variable3);
+    let text = activeTemplate.bodyText || activeTemplate.body || '';
+    if (extractedVariables.length > 0) {
+      extractedVariables.forEach((v) => {
+        let val = templateVariables[v.key];
+        if (val === undefined || val === '') {
+          val = v.sample || `{{${v.key}}}`;
+        }
+        if (val === '{{name}}') {
+          val = 'Arshil';
+        }
+        text = text.split(`{{${v.key}}}`).join(val);
+      });
+    } else {
+      text = text.replace(/\{\{1\}\}/g, templateVariables['1'] === '{{name}}' ? 'Arshil' : (templateVariables['1'] || 'Valued Customer'));
+      text = text.replace(/\{\{2\}\}/g, templateVariables['2'] || 'OFFER2026');
+      text = text.replace(/\{\{3\}\}/g, templateVariables['3'] || 'Sunday Midnight');
+    }
     return text;
-  }, [messageType, freeformText, activeTemplate, variable1, variable2, variable3]);
+  }, [messageType, freeformText, activeTemplate, templateVariables, extractedVariables]);
 
   // CSV File Upload & Parser
   const handleCsvFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -623,6 +747,8 @@ export const BulkSendMessageView: React.FC = () => {
               : freeformText,
             category,
             estimatedCost,
+            templateVariables: messageType === 'template' ? templateVariables : undefined,
+            headerUrl: messageType === 'template' ? activeTemplate.headerContent : undefined,
           });
           setIsSending(false);
           setActiveTab('bulk-scheduled');
@@ -645,6 +771,8 @@ export const BulkSendMessageView: React.FC = () => {
               : freeformText,
             contacts: selectedContacts,
             cost: estimatedCost,
+            templateVariables: messageType === 'template' ? templateVariables : undefined,
+            headerUrl: messageType === 'template' ? activeTemplate.headerContent : undefined,
           }).then((result: any) => {
             setIsSending(false);
             if (result?.success) {
@@ -684,6 +812,8 @@ export const BulkSendMessageView: React.FC = () => {
         messageText: livePreviewBody,
         contacts: [{ name: 'Test Recipient', phone }],
         cost: 0,
+        templateVariables: messageType === 'template' ? templateVariables : undefined,
+        headerUrl: messageType === 'template' ? activeTemplate.headerContent : undefined,
       });
 
       setIsSendingTest(false);
@@ -1170,53 +1300,56 @@ export const BulkSendMessageView: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Template Variable Mappers */}
+                    {/* Dynamic Template Variable Mappers */}
                     <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                      <div className="font-bold text-slate-800 text-[11px] flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                        Dynamic Template Variables
+                      <div className="font-bold text-slate-800 text-[11px] flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Dynamic Template Variables</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
+                            {extractedVariables.length} variable{extractedVariables.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-normal hidden sm:inline">
+                          Exact Meta Cloud API parameter matching
+                        </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] font-semibold text-slate-600 block mb-0.5">
-                            Variable {'{{1}}'} (Name)
-                          </label>
-                          <input
-                            type="text"
-                            value={variable1}
-                            onChange={(e) => setVariable1(e.target.value)}
-                            placeholder="Customer Name"
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-hidden"
-                          />
+                      {extractedVariables.length === 0 ? (
+                        <div className="text-xs text-slate-500 italic py-1">
+                          This template does not require any dynamic body variables.
                         </div>
-
-                        <div>
-                          <label className="text-[10px] font-semibold text-slate-600 block mb-0.5">
-                            Variable {'{{2}}'} (Offer Code)
-                          </label>
-                          <input
-                            type="text"
-                            value={variable2}
-                            onChange={(e) => setVariable2(e.target.value)}
-                            placeholder="e.g. FESTIVE30"
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-hidden"
-                          />
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {extractedVariables.map((v) => (
+                            <div key={v.key} className="space-y-1">
+                              <label className="text-[10px] font-semibold text-slate-700 flex items-center justify-between">
+                                <span className="truncate max-w-[130px]">{v.label}</span>
+                                <span className="font-mono text-[9px] bg-slate-200 text-slate-700 px-1 py-0.2 rounded font-bold">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </label>
+                              <input
+                                type="text"
+                                value={templateVariables[v.key] ?? ''}
+                                onChange={(e) =>
+                                  setTemplateVariables((prev) => ({
+                                    ...prev,
+                                    [v.key]: e.target.value,
+                                  }))
+                                }
+                                placeholder={v.sample || `Value for {{${v.key}}}`}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                              />
+                              {v.index === 1 && (
+                                <p className="text-[9px] text-slate-400">
+                                  Use <code className="text-emerald-700 font-mono font-bold">{`{{name}}`}</code> to auto-personalize per contact
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-
-                        <div>
-                          <label className="text-[10px] font-semibold text-slate-600 block mb-0.5">
-                            Variable {'{{3}}'} (Expiry / Date)
-                          </label>
-                          <input
-                            type="text"
-                            value={variable3}
-                            onChange={(e) => setVariable3(e.target.value)}
-                            placeholder="e.g. Sunday Midnight"
-                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-hidden"
-                          />
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 ) : (

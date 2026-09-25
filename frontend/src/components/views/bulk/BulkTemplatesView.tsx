@@ -74,6 +74,7 @@ export const BulkTemplatesView: React.FC = () => {
     syncBulkTemplatesWithMeta,
     duplicateCampaign,
     setActiveTab,
+    setSelectedBulkTemplateId,
     addToast,
     requestGeneralConfirmation,
   } = useQiyamStore();
@@ -245,6 +246,7 @@ export const BulkTemplatesView: React.FC = () => {
   };
 
   const handleUseInCampaign = (tmpl: BulkTemplateItem) => {
+    setSelectedBulkTemplateId(tmpl.id);
     addToast(`Selected template "${tmpl.name}" for broadcasting`, 'info');
     setActiveTab('bulk-send');
   };

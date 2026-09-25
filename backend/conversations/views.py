@@ -3515,7 +3515,7 @@ class BulkCampaignSerializer(serializers.ModelSerializer):
         ]
 
 
-def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4, max_delay=1.2, batch_size=25, sleep_seconds=5.0):
+def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4, max_delay=1.2, batch_size=25, sleep_seconds=5.0, template_variables=None, header_url=None):
     """
     Direct Asynchronous WhatsApp Dispatch Worker for Bulk Campaigns.
     Iterates through campaign.logs with status='QUEUED', performs real WhatsApp dispatch
@@ -3526,10 +3526,19 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
     import random
     django.db.connections.close_all()
 
+    if template_variables is None:
+        template_variables = {}
+
     try:
-        campaign = BulkCampaign.objects.filter(id=campaign_id).first()
+        campaign = None
+        for _ in range(10):
+            campaign = BulkCampaign.objects.filter(id=campaign_id).first()
+            if campaign:
+                break
+            time.sleep(0.2)
+
         if not campaign:
-            logger.error(f"[BulkCampaignWorker] Campaign {campaign_id} not found.")
+            logger.error(f"[BulkCampaignWorker] Campaign {campaign_id} not found after retries.")
             return
 
         campaign.status = 'RUNNING'
@@ -3554,187 +3563,331 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
         template_obj = None
         if campaign.template_name:
             template_obj = WhatsAppTemplate.objects.filter(name=campaign.template_name).first()
+            if not template_obj:
+                template_obj = WhatsAppTemplate.objects.filter(meta_template_id=campaign.template_name).first()
+
+        raw_template_body = ''
+        if template_obj and template_obj.body_text:
+            raw_template_body = template_obj.body_text
+        elif template_obj and template_obj.body:
+            raw_template_body = template_obj.body
+        elif campaign.message_text:
+            raw_template_body = campaign.message_text
+
+        # Detect all variable indices {{1}}, {{2}}, ... in template body
+        detected_indices = [int(m) for m in re.findall(r'\{\{(\d+)\}\}', raw_template_body)]
+        max_template_var = max(detected_indices) if detected_indices else 0
+
+        # Fallback to body_variables keys if no {{n}} in text but body_variables has numeric keys
+        if max_template_var == 0 and template_obj and isinstance(getattr(template_obj, 'body_variables', None), dict):
+            num_keys = [int(k) for k in template_obj.body_variables.keys() if str(k).isdigit()]
+            if num_keys:
+                max_template_var = max(num_keys)
+
+        # Header component preparation
+        header_comp = None
+        header_type = (template_obj.header_type if template_obj else '').upper()
+        h_url = header_url or (template_obj.header_url if template_obj else '')
+
+        if header_type == 'IMAGE' and h_url:
+            header_comp = {
+                "type": "header",
+                "parameters": [{"type": "image", "image": {"link": h_url}}]
+            }
+        elif header_type == 'DOCUMENT' and h_url:
+            header_comp = {
+                "type": "header",
+                "parameters": [{
+                    "type": "document",
+                    "document": {"link": h_url, "filename": (template_obj.header_text or "Document.pdf")}
+                }]
+            }
+        elif header_type == 'VIDEO' and h_url:
+            header_comp = {
+                "type": "header",
+                "parameters": [{"type": "video", "video": {"link": h_url}}]
+            }
+        elif header_type == 'TEXT' and template_obj and template_obj.header_text:
+            if re.search(r'\{\{(\d+)\}\}', template_obj.header_text):
+                header_comp = {
+                    "type": "header",
+                    "parameters": [{"type": "text", "text": template_obj.header_sample or "Update"}]
+                }
 
         queued_logs = list(campaign.logs.filter(status='QUEUED').order_by('id'))
-        logger.info(f"[BulkCampaignWorker] Starting dispatch for campaign {campaign.id} ({len(queued_logs)} queued recipients). Meta ready: {meta_ready}")
+        logger.info(f"[BulkCampaignWorker] Starting dispatch for campaign {campaign.id} ({len(queued_logs)} queued recipients). Meta ready: {meta_ready}, Template: {campaign.template_name}, MaxVars: {max_template_var}")
 
         delivered = campaign.delivered_count
         failed = campaign.failed_count
         sent = 0
 
         for log in queued_logs:
-            # Batch sleep cycle check
-            if sent > 0 and sent % batch_size == 0:
-                time.sleep(sleep_seconds)
+            try:
+                # Batch sleep cycle check
+                if sent > 0 and sent % batch_size == 0:
+                    time.sleep(sleep_seconds)
 
-            # Jitter delay
-            if sent > 0 and min_delay > 0:
-                delay = random.uniform(min_delay, max_delay)
-                time.sleep(delay)
+                # Jitter delay
+                if sent > 0 and min_delay > 0:
+                    delay = random.uniform(min_delay, max_delay)
+                    time.sleep(delay)
 
-            clean_phone = MetaWhatsAppService.clean_phone_number(log.phone)
-            recipient_name = (log.name or 'Customer').strip()
+                clean_phone = MetaWhatsAppService.clean_phone_number(log.phone)
+                recipient_name = (log.name or 'Customer').strip()
 
-            # Personalize text
-            personalized_text = campaign.message_text or ''
-            if recipient_name:
-                personalized_text = re.sub(r'\{\{name\}\}|\[name\]|\{\{Name\}\}|\[Name\]', recipient_name, personalized_text, flags=re.IGNORECASE)
-            personalized_text = re.sub(r'\{\{phone\}\}|\[phone\]|\{\{Phone\}\}|\[Phone\]', log.phone, personalized_text, flags=re.IGNORECASE)
+                # Build template parameters for this recipient
+                body_params = []
+                if max_template_var > 0:
+                    for v_idx in range(1, max_template_var + 1):
+                        v_key = str(v_idx)
+                        val = (
+                            template_variables.get(v_key) or
+                            template_variables.get(f'variable{v_idx}') or
+                            template_variables.get(f'var{v_idx}')
+                        )
+                        if not val and template_obj and isinstance(getattr(template_obj, 'body_variables', None), dict):
+                            val = template_obj.body_variables.get(v_key)
 
-            success = False
-            err_msg = ''
-            remote_msg_id = ''
+                        if not val:
+                            if v_idx == 1:
+                                val = recipient_name or 'Valued Customer'
+                            elif v_idx == 2:
+                                val = recipient_name
+                            else:
+                                val = f"-"
 
-            # 1. Primary: Meta WhatsApp Cloud API
-            if meta_ready:
-                if campaign.template_name:
-                    # Meta template dispatch
-                    components = []
-                    if template_obj and template_obj.variables:
-                        components.append({
-                            "type": "body",
-                            "parameters": [{"type": "text", "text": recipient_name}]
+                        # Substitute name/phone tags if present
+                        if isinstance(val, str):
+                            val = re.sub(r'\{\{name\}\}|\[name\]|\{\{Name\}\}|\[Name\]', recipient_name, val, flags=re.IGNORECASE)
+                            val = re.sub(r'\{\{phone\}\}|\[phone\]|\{\{Phone\}\}|\[Phone\]', clean_phone, val, flags=re.IGNORECASE)
+
+                        val_str = str(val).strip()
+                        if not val_str:
+                            val_str = recipient_name if v_idx == 1 else "-"
+
+                        body_params.append({
+                            "type": "text",
+                            "text": val_str
                         })
 
-                    lang = 'en'
-                    if template_obj and template_obj.language:
-                        lang = template_obj.language
-                    elif campaign.template_name in ['hello_world', 'service_booking_confirmed', 'service_providing']:
-                        lang = 'en_US'
+                # Personalize text for fallback / Baileys
+                personalized_text = raw_template_body or campaign.message_text or ''
+                if recipient_name:
+                    personalized_text = re.sub(r'\{\{name\}\}|\[name\]|\{\{Name\}\}|\[Name\]', recipient_name, personalized_text, flags=re.IGNORECASE)
+                personalized_text = re.sub(r'\{\{phone\}\}|\[phone\]|\{\{Phone\}\}|\[Phone\]', clean_phone, personalized_text, flags=re.IGNORECASE)
+                for p_idx, p in enumerate(body_params, start=1):
+                    personalized_text = personalized_text.replace(f'{{{{{p_idx}}}}}', p.get('text', ''))
 
-                    if lang.lower() == 'english':
-                        lang = 'en_US' if campaign.template_name in ['hello_world', 'service_booking_confirmed', 'service_providing'] else 'en'
+                success = False
+                err_msg = ''
+                remote_msg_id = ''
 
-                    meta_res = MetaWhatsAppService.send_whatsapp_template(
-                        phone_number_id=meta_cfg.phone_number_id,
-                        access_token=meta_cfg.access_token,
-                        to_phone=clean_phone,
-                        template_name=campaign.template_name,
-                        language_code=lang,
-                        components=components if components else None,
-                        api_version=meta_cfg.api_version or 'v21.0'
-                    )
+                # 1. Primary: Meta WhatsApp Cloud API
+                if meta_ready:
+                    if campaign.template_name:
+                        components = []
+                        if header_comp:
+                            components.append(header_comp)
+                        if body_params:
+                            components.append({
+                                "type": "body",
+                                "parameters": body_params
+                            })
 
-                    if meta_res.get('success'):
-                        success = True
-                        remote_msg_id = meta_res.get('message_id', '')
+                        # Determine primary language
+                        primary_lang = 'en_US'
+                        if template_obj and template_obj.language:
+                            primary_lang = template_obj.language
+                        elif campaign.template_name in ['hello_world', 'service_booking_confirmed', 'service_providing']:
+                            primary_lang = 'en_US'
+                        else:
+                            primary_lang = 'en'
+
+                        if primary_lang.lower() == 'english':
+                            primary_lang = 'en_US'
+
+                        meta_res = MetaWhatsAppService.send_whatsapp_template(
+                            phone_number_id=meta_cfg.phone_number_id,
+                            access_token=meta_cfg.access_token,
+                            to_phone=clean_phone,
+                            template_name=campaign.template_name,
+                            language_code=primary_lang,
+                            components=components if components else None,
+                            api_version=meta_cfg.api_version or 'v21.0'
+                        )
+
+                        if meta_res.get('success'):
+                            success = True
+                            remote_msg_id = meta_res.get('message_id', '')
+                        else:
+                            err_msg = meta_res.get('error', 'Template dispatch failed')
+                            # If language mismatch (#132001), try alternate language ('en_US' <-> 'en')
+                            if '#132001' in err_msg or 'does not exist' in err_msg.lower() or 'language' in err_msg.lower():
+                                alt_lang = 'en_US' if primary_lang == 'en' else 'en'
+                                logger.info(f"[BulkCampaignWorker] Template {campaign.template_name} failed with '{primary_lang}' (#132001). Retrying with '{alt_lang}'...")
+                                meta_retry_res = MetaWhatsAppService.send_whatsapp_template(
+                                    phone_number_id=meta_cfg.phone_number_id,
+                                    access_token=meta_cfg.access_token,
+                                    to_phone=clean_phone,
+                                    template_name=campaign.template_name,
+                                    language_code=alt_lang,
+                                    components=components if components else None,
+                                    api_version=meta_cfg.api_version or 'v21.0'
+                                )
+                                if meta_retry_res.get('success'):
+                                    success = True
+                                    remote_msg_id = meta_retry_res.get('message_id', '')
+                                    err_msg = ''
+                                    # Update template language in DB so subsequent sends use alt_lang directly
+                                    if template_obj:
+                                        try:
+                                            template_obj.language = alt_lang
+                                            template_obj.save(update_fields=['language'])
+                                        except Exception:
+                                            pass
+                                else:
+                                    err_msg = meta_retry_res.get('error', err_msg)
+
+                            # If template dispatch failed and Meta allows text, try text fallback
+                            if not success and ('#132001' in err_msg or 'does not exist' in err_msg.lower()):
+                                text_res = MetaWhatsAppService.send_whatsapp_text(
+                                    phone_number_id=meta_cfg.phone_number_id,
+                                    access_token=meta_cfg.access_token,
+                                    to_phone=clean_phone,
+                                    text=personalized_text or f"Update from {meta_cfg.business_phone_display}",
+                                    api_version=meta_cfg.api_version or 'v21.0'
+                                )
+                                if text_res.get('success'):
+                                    success = True
+                                    remote_msg_id = text_res.get('message_id', '')
+                                    err_msg = ''
                     else:
-                        err_msg = meta_res.get('error', 'Template dispatch failed')
-                        # If template doesn't exist on Meta, fallback to direct text
-                        if '#132001' in err_msg or 'does not exist' in err_msg.lower():
-                            text_res = MetaWhatsAppService.send_whatsapp_text(
-                                phone_number_id=meta_cfg.phone_number_id,
-                                access_token=meta_cfg.access_token,
-                                to_phone=clean_phone,
-                                text=personalized_text or f"Update from {meta_cfg.business_phone_display}",
-                                api_version=meta_cfg.api_version or 'v21.0'
-                            )
-                            if text_res.get('success'):
-                                success = True
-                                remote_msg_id = text_res.get('message_id', '')
-                                err_msg = ''
-                            else:
-                                err_msg = text_res.get('error', err_msg)
+                        # Freeform text message
+                        meta_res = MetaWhatsAppService.send_whatsapp_text(
+                            phone_number_id=meta_cfg.phone_number_id,
+                            access_token=meta_cfg.access_token,
+                            to_phone=clean_phone,
+                            text=personalized_text or 'Greetings from Qiyam!',
+                            api_version=meta_cfg.api_version or 'v21.0'
+                        )
+                        if meta_res.get('success'):
+                            success = True
+                            remote_msg_id = meta_res.get('message_id', '')
+                        else:
+                            err_msg = meta_res.get('error', 'Message dispatch failed')
+
+                # 2. Secondary fallback: Baileys connected device
+                if not success and active_devices:
+                    try:
+                        ensure_baileys_service(wait_until_ready=False)
+                        dev = active_devices[sent % len(active_devices)]
+                        baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data={
+                            'accountId': dev.session_token or f'acc-{dev.id}',
+                            'recipientPhone': clean_phone,
+                            'messageText': personalized_text,
+                        })
+                        if baileys_res.get('success'):
+                            success = True
+                            remote_msg_id = baileys_res.get('result', {}).get('messageId') or f"wa-emp-{dev.id}-{int(time.time() * 1000)}"
+                            err_msg = ''
+                    except Exception as be:
+                        if not err_msg:
+                            err_msg = str(be)
+
+                if not meta_ready and not active_devices:
+                    err_msg = "No connected WhatsApp sender configured (Meta Cloud API or Employee Device)"
+
+                # Update log row
+                now = datetime.datetime.now(datetime.timezone.utc)
+                if success:
+                    log.status = 'DELIVERED'
+                    log.error_reason = ''
+                    log.sent_at = now
+                    log.save(update_fields=['status', 'error_reason', 'sent_at'])
+                    delivered += 1
                 else:
-                    # Freeform text message
-                    meta_res = MetaWhatsAppService.send_whatsapp_text(
-                        phone_number_id=meta_cfg.phone_number_id,
-                        access_token=meta_cfg.access_token,
-                        to_phone=clean_phone,
-                        text=personalized_text or 'Greetings from Qiyam!',
-                        api_version=meta_cfg.api_version or 'v21.0'
-                    )
-                    if meta_res.get('success'):
-                        success = True
-                        remote_msg_id = meta_res.get('message_id', '')
-                    else:
-                        err_msg = meta_res.get('error', 'Message dispatch failed')
+                    log.status = 'FAILED'
+                    clean_err = err_msg
+                    if '#131047' in err_msg or '24 hours' in err_msg.lower():
+                        clean_err = "24-hour customer window expired. Use an approved Meta template or connect a WhatsApp web device."
+                    elif '#131026' in err_msg:
+                        clean_err = "Message undeliverable. Number may not be active on WhatsApp."
+                    elif '#132000' in err_msg or 'parameters' in err_msg.lower():
+                        clean_err = "Template parameter count mismatch on Meta."
+                    elif '#132001' in err_msg:
+                        clean_err = f"Template '{campaign.template_name}' not found on Meta in requested language."
+                    log.error_reason = clean_err[:500]
+                    log.sent_at = now
+                    log.save(update_fields=['status', 'error_reason', 'sent_at'])
+                    failed += 1
 
-            # 2. Secondary fallback: Baileys connected device
-            if not success and active_devices:
+                sent += 1
+                campaign.delivered_count = delivered
+                campaign.failed_count = failed
+                campaign.save(update_fields=['delivered_count', 'failed_count'])
+
+                # Log to Conversation and Message history
                 try:
-                    ensure_baileys_service(wait_until_ready=False)
-                    dev = active_devices[sent % len(active_devices)]
-                    baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data={
-                        'accountId': dev.session_token or f'acc-{dev.id}',
-                        'recipientPhone': clean_phone,
-                        'messageText': personalized_text,
+                    conv, _ = Conversation.objects.get_or_create(
+                        phone_number=clean_phone,
+                        defaults={
+                            'contact_name': recipient_name,
+                            'platform': 'whatsapp',
+                            'status': 'open',
+                        }
+                    )
+                    time_str = datetime.datetime.now().strftime('%I:%M %p')
+                    msg_rec = Message.objects.create(
+                        conversation=conv,
+                        sender='agent',
+                        sender_name=campaign.created_by or 'Broadcast System',
+                        text=personalized_text or campaign.template_name or 'Broadcast Message',
+                        timestamp=time_str,
+                        status='sent' if success else 'failed',
+                        meta_message_id=remote_msg_id or f"camp-{campaign.id}-{log.id}",
+                    )
+                    emit_event('message.created', {
+                        'conversation_id': conv.id,
+                        'message': {
+                            'id': msg_rec.id,
+                            'text': msg_rec.text,
+                            'sender': 'agent',
+                            'status': 'sent' if success else 'failed',
+                            'timestamp': time_str,
+                        }
                     })
-                    if baileys_res.get('success'):
-                        success = True
-                        remote_msg_id = baileys_res.get('result', {}).get('messageId') or f"wa-emp-{dev.id}-{int(time.time() * 1000)}"
-                        err_msg = ''
-                except Exception as be:
-                    if not err_msg:
-                        err_msg = str(be)
+                    emit_event('conversation.updated', {
+                        'conversation_id': conv.id,
+                        'last_message': (msg_rec.text or '')[:80],
+                        'last_message_time': time_str,
+                    })
+                except Exception as ce:
+                    logger.debug(f"[BulkCampaignWorker] Conversation log skipped: {ce}")
 
-            if not meta_ready and not active_devices:
-                err_msg = "No connected WhatsApp sender configured (Meta Cloud API or Employee Device)"
-
-            # Update log row
-            now = datetime.datetime.now(datetime.timezone.utc)
-            if success:
-                log.status = 'DELIVERED'
-                log.error_reason = ''
-                log.sent_at = now
-                log.save(update_fields=['status', 'error_reason', 'sent_at'])
-                delivered += 1
-            else:
+            except Exception as rec_err:
+                logger.error(f"[BulkCampaignWorker] Error dispatching to recipient {log.phone}: {rec_err}", exc_info=True)
+                now = datetime.datetime.now(datetime.timezone.utc)
                 log.status = 'FAILED'
-                clean_err = err_msg
-                if '#131047' in err_msg or '24 hours' in err_msg.lower():
-                    clean_err = "24-hour customer window expired. Use an approved Meta template or connect a WhatsApp web device."
-                elif '#131026' in err_msg:
-                    clean_err = "Message undeliverable. Number may not be active on WhatsApp."
-                elif '#132001' in err_msg:
-                    clean_err = f"Template '{campaign.template_name}' is not approved on Meta."
-                log.error_reason = clean_err[:500]
+                log.error_reason = f"Internal dispatch error: {str(rec_err)}"[:500]
                 log.sent_at = now
                 log.save(update_fields=['status', 'error_reason', 'sent_at'])
                 failed += 1
+                sent += 1
+                campaign.failed_count = failed
+                campaign.save(update_fields=['failed_count'])
 
-            sent += 1
-            campaign.delivered_count = delivered
+        # Check for any remaining queued logs and mark them appropriately
+        remaining_queued = campaign.logs.filter(status='QUEUED')
+        if remaining_queued.exists():
+            now = datetime.datetime.now(datetime.timezone.utc)
+            rem_count = remaining_queued.count()
+            remaining_queued.update(
+                status='FAILED',
+                error_reason='Dispatch cycle finished before recipient could be reached.',
+                sent_at=now
+            )
+            failed += rem_count
             campaign.failed_count = failed
-            campaign.save(update_fields=['delivered_count', 'failed_count'])
-
-            # Log to Conversation and Message history
-            try:
-                conv, _ = Conversation.objects.get_or_create(
-                    phone_number=clean_phone,
-                    defaults={
-                        'contact_name': recipient_name,
-                        'platform': 'whatsapp',
-                        'status': 'open',
-                    }
-                )
-                time_str = datetime.datetime.now().strftime('%I:%M %p')
-                msg_rec = Message.objects.create(
-                    conversation=conv,
-                    sender='agent',
-                    sender_name=campaign.created_by or 'Broadcast System',
-                    text=personalized_text or campaign.template_name or 'Broadcast Message',
-                    timestamp=time_str,
-                    status='sent' if success else 'failed',
-                    meta_message_id=remote_msg_id or f"camp-{campaign.id}-{log.id}",
-                )
-                emit_event('message.created', {
-                    'conversation_id': conv.id,
-                    'message': {
-                        'id': msg_rec.id,
-                        'text': msg_rec.text,
-                        'sender': 'agent',
-                        'status': 'sent' if success else 'failed',
-                        'timestamp': time_str,
-                    }
-                })
-                emit_event('conversation.updated', {
-                    'conversation_id': conv.id,
-                    'last_message': (msg_rec.text or '')[:80],
-                    'last_message_time': time_str,
-                })
-            except Exception as ce:
-                logger.debug(f"[BulkCampaignWorker] Conversation log skipped: {ce}")
 
         # Update final campaign status
         if delivered > 0:
@@ -3765,6 +3918,11 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
                 camp.status = 'FAILED'
                 camp.completed_at = datetime.datetime.now(datetime.timezone.utc)
                 camp.save(update_fields=['status', 'completed_at'])
+                camp.logs.filter(status='QUEUED').update(
+                    status='FAILED',
+                    error_reason=f"Worker error: {str(e)[:400]}",
+                    sent_at=datetime.datetime.now(datetime.timezone.utc)
+                )
         except Exception:
             pass
 
@@ -3902,6 +4060,8 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
                 float(data.get('max_delay', 1.2)),
                 int(data.get('batch_size', 25)),
                 float(data.get('sleep_seconds', 5.0)),
+                data.get('template_variables', {}),
+                data.get('header_url', ''),
             ),
             daemon=True
         )
@@ -3942,23 +4102,23 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def retry_failed(self, request, pk=None):
         """
-        Retries all failed recipients of this campaign by re-dispatching them in the background.
+        Retries all failed and queued recipients of this campaign by re-dispatching them in the background.
         """
         try:
             campaign = self.get_object()
         except BulkCampaign.DoesNotExist:
             return Response({'error': 'Campaign not found'}, status=404)
 
-        failed_logs = campaign.logs.filter(status='FAILED')
-        if not failed_logs.exists():
-            return Response({'success': False, 'message': 'No failed recipients found for this campaign.'}, status=400)
+        target_logs = campaign.logs.filter(status__in=['FAILED', 'QUEUED'])
+        if not target_logs.exists():
+            return Response({'success': False, 'message': 'No failed or queued recipients found for this campaign.'}, status=400)
 
-        failed_count = failed_logs.count()
+        target_count = target_logs.count()
 
-        # Reset failed logs to QUEUED
-        failed_logs.update(status='QUEUED', error_reason='')
+        # Reset target logs to QUEUED
+        target_logs.update(status='QUEUED', error_reason='')
         campaign.status = 'RUNNING'
-        campaign.failed_count = max(0, campaign.failed_count - failed_count)
+        campaign.failed_count = max(0, campaign.failed_count - target_count)
         campaign.save(update_fields=['status', 'failed_count'])
 
         # Spawn asynchronous background dispatch worker for retry
@@ -3971,6 +4131,8 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
                 1.0,
                 20,
                 5.0,
+                request.data.get('template_variables', {}),
+                request.data.get('header_url', ''),
             ),
             daemon=True
         )

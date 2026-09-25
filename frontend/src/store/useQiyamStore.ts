@@ -590,6 +590,8 @@ interface QiyamState {
   updateRecipientList: (listId: string, updates: Partial<BulkRecipientList>) => void;
   bulkScheduledMessages: BulkScheduledMessage[];
   bulkTemplates: BulkTemplateItem[];
+  selectedBulkTemplateId: string | null;
+  setSelectedBulkTemplateId: (templateId: string | null) => void;
   suppressionList: SuppressionRecord[];
   suppressionSearchQuery: string;
   setSuppressionSearchQuery: (query: string) => void;
@@ -2659,6 +2661,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   setSelectedBroadcastListId: (listId) => set({ selectedBroadcastListId: listId }),
   bulkScheduledMessages: getStoredScheduledMessages(),
   bulkTemplates: initialBulkTemplates,
+  selectedBulkTemplateId: null,
+  setSelectedBulkTemplateId: (templateId) => set({ selectedBulkTemplateId: templateId }),
   suppressionList: getStoredSuppressionList(),
   suppressionSearchQuery: '',
   roles: getStoredRoles(),
@@ -3621,6 +3625,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         max_delay: campaign.maxDelay || 8,
         batch_size: campaign.batchSize || 25,
         sleep_seconds: campaign.sleepSeconds || 30,
+        template_variables: campaign.templateVariables || campaign.template_variables || {},
+        header_url: campaign.headerUrl || campaign.header_url || '',
       });
 
       if (!res || res.success === false) {
@@ -4283,6 +4289,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             meta_status: rawStatus,
             body: t.body_text || t.body || '',
             bodyText: t.body_text || t.body || '',
+            bodyVariables: t.body_variables || {},
             header: t.header_type && t.header_type !== 'NONE' ? t.header_type : 'None',
             headerType: t.header_type || 'NONE',
             headerContent: t.header_url || t.header_text || undefined,

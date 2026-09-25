@@ -896,6 +896,7 @@ export interface BulkTemplateItem {
   header?: string;
   body?: string;
   bodyText: string;
+  bodyVariables?: Record<string, string>;
   footer?: string;
   footerText?: string;
   qualityRating?: 'High' | 'Medium' | 'Low' | string;
