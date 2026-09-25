@@ -463,6 +463,22 @@ export const BulkSendMessageView: React.FC = () => {
       return;
     }
 
+    if (messageType === 'template' && activeTemplate.status?.toUpperCase() === 'PENDING') {
+      addToast(
+        `Template "${activeTemplate.name}" is still PENDING Meta approval. Meta Cloud API rejects broadcasts with unapproved templates. Please select an APPROVED template or wait for Meta review.`,
+        'warning'
+      );
+      return;
+    }
+
+    if (messageType === 'template' && activeTemplate.status?.toUpperCase() === 'REJECTED') {
+      addToast(
+        `Template "${activeTemplate.name}" was REJECTED by Meta. Please select an APPROVED template.`,
+        'error'
+      );
+      return;
+    }
+
     const campaignPreviewText = messageType === 'template'
       ? (activeTemplate.bodyText || activeTemplate.body || `Template: ${activeTemplate.name}`)
       : freeformText;
@@ -944,23 +960,61 @@ export const BulkSendMessageView: React.FC = () => {
                         </button>
                       </div>
                       {bulkTemplates.length > 0 ? (
-                        <select
-                          value={selectedTemplateId}
-                          onChange={(e) => setSelectedTemplateId(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                        >
-                          {bulkTemplates.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name} ({t.category.toUpperCase()} -{' '}
-                              {t.headerType === 'DOCUMENT'
-                                ? '📄 PDF'
-                                : t.headerType === 'IMAGE'
-                                ? '🖼️ IMG'
-                                : 'TEXT'}
-                              ) - {t.status}
-                            </option>
-                          ))}
-                        </select>
+                        <>
+                          <select
+                            value={selectedTemplateId}
+                            onChange={(e) => setSelectedTemplateId(e.target.value)}
+                            className={`w-full px-3 py-2 border rounded-xl text-xs font-semibold focus:ring-2 focus:outline-hidden transition-all ${
+                              activeTemplate.status?.toUpperCase() === 'PENDING'
+                                ? 'border-amber-400 bg-amber-50/30 text-amber-900 focus:ring-amber-400'
+                                : activeTemplate.status?.toUpperCase() === 'REJECTED'
+                                ? 'border-rose-400 bg-rose-50/30 text-rose-900 focus:ring-rose-400'
+                                : 'border-slate-300 focus:ring-emerald-500'
+                            }`}
+                          >
+                            {bulkTemplates.map((t) => {
+                              const st = (t.status || 'APPROVED').toUpperCase();
+                              const isApproved = st === 'APPROVED' || st === 'ACTIVE';
+                              const isPending = st === 'PENDING';
+                              return (
+                                <option key={t.id} value={t.id}>
+                                  {isApproved ? '✓ ' : isPending ? '⏳ ' : '✕ '}
+                                  {t.name} ({t.category.toUpperCase()} -{' '}
+                                  {t.headerType === 'DOCUMENT'
+                                    ? '📄 PDF'
+                                    : t.headerType === 'IMAGE'
+                                    ? '🖼️ IMG'
+                                    : 'TEXT'}
+                                  ) — {isPending ? 'PENDING (Under Meta Review)' : isApproved ? 'APPROVED' : 'REJECTED'}
+                                </option>
+                              );
+                            })}
+                          </select>
+
+                          {activeTemplate.status?.toUpperCase() === 'PENDING' && (
+                            <div className="mt-2.5 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs animate-in fade-in duration-200">
+                              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-bold">Template Pending Meta Review</p>
+                                <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                                  Meta Cloud API strictly rejects sending broadcast messages with templates in <strong>PENDING</strong> status. To broadcast immediately, please select an <strong>APPROVED</strong> template, or wait until Meta finishes review.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {activeTemplate.status?.toUpperCase() === 'REJECTED' && (
+                            <div className="mt-2.5 p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-start gap-2.5 text-xs text-rose-900 shadow-2xs animate-in fade-in duration-200">
+                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-bold">Template Rejected by Meta</p>
+                                <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
+                                  This template was rejected by Meta review and cannot be used for broadcasts. Please create a new template or select an approved template.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
                           <span>No approved templates found in database.</span>
