@@ -64,6 +64,7 @@ export const CreateTemplateView: React.FC = () => {
   // UI state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTestSendModal, setShowTestSendModal] = useState(false);
+  const [testPhoneNumber, setTestPhoneNumber] = useState('+91 98765 43210');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSeconds, setSubmitSeconds] = useState(0);
   const [submitPhase, setSubmitPhase] = useState<string>('');
