@@ -24,9 +24,24 @@ import {
   Trash2,
   RefreshCw,
   AlertTriangle,
+  HelpCircle,
+  Info,
+  Sparkles,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkCampaign } from '../../../types';
+
+interface QueueInspectionTarget {
+  campaign: BulkCampaign;
+  recipient?: {
+    id?: string;
+    name?: string;
+    phone: string;
+    status: string;
+    time?: string;
+    errorReason?: string;
+  };
+}
 import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 
@@ -59,6 +74,9 @@ export const BulkCampaignHistoryView: React.FC = () => {
   // Deletion Modal State
   const [campaignToDelete, setCampaignToDelete] = useState<BulkCampaign | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Queue Diagnosis & Inspection Modal State
+  const [queueInspection, setQueueInspection] = useState<QueueInspectionTarget | null>(null);
 
   // Fetch real campaign history from backend on mount
   useEffect(() => {
@@ -509,22 +527,36 @@ export const BulkCampaignHistoryView: React.FC = () => {
                           </div>
                         </td>
                         <td className="p-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isQueued || isFailed) {
+                                setQueueInspection({ campaign: camp });
+                              } else {
+                                setSelectedCampaign(camp);
+                                setIsDrawerOpen(true);
+                                setDrawerTab('overview');
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition hover:opacity-85 ${
                               isCompleted
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 : isRunning
                                 ? 'bg-blue-100 text-blue-800 border border-blue-200'
                                 : isQueued
-                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:ring-2 hover:ring-amber-300'
                                 : isPaused
                                 ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                                : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                : 'bg-rose-100 text-rose-800 border border-rose-200 hover:ring-2 hover:ring-rose-300'
                             }`}
+                            title={isQueued ? "Click to view why queued, reason and solution" : isFailed ? "Click to view error reason and retry" : undefined}
                           >
                             {isRunning && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
-                            {statusUpper}
-                          </span>
+                            {isQueued && <Clock className="w-2.5 h-2.5 text-amber-600" />}
+                            <span>{statusUpper}</span>
+                            {(isQueued || isFailed) && <HelpCircle className="w-2.5 h-2.5 opacity-70 ml-0.5" />}
+                          </button>
                         </td>
                         <td className="p-4 text-right font-bold text-slate-900">
                           {formatMoney(camp.cost || 0)}
@@ -728,9 +760,29 @@ export const BulkCampaignHistoryView: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Campaign Status:</span>
-                      <span className="font-bold text-slate-900">
-                        {selectedCampaign.status}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQueueInspection({ campaign: selectedCampaign })}
+                        className="font-bold text-slate-900 inline-flex items-center gap-1.5 cursor-pointer hover:text-emerald-700 transition"
+                        title="Click to view queue reason & solution"
+                      >
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          selectedCampaign.status === 'COMPLETED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : selectedCampaign.status === 'RUNNING'
+                            ? 'bg-blue-100 text-blue-800'
+                            : selectedCampaign.status === 'QUEUED'
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {selectedCampaign.status}
+                        </span>
+                        {(selectedCampaign.status === 'QUEUED' || selectedCampaign.status === 'FAILED') && (
+                          <span className="text-[10px] text-amber-700 underline font-normal">
+                            Diagnose & Solve →
+                          </span>
+                        )}
+                      </button>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Launched By:</span>
@@ -836,6 +888,29 @@ export const BulkCampaignHistoryView: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Queue Alert Banner */}
+                  {drawerRecipients.some((r) => r.status === 'QUEUED') && (
+                    <div className="p-3 bg-gradient-to-r from-amber-50 to-amber-100/60 border border-amber-300 rounded-xl text-amber-950 text-xs flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-start gap-2.5">
+                        <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-amber-950">Messages in Queue Detected</div>
+                          <div className="text-[11px] text-amber-800">
+                            Click any <strong className="bg-amber-200/70 px-1 rounded text-amber-950">QUEUED</strong> badge below to view why it's held and trigger 1-click re-dispatch.
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRetryFailed(selectedCampaign)}
+                        disabled={isRetrying}
+                        className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shrink-0 transition inline-flex items-center gap-1 cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        {isRetrying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5" />}
+                        <span>Re-dispatch Queue</span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase border-b border-slate-200">
@@ -866,8 +941,10 @@ export const BulkCampaignHistoryView: React.FC = () => {
                               </td>
                               <td className="p-2.5">
                                 <div className="flex flex-col gap-0.5">
-                                  <span
-                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold w-fit ${
+                                  <button
+                                    type="button"
+                                    onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold w-fit cursor-pointer transition hover:opacity-85 ${
                                       rec.status === 'READ'
                                         ? 'bg-blue-100 text-blue-800'
                                         : rec.status === 'DELIVERED'
@@ -875,15 +952,27 @@ export const BulkCampaignHistoryView: React.FC = () => {
                                         : rec.status === 'SENT'
                                         ? 'bg-cyan-100 text-cyan-800'
                                         : rec.status === 'QUEUED'
-                                        ? 'bg-amber-100 text-amber-800'
-                                        : 'bg-rose-100 text-rose-800'
+                                        ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:ring-2 hover:ring-amber-300 shadow-2xs'
+                                        : 'bg-rose-100 text-rose-800 border border-rose-300 hover:ring-2 hover:ring-rose-300 shadow-2xs'
                                     }`}
+                                    title={rec.status === 'QUEUED' ? "Click to view why queued, reason and solution" : rec.status === 'FAILED' ? "Click to view failure details and solution" : "Click to view status report"}
                                   >
-                                    {rec.status}
-                                  </span>
+                                    <span>{rec.status}</span>
+                                    {rec.status === 'QUEUED' && <HelpCircle className="w-2.5 h-2.5 text-amber-700" />}
+                                    {rec.status === 'FAILED' && <AlertCircle className="w-2.5 h-2.5 text-rose-700" />}
+                                  </button>
                                   {rec.status === 'FAILED' && rec.errorReason && (
                                     <span className="text-[10px] text-rose-600 font-normal leading-tight max-w-[220px] truncate" title={rec.errorReason}>
                                       {rec.errorReason}
+                                    </span>
+                                  )}
+                                  {rec.status === 'QUEUED' && (
+                                    <span
+                                      className="text-[9px] text-amber-700 font-medium cursor-pointer hover:underline inline-flex items-center gap-0.5"
+                                      onClick={() => setQueueInspection({ campaign: selectedCampaign, recipient: rec })}
+                                    >
+                                      <span>Why queued? Click for solution</span>
+                                      <span>→</span>
                                     </span>
                                   )}
                                 </div>
@@ -1044,6 +1133,191 @@ export const BulkCampaignHistoryView: React.FC = () => {
               >
                 {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QUEUE STATUS & DIAGNOSTIC INSPECTION MODAL */}
+      {queueInspection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-amber-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      Queue Diagnostic Report
+                    </h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                      QUEUED
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Campaign: <span className="font-semibold text-slate-700">{queueInspection.campaign.name}</span> (#{queueInspection.campaign.id})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQueueInspection(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
+              {/* Snapshot */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/90 grid grid-cols-2 gap-2.5 text-[11px]">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Contact / Recipient</span>
+                  <span className="font-bold text-slate-800">
+                    {queueInspection.recipient?.name || 'All Queued Recipients'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Phone Number</span>
+                  <span className="font-mono font-semibold text-slate-800">
+                    {queueInspection.recipient?.phone || queueInspection.campaign.audienceListName || 'Audience Group'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Template Name</span>
+                  <span className="font-mono text-slate-800 truncate block">
+                    {queueInspection.campaign.templateName || 'None (Freeform)'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Current State</span>
+                  <span className="font-bold text-amber-700">
+                    {queueInspection.recipient?.status || queueInspection.campaign.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* 1. Why it's been queued */}
+              <div className="space-y-1.5">
+                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px] font-bold">1</span>
+                  <span>Why is this message in "QUEUED" status?</span>
+                </div>
+                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-amber-950 text-[11px] leading-relaxed">
+                  WhatsApp and Meta Cloud API enforce strict anti-spam rate limits. Dispatches are placed in a controlled queue so a background worker can send each contact sequentially with anti-ban jitter delays.
+                </div>
+              </div>
+
+              {/* 2. What's the reason */}
+              <div className="space-y-1.5">
+                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center text-[10px] font-bold">2</span>
+                  <span>What is the exact reason it is still queued?</span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[11px] text-slate-700">
+                  {queueInspection.campaign.status === 'RUNNING' ? (
+                    <div className="flex items-start gap-2 text-blue-900">
+                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Worker Actively Processing:</strong> This campaign is currently running. This recipient is waiting in line and will be dispatched as soon as previous contacts finish.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-start gap-2 text-slate-900">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Worker Cycle Halted Before Completion:</strong> The campaign finished its initial run, but this recipient was not delivered.
+                        </div>
+                      </div>
+                      <div className="pl-6 text-slate-600 space-y-1">
+                        <p>This happened because:</p>
+                        <ul className="list-disc pl-4 space-y-0.5 text-slate-600">
+                          <li>
+                            <strong>Template Parameters:</strong> Meta templates with multiple dynamic variables require an exact parameter list for all placeholders ({`{{1}}`}, {`{{2}}`}, etc.).
+                          </li>
+                          <li>
+                            <strong>Worker Interruption:</strong> The background dispatch worker encountered a mismatch or was interrupted before processing this queue item.
+                          </li>
+                        </ul>
+                        {queueInspection.recipient?.errorReason && (
+                          <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 font-mono text-[10px]">
+                            Gateway Error: {queueInspection.recipient.errorReason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. What's the solution */}
+              <div className="space-y-1.5">
+                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">3</span>
+                  <span>What is the solution?</span>
+                </div>
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-[11px] text-emerald-950">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong>1. Click "Retry & Dispatch Now" Below:</strong>
+                      <p className="text-emerald-800 mt-0.5">
+                        Our upgraded backend worker automatically formats all template variables and auto-retries matching language codes (en / en_US). Clicking the button below will immediately re-dispatch the queued contacts!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 pt-1 border-t border-emerald-200/60">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong>2. Meta WhatsApp Cloud API Ready:</strong>
+                      <p className="text-emerald-800 mt-0.5">
+                        Ensure your WhatsApp business account is connected under <strong>Settings</strong> with sufficient conversation wallet credits.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+              <button
+                onClick={() => setQueueInspection(null)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
+              >
+                Close
+              </button>
+
+              <button
+                onClick={async () => {
+                  if (!queueInspection) return;
+                  setIsRetrying(true);
+                  try {
+                    const success = await retryFailedCampaign(queueInspection.campaign.id);
+                    if (success) {
+                      addToast(`Re-dispatched campaign "${queueInspection.campaign.name}"! Logs will update live.`, 'success');
+                      setQueueInspection(null);
+                    }
+                  } catch (err: any) {
+                    addToast(err?.message || 'Failed to dispatch retry', 'error');
+                  } finally {
+                    setIsRetrying(false);
+                  }
+                }}
+                disabled={isRetrying}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {isRetrying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Repeat className="w-4 h-4" />
+                )}
+                <span>Retry & Dispatch Now</span>
               </button>
             </div>
           </div>
