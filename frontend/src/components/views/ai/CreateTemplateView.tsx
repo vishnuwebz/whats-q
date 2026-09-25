@@ -347,7 +347,7 @@ export const CreateTemplateView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-hidden font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full min-h-0 overflow-hidden font-sans">
       {/* Top Navbar */}
       <div className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-sm shrink-0">
         <div className="flex items-center gap-3">
@@ -441,9 +441,9 @@ export const CreateTemplateView: React.FC = () => {
       )}
 
       {/* Main Split Layout: Left Form (60%) + Right Live Smartphone Screen (40%) */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT COLUMN: TEMPLATE BUILDER FORM */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-700 border-r border-slate-200">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+        {/* LEFT COLUMN: TEMPLATE BUILDER FORM (SCROLLABLE) */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs text-slate-700 border-r border-slate-200">
           {/* Template Name */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
             <div className="flex items-center justify-between">
@@ -1038,8 +1038,8 @@ export const CreateTemplateView: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: STICKY LIVE SMARTPHONE PREVIEW */}
-        <div className="w-[440px] bg-slate-100 p-6 flex flex-col items-center justify-start border-l border-slate-200 shrink-0 select-none overflow-y-auto">
-          <div className="w-full flex items-center justify-between mb-3 text-xs">
+        <div className="w-full lg:w-[410px] xl:w-[440px] bg-slate-100 p-4 sm:p-6 flex flex-col items-center justify-start border-t lg:border-t-0 lg:border-l border-slate-200 shrink-0 select-none overflow-y-auto h-full min-h-0">
+          <div className="w-full flex items-center justify-between mb-3 text-xs shrink-0">
             <span className="font-bold text-slate-700 flex items-center gap-1.5">
               <Smartphone className="w-4 h-4 text-slate-500" />
               <span>Real-time WhatsApp Preview</span>
@@ -1067,7 +1067,7 @@ export const CreateTemplateView: React.FC = () => {
           </div>
 
           {/* Smartphone Frame */}
-          <div className="w-[340px] h-[640px] max-h-[calc(100vh-140px)] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20">
+          <div className="w-[320px] sm:w-[340px] flex-1 min-h-[460px] max-h-[640px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20 shrink-0">
             {/* Notch */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-black rounded-full z-30 flex items-center justify-center">
               <div className="w-2.5 h-2.5 rounded-full bg-slate-900 ml-auto mr-2" />
