@@ -4480,10 +4480,12 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     try {
       const res: any = await apiClient.post('/conversations/templates/', payload);
       if (res && res.id) {
-        // Also trigger submission to Meta Graph API
-        await apiClient.post(`/conversations/templates/${res.id}/submit_to_meta/`, {});
+        // Only trigger submit_to_meta if not already submitted to Meta by backend create()
+        if (!res.meta_template_id && (res.meta_status === 'LOCAL_DRAFT' || res.meta_status === 'DRAFT')) {
+          await apiClient.post(`/conversations/templates/${res.id}/submit_to_meta/`, {});
+        }
         await get().fetchBulkTemplates();
-        get().addToast(`Template "${template.name}" created and saved to database!`, 'success');
+        get().addToast(`Template "${template.name}" created and registered on Meta!`, 'success');
         return true;
       } else {
         get().addToast(res?.error || 'Failed to create template', 'error');

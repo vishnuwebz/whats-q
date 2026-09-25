@@ -64,8 +64,17 @@ export const CreateTemplateView: React.FC = () => {
   // UI state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTestSendModal, setShowTestSendModal] = useState(false);
-  const [testPhoneNumber, setTestPhoneNumber] = useState('+91 98765 43210');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSeconds, setSubmitSeconds] = useState(0);
+  const [submitPhase, setSubmitPhase] = useState<string>('');
+  const submitTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (submitTimerRef.current) clearInterval(submitTimerRef.current);
+    };
+  }, []);
+
   const [previewMode, setPreviewMode] = useState<'sample' | 'raw'>('sample');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isAutoWorkflowModalOpen, setIsAutoWorkflowModalOpen] = useState(false);
@@ -294,22 +303,58 @@ export const CreateTemplateView: React.FC = () => {
     }
     setValidationError(null);
     setIsSubmitting(true);
+    setSubmitSeconds(0);
+    setSubmitPhase('Packaging message components & variables...');
+
+    const startMs = Date.now();
+    if (submitTimerRef.current) clearInterval(submitTimerRef.current);
+    submitTimerRef.current = setInterval(() => {
+      const elapsed = (Date.now() - startMs) / 1000;
+      setSubmitSeconds(elapsed);
+      if (elapsed > 0.4 && elapsed <= 1.2) {
+        setSubmitPhase('Connecting to Meta Cloud API v21.0...');
+      } else if (elapsed > 1.2 && elapsed <= 2.2) {
+        setSubmitPhase('Registering template on Meta WABA account...');
+      } else if (elapsed > 2.2) {
+        setSubmitPhase('Awaiting official Meta Graph API confirmation...');
+      }
+    }, 100);
+
     try {
       const payload = buildPayload();
       const saved = await saveMetaTemplate(payload);
+
+      const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+
       if (saved && saved.id) {
+        // If backend already registered template on Meta during save (has meta_template_id or status is PENDING / APPROVED)
+        if (saved.meta_template_id || saved.meta_status === 'PENDING' || saved.meta_status === 'APPROVED') {
+          addToast(
+            `⚡ Template "${name}" registered on Meta Graph API in ${elapsed}s! Status: ${saved.meta_status}`,
+            'success'
+          );
+          setEditingTemplate(null);
+          setActiveTab('template-hub');
+          return;
+        }
+
+        // Only submit if still in LOCAL_DRAFT
         const success = await submitTemplateToMeta(saved.id);
+        const finalElapsed = ((Date.now() - startMs) / 1000).toFixed(1);
         if (success) {
-          addToast('Template submitted to Meta Graph API for review!', 'success');
+          addToast(`⚡ Template submitted to Meta Graph API in ${finalElapsed}s!`, 'success');
           setEditingTemplate(null);
           setActiveTab('template-hub');
         } else {
           setValidationError('Meta rejected the template submission. Please review the error message above.');
         }
+      } else {
+        setValidationError('Failed to save template. Please check your network connection and try again.');
       }
     } catch (e: any) {
       addToast(`Submission error: ${e.message}`, 'error');
     } finally {
+      if (submitTimerRef.current) clearInterval(submitTimerRef.current);
       setIsSubmitting(false);
     }
   };
@@ -417,12 +462,12 @@ export const CreateTemplateView: React.FC = () => {
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all"
+            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
           >
             {isSubmitting ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Submitting to Meta...</span>
+                <span className="font-mono">Submitting to Meta... {submitSeconds.toFixed(1)}s</span>
               </>
             ) : (
               <>
@@ -433,6 +478,22 @@ export const CreateTemplateView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {isSubmitting && (
+        <div className="mx-6 mt-3 p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in duration-150">
+          <div className="flex items-center gap-2.5">
+            <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
+            <div className="text-xs text-emerald-900">
+              <span className="font-bold">Meta Graph API v21.0: </span>
+              <span className="font-medium text-emerald-800">{submitPhase}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 text-white font-mono font-black text-xs rounded-xl shadow-xs">
+            <span>⏱️</span>
+            <span>{submitSeconds.toFixed(1)}s</span>
+          </div>
+        </div>
+      )}
 
       {validationError && (
         <div className="mx-6 mt-3 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 font-medium">

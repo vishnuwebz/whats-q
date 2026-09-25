@@ -1912,6 +1912,26 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                 template.save()
             else:
                 err = meta_res.get('error', 'Meta rejected template')
+                # If error is that template already exists on Meta, fetch live ID from Meta and link it!
+                if 'already exists' in err.lower():
+                    logger.info(f"Template '{template.name}' already registered on Meta, fetching live ID...")
+                    try:
+                        fetch_res = MetaWhatsAppService.fetch_meta_templates(
+                            waba_id=config.waba_id,
+                            access_token=config.access_token,
+                            api_version=config.api_version
+                        )
+                        if fetch_res.get('success'):
+                            matched = next((m for m in fetch_res.get('templates', []) if m.get('name') == template.name), None)
+                            if matched:
+                                template.meta_template_id = matched.get('id', '')
+                                template.meta_status = matched.get('status', 'APPROVED')
+                                template.rejection_reason = ''
+                                template.save()
+                                return Response(WhatsAppTemplateSerializer(template).data, status=status.HTTP_201_CREATED)
+                    except Exception as e:
+                        logger.warning(f"Error fetching existing template on Meta: {e}")
+
                 template.meta_status = 'REJECTED'
                 template.rejection_reason = err
                 template.save()
@@ -2065,6 +2085,17 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
         Submits a template to Meta Graph API: POST /{WABA_ID}/message_templates
         """
         template = self.get_object()
+
+        # If already registered and active on Meta, do not fire a duplicate creation request
+        if template.meta_template_id and template.meta_status in ['APPROVED', 'PENDING']:
+            return Response({
+                'success': True,
+                'already_registered': True,
+                'status': template.meta_status,
+                'meta_template_id': template.meta_template_id,
+                'template': WhatsAppTemplateSerializer(template).data
+            }, status=status.HTTP_200_OK)
+
         config = MetaWhatsAppConfig.objects.first()
         if not config or not config.access_token or not config.waba_id or config.connection_status != 'connected':
             return Response({
@@ -2092,6 +2123,30 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
             })
         else:
             err = meta_res.get('error', 'Meta rejected template')
+            # If already exists on Meta, fetch live ID from Meta and link it!
+            if 'already exists' in err.lower():
+                try:
+                    fetch_res = MetaWhatsAppService.fetch_meta_templates(
+                        waba_id=config.waba_id,
+                        access_token=config.access_token,
+                        api_version=config.api_version
+                    )
+                    if fetch_res.get('success'):
+                        matched = next((m for m in fetch_res.get('templates', []) if m.get('name') == template.name), None)
+                        if matched:
+                            template.meta_template_id = matched.get('id', '')
+                            template.meta_status = matched.get('status', 'APPROVED')
+                            template.rejection_reason = ''
+                            template.save()
+                            return Response({
+                                'success': True,
+                                'status': template.meta_status,
+                                'meta_template_id': template.meta_template_id,
+                                'template': WhatsAppTemplateSerializer(template).data
+                            })
+                except Exception as e:
+                    logger.warning(f"Error fetching existing template on Meta: {e}")
+
             template.meta_status = 'REJECTED'
             template.rejection_reason = err
             template.save()

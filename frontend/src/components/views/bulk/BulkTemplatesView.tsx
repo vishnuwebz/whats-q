@@ -138,6 +138,16 @@ export const BulkTemplatesView: React.FC = () => {
 
   // New Template Modal state with Media Header Support
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createElapsedSec, setCreateElapsedSec] = useState(0);
+  const createTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (createTimerRef.current) clearInterval(createTimerRef.current);
+    };
+  }, []);
+
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateCategory, setNewTemplateCategory] = useState<
     'marketing' | 'utility' | 'authentication'
@@ -250,24 +260,39 @@ export const BulkTemplatesView: React.FC = () => {
       buttons.push({ type: 'QUICK_REPLY', text: button2Text.trim() });
     }
 
-    const success = await createBulkTemplate({
-      name: newTemplateName.trim().toLowerCase().replace(/\s+/g, '_'),
-      category: newTemplateCategory,
-      language: newTemplateLang,
-      bodyText: newTemplateBody,
-      headerType: newTemplateHeaderType,
-      headerContent: newTemplateHeaderContent,
-      headerFileName:
-        newTemplateHeaderType === 'DOCUMENT' ? newTemplateHeaderFileName : undefined,
-      headerFileSize:
-        newTemplateHeaderType === 'DOCUMENT' ? newTemplateHeaderFileSize : undefined,
-      footerText: newTemplateFooter.trim() || undefined,
-      buttons,
-    });
+    setIsCreating(true);
+    setCreateElapsedSec(0);
+    const startMs = Date.now();
+    if (createTimerRef.current) clearInterval(createTimerRef.current);
+    createTimerRef.current = setInterval(() => {
+      setCreateElapsedSec((Date.now() - startMs) / 1000);
+    }, 100);
 
-    if (success) {
-      setIsCreateOpen(false);
-      setNewTemplateName('');
+    try {
+      const success = await createBulkTemplate({
+        name: newTemplateName.trim().toLowerCase().replace(/\s+/g, '_'),
+        category: newTemplateCategory,
+        language: newTemplateLang,
+        bodyText: newTemplateBody,
+        headerType: newTemplateHeaderType,
+        headerContent: newTemplateHeaderContent,
+        headerFileName:
+          newTemplateHeaderType === 'DOCUMENT' ? newTemplateHeaderFileName : undefined,
+        headerFileSize:
+          newTemplateHeaderType === 'DOCUMENT' ? newTemplateHeaderFileSize : undefined,
+        footerText: newTemplateFooter.trim() || undefined,
+        buttons,
+      });
+
+      const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+      if (success) {
+        addToast(`⚡ Template submitted to Meta Graph API in ${elapsed}s!`, 'success');
+        setIsCreateOpen(false);
+        setNewTemplateName('');
+      }
+    } finally {
+      if (createTimerRef.current) clearInterval(createTimerRef.current);
+      setIsCreating(false);
     }
   };
 
@@ -1336,10 +1361,20 @@ export const BulkTemplatesView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    disabled={isCreating}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-500 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    Submit to Meta for Review
+                    {isCreating ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span className="font-mono">Submitting to Meta... {createElapsedSec.toFixed(1)}s</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Submit to Meta for Review</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
