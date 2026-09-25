@@ -198,6 +198,8 @@ export const Sidebar: React.FC = () => {
     activeTenantId: storeActiveTenantId,
     switchActiveTenant,
     reloadPlatformTenants,
+    userProfile,
+    setIsProfileModalOpen,
   } = useQiyamStore();
 
   // Brand Header & Workspace Name
@@ -2054,12 +2056,13 @@ export const Sidebar: React.FC = () => {
               {activeTenant.initial}
             </button>
             <div
-              title="Rahul Mehta • Owner & Super Admin"
-              className="relative select-none"
+              onClick={() => setIsProfileModalOpen(true)}
+              title={`${userProfile?.name || 'Rahul Mehta'} • ${userProfile?.role || 'Owner & Super Admin'} - Click to edit profile`}
+              className="relative select-none cursor-pointer hover:opacity-80 transition"
             >
               <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                alt="Rahul Mehta"
+                src={userProfile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                alt={userProfile?.name || 'User Avatar'}
                 className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50"
               />
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
@@ -2088,22 +2091,23 @@ export const Sidebar: React.FC = () => {
 
             <div className="flex items-center justify-between pt-1 select-none">
               <div
-                className="flex items-center gap-2.5 p-1 -m-1"
-                title="Rahul Mehta • Owner & Super Admin"
+                onClick={() => setIsProfileModalOpen(true)}
+                className="flex items-center gap-2.5 p-1 -m-1 cursor-pointer hover:bg-[#111C33] rounded-lg transition group"
+                title={`${userProfile?.name || 'Rahul Mehta'} • ${userProfile?.role || 'Owner & Super Admin'} - Click to edit profile`}
               >
                 <div className="relative shrink-0">
                   <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                    alt="Rahul Mehta"
-                    className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50"
+                    src={userProfile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                    alt={userProfile?.name || 'User Avatar'}
+                    className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500/50 group-hover:ring-emerald-400 transition"
                   />
                   <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white leading-tight truncate">
-                    Rahul Mehta
+                  <div className="text-xs font-semibold text-white leading-tight truncate group-hover:text-emerald-300 transition">
+                    {userProfile?.name || 'Rahul Mehta'}
                   </div>
-                  <div className="text-[10px] text-slate-400 truncate">Owner & Super Admin</div>
+                  <div className="text-[10px] text-slate-400 truncate">{userProfile?.role || 'Owner & Super Admin'}</div>
                 </div>
               </div>
               <button

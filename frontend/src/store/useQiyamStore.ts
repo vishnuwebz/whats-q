@@ -11,7 +11,8 @@ import {
   RoleDefinition, RoleModule, RolePermissionAction, RecordScope,
   LinkedEmployeeDevice, PdfEditorDocument, PdfCanvasElement,
   KeywordRule, DaySchedule, WorkingHoursConfig,
-  PlatformTenant
+  PlatformTenant,
+  UserProfile
 } from '../types';
 import { getStoredTenants } from '../utils/featureEntitlements';
 import { apiClient } from '../api/client';
@@ -55,7 +56,8 @@ import {
   INITIAL_QUOTATIONS,
   INITIAL_EXPENSES,
   INITIAL_ACCOUNTS,
-  INITIAL_TASKS
+  INITIAL_TASKS,
+  INITIAL_ROUTES
 } from './initialDatasets';
 import { INITIAL_TEMPLATES } from './initialTemplates';
 
@@ -735,6 +737,9 @@ interface QiyamState {
   isProfileModalOpen: boolean;
   setIsProfileModalOpen: (open: boolean) => void;
 
+  userProfile: UserProfile;
+  updateUserProfile: (updates: Partial<UserProfile>) => void;
+
   isPdfEditorOpen: boolean;
   pdfEditorDocument: PdfEditorDocument | null;
   openPdfEditor: (doc?: Partial<PdfEditorDocument>) => void;
@@ -784,6 +789,11 @@ interface QiyamState {
   addInventoryItem: (inv: Partial<InventoryItem>) => Promise<InventoryItem>;
   updateInventoryItem: (id: string | number, updates: Partial<InventoryItem>) => Promise<void>;
   deleteInventoryItem: (id: string | number) => Promise<void>;
+
+  updateRouteStopStatus: (routeId: string | number, stopId: number, status: 'completed' | 'in_progress' | 'pending' | 'skipped') => void;
+  reorderRouteStops: (routeId: string | number, newStops: Route['stops']) => void;
+  updateRouteSpeedAndLocation: (routeId: string | number, speed: number, currentStopId: number) => void;
+  addRoute: (route: Route) => void;
 
   addTransaction: (tx: Partial<Transaction>) => Promise<Transaction>;
   addApproval: (ap: Partial<Approval>) => Promise<Approval>;
@@ -869,6 +879,50 @@ function persistNotifications(notifs: QNotification[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem('whatsq_notifications_cache', JSON.stringify(notifs));
+  } catch {}
+}
+
+function getStoredUserProfile(): UserProfile {
+  if (typeof window === 'undefined') {
+    return {
+      name: 'Rahul Mehta',
+      email: 'rahul.mehta@coolfix.in',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      role: 'Owner & Super Admin',
+      location: 'Kozhikode, India',
+      phone: '+91 94963 00233',
+    };
+  }
+  try {
+    const raw = localStorage.getItem('whatsq_user_profile');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          name: parsed.name || 'Rahul Mehta',
+          email: parsed.email || 'rahul.mehta@coolfix.in',
+          avatar: parsed.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+          role: parsed.role || 'Owner & Super Admin',
+          location: parsed.location || 'Kozhikode, India',
+          phone: parsed.phone || '+91 94963 00233',
+        };
+      }
+    }
+  } catch {}
+  return {
+    name: 'Rahul Mehta',
+    email: 'rahul.mehta@coolfix.in',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+    role: 'Owner & Super Admin',
+    location: 'Kozhikode, India',
+    phone: '+91 94963 00233',
+  };
+}
+
+function persistUserProfile(profile: UserProfile) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('whatsq_user_profile', JSON.stringify(profile));
   } catch {}
 }
 
@@ -2634,6 +2688,18 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   isProfileModalOpen: false,
   setIsProfileModalOpen: (open) => set({ isProfileModalOpen: open }),
 
+  userProfile: getStoredUserProfile(),
+  updateUserProfile: (updates: Partial<UserProfile>) => {
+    set((state) => {
+      const updated = { ...state.userProfile, ...updates };
+      persistUserProfile(updated);
+      try {
+        window.dispatchEvent(new CustomEvent('whatsq_user_profile_updated', { detail: updated }));
+      } catch {}
+      return { userProfile: updated };
+    });
+  },
+
   notifications: getStoredNotifications(),
   markNotificationRead: (id) => {
     set((state) => {
@@ -2703,7 +2769,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   employees: getStoredCache('employees', INITIAL_EMPLOYEES),
   attendance: getStoredCache('attendance', INITIAL_ATTENDANCE),
   tasks: getStoredCache('tasks', INITIAL_TASKS),
-  routes: [],
+  routes: getStoredCache('routes', INITIAL_ROUTES),
   inventory: getStoredCache('inventory', INITIAL_INVENTORY),
   transactions: getStoredCache('transactions', INITIAL_TRANSACTIONS),
   invoices: getStoredCache('invoices', INITIAL_INVOICES),
@@ -2836,7 +2902,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const employees     = safeVal(9, current.employees, INITIAL_EMPLOYEES, 'employees');
     const attendance    = safeVal(10, current.attendance, INITIAL_ATTENDANCE, 'attendance');
     const tasks         = safeVal(11, current.tasks, INITIAL_TASKS, 'tasks');
-    const routes        = safeVal(12, current.routes, [], 'routes');
+    const routes        = safeVal(12, current.routes, INITIAL_ROUTES, 'routes');
     const inventory     = safeVal(13, current.inventory, INITIAL_INVENTORY, 'inventory');
     const transactions  = safeVal(14, current.transactions, INITIAL_TRANSACTIONS, 'transactions');
     const invoices      = safeVal(15, current.invoices, INITIAL_INVOICES, 'invoices');
@@ -6262,6 +6328,76 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     } catch {
       // Optimistic delete fallback
     }
+  },
+
+  updateRouteStopStatus: (routeId, stopId, status) => {
+    const isComp = status === 'completed';
+    const currentRoutes = get().routes;
+    const updatedRoutes = currentRoutes.map((r) => {
+      if (String(r.id) === String(routeId) || r.route_id_str === routeId || r.route_code === routeId) {
+        const updatedStops = r.stops.map((s) => {
+          if (s.id === stopId) {
+            return {
+              ...s,
+              status,
+              isCompleted: isComp,
+            };
+          }
+          return s;
+        });
+        const completedCount = updatedStops.filter((s) => s.isCompleted || s.status === 'completed').length;
+        return {
+          ...r,
+          stops: updatedStops,
+          completed_stops: completedCount,
+          status: (completedCount === updatedStops.length ? 'completed' : 'in_progress') as Route['status'],
+        };
+      }
+      return r;
+    });
+    set({ routes: updatedRoutes });
+    persistCache('routes', updatedRoutes);
+  },
+
+  reorderRouteStops: (routeId, newStops) => {
+    const currentRoutes = get().routes;
+    const updatedRoutes = currentRoutes.map((r) => {
+      if (String(r.id) === String(routeId) || r.route_id_str === routeId || r.route_code === routeId) {
+        const resequenced = newStops.map((s, idx) => ({ ...s, sequence: idx + 1 }));
+        const completedCount = resequenced.filter((s) => s.isCompleted || s.status === 'completed').length;
+        return {
+          ...r,
+          stops: resequenced,
+          completed_stops: completedCount,
+          distance_km: Math.max(10, Math.round((r.distance_km * 0.90) * 10) / 10),
+          fuel_cost: Math.max(200, Math.round(r.fuel_cost * 0.90)),
+        };
+      }
+      return r;
+    });
+    set({ routes: updatedRoutes });
+    persistCache('routes', updatedRoutes);
+  },
+
+  updateRouteSpeedAndLocation: (routeId, speed, currentStopId) => {
+    const currentRoutes = get().routes;
+    const updatedRoutes = currentRoutes.map((r) => {
+      if (String(r.id) === String(routeId) || r.route_id_str === routeId || r.route_code === routeId) {
+        return {
+          ...r,
+          speed_kmh: speed,
+          current_stop_id: currentStopId,
+        };
+      }
+      return r;
+    });
+    set({ routes: updatedRoutes });
+  },
+
+  addRoute: (route) => {
+    const updatedRoutes = [route, ...get().routes];
+    set({ routes: updatedRoutes });
+    persistCache('routes', updatedRoutes);
   },
 
   addTransaction: async (tx) => {

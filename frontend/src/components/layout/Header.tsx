@@ -44,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
     isOmniSearchOpen,
     setIsOmniSearchOpen,
     setIsProfileModalOpen,
+    userProfile,
   } = store;
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -354,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center cursor-pointer shrink-0"
-            title="Rahul Mehta (Owner) - Click for Profile & Account"
+            title={`${userProfile?.name || 'Rahul Mehta'} (${userProfile?.role || 'Owner & Super Admin'}) - Click for Profile & Account`}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
@@ -365,8 +366,8 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-              alt="Rahul Mehta"
+              src={userProfile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+              alt={userProfile?.name || 'User Profile'}
               className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/20 hover:ring-emerald-500 transition-all shadow-xs"
             />
           </div>

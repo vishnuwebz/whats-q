@@ -431,17 +431,29 @@ export interface Task {
 
 export interface RouteStop {
   id: number;
+  sequence?: number;
   address: string;
   customerName: string;
+  phone?: string;
   timeWindow: string;
+  time?: string;
   isPriority?: boolean;
   isCompleted?: boolean;
+  status?: 'completed' | 'in_progress' | 'pending' | 'skipped';
   type: 'start' | 'stop' | 'priority' | 'end';
+  x?: number;
+  y?: number;
+  serviceType?: string;
+  notes?: string;
+  eta?: string;
+  packageCount?: number;
+  amountToCollect?: number;
 }
 
 export interface Route {
   id: string | number;
   route_id_str: string;
+  route_code?: string;
   driver_name: string;
   phone: string;
   vehicle: string;
@@ -452,6 +464,11 @@ export interface Route {
   estimated_end: string;
   fuel_cost: number;
   completed_stops: number;
+  current_stop_id?: number;
+  speed_kmh?: number;
+  date_str?: string;
+  start_time?: string;
+  end_time?: string;
   stops: RouteStop[];
 }
 
@@ -1276,6 +1293,15 @@ export interface PayrollSettingsState {
   reimbursement_approval: string;
   bonus_policy: string;
   [key: string]: any;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  avatar: string;
+  role: string;
+  location: string;
+  phone: string;
 }
 
 

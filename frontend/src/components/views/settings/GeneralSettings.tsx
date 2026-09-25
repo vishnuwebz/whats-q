@@ -17,10 +17,12 @@ import {
   Archive,
   Upload,
   Trash2,
+  User,
+  Pencil,
 } from 'lucide-react';
 
 export const GeneralSettings: React.FC = () => {
-  const { addToast } = useQiyamStore();
+  const { addToast, userProfile, setIsProfileModalOpen } = useQiyamStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [brandLogo, setBrandLogo] = useState<string>(
@@ -103,6 +105,53 @@ export const GeneralSettings: React.FC = () => {
 
   return (
     <form onSubmit={handleSavePreferences} className="space-y-6">
+      {/* ── 0. Administrator Profile (Name & Photo) ── */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+              <User className="w-4 h-4 text-emerald-600" />
+              <span>Administrator Profile (Name & Photo)</span>
+            </h3>
+            <p className="text-slate-500 text-xs mt-0.5">
+              Personalize your display name, role designation, and account profile picture.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsProfileModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span>Edit Profile & Avatar</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4 pt-1">
+          <div className="relative shrink-0">
+            <img
+              src={userProfile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+              alt={userProfile?.name || 'Administrator'}
+              className="w-14 h-14 rounded-2xl object-cover ring-2 ring-emerald-500 shadow-md"
+            />
+            <span className="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white absolute -bottom-0.5 -right-0.5" />
+          </div>
+          <div>
+            <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
+              <span>{userProfile?.name || 'Rahul Mehta'}</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                {userProfile?.role || 'Owner & Super Admin'}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+              <span>{userProfile?.email || 'rahul.mehta@coolfix.in'}</span>
+              <span>•</span>
+              <span>{userProfile?.location || 'Kozhikode, India'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── 1. Organization & Branding ── */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
         <div className="border-b border-slate-100 pb-3">
@@ -145,7 +194,7 @@ export const GeneralSettings: React.FC = () => {
                 className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer flex items-center gap-1.5"
               >
                 <Upload className="w-3 h-3 text-slate-500" />
-                <span>{brandLogo ? 'Change Avatar' : 'Upload Avatar'}</span>
+                <span>{brandLogo ? 'Change Brand Logo' : 'Upload Brand Logo'}</span>
               </button>
               {brandLogo && (
                 <button
