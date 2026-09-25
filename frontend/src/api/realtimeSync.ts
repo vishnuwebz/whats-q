@@ -175,6 +175,15 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('template.status_updated', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing template.status_updated event:', err);
+        }
+      });
+
       this.eventSource.onerror = () => {
         console.warn('[RealtimeSync] Event stream connection dropped. Reconnecting with exponential backoff...');
         if (this.eventSource) {
@@ -266,6 +275,13 @@ class RealtimeSyncManager {
 
       case 'campaign.updated': {
         store.fetchBulkCampaigns();
+        break;
+      }
+
+      case 'template.status_updated': {
+        if (event.data) {
+          store.applyRealtimeTemplateStatus(event.data);
+        }
         break;
       }
 

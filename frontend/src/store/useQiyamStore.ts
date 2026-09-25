@@ -42,6 +42,7 @@ import {
 import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
 import { getInitialActiveTab, persistActiveTab } from '../utils/tabRouting';
 import { calculateDutyHours } from '../utils/dutyHours';
+import { playApprovalChime, sendDesktopNotification } from '../utils/approvalNotification';
 import {
   INITIAL_INVENTORY,
   INITIAL_LEADS,
@@ -840,6 +841,7 @@ interface QiyamState {
   applyRealtimeNotification: (notif: QNotification) => void;
   applyRealtimeLead: (leadUpdate: Partial<Lead> & { id: string | number }) => void;
   applyRealtimeJob: (jobUpdate: Partial<Job> & { id: string | number }) => void;
+  applyRealtimeTemplateStatus: (data: { name: string; status: string; reason?: string }) => void;
 }
 
 const INITIAL_NOTIFICATIONS: QNotification[] = [
@@ -2010,6 +2012,85 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }));
   },
 
+  applyRealtimeTemplateStatus: (data) => {
+    const validMetaStatuses = ['APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DRAFT'] as const;
+    const upper = (data.status || 'APPROVED').toUpperCase();
+    const metaStatus: 'APPROVED' | 'PENDING' | 'REJECTED' | 'PAUSED' | 'DRAFT' =
+      validMetaStatuses.includes(upper as any)
+        ? (upper as 'APPROVED' | 'PENDING' | 'REJECTED' | 'PAUSED' | 'DRAFT')
+        : 'APPROVED';
+    const isApproved = metaStatus === 'APPROVED';
+    const isRejected = metaStatus === 'REJECTED';
+
+    set((state) => {
+      const updatedTemplates: WhatsAppTemplateItem[] = state.templates.map((t) =>
+        t.name === data.name || String(t.id) === String(data.name)
+          ? {
+              ...t,
+              meta_status: metaStatus,
+              status: isApproved ? 'Active' : isRejected ? 'Rejected' : t.status,
+              rejection_reason: data.reason || t.rejection_reason,
+            }
+          : t
+      );
+
+      const updatedBulkTemplates: BulkTemplateItem[] = state.bulkTemplates.map((t) =>
+        t.name === data.name || String(t.id) === String(data.name)
+          ? {
+              ...t,
+              status: metaStatus,
+              meta_status: metaStatus,
+              rejectionReason: data.reason || t.rejectionReason,
+            }
+          : t
+      );
+
+      persistCache('bulk_templates', updatedBulkTemplates);
+
+      const notifId = Date.now();
+      const notifTitle = isApproved
+        ? `🎉 Meta Template Approved: "${data.name}"`
+        : isRejected
+        ? `⚠️ Meta Template Rejected: "${data.name}"`
+        : `ℹ️ Template Status: "${data.name}" → ${metaStatus}`;
+      const notifText = isApproved
+        ? `Template "${data.name}" has been approved by Meta Graph API and is live for campaigns!`
+        : isRejected
+        ? `Reason: ${data.reason || 'Template did not meet Meta Business/Commerce guidelines.'}`
+        : `Status changed to ${metaStatus}`;
+
+      const newNotif: QNotification = {
+        id: notifId,
+        title: notifTitle,
+        text: notifText,
+        time: 'Just now',
+        unread: true,
+        target: 'bulk-templates',
+        severity: isApproved ? 'success' : isRejected ? 'error' : 'info',
+        category: 'alerts',
+      };
+
+      const updatedNotifs = [newNotif, ...state.notifications];
+      persistNotifications(updatedNotifs);
+
+      return {
+        templates: updatedTemplates,
+        bulkTemplates: updatedBulkTemplates,
+        notifications: updatedNotifs,
+      };
+    });
+
+    if (isApproved) {
+      playApprovalChime();
+      sendDesktopNotification(`🎉 Meta WhatsApp Template Approved!`, {
+        body: `"${data.name}" has been approved by Meta. Ready for broadcast!`,
+      });
+      get().addToast(`🎉 Meta Template Approved: "${data.name}" is now live!`, 'success');
+    } else if (isRejected) {
+      get().addToast(`⚠️ Meta Template Rejected: "${data.name}" (${data.reason || 'Policy issue'})`, 'error');
+    }
+  },
+
   activeWorkflowId: null,
   setActiveWorkflowId: (id) => set({ activeWorkflowId: id }),
   activeWorkflowTitle: null,
@@ -2654,14 +2735,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   searchResults: [],
   metaWallet: getStoredMetaWallet(),
   walletTransactions: getStoredWalletTransactions(),
-  bulkCampaigns: initialBulkCampaigns,
+  bulkCampaigns: getStoredCache('bulk_campaigns', initialBulkCampaigns),
   draftCampaign: null,
   setDraftCampaign: (campaign) => set({ draftCampaign: campaign }),
   bulkRecipientLists: getStoredCustomRecipientLists(),
   selectedBroadcastListId: null,
   setSelectedBroadcastListId: (listId) => set({ selectedBroadcastListId: listId }),
   bulkScheduledMessages: getStoredScheduledMessages(),
-  bulkTemplates: initialBulkTemplates,
+  bulkTemplates: getStoredCache('bulk_templates', initialBulkTemplates),
   selectedBulkTemplateId: null,
   setSelectedBulkTemplateId: (templateId) => set({ selectedBulkTemplateId: templateId }),
   suppressionList: getStoredSuppressionList(),
@@ -3021,6 +3102,22 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     get().fetchBulkCampaigns();
     get().fetchBulkTemplates();
     get().fetchDeletedConversations();
+
+    // Background Pending Templates Auto-Verification (polls every 25s only IF there are pending templates)
+    if (typeof window !== 'undefined' && !(window as any).__whatsq_pending_poller_started) {
+      (window as any).__whatsq_pending_poller_started = true;
+      setInterval(async () => {
+        const state = get();
+        const pendingTemplates = (state.bulkTemplates || []).filter(
+          (t) => t.status === 'PENDING' || t.meta_status === 'PENDING'
+        );
+        if (pendingTemplates.length > 0) {
+          try {
+            await state.fetchBulkTemplates();
+          } catch {}
+        }
+      }, 25000);
+    }
 
     if (selectedConversationId) {
       get().markConversationAsRead(selectedConversationId);
@@ -3595,6 +3692,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           })),
         }));
         set({ bulkCampaigns: mapped });
+        persistCache('bulk_campaigns', mapped);
 
         // Auto-poll progress if any campaign is currently active
         const hasActive = mapped.some((c) => c.status === 'RUNNING' || c.status === 'QUEUED');
@@ -4336,7 +4434,22 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             updatedBy: t.author || 'WhatsQ Staff',
           };
         });
+
+        // Detect templates that transitioned from PENDING to APPROVED
+        const prevPending = get().bulkTemplates.filter((t) => t.status === 'PENDING' || t.meta_status === 'PENDING');
+        const newlyApproved = mapped.filter((m) =>
+          (m.status === 'APPROVED' || m.meta_status === 'APPROVED') &&
+          prevPending.some((p) => p.name === m.name || String(p.id) === String(m.id))
+        );
+        for (const tmpl of newlyApproved) {
+          get().applyRealtimeTemplateStatus({
+            name: tmpl.name,
+            status: 'APPROVED',
+          });
+        }
+
         set({ bulkTemplates: mapped });
+        persistCache('bulk_templates', mapped);
       }
     } catch (err) {
       console.warn('[fetchBulkTemplates] failed:', err);

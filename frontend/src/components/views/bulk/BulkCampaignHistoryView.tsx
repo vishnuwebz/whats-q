@@ -118,7 +118,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCampaign, setSelectedCampaign] = useState<BulkCampaign | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(bulkCampaigns.length === 0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'preview' | 'recipients' | 'errors'>(
@@ -136,9 +136,11 @@ export const BulkCampaignHistoryView: React.FC = () => {
   // Queue Diagnosis & Inspection Modal State
   const [queueInspection, setQueueInspection] = useState<QueueInspectionTarget | null>(null);
 
-  // Fetch real campaign history from backend on mount
+  // Fetch real campaign history from backend on mount (non-blocking if cached)
   useEffect(() => {
-    setIsLoading(true);
+    if (bulkCampaigns.length === 0) {
+      setIsLoading(true);
+    }
     fetchBulkCampaigns().finally(() => setIsLoading(false));
   }, []);
 
@@ -478,7 +480,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {isLoading ? (
+                {isLoading && bulkCampaigns.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">

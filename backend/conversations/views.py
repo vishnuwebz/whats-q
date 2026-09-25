@@ -2117,6 +2117,14 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
             template.meta_category = matched.get('category', template.meta_category)
             template.language = matched.get('language', template.language)
             template.save()
+
+            if template.meta_status == 'APPROVED':
+                emit_event('template.status_updated', {
+                    'name': template.name,
+                    'status': 'APPROVED',
+                    'meta_template_id': template.meta_template_id
+                })
+
             return Response({
                 'success': True,
                 'live_meta_status': template.meta_status,
@@ -2834,6 +2842,34 @@ class WhatsAppWebhookView(APIView):
                             matched.update(rejection_reason=reason)
                         logger.info(f"Updated template {template_name} to status {event}")
 
+                        emit_event('template.status_updated', {
+                            'name': template_name,
+                            'status': event,
+                            'reason': reason
+                        })
+                        if event == 'APPROVED':
+                            emit_event('notification.new', {
+                                'id': int(time.time() * 1000),
+                                'title': f'🎉 Meta Template Approved: {template_name}',
+                                'text': f'Template "{template_name}" is approved by Meta Graph API and live!',
+                                'time': 'Just now',
+                                'unread': True,
+                                'target': 'bulk-templates',
+                                'severity': 'success',
+                                'category': 'alerts'
+                            })
+                        elif event == 'REJECTED':
+                            emit_event('notification.new', {
+                                'id': int(time.time() * 1000),
+                                'title': f'⚠️ Meta Template Rejected: {template_name}',
+                                'text': f'Reason: {reason or "Violated WhatsApp Business Policy"}',
+                                'time': 'Just now',
+                                'unread': True,
+                                'target': 'bulk-templates',
+                                'severity': 'error',
+                                'category': 'alerts'
+                            })
+
         return Response({'status': 'processed'}, status=status.HTTP_200_OK)
 
 class SimulateWhatsAppMessageView(APIView):
@@ -3460,7 +3496,8 @@ class BulkCampaignSerializer(serializers.ModelSerializer):
         ]
 
     def get_recipient_logs(self, obj):
-        logs = obj.logs.all()[:200]  # cap at 200 for detailed audit
+        # Read from prefetched cache to avoid N+1 DB queries per campaign
+        logs = list(obj.logs.all())[:100]
         return [
             {
                 'id': log.id,
@@ -3917,7 +3954,7 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
     - GET    /api/conversations/bulk-campaigns/{id}/logs/          → all recipient logs
     - DELETE /api/conversations/bulk-campaigns/{id}/          → delete campaign & logs
     """
-    queryset = BulkCampaign.objects.all()
+    queryset = BulkCampaign.objects.all().prefetch_related('logs').order_by('-id')
     serializer_class = BulkCampaignSerializer
     http_method_names = ['get', 'post', 'patch', 'delete']
 
@@ -3927,8 +3964,8 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def _sync_active_campaigns(self):
-        active_campaigns = BulkCampaign.objects.filter(status__in=['QUEUED', 'RUNNING'])
-        if not active_campaigns.exists():
+        active_campaigns = list(BulkCampaign.objects.filter(status__in=['QUEUED', 'RUNNING']))
+        if not active_campaigns:
             return
 
         import datetime as dt
@@ -3946,31 +3983,37 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
                     camp.completed_at = dt.datetime.now(dt.timezone.utc)
                 camp.save(update_fields=['status', 'completed_at'])
 
-        # Optional sync with external gateway if running
-        try:
-            req = urllib.request.Request(
-                f'{BAILEYS_GATEWAY_URL}/api/campaigns',
-                headers={'Content-Type': 'application/json'},
-                method='GET',
-            )
-            with urllib.request.urlopen(req, timeout=1) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                gw_campaigns = {c.get('id'): c for c in data.get('campaigns', [])}
+        # Asynchronous non-blocking background gateway sync so list() is never delayed
+        def _bg_gw_sync(campaign_ids):
+            try:
+                req = urllib.request.Request(
+                    f'{BAILEYS_GATEWAY_URL}/api/campaigns',
+                    headers={'Content-Type': 'application/json'},
+                    method='GET',
+                )
+                with urllib.request.urlopen(req, timeout=1.5) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    gw_campaigns = {c.get('id'): c for c in data.get('campaigns', [])}
 
-                for camp in active_campaigns:
-                    gw_id = camp.gateway_campaign_id or f'camp-{camp.id}'
-                    gw_camp = gw_campaigns.get(gw_id)
-                    if gw_camp:
-                        gw_status = str(gw_camp.get('status', '')).upper()
-                        if gw_status in ['COMPLETED', 'PAUSED', 'FAILED', 'RUNNING']:
-                            camp.status = gw_status
-                        camp.delivered_count = int(gw_camp.get('deliveredCount', camp.delivered_count))
-                        camp.failed_count = int(gw_camp.get('failedCount', camp.failed_count))
-                        if gw_status == 'COMPLETED' and not camp.completed_at:
-                            camp.completed_at = dt.datetime.now(dt.timezone.utc)
-                        camp.save()
-        except Exception as e:
-            logger.debug(f'[BulkCampaign] Gateway status sync skipped: {e}')
+                    for cid in campaign_ids:
+                        camp = BulkCampaign.objects.filter(id=cid).first()
+                        if not camp:
+                            continue
+                        gw_id = camp.gateway_campaign_id or f'camp-{camp.id}'
+                        gw_camp = gw_campaigns.get(gw_id)
+                        if gw_camp:
+                            gw_status = str(gw_camp.get('status', '')).upper()
+                            if gw_status in ['COMPLETED', 'PAUSED', 'FAILED', 'RUNNING']:
+                                camp.status = gw_status
+                            camp.delivered_count = int(gw_camp.get('deliveredCount', camp.delivered_count))
+                            camp.failed_count = int(gw_camp.get('failedCount', camp.failed_count))
+                            if gw_status == 'COMPLETED' and not camp.completed_at:
+                                camp.completed_at = dt.datetime.now(dt.timezone.utc)
+                            camp.save()
+            except Exception as e:
+                logger.debug(f'[BulkCampaign] Gateway background status sync skipped: {e}')
+
+        threading.Thread(target=_bg_gw_sync, args=([c.id for c in active_campaigns],), daemon=True).start()
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

@@ -907,6 +907,8 @@ export interface BulkTemplateItem {
   headerFileSize?: string;
   buttons?: { type: string; text: string; url?: string }[];
   variables?: string[];
+  rejectionReason?: string;
+  rejection_reason?: string;
 }
 
 export interface MetaWalletInfo {

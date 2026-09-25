@@ -31,6 +31,7 @@ import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkTemplateItem } from '../../../types';
 import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
+import { MetaApprovalEstimator } from '../ai/MetaApprovalEstimator';
 
 const PRESET_MEDIA_OPTIONS = [
   {
@@ -80,7 +81,7 @@ export const BulkTemplatesView: React.FC = () => {
     requestGeneralConfirmation,
   } = useQiyamStore();
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(bulkTemplates.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -129,7 +130,9 @@ export const BulkTemplatesView: React.FC = () => {
   };
 
   useEffect(() => {
-    setIsLoading(true);
+    if (bulkTemplates.length === 0) {
+      setIsLoading(true);
+    }
     fetchBulkTemplates().finally(() => setIsLoading(false));
   }, []);
 
@@ -529,7 +532,7 @@ export const BulkTemplatesView: React.FC = () => {
         </div>
 
         {/* Loading Spinner */}
-        {isLoading && (
+        {isLoading && bulkTemplates.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center flex flex-col items-center justify-center gap-3">
             <Loader2 className="w-7 h-7 text-emerald-600 animate-spin" />
             <p className="text-xs font-semibold text-slate-600">Loading verified WhatsApp templates from database...</p>
@@ -537,7 +540,7 @@ export const BulkTemplatesView: React.FC = () => {
         )}
 
         {/* Templates Grid */}
-        {!isLoading && filteredTemplates.length > 0 && (
+        {(!isLoading || bulkTemplates.length > 0) && filteredTemplates.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTemplates.map((tmpl) => {
             const isApproved = tmpl.status === 'APPROVED';
@@ -1342,7 +1345,7 @@ export const BulkTemplatesView: React.FC = () => {
               </div>
 
               {/* RIGHT: LIVE SMARTPHONE WHATSAPP PREVIEW */}
-              <div className="lg:col-span-5 p-5 bg-slate-50 flex flex-col justify-between">
+              <div className="lg:col-span-5 p-5 bg-slate-50 flex flex-col justify-start min-h-0 overflow-y-auto">
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200">
                     <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
@@ -1350,6 +1353,20 @@ export const BulkTemplatesView: React.FC = () => {
                       Live WhatsApp Preview
                     </span>
                     <span className="text-[10px] text-slate-500 font-medium">Customer Screen</span>
+                  </div>
+
+                  {/* Dynamic Meta Approval Duration Estimator */}
+                  <div className="mb-3.5">
+                    <MetaApprovalEstimator
+                      category={newTemplateCategory}
+                      headerType={newTemplateHeaderType}
+                      bodyText={newTemplateBody}
+                      buttons={[
+                        ...(button1Text ? [{ type: 'URL', text: button1Text }] : []),
+                        ...(button2Text ? [{ type: 'QUICK_REPLY', text: button2Text }] : []),
+                      ]}
+                      compact={true}
+                    />
                   </div>
 
                   {/* Phone frame */}
@@ -1493,10 +1510,10 @@ export const BulkTemplatesView: React.FC = () => {
             {/* Modal Body Form */}
             <form
               onSubmit={handleSaveEdit}
-              className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto"
+              className="grid grid-cols-1 lg:grid-cols-12 flex-1 min-h-0 overflow-y-auto"
             >
               {/* LEFT: FORM FIELDS */}
-              <div className="lg:col-span-7 p-5 space-y-4 text-xs border-r border-slate-200">
+              <div className="lg:col-span-7 p-5 space-y-4 text-xs border-r border-slate-200 min-h-0 overflow-y-auto">
                 {/* Meta Re-approval Warning */}
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2.5 leading-relaxed">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -1775,7 +1792,7 @@ export const BulkTemplatesView: React.FC = () => {
               </div>
 
               {/* RIGHT: LIVE SMARTPHONE WHATSAPP PREVIEW */}
-              <div className="lg:col-span-5 p-5 bg-slate-50 flex flex-col justify-between">
+              <div className="lg:col-span-5 p-5 bg-slate-50 flex flex-col justify-start min-h-0 overflow-y-auto">
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200">
                     <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
@@ -1783,6 +1800,20 @@ export const BulkTemplatesView: React.FC = () => {
                       Live WhatsApp Preview
                     </span>
                     <span className="text-[10px] text-slate-500 font-medium">Customer Screen</span>
+                  </div>
+
+                  {/* Dynamic Meta Approval Duration Estimator */}
+                  <div className="mb-3.5">
+                    <MetaApprovalEstimator
+                      category={editCategory}
+                      headerType={editHeaderType}
+                      bodyText={editBodyText}
+                      buttons={[
+                        ...(editButton1Text ? [{ type: 'URL', text: editButton1Text }] : []),
+                        ...(editButton2Text ? [{ type: 'QUICK_REPLY', text: editButton2Text }] : []),
+                      ]}
+                      compact={true}
+                    />
                   </div>
 
                   {/* Phone frame */}

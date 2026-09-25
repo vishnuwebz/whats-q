@@ -10,6 +10,7 @@ import { WhatsAppTemplateItem, WhatsAppTemplateButton } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { AutoWorkflowModal } from './AutoWorkflowModal';
 import { CountryPhoneInput } from '../../common/CountryPhoneInput';
+import { MetaApprovalEstimator } from './MetaApprovalEstimator';
 
 const META_LANGUAGES = [
   { code: 'en_US', label: 'English (US)' },
@@ -518,6 +519,18 @@ export const CreateTemplateView: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-slate-500">OTP passcodes and account verification codes.</p>
               </button>
+            </div>
+
+            {/* Dynamic Meta Approval Duration Estimator & Review Heuristics */}
+            <div className="pt-2">
+              <MetaApprovalEstimator
+                category={metaCategory}
+                headerType={headerType}
+                buttons={buttons}
+                bodyText={bodyText}
+                hasVariables={Object.keys(bodyVariables).length > 0}
+                variablesSampled={Object.values(bodyVariables).every((v) => v && v.trim().length > 0)}
+              />
             </div>
           </div>
 
@@ -1064,6 +1077,17 @@ export const CreateTemplateView: React.FC = () => {
                 Raw {"{{x}}"}
               </button>
             </div>
+          </div>
+
+          {/* Real-time Dynamic Meta Approval ETA Badge */}
+          <div className="w-[320px] sm:w-[340px] mb-3 shrink-0">
+            <MetaApprovalEstimator
+              category={metaCategory}
+              headerType={headerType}
+              buttons={buttons}
+              bodyText={bodyText}
+              compact={true}
+            />
           </div>
 
           {/* Smartphone Frame */}
