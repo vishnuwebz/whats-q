@@ -187,6 +187,13 @@ export const BulkTemplatesView: React.FC = () => {
   const [editButton1Text, setEditButton1Text] = useState('');
   const [editButton2Text, setEditButton2Text] = useState('');
 
+  // Edit Submission & Telemetry States
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editElapsedSec, setEditElapsedSec] = useState(0);
+  const [editTelemetryStep, setEditTelemetryStep] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const editTimerRef = useRef<any>(null);
+
   // Filter templates
   const filteredTemplates = useMemo(() => {
     return bulkTemplates.filter((tmpl) => {
@@ -338,6 +345,10 @@ export const BulkTemplatesView: React.FC = () => {
       setEditButton2Text('');
     }
 
+    setEditError(null);
+    setIsSavingEdit(false);
+    setEditElapsedSec(0);
+    setEditTelemetryStep('');
     setIsEditOpen(true);
   };
 
@@ -386,51 +397,78 @@ export const BulkTemplatesView: React.FC = () => {
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingTemplate) return;
+    if (!editingTemplate || isSavingEdit) return;
     if (!editName.trim() || !editBodyText.trim()) {
+      setEditError('Please provide both template name and message body.');
       addToast('Please provide both template name and message body', 'error');
       return;
     }
 
-    const buttons = [];
-    if (editButton1Text.trim()) {
-      buttons.push({ type: 'URL', text: editButton1Text.trim() });
-    }
-    if (editButton2Text.trim()) {
-      buttons.push({ type: 'QUICK_REPLY', text: editButton2Text.trim() });
-    }
+    setEditError(null);
+    setIsSavingEdit(true);
+    setEditElapsedSec(0);
+    setEditTelemetryStep('Packaging components & validating variables...');
 
-    const updatedTemplateData: Partial<BulkTemplateItem> = {
-      name: editName.trim(),
-      category: editCategory,
-      language: editLang,
-      headerType: editHeaderType,
-      headerContent: editHeaderContent || undefined,
-      headerFileName: editHeaderType === 'DOCUMENT' ? editHeaderFileName : undefined,
-      headerFileSize: editHeaderType === 'DOCUMENT' ? editHeaderFileSize : undefined,
-      bodyText: editBodyText,
-      body: editBodyText,
-      footerText: editFooterText.trim() || undefined,
-      footer: editFooterText.trim() || undefined,
-      buttons,
-      status: 'PENDING',
-      meta_status: 'PENDING',
-      qualityRating: 'High',
-    };
+    const startMs = Date.now();
+    if (editTimerRef.current) clearInterval(editTimerRef.current);
+    editTimerRef.current = setInterval(() => {
+      setEditElapsedSec(parseFloat(((Date.now() - startMs) / 1000).toFixed(1)));
+    }, 100);
 
-    const success = await updateBulkTemplate(editingTemplate.id, updatedTemplateData);
-    if (success) {
-      if (selectedTemplate && selectedTemplate.id === editingTemplate.id) {
-        setSelectedTemplate({
-          ...selectedTemplate,
-          ...updatedTemplateData,
-          status: 'PENDING',
-          meta_status: 'PENDING',
-          lastUpdated: 'Just now',
-        });
+    try {
+      const buttons = [];
+      if (editButton1Text.trim()) {
+        buttons.push({ type: 'URL', text: editButton1Text.trim() });
       }
-      setIsEditOpen(false);
-      setEditingTemplate(null);
+      if (editButton2Text.trim()) {
+        buttons.push({ type: 'QUICK_REPLY', text: editButton2Text.trim() });
+      }
+
+      const updatedTemplateData: Partial<BulkTemplateItem> = {
+        name: editName.trim(),
+        category: editCategory,
+        language: editLang,
+        headerType: editHeaderType,
+        headerContent: editHeaderContent || undefined,
+        headerFileName: editHeaderType === 'DOCUMENT' ? editHeaderFileName : undefined,
+        headerFileSize: editHeaderType === 'DOCUMENT' ? editHeaderFileSize : undefined,
+        bodyText: editBodyText,
+        body: editBodyText,
+        footerText: editFooterText.trim() || undefined,
+        footer: editFooterText.trim() || undefined,
+        buttons,
+        status: 'PENDING',
+        meta_status: 'PENDING',
+        qualityRating: 'High',
+      };
+
+      setEditTelemetryStep('Resubmitting template to Meta WhatsApp Cloud API v21.0...');
+      const result: any = await updateBulkTemplate(editingTemplate.id, updatedTemplateData);
+      const isSuccess = result === true || (result && result.success !== false);
+      const finalSec = ((Date.now() - startMs) / 1000).toFixed(1);
+
+      if (isSuccess) {
+        if (selectedTemplate && selectedTemplate.id === editingTemplate.id) {
+          setSelectedTemplate({
+            ...selectedTemplate,
+            ...updatedTemplateData,
+            status: 'PENDING',
+            meta_status: 'PENDING',
+            lastUpdated: 'Just now',
+          });
+        }
+        addToast(`⚡ Template "${editName}" resubmitted to Meta in ${finalSec}s! Status: PENDING review`, 'success');
+        setIsEditOpen(false);
+        setEditingTemplate(null);
+      } else {
+        const errorMsg = result?.error || 'Failed to submit template to Meta. Please review the details.';
+        setEditError(errorMsg);
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'An unexpected error occurred during submission.');
+    } finally {
+      if (editTimerRef.current) clearInterval(editTimerRef.current);
+      setIsSavingEdit(false);
     }
   };
 
@@ -1557,6 +1595,24 @@ export const BulkTemplatesView: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Submission Error Banner */}
+                {editError && (
+                  <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 text-xs flex items-start gap-2.5 animate-in fade-in duration-150">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <strong className="text-rose-800">Submission Error:</strong>
+                      <p className="mt-0.5 text-rose-700 leading-relaxed font-mono text-[11px]">{editError}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditError(null)}
+                      className="text-rose-500 hover:text-rose-800 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 {/* Template Name */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
@@ -1793,12 +1849,34 @@ export const BulkTemplatesView: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Live Meta Telemetry Progress Bar */}
+                {isSavingEdit && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-950 text-xs flex items-center justify-between animate-pulse">
+                    <div className="flex items-center gap-2.5">
+                      <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
+                      <div>
+                        <div className="font-bold text-emerald-900">
+                          {editTelemetryStep || 'Submitting to Meta WhatsApp Cloud API...'}
+                        </div>
+                        <div className="text-[10px] text-emerald-700 font-mono">
+                          Graph API v21.0 • Template ID #{editingTemplate.meta_template_id || editingTemplate.id}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 font-mono font-bold text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg shadow-xs">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{editElapsedSec.toFixed(1)}s</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Footer Action Buttons */}
                 <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
                   <button
                     type="button"
+                    disabled={isSavingEdit}
                     onClick={() => handleDeleteTemplate(editingTemplate)}
-                    className="px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Delete Template
@@ -1807,20 +1885,35 @@ export const BulkTemplatesView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
+                      disabled={isSavingEdit}
                       onClick={() => {
                         setIsEditOpen(false);
                         setEditingTemplate(null);
                       }}
-                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold text-xs transition cursor-pointer"
+                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 text-xs"
+                      disabled={isSavingEdit}
+                      className={`px-5 py-2.5 font-bold rounded-xl shadow-xs transition flex items-center gap-2 text-xs ${
+                        isSavingEdit
+                          ? 'bg-emerald-500 text-white cursor-wait opacity-85'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-98'
+                      }`}
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      Save & Resubmit to Meta
+                      {isSavingEdit ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span className="font-mono">Submitting to Meta... {editElapsedSec.toFixed(1)}s</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Save & Resubmit to Meta</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

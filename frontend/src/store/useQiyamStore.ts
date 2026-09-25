@@ -626,7 +626,7 @@ interface QiyamState {
   checkAndDispatchDueScheduledMessages: () => Promise<void>;
   duplicateCampaign: (campaignId: string | number) => void;
   createBulkTemplate: (params: any) => Promise<boolean>;
-  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => Promise<boolean>;
+  updateBulkTemplate: (templateId: string, updates: Partial<BulkTemplateItem>) => Promise<any>;
   deleteBulkTemplate: (templateId: string) => Promise<boolean>;
   updateBulkTemplateStatus: (templateId: string, status: 'APPROVED' | 'PENDING' | 'REJECTED') => Promise<void>;
   fetchBulkTemplates: () => Promise<void>;
@@ -4506,7 +4506,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     if (updates.name) payload.name = updates.name.trim().toLowerCase().replace(/\s+/g, '_');
     if (metaCategory) payload.meta_category = metaCategory;
     if (updates.language) payload.language = updates.language;
-    if (updates.headerType) payload.header_type = updates.headerType;
+    if (updates.headerType) {
+      payload.header_type = updates.headerType;
+      if (updates.headerType === 'DOCUMENT') {
+        payload.header_text = updates.headerFileName || 'document.pdf';
+      } else if (updates.headerType === 'TEXT') {
+        payload.header_text = updates.headerContent || '';
+      }
+    }
     if (updates.headerContent !== undefined) payload.header_url = updates.headerContent;
     if (updates.bodyText || updates.body) {
       payload.body = updates.bodyText || updates.body;
@@ -4518,19 +4525,46 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     if (updates.buttons) payload.buttons = updates.buttons;
 
     try {
-      const res: any = await apiClient.patch(`/conversations/templates/${templateId}/`, payload);
+      let res: any = await apiClient.patch(`/conversations/templates/${templateId}/`, payload);
+      let targetId = templateId;
+
+      if (!res || !res.id) {
+        // Fallback: If PATCH returned 404 or failed, check if we can create it in DB
+        const createPayload = {
+          ...payload,
+          name: updates.name ? updates.name.trim().toLowerCase().replace(/\s+/g, '_') : `template_${templateId}`,
+          category: updates.category || 'Marketing',
+          meta_category: metaCategory || 'MARKETING',
+          language: updates.language || 'en_US',
+          status: 'Active',
+          meta_status: 'PENDING',
+        };
+        const createRes: any = await apiClient.post('/conversations/templates/', createPayload);
+        if (createRes && createRes.id) {
+          res = createRes;
+          targetId = String(createRes.id);
+        }
+      }
+
       if (res && res.id) {
-        await apiClient.post(`/conversations/templates/${templateId}/submit_to_meta/`, {});
+        const metaRes: any = await apiClient.post(`/conversations/templates/${targetId}/submit_to_meta/`, {});
         await get().fetchBulkTemplates();
-        get().addToast(`Template "${updates.name || templateId}" updated & saved!`, 'success');
-        return true;
+        if (metaRes && metaRes.success === false) {
+          const errMsg = metaRes?.error || 'Template saved locally, but Meta review submission had an issue';
+          get().addToast(errMsg, 'error');
+          return { success: false, error: errMsg };
+        }
+        get().addToast(`Template "${updates.name || targetId}" updated & resubmitted to Meta!`, 'success');
+        return { success: true, data: res, metaRes };
       } else {
-        get().addToast(res?.error || 'Failed to update template', 'error');
-        return false;
+        const errDetail = res?.error || (typeof res === 'object' ? Object.entries(res).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ') : 'Failed to update template');
+        get().addToast(errDetail, 'error');
+        return { success: false, error: errDetail };
       }
     } catch (err: any) {
-      get().addToast(`Template update error: ${err.message}`, 'error');
-      return false;
+      const errMsg = err.message || 'Template update error';
+      get().addToast(`Template update error: ${errMsg}`, 'error');
+      return { success: false, error: errMsg };
     }
   },
 

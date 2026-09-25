@@ -160,7 +160,7 @@ class WhatsAppTemplate(models.Model):
     # Template Components
     header_type = models.CharField(max_length=50, default='NONE') # NONE, TEXT, IMAGE, VIDEO, DOCUMENT, LOCATION
     header_text = models.CharField(max_length=200, blank=True, default='')
-    header_url = models.CharField(max_length=500, blank=True, default='')
+    header_url = models.TextField(blank=True, default='')
     header_sample = models.CharField(max_length=200, blank=True, default='')
     
     body = models.TextField() # legacy text field

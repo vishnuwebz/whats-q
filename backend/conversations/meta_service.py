@@ -464,6 +464,57 @@ class MetaWhatsAppService:
             return {"success": False, "error": f"Network error: {str(e)}"}
 
     @classmethod
+    def edit_meta_template(cls, template_id: str, access_token: str, template_obj, api_version: str = DEFAULT_API_VERSION):
+        """
+        Updates an existing template on Meta Graph API: POST /{MESSAGE_TEMPLATE_ID}
+        Meta allows editing components (BODY, HEADER, FOOTER, BUTTONS).
+        Once updated, Meta puts the template back into PENDING review.
+        """
+        if not template_id:
+            return {"success": False, "error": "No Meta Template ID provided for editing"}
+
+        version = api_version or cls.DEFAULT_API_VERSION
+        headers = cls.get_headers(access_token)
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{str(template_id).strip()}"
+
+        header_type = (getattr(template_obj, 'header_type', None) or "NONE").upper()
+        media_handle = None
+        if header_type in ["IMAGE", "VIDEO", "DOCUMENT"]:
+            media_source = getattr(template_obj, 'header_url', '') or ''
+            upload_res = cls.upload_resumable_media(
+                access_token=access_token,
+                media_source=media_source,
+                header_type=header_type,
+                api_version=version
+            )
+            if upload_res.get("success"):
+                media_handle = upload_res.get("handle")
+
+        components = cls.build_meta_components(template_obj, media_handle=media_handle)
+        payload = {
+            "components": components
+        }
+
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=20)
+            data = resp.json()
+            if resp.status_code in [200, 201] and (data.get("success") is True or "id" in data):
+                return {
+                    "success": True,
+                    "meta_template_id": data.get("id") or str(template_id),
+                    "status": "PENDING",
+                    "raw": data
+                }
+            else:
+                error_msg = data.get("error", {}).get("message", "Meta template update failed")
+                error_user_title = data.get("error", {}).get("error_user_title", "")
+                error_user_msg = data.get("error", {}).get("error_user_msg", "")
+                full_err = f"{error_msg}. {error_user_title}: {error_user_msg}".strip()
+                return {"success": False, "error": full_err or error_msg, "details": data}
+        except Exception as e:
+            return {"success": False, "error": f"Network error updating Meta template: {str(e)}"}
+
+    @classmethod
     def send_whatsapp_text(cls, phone_number_id: str, access_token: str, to_phone: str, text: str, api_version: str = DEFAULT_API_VERSION):
         """
         Sends a freeform text message (valid within 24h customer service window).

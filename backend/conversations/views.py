@@ -2082,19 +2082,11 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def submit_to_meta(self, request, pk=None):
         """
-        Submits a template to Meta Graph API: POST /{WABA_ID}/message_templates
+        Submits or resubmits a template to Meta Graph API.
+        If template already has meta_template_id, updates components via POST /{meta_template_id}.
+        Otherwise creates via POST /{WABA_ID}/message_templates.
         """
         template = self.get_object()
-
-        # If already registered and active on Meta, do not fire a duplicate creation request
-        if template.meta_template_id and template.meta_status in ['APPROVED', 'PENDING']:
-            return Response({
-                'success': True,
-                'already_registered': True,
-                'status': template.meta_status,
-                'meta_template_id': template.meta_template_id,
-                'template': WhatsAppTemplateSerializer(template).data
-            }, status=status.HTTP_200_OK)
 
         config = MetaWhatsAppConfig.objects.first()
         if not config or not config.access_token or not config.waba_id or config.connection_status != 'connected':
@@ -2103,6 +2095,30 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                 'error': 'Meta Cloud API is not connected or credentials are missing.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # 1. If template has an existing Meta Template ID, try editing it on Meta first!
+        if template.meta_template_id:
+            edit_res = MetaWhatsAppService.edit_meta_template(
+                template_id=template.meta_template_id,
+                access_token=config.access_token,
+                template_obj=template,
+                api_version=config.api_version
+            )
+            if edit_res.get('success'):
+                template.meta_status = 'PENDING'
+                template.status = 'Pending'
+                template.rejection_reason = ''
+                template.save()
+                return Response({
+                    'success': True,
+                    'status': 'PENDING',
+                    'meta_template_id': template.meta_template_id,
+                    'template': WhatsAppTemplateSerializer(template).data,
+                    'message': 'Template updated and resubmitted to Meta for compliance review.'
+                }, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"Meta template edit failed for #{template.meta_template_id}: {edit_res.get('error')}. Attempting creation or re-linking...")
+
+        # 2. Otherwise (or if edit failed), create or re-link via create_meta_template
         meta_res = MetaWhatsAppService.create_meta_template(
             waba_id=config.waba_id,
             access_token=config.access_token,
@@ -2113,13 +2129,15 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
         if meta_res.get('success'):
             template.meta_template_id = meta_res.get('meta_template_id', '')
             template.meta_status = meta_res.get('status', 'PENDING')
+            template.status = 'Pending'
             template.rejection_reason = ''
             template.save()
             return Response({
                 'success': True,
                 'status': template.meta_status,
                 'meta_template_id': template.meta_template_id,
-                'template': WhatsAppTemplateSerializer(template).data
+                'template': WhatsAppTemplateSerializer(template).data,
+                'message': 'Template submitted to Meta for compliance review.'
             })
         else:
             err = meta_res.get('error', 'Meta rejected template')
@@ -2135,14 +2153,22 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                         matched = next((m for m in fetch_res.get('templates', []) if m.get('name') == template.name), None)
                         if matched:
                             template.meta_template_id = matched.get('id', '')
-                            template.meta_status = matched.get('status', 'APPROVED')
+                            # Now try editing the newly found matched template on Meta!
+                            edit_res = MetaWhatsAppService.edit_meta_template(
+                                template_id=template.meta_template_id,
+                                access_token=config.access_token,
+                                template_obj=template,
+                                api_version=config.api_version
+                            )
+                            template.meta_status = 'PENDING' if edit_res.get('success') else matched.get('status', 'APPROVED')
                             template.rejection_reason = ''
                             template.save()
                             return Response({
                                 'success': True,
                                 'status': template.meta_status,
                                 'meta_template_id': template.meta_template_id,
-                                'template': WhatsAppTemplateSerializer(template).data
+                                'template': WhatsAppTemplateSerializer(template).data,
+                                'message': 'Template linked to Meta and resubmitted for review.'
                             })
                 except Exception as e:
                     logger.warning(f"Error fetching existing template on Meta: {e}")
