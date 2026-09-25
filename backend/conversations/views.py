@@ -2059,6 +2059,48 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
 
         return synced_count
 
+    @action(detail=True, methods=['post'])
+    def submit_to_meta(self, request, pk=None):
+        """
+        Submits a template to Meta Graph API: POST /{WABA_ID}/message_templates
+        """
+        template = self.get_object()
+        config = MetaWhatsAppConfig.objects.first()
+        if not config or not config.access_token or not config.waba_id or config.connection_status != 'connected':
+            return Response({
+                'success': False,
+                'error': 'Meta Cloud API is not connected or credentials are missing.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        meta_res = MetaWhatsAppService.create_meta_template(
+            waba_id=config.waba_id,
+            access_token=config.access_token,
+            template_obj=template,
+            api_version=config.api_version
+        )
+
+        if meta_res.get('success'):
+            template.meta_template_id = meta_res.get('meta_template_id', '')
+            template.meta_status = meta_res.get('status', 'PENDING')
+            template.rejection_reason = ''
+            template.save()
+            return Response({
+                'success': True,
+                'status': template.meta_status,
+                'meta_template_id': template.meta_template_id,
+                'template': WhatsAppTemplateSerializer(template).data
+            })
+        else:
+            err = meta_res.get('error', 'Meta rejected template')
+            template.meta_status = 'REJECTED'
+            template.rejection_reason = err
+            template.save()
+            return Response({
+                'success': False,
+                'error': err,
+                'template': WhatsAppTemplateSerializer(template).data
+            }, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['post'])
     def sync_meta(self, request):
         """
@@ -2858,6 +2900,42 @@ class WhatsAppWebhookView(APIView):
                                 'severity': 'success',
                                 'category': 'alerts'
                             })
+                            # Send real-time WhatsApp notification message to Meta-registered mobile number & staff
+                            try:
+                                config = MetaWhatsAppConfig.objects.first()
+                                if config and config.access_token and config.phone_number_id:
+                                    target_numbers = []
+                                    if config.business_phone_display:
+                                        target_numbers.append(config.business_phone_display)
+                                    if config.staff_numbers:
+                                        target_numbers.extend([p.strip() for p in config.staff_numbers.split(',') if p.strip()])
+
+                                    tpl = matched.first()
+                                    cat_name = getattr(tpl, 'meta_category', 'UTILITY') if tpl else 'UTILITY'
+                                    created_date_str = getattr(tpl, 'last_updated', '') or datetime.datetime.now().strftime('%d %b %Y, %I:%M %p')
+                                    approved_time_str = datetime.datetime.now().strftime('%d %b %Y, %I:%M %p')
+
+                                    approval_msg = (
+                                        f"🎉 *Meta WhatsApp Template Approved!*\n\n"
+                                        f"Your template has been officially approved by Meta Graph API and is now live.\n\n"
+                                        f"• *Template Name:* `{template_name}`\n"
+                                        f"• *Category:* {cat_name}\n"
+                                        f"• *Status:* APPROVED ✅\n"
+                                        f"• *Created:* {created_date_str}\n"
+                                        f"• *Approved on:* {approved_time_str}\n\n"
+                                        f"Ready to broadcast in bulk campaigns:\n"
+                                        f"https://whatsq.qiyambusinesssolutions.com/bulk/campaigns"
+                                    )
+                                    for num in set(target_numbers):
+                                        MetaWhatsAppService.send_whatsapp_text(
+                                            phone_number_id=config.phone_number_id,
+                                            access_token=config.access_token,
+                                            to_phone=num,
+                                            text=approval_msg,
+                                            api_version=config.api_version
+                                        )
+                            except Exception as ex:
+                                logger.warning(f"Could not dispatch WhatsApp message notification for approved template: {ex}")
                         elif event == 'REJECTED':
                             emit_event('notification.new', {
                                 'id': int(time.time() * 1000),
@@ -2869,6 +2947,36 @@ class WhatsAppWebhookView(APIView):
                                 'severity': 'error',
                                 'category': 'alerts'
                             })
+                            # Send WhatsApp alert to Meta-registered mobile number
+                            try:
+                                config = MetaWhatsAppConfig.objects.first()
+                                if config and config.access_token and config.phone_number_id:
+                                    target_numbers = []
+                                    if config.business_phone_display:
+                                        target_numbers.append(config.business_phone_display)
+                                    if config.staff_numbers:
+                                        target_numbers.extend([p.strip() for p in config.staff_numbers.split(',') if p.strip()])
+
+                                    rejection_msg = (
+                                        f"⚠️ *Meta WhatsApp Template Rejected*\n\n"
+                                        f"Meta Graph API declined approval for your template.\n\n"
+                                        f"• *Template Name:* `{template_name}`\n"
+                                        f"• *Status:* REJECTED ❌\n"
+                                        f"• *Reason:* {reason or 'Content violated WhatsApp Business Policy'}\n"
+                                        f"• *Reviewed on:* {datetime.datetime.now().strftime('%d %b %Y, %I:%M %p')}\n\n"
+                                        f"Please edit the template copy and re-submit:\n"
+                                        f"https://whatsq.qiyambusinesssolutions.com/bulk/templates"
+                                    )
+                                    for num in set(target_numbers):
+                                        MetaWhatsAppService.send_whatsapp_text(
+                                            phone_number_id=config.phone_number_id,
+                                            access_token=config.access_token,
+                                            to_phone=num,
+                                            text=rejection_msg,
+                                            api_version=config.api_version
+                                        )
+                            except Exception as ex:
+                                logger.warning(f"Could not dispatch WhatsApp message notification for rejected template: {ex}")
 
         return Response({'status': 'processed'}, status=status.HTTP_200_OK)
 
