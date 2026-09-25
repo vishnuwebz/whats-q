@@ -3521,9 +3521,13 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
         # Check template in WhatsAppTemplate if template_name provided
         template_obj = None
         if campaign.template_name:
-            template_obj = WhatsAppTemplate.objects.filter(name=campaign.template_name).first()
+            t_name = str(campaign.template_name).strip()
+            template_obj = WhatsAppTemplate.objects.filter(name__iexact=t_name).first()
             if not template_obj:
-                template_obj = WhatsAppTemplate.objects.filter(meta_template_id=campaign.template_name).first()
+                template_obj = WhatsAppTemplate.objects.filter(meta_template_id=t_name).first()
+            if not template_obj:
+                norm_name = re.sub(r'[\s\-]+', '_', t_name.lower())
+                template_obj = WhatsAppTemplate.objects.filter(name__iexact=norm_name).first()
 
         raw_template_body = ''
         if template_obj and template_obj.body_text:
@@ -3652,6 +3656,23 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
                                 "type": "body",
                                 "parameters": body_params
                             })
+
+                        # Handle dynamic URL buttons (strictly required by Meta Cloud API when {{}} is in button URL)
+                        if template_obj and template_obj.buttons:
+                            for idx, btn in enumerate(template_obj.buttons or []):
+                                if btn.get('type') == 'URL' and '{{' in btn.get('url', ''):
+                                    btn_param = (
+                                        template_variables.get(f'button_{idx}') or
+                                        template_variables.get(f'button_{idx+1}') or
+                                        template_variables.get('button_url') or
+                                        'home'
+                                    )
+                                    components.append({
+                                        "type": "button",
+                                        "sub_type": "url",
+                                        "index": str(idx),
+                                        "parameters": [{"type": "text", "text": str(btn_param)}]
+                                    })
 
                         # Determine primary language
                         primary_lang = 'en_US'

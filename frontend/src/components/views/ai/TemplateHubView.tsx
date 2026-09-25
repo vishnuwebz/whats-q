@@ -157,9 +157,9 @@ export const TemplateHubView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full overflow-hidden font-sans">
       {/* Top Header */}
-      <div className="sticky top-0 z-20 bg-white">
+      <div className="shrink-0 bg-white border-b border-slate-200 z-20">
         <Header
           title="Meta WhatsApp Template Hub"
           subtitle="Manage, review, test-send, and live-preview all official WhatsApp Cloud API templates."
@@ -169,9 +169,9 @@ export const TemplateHubView: React.FC = () => {
       </div>
 
       {/* Main Two-Pane Split Layout: Left Templates List + Right Live Smartphone Preview */}
-      <div className="flex-1 flex flex-col xl:flex-row border-t border-slate-200 min-h-0">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
         {/* LEFT PANE: TEMPLATE GALLERY & FILTERS */}
-        <div className="flex-1 min-w-0 bg-slate-50/50 flex flex-col">
+        <div className="flex-1 min-w-0 bg-slate-50/50 flex flex-col h-full overflow-hidden border-r border-slate-200">
           {/* Top Status Banner & Actions */}
           <div className="p-4 border-b border-slate-200 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
@@ -281,8 +281,8 @@ export const TemplateHubView: React.FC = () => {
             </div>
           </div>
 
-          {/* Templates Cards Grid */}
-          <div className="p-4 sm:p-5 space-y-3.5 flex-1">
+          {/* Templates Cards Grid (Independently Scrollable) */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5">
             {filtered.map((tmpl) => {
               const isSelected = String(tmpl.id) === String(activeTemplate?.id);
               const isApproved = (tmpl.meta_status || tmpl.status) === 'APPROVED' || tmpl.status === 'Active';
@@ -417,7 +417,7 @@ export const TemplateHubView: React.FC = () => {
                         onClick={() => {
                           setSelectedTemplateId(tmpl.id);
                           const el = document.getElementById('live-smartphone-preview-pane');
-                          if (el && window.innerWidth < 1280) {
+                          if (el && window.innerWidth < 1024) {
                             el.scrollIntoView({ behavior: 'smooth' });
                           }
                         }}
@@ -523,13 +523,13 @@ export const TemplateHubView: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT PANE: DEDICATED STICKY SMARTPHONE PREVIEW */}
+        {/* RIGHT PANE: DEDICATED PINNED SMARTPHONE PREVIEW (ALWAYS 100% VISIBLE) */}
         <div
           id="live-smartphone-preview-pane"
-          className="w-full xl:w-[390px] 2xl:w-[420px] bg-slate-100/70 p-4 sm:p-5 flex flex-col items-center justify-start gap-3 border-t xl:border-t-0 xl:border-l border-slate-200 shrink-0 xl:sticky xl:top-[69px] xl:max-h-[calc(100vh-69px)] xl:overflow-y-auto"
+          className="w-full lg:w-[380px] xl:w-[410px] 2xl:w-[430px] bg-slate-100/70 p-3 sm:p-3.5 flex flex-col justify-between shrink-0 h-full border-t lg:border-t-0 border-slate-200 overflow-hidden"
         >
           {/* Top Control Bar */}
-          <div className="w-full flex items-center justify-between text-xs bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-xs">
+          <div className="w-full flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-slate-200/80 shadow-xs shrink-0">
             <div className="min-w-0 pr-2">
               <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                 <Smartphone className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -644,8 +644,8 @@ export const TemplateHubView: React.FC = () => {
             </div>
           )}
 
-          {/* Smartphone Frame Container */}
-          <div className="w-[300px] sm:w-[310px] h-[480px] sm:h-[500px] bg-slate-900 rounded-[36px] p-2.5 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20 shrink-0">
+          {/* Smartphone Frame Container (Fits Viewport Height Perfectly) */}
+          <div className="flex-1 min-h-[350px] max-h-[460px] w-full max-w-[290px] sm:max-w-[300px] mx-auto bg-slate-900 rounded-[32px] p-2 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden ring-1 ring-white/20 my-auto shrink-0">
             {/* Camera / Speaker Notch */}
             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-3 bg-black rounded-full z-30 flex items-center justify-center">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-900 ml-auto mr-2" />
@@ -752,16 +752,16 @@ export const TemplateHubView: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom Action Bar for Active Template */}
+          {/* Bottom Action Bar for Active Template (Always 100% Visible Without Scrolling) */}
           {activeTemplate && (
-            <div className="w-full flex flex-col gap-2">
+            <div className="w-full max-w-[300px] mx-auto shrink-0 pt-2 flex flex-col gap-1.5">
               <div className="flex items-center justify-center gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => handleEdit(activeTemplate)}
                   className="flex-1 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer text-xs"
                 >
-                  <Edit3 className="w-3 h-3" />
+                  <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit Template</span>
                 </button>
 
@@ -770,7 +770,7 @@ export const TemplateHubView: React.FC = () => {
                   onClick={() => setShowTestSendModal(true)}
                   className="flex-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer text-xs"
                 >
-                  <Send className="w-3 h-3 text-slate-600" />
+                  <Send className="w-3.5 h-3.5 text-slate-600" />
                   <span>Send Test</span>
                 </button>
               </div>
