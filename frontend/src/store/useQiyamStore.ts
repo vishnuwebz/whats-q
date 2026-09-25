@@ -680,6 +680,7 @@ interface QiyamState {
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
   submitTemplateToMeta: (templateId: string | number) => Promise<boolean>;
   syncTemplatesWithMeta: () => Promise<void>;
+  verifyMetaTemplate: (templateId: string | number) => Promise<any>;
   testSendTemplate: (templateId: string | number, phone: string, variables: Record<string, string>) => Promise<{ success: boolean; error?: string; message?: string }>;
   deleteMetaTemplate: (templateId: string | number) => Promise<boolean>;
   saveMetaConfig: (config: Partial<MetaConfig>) => Promise<boolean>;
@@ -2948,10 +2949,12 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       templates,
       bulkTemplates: (templates || []).map((t: any): BulkTemplateItem => {
         const metaCat = t.meta_category ? t.meta_category.toLowerCase() : (t.category || 'marketing').toLowerCase();
-        const rawStatus = (t.meta_status || t.status || 'APPROVED').toUpperCase();
+        const hasMetaId = Boolean(t.meta_template_id && String(t.meta_template_id).trim());
+        const rawStatus = t.meta_status ? t.meta_status.toUpperCase() : hasMetaId ? 'APPROVED' : 'LOCAL_DRAFT';
         return {
           id: String(t.id),
           templateId: t.meta_template_id || t.name,
+          meta_template_id: t.meta_template_id || undefined,
           name: t.name,
           category: metaCat,
           language: t.language || 'en_US',
@@ -2959,6 +2962,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           meta_status: rawStatus,
           body: t.body_text || t.body || '',
           bodyText: t.body_text || t.body || '',
+          bodyVariables: t.body_variables || {},
           header: t.header_type && t.header_type !== 'NONE' ? t.header_type : 'None',
           headerType: t.header_type || 'NONE',
           headerContent: t.header_url || t.header_text || undefined,
@@ -3461,6 +3465,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           : [saved, ...state.templates];
         return { templates: updated };
       });
+      await get().fetchBulkTemplates();
       return saved as WhatsAppTemplateItem;
     }
 
@@ -3474,6 +3479,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       set((state) => ({
         templates: state.templates.map((t) => (t.id === templateId ? res.template : t)),
       }));
+      await get().fetchBulkTemplates();
       get().addToast('Template submitted to Meta for review', 'success');
       return true;
     }
@@ -3485,9 +3491,35 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const res = await apiClient.post('/conversations/templates/sync_meta/', {});
     if (res?.templates) {
       set({ templates: res.templates });
-      get().addToast(`Synced ${res.synced_count ?? res.templates.length} templates from Meta`, 'success');
+      await get().fetchBulkTemplates();
+      get().addToast(`Synced ${res.synced_count ?? res.templates.length} official templates from Meta`, 'success');
     } else {
       get().addToast(res?.error || 'Meta sync failed', 'error');
+    }
+  },
+
+  verifyMetaTemplate: async (templateId: string | number) => {
+    try {
+      const res: any = await apiClient.get(`/conversations/templates/${templateId}/verify_meta/`);
+      if (res && res.success && res.template) {
+        set((state) => ({
+          templates: state.templates.map((t) => (String(t.id) === String(templateId) ? res.template : t)),
+          bulkTemplates: state.bulkTemplates.map((t) => (t.id === String(templateId) ? {
+            ...t,
+            status: res.template.meta_status,
+            meta_status: res.template.meta_status,
+            templateId: res.template.meta_template_id || t.templateId,
+          } : t)),
+        }));
+        get().addToast(`Live Meta Status: ${res.live_meta_status} (ID: ${res.meta_template_id})`, 'success');
+        return res;
+      } else {
+        get().addToast(res?.error || 'Verification failed on Meta', 'error');
+        return res;
+      }
+    } catch (err: any) {
+      get().addToast(`Verification error: ${err.message}`, 'error');
+      return null;
     }
   },
 
@@ -4278,10 +4310,12 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         const rawList = Array.isArray(res.results) ? res.results : Array.isArray(res) ? res : [];
         const mapped = rawList.map((t: any): BulkTemplateItem => {
           const metaCat = t.meta_category ? t.meta_category.toLowerCase() : (t.category || 'marketing').toLowerCase();
-          const rawStatus = (t.meta_status || t.status || 'APPROVED').toUpperCase();
+          const hasMetaId = Boolean(t.meta_template_id && String(t.meta_template_id).trim());
+          const rawStatus = t.meta_status ? t.meta_status.toUpperCase() : hasMetaId ? 'APPROVED' : 'LOCAL_DRAFT';
           return {
             id: String(t.id),
             templateId: t.meta_template_id || t.name,
+            meta_template_id: t.meta_template_id || undefined,
             name: t.name,
             category: metaCat,
             language: t.language || 'en_US',

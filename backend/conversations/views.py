@@ -1871,223 +1871,87 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
     serializer_class = WhatsAppTemplateSerializer
 
     def list(self, request, *args, **kwargs):
-        if not WhatsAppTemplate.objects.exists():
-            default_templates = [
-                {
-                    'name': 'service_booking_confirmed',
-                    'category': 'Service Appointments',
-                    'meta_category': 'UTILITY',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'TEXT',
-                    'header_text': 'Booking Confirmed: {{1}}',
-                    'header_sample': 'AC Repair',
-                    'body': 'Hello {{1}},\nYour appointment for {{2}} is confirmed for {{3}}.\nAssigned Specialist: {{4}} ({{5}}).\n\nReply RESCHEDULE if you need to pick a different date.',
-                    'body_text': 'Hello {{1}},\nYour appointment for {{2}} is confirmed for {{3}}.\nAssigned Specialist: {{4}} ({{5}}).\n\nReply RESCHEDULE if you need to pick a different date.',
-                    'body_variables': {'1': 'Customer', '2': 'Comprehensive Service', '3': 'Tomorrow at 10:30 AM', '4': 'WhatsQ Specialist', '5': '+91 98471 23456'},
-                    'footer_text': 'WhatsQ Quick Dispatch • Support',
-                    'buttons': [
-                        {'id': 'btn_confirm', 'type': 'QUICK_REPLY', 'text': 'Confirm Slot'},
-                        {'id': 'btn_reschedule', 'type': 'QUICK_REPLY', 'text': 'Reschedule Date'},
-                        {'id': 'btn_call', 'type': 'PHONE_NUMBER', 'text': 'Call Specialist', 'phone_number': '+919847123456'}
-                    ],
-                    'usage_count': 142
-                },
-                {
-                    'name': 'technician_en_route',
-                    'category': 'Operations',
-                    'meta_category': 'UTILITY',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'IMAGE',
-                    'header_url': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80',
-                    'body': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://whatsq.qiyambusinesssolutions.com/track/{{5}}',
-                    'body_text': 'Hi {{1}},\nSpecialist {{2}} is en route for your service booking {{3}}.\nEstimated arrival: {{4}} (within 15-20 mins).\n\nTrack technician live on map:\nhttps://whatsq.qiyambusinesssolutions.com/track/{{5}}',
-                    'body_variables': {'1': 'Customer', '2': 'Service Specialist', '3': '#B4821', '4': '10:30 AM', '5': 'B4821'},
-                    'footer_text': 'WhatsQ Operations Support',
-                    'buttons': [
-                        {'id': 'btn_available', 'type': 'QUICK_REPLY', 'text': 'I am Available'},
-                        {'id': 'btn_delay', 'type': 'QUICK_REPLY', 'text': 'Delay by 30 mins'}
-                    ],
-                    'usage_count': 98
-                },
-                {
-                    'name': 'official_quotation_share',
-                    'category': 'Quotations & Sales',
-                    'meta_category': 'UTILITY',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'DOCUMENT',
-                    'header_url': 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                    'body': 'Hello {{1}},\nHere is the official quotation for {{2}}: ₹{{3}}.\n\nSummary:\n• Service: {{2}}\n• Inspection & Diagnostics: Included\n• Total Estimated Price: ₹{{3}}\n\nTo accept and lock this price, tap Approve below.',
-                    'body_text': 'Hello {{1}},\nHere is the official quotation for {{2}}: ₹{{3}}.\n\nSummary:\n• Service: {{2}}\n• Inspection & Diagnostics: Included\n• Total Estimated Price: ₹{{3}}\n\nTo accept and lock this price, tap Approve below.',
-                    'body_variables': {'1': 'Customer', '2': 'Facility Maintenance', '3': '1200'},
-                    'footer_text': 'WhatsQ Commercial Proposals',
-                    'buttons': [
-                        {'id': 'btn_approve_quote', 'type': 'QUICK_REPLY', 'text': 'Approve Quotation'},
-                        {'id': 'btn_revise_quote', 'type': 'QUICK_REPLY', 'text': 'Request Revision'},
-                        {'id': 'btn_sales_call', 'type': 'PHONE_NUMBER', 'text': 'Talk to Sales', 'phone_number': '+919876543210'}
-                    ],
-                    'usage_count': 76
-                },
-                {
-                    'name': 'invoice_payment_reminder',
-                    'category': 'Billing & Accounts',
-                    'meta_category': 'UTILITY',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'NONE',
-                    'body': 'Dear {{1}},\nThis is a friendly reminder that invoice #{{2}} for ₹{{3}} is pending. Due date: {{4}}.\n\nTap below to pay securely via UPI, Card, or Net Banking.',
-                    'body_text': 'Dear {{1}},\nThis is a friendly reminder that invoice #{{2}} for ₹{{3}} is pending. Due date: {{4}}.\n\nTap below to pay securely via UPI, Card, or Net Banking.',
-                    'body_variables': {'1': 'Customer', '2': 'INV-2026-001', '3': '2800', '4': 'Today'},
-                    'footer_text': 'Accounts Dept • WhatsQ Services',
-                    'buttons': [
-                        {'id': 'btn_pay_now', 'type': 'URL', 'text': 'Pay Now Securely', 'url': 'https://whatsq.qiyambusinesssolutions.com/pay/{{1}}', 'url_sample': 'INV001'},
-                        {'id': 'btn_already_paid', 'type': 'QUICK_REPLY', 'text': 'Already Paid'}
-                    ],
-                    'usage_count': 63
-                },
-                {
-                    'name': 'festival_discount_offer',
-                    'category': 'Marketing',
-                    'meta_category': 'MARKETING',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'IMAGE',
-                    'header_url': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80',
-                    'body': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all services and facility solutions this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
-                    'body_text': 'Special festive offer for you, {{1}}!\nGet up to 40% OFF on all services and facility solutions this week.\nUse promo code {{2}} at checkout.\n\nTap Claim Offer below to reserve your booking discount.',
-                    'body_variables': {'1': 'Customer', '2': 'FESTIVE40'},
-                    'footer_text': 'Limited Time Offer • Terms Apply',
-                    'buttons': [
-                        {'id': 'btn_claim', 'type': 'QUICK_REPLY', 'text': 'Claim Offer'},
-                        {'id': 'btn_code', 'type': 'COPY_CODE', 'text': 'Copy Code', 'code': 'FESTIVE40'},
-                        {'id': 'btn_stop_promo', 'type': 'QUICK_REPLY', 'text': 'Stop Promotions'}
-                    ],
-                    'usage_count': 210
-                },
-                {
-                    'name': 'customer_satisfaction_survey',
-                    'category': 'Customer Support',
-                    'meta_category': 'UTILITY',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'NONE',
-                    'body': 'Hi {{1}},\nThank you for choosing WhatsQ Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
-                    'body_text': 'Hi {{1}},\nThank you for choosing WhatsQ Services today! How satisfied were you with technician {{2}}?\n\nPlease reply with a score from 1 (Poor) to 5 (Outstanding) to help us improve.',
-                    'body_variables': {'1': 'Customer', '2': 'Specialist'},
-                    'footer_text': 'Your feedback helps us serve you better',
-                    'buttons': [
-                        {'id': 'btn_rate_5', 'type': 'QUICK_REPLY', 'text': '⭐⭐⭐⭐⭐ Excellent'},
-                        {'id': 'btn_rate_3', 'type': 'QUICK_REPLY', 'text': '⭐⭐⭐ Average'},
-                        {'id': 'btn_rate_1', 'type': 'QUICK_REPLY', 'text': '⭐ Need Help'}
-                    ],
-                    'usage_count': 88
-                },
-                {
-                    'name': 'welcome_onboarding',
-                    'category': 'Welcome & Onboarding',
-                    'meta_category': 'UTILITY',
-                    'status': 'Active',
-                    'meta_status': 'APPROVED',
-                    'language': 'en_US',
-                    'header_type': 'NONE',
-                    'body': 'Welcome to WhatsQ Services, {{1}}!\nWe provide top-rated facility and enterprise solutions across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
-                    'body_text': 'Welcome to WhatsQ Services, {{1}}!\nWe provide top-rated facility and enterprise solutions across Kerala.\nSave this number to your WhatsApp contacts for instant 24/7 service booking.\n\nHow can we help you today?',
-                    'body_variables': {'1': 'Customer'},
-                    'footer_text': 'WhatsQ Business Solutions',
-                    'buttons': [
-                        {'id': 'btn_book_srv', 'type': 'QUICK_REPLY', 'text': 'Book Service'},
-                        {'id': 'btn_pricing', 'type': 'QUICK_REPLY', 'text': 'View Pricing'},
-                        {'id': 'btn_support_call', 'type': 'PHONE_NUMBER', 'text': 'Call Helpline', 'phone_number': '+919876543210'}
-                    ],
-                    'usage_count': 175
-                }
-            ]
-            for t in default_templates:
-                WhatsAppTemplate.objects.create(**t)
+        config = MetaWhatsAppConfig.objects.first()
+        # If no templates exist or caller asked for sync, pull real templates from Meta
+        if request.query_params.get('sync') == '1' or not WhatsAppTemplate.objects.exists():
+            if config and config.access_token and config.waba_id and config.connection_status == 'connected':
+                try:
+                    res = MetaWhatsAppService.fetch_meta_templates(
+                        waba_id=config.waba_id,
+                        access_token=config.access_token,
+                        api_version=config.api_version
+                    )
+                    if res.get('success'):
+                        self._sync_meta_list(res.get('templates', []))
+                except Exception as e:
+                    logger.warning(f"Auto-syncing Meta templates failed: {e}")
         return super().list(request, *args, **kwargs)
 
-    @action(detail=True, methods=['post'])
-    def submit_to_meta(self, request, pk=None):
-        """
-        Submits the template to Meta Graph API: POST /{WABA_ID}/message_templates
-        """
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if 'name' in data and isinstance(data['name'], str):
+            data['name'] = data['name'].strip().lower().replace(' ', '_').replace('-', '_')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        template = serializer.save()
+
+        # Immediately submit to Meta Cloud API if connected
+        config = MetaWhatsAppConfig.objects.first()
+        if config and config.access_token and config.waba_id and config.connection_status == 'connected':
+            meta_res = MetaWhatsAppService.create_meta_template(
+                waba_id=config.waba_id,
+                access_token=config.access_token,
+                template_obj=template,
+                api_version=config.api_version
+            )
+            if meta_res.get('success'):
+                template.meta_template_id = meta_res.get('meta_template_id', '')
+                template.meta_status = meta_res.get('status', 'PENDING')
+                template.rejection_reason = ''
+                template.save()
+            else:
+                err = meta_res.get('error', 'Meta rejected template')
+                template.meta_status = 'REJECTED'
+                template.rejection_reason = err
+                template.save()
+                return Response({
+                    'error': f"Meta Cloud API Error: {err}",
+                    'meta_error': err,
+                    'template': WhatsAppTemplateSerializer(template).data
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            template.meta_status = 'LOCAL_DRAFT'
+            template.save()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(WhatsAppTemplateSerializer(template).data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
         template = self.get_object()
         config = MetaWhatsAppConfig.objects.first()
+        if config and config.access_token and config.waba_id and template.meta_template_id:
+            try:
+                MetaWhatsAppService.delete_meta_template(
+                    waba_id=config.waba_id,
+                    access_token=config.access_token,
+                    template_name=template.name,
+                    api_version=config.api_version
+                )
+            except Exception as e:
+                logger.warning(f"Failed to delete template '{template.name}' on Meta: {e}")
+        return super().destroy(request, *args, **kwargs)
 
-        if not config or not config.access_token or not config.waba_id:
-            # Simulation / Demo mode fallback when real credentials aren't set yet
-            template.meta_status = 'PENDING'
-            template.meta_template_id = f"sim_{template.id}_{int(datetime.datetime.now().timestamp())}"
-            template.last_updated = datetime.datetime.now().strftime('%b %d, %Y')
-            template.save()
-            return Response({
-                'status': 'submitted_sandbox',
-                'message': 'Meta credentials not configured. Template saved in local sandbox as In Review / Pending.',
-                'template': WhatsAppTemplateSerializer(template).data
-            }, status=status.HTTP_200_OK)
-
-        res = MetaWhatsAppService.create_meta_template(
-            waba_id=config.waba_id,
-            access_token=config.access_token,
-            template_obj=template,
-            api_version=config.api_version
-        )
-
-        if res.get('success'):
-            template.meta_template_id = res.get('meta_template_id', '')
-            template.meta_status = res.get('status', 'PENDING')
-            template.rejection_reason = ''
-            template.last_updated = datetime.datetime.now().strftime('%b %d, %Y')
-            template.save()
-            return Response({
-                'status': 'success',
-                'message': f"Template submitted to Meta successfully! Status: {template.meta_status}",
-                'template': WhatsAppTemplateSerializer(template).data
-            }, status=status.HTTP_200_OK)
-        else:
-            template.rejection_reason = res.get('error', 'Meta rejected template')
-            template.meta_status = 'REJECTED'
-            template.save()
-            return Response({
-                'status': 'error',
-                'error': res.get('error'),
-                'template': WhatsAppTemplateSerializer(template).data
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=['post'])
-    def sync_meta(self, request):
-        """
-        Fetches live template status updates from Meta Graph API
-        """
-        config = MetaWhatsAppConfig.objects.first()
-        if not config or not config.access_token or not config.waba_id:
-            return Response({
-                'status': 'notice',
-                'message': 'No Meta WhatsApp credentials configured. Using local templates.'
-            }, status=status.HTTP_200_OK)
-
-        res = MetaWhatsAppService.fetch_meta_templates(
-            waba_id=config.waba_id,
-            access_token=config.access_token,
-            api_version=config.api_version
-        )
-
-        if not res.get('success'):
-            return Response({'error': res.get('error')}, status=status.HTTP_400_BAD_REQUEST)
-
-        meta_list = res.get('templates', [])
+    def _sync_meta_list(self, meta_list):
+        import re
+        meta_names = set()
         synced_count = 0
 
         for m in meta_list:
             name = m.get('name')
+            if not name:
+                continue
+            meta_names.add(name)
             status_val = m.get('status', 'APPROVED')
             category = m.get('category', 'UTILITY')
             lang = m.get('language', 'en_US')
@@ -2099,11 +1963,18 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
             header_url = ''
             footer_text = ''
             buttons = []
+            body_variables = {}
 
             for comp in m.get('components', []):
                 c_type = comp.get('type', '').upper()
                 if c_type == 'BODY':
                     body_text = comp.get('text', '')
+                    ex = comp.get('example', {})
+                    sample_rows = ex.get('body_text', [])
+                    if sample_rows and isinstance(sample_rows, list) and len(sample_rows) > 0:
+                        first_row = sample_rows[0] if isinstance(sample_rows[0], list) else sample_rows
+                        for idx, val in enumerate(first_row, 1):
+                            body_variables[str(idx)] = str(val)
                 elif c_type == 'HEADER':
                     header_format = comp.get('format', 'TEXT').upper()
                     header_type = header_format
@@ -2129,7 +2000,13 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                             btn_data['code'] = b.get('example', [''])[0] if isinstance(b.get('example'), list) else b.get('example', '')
                         buttons.append(btn_data)
 
-            # Find matching local template or create safely
+            # Auto-detect any missing variable placeholders
+            if body_text:
+                found_vars = re.findall(r'\{\{(\d+)\}\}', body_text)
+                for fv in found_vars:
+                    if fv not in body_variables:
+                        body_variables[fv] = f"Sample {fv}"
+
             tmpl = WhatsAppTemplate.objects.filter(name=name).first()
             if not tmpl:
                 tmpl = WhatsAppTemplate.objects.create(
@@ -2141,6 +2018,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     language=lang,
                     body=body_text or 'Synced from Meta',
                     body_text=body_text or 'Synced from Meta',
+                    body_variables=body_variables,
                     header_type=header_type,
                     header_text=header_text,
                     header_url=header_url,
@@ -2157,6 +2035,8 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                 if body_text:
                     tmpl.body = body_text
                     tmpl.body_text = body_text
+                if body_variables:
+                    tmpl.body_variables = body_variables
                 if header_type != 'NONE':
                     tmpl.header_type = header_type
                     tmpl.header_text = header_text
@@ -2169,11 +2049,90 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                 tmpl.save()
             synced_count += 1
 
+        # Reconcile: Any local template in DB that does NOT exist on Meta must NOT show fake 'APPROVED'
+        unsynced_local = WhatsAppTemplate.objects.exclude(name__in=meta_names)
+        for un in unsynced_local:
+            if un.meta_status == 'APPROVED':
+                un.meta_status = 'UNSYNCED'
+                un.status = 'Draft'
+                un.save()
+
+        return synced_count
+
+    @action(detail=False, methods=['post'])
+    def sync_meta(self, request):
+        """
+        Fetches live template status updates from Meta Graph API
+        """
+        config = MetaWhatsAppConfig.objects.first()
+        if not config or not config.access_token or not config.waba_id:
+            return Response({
+                'status': 'notice',
+                'message': 'No Meta WhatsApp credentials configured.'
+            }, status=status.HTTP_200_OK)
+
+        res = MetaWhatsAppService.fetch_meta_templates(
+            waba_id=config.waba_id,
+            access_token=config.access_token,
+            api_version=config.api_version
+        )
+
+        if not res.get('success'):
+            return Response({'error': res.get('error')}, status=status.HTTP_400_BAD_REQUEST)
+
+        meta_list = res.get('templates', [])
+        synced_count = self._sync_meta_list(meta_list)
+
         return Response({
             'status': 'success',
             'synced_count': synced_count,
             'templates': WhatsAppTemplateSerializer(WhatsAppTemplate.objects.all(), many=True).data
         })
+
+    @action(detail=True, methods=['get'])
+    def verify_meta(self, request, pk=None):
+        """
+        Verifies this template's live status directly from Meta Graph API
+        """
+        template = self.get_object()
+        config = MetaWhatsAppConfig.objects.first()
+        if not config or not config.access_token or not config.waba_id:
+            return Response({
+                'success': False,
+                'error': 'Meta WhatsApp credentials are not configured.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        res = MetaWhatsAppService.fetch_meta_templates(
+            waba_id=config.waba_id,
+            access_token=config.access_token,
+            api_version=config.api_version
+        )
+        if not res.get('success'):
+            return Response({'success': False, 'error': res.get('error')}, status=status.HTTP_400_BAD_REQUEST)
+
+        matched = next((m for m in res.get('templates', []) if m.get('name') == template.name), None)
+        if matched:
+            template.meta_template_id = matched.get('id', template.meta_template_id)
+            template.meta_status = matched.get('status', 'APPROVED')
+            template.meta_category = matched.get('category', template.meta_category)
+            template.language = matched.get('language', template.language)
+            template.save()
+            return Response({
+                'success': True,
+                'live_meta_status': template.meta_status,
+                'meta_template_id': template.meta_template_id,
+                'raw_meta_data': matched,
+                'template': WhatsAppTemplateSerializer(template).data
+            })
+        else:
+            template.meta_status = 'NOT_FOUND_ON_META'
+            template.save()
+            return Response({
+                'success': False,
+                'live_meta_status': 'NOT_FOUND_ON_META',
+                'error': f"Template '{template.name}' does not exist on your connected Meta WABA account.",
+                'template': WhatsAppTemplateSerializer(template).data
+            })
 
     @action(detail=True, methods=['post'])
     def test_send(self, request, pk=None):

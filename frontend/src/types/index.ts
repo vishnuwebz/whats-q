@@ -886,6 +886,7 @@ export interface BulkTemplateItem {
   id: string;
   name: string;
   templateId?: string;
+  meta_template_id?: string;
   category: 'Appointments' | 'Payments' | 'Marketing' | 'General' | 'Operations' | 'Customer Support' | 'Security' | 'Billing' | 'Other' | 'marketing' | 'utility' | 'authentication' | string;
   language: string;
   status: 'Approved' | 'Pending' | 'Rejected' | 'APPROVED' | 'PENDING' | 'REJECTED' | string;

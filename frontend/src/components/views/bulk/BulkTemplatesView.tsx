@@ -72,6 +72,7 @@ export const BulkTemplatesView: React.FC = () => {
     updateBulkTemplateStatus,
     fetchBulkTemplates,
     syncBulkTemplatesWithMeta,
+    verifyMetaTemplate,
     duplicateCampaign,
     setActiveTab,
     setSelectedBulkTemplateId,
@@ -88,7 +89,29 @@ export const BulkTemplatesView: React.FC = () => {
   );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<BulkTemplateItem | null>(null);
+
+  const handleLiveVerifyMeta = async (tmplId: string) => {
+    setVerifyingId(tmplId);
+    try {
+      const res = await verifyMetaTemplate(tmplId);
+      if (res && res.template) {
+        if (selectedTemplate && String(selectedTemplate.id) === String(tmplId)) {
+          setSelectedTemplate({
+            ...selectedTemplate,
+            status: res.live_meta_status,
+            meta_status: res.live_meta_status,
+            templateId: res.meta_template_id || selectedTemplate.templateId,
+            meta_template_id: res.meta_template_id || selectedTemplate.meta_template_id,
+          });
+        }
+      }
+    } finally {
+      setVerifyingId(null);
+    }
+  };
 
   const handleConfirmDeleteTemplate = async () => {
     if (!templateToDelete) return;
@@ -517,9 +540,23 @@ export const BulkTemplatesView: React.FC = () => {
                   {/* Top row */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm">{tmpl.name}</h3>
-                      <div className="text-[10px] text-slate-400 font-medium">
-                        Language: {tmpl.language} • ID: {tmpl.id}
+                      <h3 className="font-bold text-slate-900 text-sm font-mono truncate max-w-[220px]" title={tmpl.name}>
+                        {tmpl.name}
+                      </h3>
+                      <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-500 font-medium mt-0.5">
+                        <span>Lang: {tmpl.language}</span>
+                        <span>•</span>
+                        {tmpl.meta_template_id || (tmpl.templateId && /^\d+$/.test(tmpl.templateId)) ? (
+                          <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            Meta ID: #{tmpl.meta_template_id || tmpl.templateId}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 font-mono text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                            <Clock className="w-3 h-3 text-amber-500" />
+                            Meta Review
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -595,16 +632,21 @@ export const BulkTemplatesView: React.FC = () => {
                     {tmpl.bodyText}
                   </div>
 
-                  {/* Pending Review Notice & Quick Approval Button */}
+                  {/* Pending Review Notice & Real Live Meta Verification */}
                   {isPending && (
                     <button
                       type="button"
-                      onClick={() => updateBulkTemplateStatus(tmpl.id, 'APPROVED')}
-                      className="mt-1 mb-2 w-full py-1.5 px-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[10px] rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                      title="Simulate Meta WhatsApp Graph API Webhook Approval"
+                      onClick={() => handleLiveVerifyMeta(tmpl.id)}
+                      disabled={verifyingId === tmpl.id}
+                      className="mt-1 mb-2 w-full py-1.5 px-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-[10px] rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-60"
+                      title="Check real-time approval review status on Meta Cloud API"
                     >
-                      <CheckCircle2 className="w-3 h-3" />
-                      ⚡ Instant Approve (Meta Webhook)
+                      {verifyingId === tmpl.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                      ⚡ Live Check on Meta API
                     </button>
                   )}
                 </div>
@@ -740,34 +782,129 @@ export const BulkTemplatesView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Instant Approval in Drawer if Pending */}
-              {selectedTemplate.status === 'PENDING' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
-                    <Clock className="w-4 h-4 text-amber-600 animate-spin" />
-                    <span>Under Meta WhatsApp Review</span>
+              {/* Real Meta Cloud Verification Pipeline Panel */}
+              <div className="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 space-y-3.5 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-slate-100">
+                        <span>Meta WhatsApp Cloud API</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      </div>
+                      <div className="text-[10px] text-slate-300">
+                        WABA: Qiyam Business Solutions (+91 94963 00233)
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-amber-800">
-                    This template was submitted to Meta Cloud API. Typically takes 2-15 minutes, or
-                    test immediately using instant simulation below.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateBulkTemplateStatus(selectedTemplate.id, 'APPROVED');
-                      setSelectedTemplate({
-                        ...selectedTemplate,
-                        status: 'APPROVED',
-                        meta_status: 'APPROVED',
-                      });
-                    }}
-                    className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 border ${
+                      selectedTemplate.status === 'APPROVED'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : selectedTemplate.status === 'PENDING'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                    }`}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Simulate Meta Approval Webhook
-                  </button>
+                    {selectedTemplate.status === 'APPROVED' && <CheckCircle2 className="w-3 h-3" />}
+                    {selectedTemplate.status === 'PENDING' && <Clock className="w-3 h-3 animate-spin" />}
+                    {selectedTemplate.status === 'APPROVED' ? 'META VERIFIED' : selectedTemplate.status}
+                  </span>
                 </div>
-              )}
+
+                <div className="grid grid-cols-2 gap-2 text-[10px] bg-white/5 p-2.5 rounded-xl border border-white/10">
+                  <div>
+                    <span className="text-slate-400 block font-semibold">META TEMPLATE ID</span>
+                    <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200 mt-0.5">
+                      <span className="truncate max-w-[120px]">{selectedTemplate.meta_template_id || selectedTemplate.templateId || 'Not assigned'}</span>
+                      {(selectedTemplate.meta_template_id || selectedTemplate.templateId) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedTemplate.meta_template_id || selectedTemplate.templateId || '');
+                            setCopiedId(true);
+                            setTimeout(() => setCopiedId(false), 2000);
+                            addToast('Meta Template ID copied!', 'success');
+                          }}
+                          className="text-slate-400 hover:text-white transition p-0.5 cursor-pointer"
+                          title="Copy Meta Template ID"
+                        >
+                          {copiedId ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block font-semibold">QUALITY RATING</span>
+                    <span className="font-bold text-emerald-400 mt-0.5 block">
+                      {selectedTemplate.qualityRating || 'High (GREEN)'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live verification button */}
+                <button
+                  type="button"
+                  onClick={() => handleLiveVerifyMeta(selectedTemplate.id)}
+                  disabled={verifyingId === selectedTemplate.id}
+                  className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {verifyingId === selectedTemplate.id ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Checking Meta Graph API live...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>⚡ Live Check on Meta Cloud API</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Dynamic Variable Schema Breakdown */}
+              {(() => {
+                const varMatches = selectedTemplate.bodyText.match(/\{\{[^}]+\}\}/g) || [];
+                const uniqueVars = Array.from(new Set(varMatches));
+                if (uniqueVars.length === 0) return null;
+                const bodyVars = selectedTemplate.bodyVariables || {};
+
+                return (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Dynamic Parameter Schema ({uniqueVars.length})</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-normal">Real Meta Mapping</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {uniqueVars.map((v, idx) => {
+                        const cleanKey = v.replace(/[{}]/g, '');
+                        const sampleVal = bodyVars[cleanKey] || bodyVars[v] || `Param ${idx + 1} (e.g. Customer Name)`;
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px]"
+                          >
+                            <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                              {v}
+                            </span>
+                            <span className="text-slate-600 truncate max-w-[180px] font-medium">
+                              Sample: <span className="font-normal italic text-slate-800">"{sampleVal}"</span>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* WhatsApp Bubble Preview */}
               <div className="space-y-1.5">
