@@ -30,6 +30,9 @@ import {
   Check,
   Eye,
   Filter,
+  UserPlus,
+  Phone,
+  Plus,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkContact, BulkRecipientList, BulkTemplateItem } from '../../../types';
@@ -57,6 +60,7 @@ export const BulkSendMessageView: React.FC = () => {
     setDraftCampaign,
     selectedBroadcastListId,
     setSelectedBroadcastListId,
+    updateRecipientList,
   } = useQiyamStore();
 
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
@@ -121,6 +125,13 @@ export const BulkSendMessageView: React.FC = () => {
   const [selectedContactIds, setSelectedContactIds] = useState<Record<string, Set<string>>>({});
   const [contactsSearchQuery, setContactsSearchQuery] = useState('');
   const [contactsTagFilter, setContactsTagFilter] = useState('all');
+
+  // Add New Customer/Number to Broadcast states
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactTag, setNewContactTag] = useState('');
+  const [newlyAddedContactId, setNewlyAddedContactId] = useState<string | null>(null);
 
   // Test Send Modal state
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
@@ -439,6 +450,94 @@ export const BulkSendMessageView: React.FC = () => {
       [activeList.id]: activeSet,
     }));
     addToast(`Selected ${activeSet.size} valid & non-opted out contacts`, 'info');
+  };
+
+  // Add new customer number directly into the broadcast audience
+  const handleAddNewContact = () => {
+    const name = newContactName.trim();
+    const rawPhone = newContactPhone.trim();
+
+    if (!rawPhone) {
+      addToast('Please enter a WhatsApp phone number', 'error');
+      return;
+    }
+
+    const cleanDigits = rawPhone.replace(/\D/g, '');
+    if (cleanDigits.length < 10) {
+      addToast('Please enter a valid phone number with at least 10 digits', 'error');
+      return;
+    }
+
+    // Standardize phone format with country code
+    let formattedPhone = rawPhone;
+    if (!formattedPhone.startsWith('+')) {
+      if (cleanDigits.length === 10) {
+        formattedPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
+      } else {
+        formattedPhone = `+${cleanDigits}`;
+      }
+    }
+
+    // Check if phone number already exists in this list
+    const existingContact = currentListContacts.find((c) => {
+      const cDigits = c.phone.replace(/\D/g, '');
+      return cDigits === cleanDigits || c.phone.trim() === formattedPhone.trim();
+    });
+
+    if (existingContact) {
+      // Auto-select existing contact
+      setSelectedContactIds((prev) => {
+        const currentSet = new Set(prev[activeList.id] || activeSelectedIds);
+        currentSet.add(existingContact.id);
+        return { ...prev, [activeList.id]: currentSet };
+      });
+      setNewlyAddedContactId(existingContact.id);
+      addToast(
+        `Contact "${existingContact.name}" (${existingContact.phone}) already exists — selected for broadcast!`,
+        'info'
+      );
+      setIsAddContactOpen(false);
+      setNewContactName('');
+      setNewContactPhone('');
+      setNewContactTag('');
+      return;
+    }
+
+    const newContactId = `contact-manual-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const newContact: BulkContact = {
+      id: newContactId,
+      name: name || 'New Customer',
+      phone: formattedPhone,
+      tag: newContactTag.trim() || 'Direct Added',
+      validWhatsApp: true,
+      optedOut: false,
+      source: 'Manual Addition',
+      lastActive: 'Just now',
+    };
+
+    const updatedContacts = [newContact, ...currentListContacts];
+    const validCount = updatedContacts.filter((c) => c.validWhatsApp && !c.optedOut).length;
+
+    // Update list in store
+    updateRecipientList(activeList.id, {
+      contactItems: updatedContacts,
+      contactCount: updatedContacts.length,
+      validWhatsAppCount: validCount,
+    });
+
+    // Auto-select newly added contact so it is immediately included for broadcast
+    setSelectedContactIds((prev) => {
+      const currentSet = new Set(prev[activeList.id] || activeSelectedIds);
+      currentSet.add(newContactId);
+      return { ...prev, [activeList.id]: currentSet };
+    });
+
+    setNewlyAddedContactId(newContactId);
+    setIsAddContactOpen(false);
+    setNewContactName('');
+    setNewContactPhone('');
+    setNewContactTag('');
+    addToast(`Added "${newContact.name}" (${formattedPhone}) and included for broadcast!`, 'success');
   };
 
   // Handle Launch Broadcast
@@ -1480,13 +1579,24 @@ export const BulkSendMessageView: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsContactsModalOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddContactOpen(!isAddContactOpen)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Add new customer phone number to broadcast list"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Add Number</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsContactsModalOpen(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Filter & Control Bar */}
@@ -1557,6 +1667,15 @@ export const BulkSendMessageView: React.FC = () => {
                   >
                     ✓ Non-Opted Out Only
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddContactOpen(!isAddContactOpen)}
+                    className="px-2.5 py-1.5 rounded-lg border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition cursor-pointer shadow-2xs flex items-center gap-1 active:scale-95"
+                    title="Add new customer phone number to broadcast list"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add New Customer</span>
+                  </button>
                 </div>
 
                 <div className="text-xs font-medium text-slate-600 flex items-center gap-2">
@@ -1571,6 +1690,101 @@ export const BulkSendMessageView: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Collapsible / Expandable Inline Add Customer Form Drawer */}
+            {isAddContactOpen && (
+              <div className="p-4 bg-emerald-50/80 border-b border-emerald-200 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
+                      <UserPlus className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-950">Add New Customer Number to Broadcast</h4>
+                      <p className="text-[10px] text-emerald-700">Enter customer details to immediately include them in this campaign</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddContactOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Customer Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                      placeholder="e.g. Rahul Sharma"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddNewContact();
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      WhatsApp Number <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={newContactPhone}
+                        onChange={(e) => setNewContactPhone(e.target.value)}
+                        placeholder="e.g. +91 98765 43210"
+                        className="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddNewContact();
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Tag / Segment (Optional)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newContactTag}
+                        onChange={(e) => setNewContactTag(e.target.value)}
+                        placeholder="e.g. VIP, Direct, Lead"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddNewContact();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewContact}
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap cursor-pointer shrink-0"
+                      >
+                        + Add & Include
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Contacts Table List */}
             <div className="flex-1 overflow-y-auto max-h-[460px] divide-y divide-slate-100">
@@ -1619,12 +1833,17 @@ export const BulkSendMessageView: React.FC = () => {
                   <tbody className="divide-y divide-slate-100">
                     {filteredContactsList.map((contact) => {
                       const isSelected = activeSelectedIds.has(contact.id);
+                      const isNewlyAdded = contact.id === newlyAddedContactId;
                       return (
                         <tr
                           key={contact.id}
                           onClick={() => toggleContactSelection(contact.id)}
                           className={`hover:bg-slate-50/80 cursor-pointer transition ${
-                            isSelected ? 'bg-emerald-50/30' : 'opacity-60 bg-white'
+                            isNewlyAdded
+                              ? 'bg-emerald-100/70 ring-1 ring-emerald-400'
+                              : isSelected
+                              ? 'bg-emerald-50/30'
+                              : 'opacity-60 bg-white'
                           }`}
                         >
                           <td
@@ -1639,7 +1858,14 @@ export const BulkSendMessageView: React.FC = () => {
                             />
                           </td>
                           <td className="py-3 px-3">
-                            <div className="font-bold text-slate-900">{contact.name}</div>
+                            <div className="font-bold text-slate-900 flex items-center">
+                              <span>{contact.name}</span>
+                              {isNewlyAdded && (
+                                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-emerald-600 text-white uppercase tracking-wider animate-pulse">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
                             {contact.email && (
                               <div className="text-[10px] text-slate-400">{contact.email}</div>
                             )}
