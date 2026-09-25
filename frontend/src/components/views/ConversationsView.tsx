@@ -8,7 +8,7 @@ import {
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
-  Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone
+  Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone, RefreshCw
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
@@ -82,6 +82,7 @@ export const ConversationsView: React.FC = () => {
     employees,
     assignStaffToConversation,
     addEmployee,
+    refreshConversations,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam' | 'deleted'>('all');
@@ -124,6 +125,10 @@ export const ConversationsView: React.FC = () => {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const [activeFloatingDate, setActiveFloatingDate] = useState<string>('');
+  const [isScrolledUp, setIsScrolledUp] = useState<boolean>(false);
+  const [isRefreshingLatest, setIsRefreshingLatest] = useState<boolean>(false);
+  const [unreadBelowCount, setUnreadBelowCount] = useState<number>(0);
+  const prevMsgCountRef = React.useRef<number>(0);
   const typingTimerRef = React.useRef<any>(null);
   const isTypingEmittedRef = React.useRef<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -467,10 +472,40 @@ export const ConversationsView: React.FC = () => {
     };
   }, []);
 
-  // Smooth auto-scroll to latest message or typing indicator
+  // Reset scroll and unread counter when switching conversations
   React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentConv?.messages?.length, currentConv ? typingUsers[currentConv.id] : false]);
+    setIsScrolledUp(false);
+    setUnreadBelowCount(0);
+    prevMsgCountRef.current = currentConv?.messages?.length || 0;
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [currentConv?.id]);
+
+  // Handle incoming messages while in active chat
+  React.useEffect(() => {
+    const currentCount = currentConv?.messages?.length || 0;
+    const prevCount = prevMsgCountRef.current;
+
+    if (currentCount > prevCount) {
+      const diff = currentCount - prevCount;
+      if (isScrolledUp) {
+        setUnreadBelowCount((prev) => prev + diff);
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setUnreadBelowCount(0);
+      }
+    }
+    prevMsgCountRef.current = currentCount;
+  }, [currentConv?.messages?.length, isScrolledUp]);
+
+  // Smooth auto-scroll for typing indicator (only if already near bottom)
+  React.useEffect(() => {
+    if (currentConv && typingUsers[currentConv.id] && !isScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentConv ? typingUsers[currentConv.id] : false, isScrolledUp]);
 
   const counts = {
     all: conversations.length,
@@ -582,10 +617,62 @@ export const ConversationsView: React.FC = () => {
     return () => clearTimeout(timer);
   }, [currentConv?.id, updateFloatingDate]);
 
-  // Dynamically update floating date pill on scroll exactly like official WhatsApp
+  // Dynamically update floating date pill and bottom scroll distance
   const handleMessagesScroll = React.useCallback(() => {
     updateFloatingDate();
+
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    // Consider scrolled up if user is more than 60px away from bottom
+    const scrolledUp = distanceFromBottom > 60;
+    setIsScrolledUp(scrolledUp);
+
+    // If user manually scrolled back down to the very bottom, clear unread below counter
+    if (distanceFromBottom <= 30) {
+      setUnreadBelowCount(0);
+    }
   }, [updateFloatingDate]);
+
+  // Jump smoothly to the latest chat message and sync latest updates from WhatsApp server
+  const handleLoadLatestChat = React.useCallback(async () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    setIsScrolledUp(false);
+    setUnreadBelowCount(0);
+
+    if (currentConv?.id) {
+      setIsRefreshingLatest(true);
+      try {
+        await Promise.allSettled([
+          refreshConversations(),
+          markConversationAsRead(currentConv.id),
+        ]);
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTo({
+              top: messagesContainerRef.current.scrollHeight,
+              behavior: 'smooth',
+            });
+          } else {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 150);
+      } catch (err) {
+        console.error('Failed to load latest chat:', err);
+      } finally {
+        setIsRefreshingLatest(false);
+      }
+    }
+  }, [currentConv?.id, refreshConversations, markConversationAsRead]);
 
   const sourceConvs = activeFilterTab === 'deleted' ? (deletedConversations || []) : conversations;
   const filteredConversations = sortConversationsByRecency(
@@ -2129,6 +2216,20 @@ export const ConversationsView: React.FC = () => {
                               <button
                                 onClick={() => {
                                   setIsHeaderMenuOpen(false);
+                                  handleLoadLatestChat();
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left cursor-pointer"
+                              >
+                                <RefreshCw className={`w-4 h-4 text-emerald-600 shrink-0 ${isRefreshingLatest ? 'animate-spin' : ''}`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold truncate">Load Latest Chat</p>
+                                  <p className="text-[10px] text-slate-400 truncate">Sync messages & jump to bottom</p>
+                                </div>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setIsHeaderMenuOpen(false);
                                   addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
                                   window.open(`tel:${currentConv.phone_number.replace(/\s+/g, '')}`, '_self');
                                 }}
@@ -2213,6 +2314,17 @@ export const ConversationsView: React.FC = () => {
                   ) : (
                     /* Expanded State: Full Action Buttons + Minimize Button */
                     <div className="flex items-center gap-1.5 sm:gap-2 animate-in fade-in duration-200">
+                      {/* Load Latest Chat & Sync */}
+                      <button
+                        onClick={handleLoadLatestChat}
+                        disabled={isRefreshingLatest}
+                        className="p-1.5 sm:p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer disabled:opacity-50"
+                        title="Load latest chat & sync"
+                        aria-label="Load latest chat & sync"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isRefreshingLatest ? 'animate-spin text-emerald-600' : ''}`} />
+                      </button>
+
                       <button
                         onClick={() => {
                           addToast(`Calling ${currentConv.contact_name} (${currentConv.phone_number})...`, 'info');
@@ -2377,12 +2489,13 @@ export const ConversationsView: React.FC = () => {
                 </div>
               )}
 
-              {/* Chat Messages Body */}
-              <div
-                ref={messagesContainerRef}
-                onScroll={handleMessagesScroll}
-                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 relative"
-              >
+              {/* Chat Messages Body & Floating Controls */}
+              <div className="relative flex-1 min-h-0 flex flex-col">
+                <div
+                  ref={messagesContainerRef}
+                  onScroll={handleMessagesScroll}
+                  className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 relative"
+                >
                 {/* Official WhatsApp Dynamic Sticky Floating Date Header */}
                 {activeFloatingDate && (
                   <div className="sticky top-1 z-20 flex justify-center pointer-events-none select-none transition-all duration-200">
@@ -2765,6 +2878,34 @@ export const ConversationsView: React.FC = () => {
                 )}
                 <div ref={messagesEndRef} />
               </div>
+
+              {/* Floating "Jump to Latest Chat" Downward Arrow Button (WhatsApp Web Style) */}
+              {isScrolledUp && (
+                <div className="absolute bottom-4 right-5 sm:right-6 z-30 animate-in fade-in zoom-in-95 duration-200">
+                  <button
+                    type="button"
+                    onClick={handleLoadLatestChat}
+                    disabled={isRefreshingLatest}
+                    className="group relative flex items-center justify-center w-10 h-10 rounded-full bg-white/95 hover:bg-white text-slate-600 hover:text-emerald-600 border border-slate-200/90 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    title="Load latest chat"
+                    aria-label="Load latest chat"
+                  >
+                    {isRefreshingLatest ? (
+                      <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 stroke-[2.5] transition-transform group-hover:translate-y-0.5" />
+                    )}
+
+                    {/* Unread / New Incoming Messages Count Badge */}
+                    {unreadBelowCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-md border-2 border-white animate-pulse">
+                        {unreadBelowCount > 99 ? '99+' : unreadBelowCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
 
               {/* Quick Action Chips Bar */}
               <div
