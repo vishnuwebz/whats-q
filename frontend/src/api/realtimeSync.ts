@@ -3,10 +3,10 @@ import { mapMessage } from './mappers';
 import { API_BASE } from './client';
 
 export interface RealtimeEvent {
-  id: string;
+  id?: string;
   type: string;
   data: any;
-  timestamp: number;
+  timestamp?: number;
 }
 
 export type SyncStatus = 'connected' | 'reconnecting' | 'offline';
@@ -100,6 +100,24 @@ class RealtimeSyncManager {
           this.handleEvent(payload);
         } catch (err) {
           console.warn('[RealtimeSync] Error parsing conversation.updated event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('contact.resubscribed', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'contact.resubscribed', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing contact.resubscribed event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('contact.opted_out', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'contact.opted_out', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing contact.opted_out event:', err);
         }
       });
 
@@ -287,6 +305,35 @@ class RealtimeSyncManager {
         if (event.data && event.data.id) {
           removeDeletedConversationId(event.data.id);
           store.applyRealtimeConversation(event.data);
+          if (event.data.is_opted_out === false && event.data.phone_number) {
+            store.removeSuppressionRecord(event.data.phone_number, event.data.id);
+          }
+        }
+        break;
+      }
+
+      case 'contact.resubscribed': {
+        const { conversation_id, phone } = event.data || {};
+        if (phone || conversation_id) {
+          store.removeSuppressionRecord(phone || String(conversation_id), conversation_id);
+        }
+        break;
+      }
+
+      case 'contact.opted_out': {
+        const { conversation_id, phone, name, reason, date } = event.data || {};
+        if (phone) {
+          store.addSuppressionRecord({
+            id: `sup-${Date.now()}`,
+            name: name || 'Customer',
+            phone,
+            type: 'opt_out_stop',
+            reason: reason || 'Replied "STOP" on WhatsApp',
+            date: date || 'Recent',
+            status: 'Suppressed',
+            canResubscribe: true,
+            source: 'Inbound WhatsApp Keyword (STOP)',
+          });
         }
         break;
       }

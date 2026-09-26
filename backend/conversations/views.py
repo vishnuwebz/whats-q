@@ -977,44 +977,90 @@ class ConversationViewSet(viewsets.ModelViewSet):
     def resubscribe(self, request):
         """
         Re-subscribe a contact with explicit consent.
-        Clears is_blocked, is_opted_out, suppression_reason, suppression_date,
-        and removes suppression tags.
+        Clears is_blocked, is_opted_out, suppression_reason,
+        and removes suppression tags permanently across both DB and SSE clients.
         """
         phone = request.data.get('phone', '')
         conv_id = request.data.get('id', '')
         conv = None
+
+        # 1. Match by integer PK
         if conv_id and str(conv_id).isdigit():
             conv = Conversation.objects.filter(pk=int(conv_id)).first()
-        if not conv and phone:
-            clean_digits = re.sub(r'\D', '', str(phone))
-            if clean_digits:
-                suffix = clean_digits[-10:] if len(clean_digits) >= 10 else clean_digits
-                conv = Conversation.objects.filter(phone_number__endswith=suffix).first()
+
+        # 2. Match by normalized phone digits (ignoring spaces, dashes, formatting)
+        raw_candidates = [str(phone or '').strip(), str(conv_id or '').strip()]
+        for cand in raw_candidates:
+            if not conv and cand:
+                cand_digits = re.sub(r'\D', '', cand)
+                if len(cand_digits) >= 7:
+                    suffix = cand_digits[-10:] if len(cand_digits) >= 10 else cand_digits
+                    for c in Conversation.objects.all():
+                        c_clean = re.sub(r'\D', '', str(c.phone_number))
+                        if c_clean and (c_clean.endswith(suffix) or suffix.endswith(c_clean[-10:])):
+                            conv = c
+                            break
+
+        # 3. Match by contact name
         if not conv and conv_id:
-            conv = Conversation.objects.filter(contact_name=conv_id).first()
+            conv = Conversation.objects.filter(contact_name__iexact=str(conv_id).strip()).first()
+        if not conv and phone:
+            conv = Conversation.objects.filter(contact_name__iexact=str(phone).strip()).first()
+
+        # 4. Fallback: match by whatsapp_lid if present
+        if not conv and conv_id:
+            conv = Conversation.objects.filter(whatsapp_lid=str(conv_id).strip()).first()
 
         if conv:
             conv.is_blocked = False
             conv.is_opted_out = False
             conv.suppression_reason = ''
-            conv.suppression_date = None
-            if conv.tags:
-                conv.tags = [t for t in conv.tags if str(t).lower() not in ['blocked', 'opted out', 'opt-out', 'unsubscribed']]
+            cleaned_tags = [t for t in (conv.tags or []) if str(t).lower() not in ['blocked', 'opted out', 'opt-out', 'unsubscribed']]
+            if 'Opted In' not in cleaned_tags:
+                cleaned_tags.append('Opted In')
+            conv.tags = cleaned_tags
             conv.save()
-            try:
-                from core.events import event_bus
-                event_bus.publish('conversation.resubscribed', {
-                    'id': conv.id,
-                    'phone_number': conv.phone_number,
-                    'contact_name': conv.contact_name,
-                })
-            except Exception:
-                pass
-            logger.info(f"Conversation {conv.id} ({conv.contact_name}) re-subscribed with consent.")
+
+            now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+            conv_data = ConversationSerializer(conv).data
+
+            # Emit real-time SSE events so all open browsers update immediately
+            emit_event('conversation.updated', {
+                'id': conv.id,
+                'contact_name': conv.contact_name,
+                'phone_number': conv.phone_number,
+                'is_opted_out': False,
+                'is_blocked': False,
+                'suppression_reason': '',
+                'tags': conv.tags,
+                'last_contact_date': conv.last_contact_date,
+                'active_line_device': getattr(conv, 'active_line_device', ''),
+                'active_line_phone': getattr(conv, 'active_line_phone', ''),
+                'active_employee_name': getattr(conv, 'active_employee_name', ''),
+                'active_line_type': getattr(conv, 'active_line_type', 'meta_cloud'),
+            })
+            emit_event('contact.resubscribed', {
+                'conversation_id': conv.id,
+                'phone': conv.phone_number,
+                'name': conv.contact_name,
+                'date': now_full,
+            })
+            emit_event('notification.new', {
+                'id': int(time.time() * 1000),
+                'title': '✅ Customer Re-subscribed',
+                'text': f"{conv.contact_name} ({conv.phone_number}) re-subscribed with consent.",
+                'time': 'Just now',
+                'unread': True,
+                'target': 'conversations',
+                'itemId': conv.id,
+                'itemType': 'conversation',
+            })
+
+            logger.info(f"[Resubscribe] Conversation {conv.id} ({conv.contact_name} - {conv.phone_number}) re-subscribed with consent.")
             return Response({
                 'success': True,
                 'message': f"{conv.contact_name} re-subscribed with consent.",
-                'conversation': ConversationSerializer(conv).data
+                'conversation': conv_data
             }, status=status.HTTP_200_OK)
 
         return Response({
@@ -3011,19 +3057,26 @@ class WhatsAppWebhookView(APIView):
                             rich_card=rich_card_data
                         )
 
-                        # Detect WhatsApp Opt-Out / Unsubscribe keywords & quick reply buttons
+                        # Detect WhatsApp Opt-Out / Opt-In keywords & quick reply buttons
                         clean_upper = text_body.strip().upper()
                         is_opt_out_word = (
                             clean_upper in ['STOP', 'UNSUBSCRIBE', 'CANCEL', 'OPTOUT', 'QUIT', 'STOP PROMOTIONS']
                             or clean_upper.startswith('STOP')
                             or clean_upper == 'STOP_PROMOTIONS'
                         )
+                        is_opt_in_word = (
+                            clean_upper in ['START', 'UNSTOP', 'SUBSCRIBE', 'OPTIN', 'START PROMOTIONS', 'START_PROMOTIONS', 'RESUBSCRIBE']
+                            or clean_upper == 'START'
+                            or clean_upper.startswith('START ')
+                        )
                         if is_opt_out_word:
                             conv.is_opted_out = True
                             conv.is_blocked = False
                             conv.suppression_reason = f"Replied '{text_body.strip()}' on WhatsApp"
-                            if 'Opted Out' not in conv.tags:
-                                conv.tags.append('Opted Out')
+                            cur_tags = list(conv.tags or [])
+                            if 'Opted Out' not in cur_tags:
+                                cur_tags.append('Opted Out')
+                            conv.tags = [t for t in cur_tags if str(t).lower() != 'opted in']
                             logger.info(f"[Meta Webhook] Contact {conv.phone_number} opted out via keyword '{text_body.strip()}'")
                             emit_event('contact.opted_out', {
                                 'conversation_id': conv.id,
@@ -3039,6 +3092,31 @@ class WhatsAppWebhookView(APIView):
                                 'time': 'Just now',
                                 'unread': True,
                                 'target': 'bulk-recipients',
+                                'itemId': conv.id,
+                                'itemType': 'conversation'
+                            })
+                        elif is_opt_in_word:
+                            conv.is_opted_out = False
+                            conv.is_blocked = False
+                            conv.suppression_reason = ''
+                            conv.tags = [t for t in (conv.tags or []) if str(t).lower() not in ['blocked', 'opted out', 'opt-out', 'unsubscribed']]
+                            if 'Opted In' not in conv.tags:
+                                conv.tags.append('Opted In')
+                            logger.info(f"[Meta Webhook] Contact {conv.phone_number} re-subscribed via keyword '{text_body.strip()}'")
+                            emit_event('contact.resubscribed', {
+                                'conversation_id': conv.id,
+                                'phone': conv.phone_number,
+                                'name': conv.contact_name,
+                                'reason': text_body.strip(),
+                                'date': now_full
+                            })
+                            emit_event('notification.new', {
+                                'id': int(time.time() * 1000),
+                                'title': '✅ Customer Re-subscribed (START)',
+                                'text': f"{conv.contact_name} ({conv.phone_number}) texted '{text_body.strip()}'. Re-subscribed to broadcasts.",
+                                'time': 'Just now',
+                                'unread': True,
+                                'target': 'conversations',
                                 'itemId': conv.id,
                                 'itemType': 'conversation'
                             })

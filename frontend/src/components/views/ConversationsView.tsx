@@ -331,26 +331,26 @@ export const ConversationsView: React.FC = () => {
 
   const getSuppressionStatus = (conv: Conversation | null) => {
     if (!conv) return null;
-    const isSuppressed = Boolean(
-      conv.is_blocked ||
-      conv.is_opted_out ||
-      isPhoneSuppressed(conv.phone_number)
-    );
-    if (!isSuppressed) return null;
 
     const normalizedPhone = (conv.phone_number || '').replace(/\D/g, '');
-    const matchedRecord = (suppressionList || []).find(
-      (r) => (r.phone || '').replace(/\D/g, '') === normalizedPhone
-    );
+    const phoneSuffix = normalizedPhone.length >= 10 ? normalizedPhone.slice(-10) : normalizedPhone;
+
+    const matchedRecord = (suppressionList || []).find((r) => {
+      const rDigits = (r.phone || '').replace(/\D/g, '');
+      const rSuffix = rDigits.length >= 10 ? rDigits.slice(-10) : rDigits;
+      return (phoneSuffix && rSuffix && (phoneSuffix === rSuffix || rDigits.endsWith(phoneSuffix) || normalizedPhone.endsWith(rSuffix)));
+    });
 
     const isBlocked = Boolean(conv.is_blocked || matchedRecord?.type === 'blocked');
     const isOptedOut = Boolean(
       conv.is_opted_out ||
       matchedRecord?.type === 'opt_out_stop' ||
       matchedRecord?.type === 'opt_out_button' ||
-      matchedRecord?.type === 'opted_out' ||
-      !isBlocked
+      matchedRecord?.type === 'opted_out'
     );
+
+    // If neither blocked nor opted-out, contact is not suppressed
+    if (!isBlocked && !isOptedOut) return null;
 
     return {
       isBlocked,
@@ -1234,7 +1234,7 @@ export const ConversationsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  removeSuppressionRecord(currentConv.phone_number);
+                  removeSuppressionRecord(currentConv.phone_number, currentConv.id);
                 }}
                 className="w-full mt-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
               >
@@ -2516,7 +2516,7 @@ export const ConversationsView: React.FC = () => {
                       type="button"
                       onClick={() => {
                         if (currentConv) {
-                          removeSuppressionRecord(currentConv.phone_number);
+                          removeSuppressionRecord(currentConv.phone_number, currentConv.id);
                         }
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
@@ -3350,7 +3350,7 @@ export const ConversationsView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       if (currentConv) {
-                        removeSuppressionRecord(currentConv.phone_number);
+                        removeSuppressionRecord(currentConv.phone_number, currentConv.id);
                       }
                     }}
                     className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline shrink-0 ml-2 cursor-pointer"
