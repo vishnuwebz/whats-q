@@ -83,6 +83,7 @@ export const WorkflowBuilderView: React.FC = () => {
     updateWorkingDayTime,
     setOutsideHoursMessage,
     saveWorkingHoursConfig,
+    saveAllKeywordRules,
     syncAutomationRules,
     workflows,
     setActiveWorkflowId,
@@ -1066,18 +1067,31 @@ export const WorkflowBuilderView: React.FC = () => {
   const handleSaveEditedRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRule) return;
+
+    if (!editingRule.title.trim()) {
+      addToast('Please provide a rule title', 'warning');
+      return;
+    }
+
+    const hasWorkflow = Boolean(editingRule.workflow_name?.trim());
+    if (!hasWorkflow && !editingRule.reply?.trim()) {
+      addToast('Automated reply message is mandatory when Trigger Workflow is set to None (Auto-Reply Only)', 'warning');
+      return;
+    }
+
     const kwList = Array.isArray(editingRule.keywords)
       ? editingRule.keywords
       : String(editingRule.keywords).split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
 
     await updateKeywordRule(editingRule.id, {
-      title: editingRule.title,
-      reply: editingRule.reply,
+      title: editingRule.title.trim(),
+      reply: editingRule.reply?.trim() || '',
       keywords: kwList,
-      workflow_name: editingRule.workflow_name || undefined,
-      action_type: editingRule.workflow_name ? 'workflow' : 'reply',
-      attachment: editingRule.attachment || undefined,
+      workflow_name: editingRule.workflow_name?.trim() || undefined,
+      action_type: hasWorkflow ? 'workflow' : 'reply',
+      attachment: editingRule.attachment?.trim() || undefined,
     });
+    await saveAllKeywordRules();
     setEditingRule(null);
     addToast(`Rule "${editingRule.title}" updated successfully!`, 'success');
   };
@@ -1089,20 +1103,29 @@ export const WorkflowBuilderView: React.FC = () => {
       addToast('Please fill in title and keywords', 'warning');
       return;
     }
+
+    const hasWorkflow = Boolean(newRule.workflow_name?.trim());
+    if (!hasWorkflow && !newRule.reply.trim()) {
+      addToast('Automated reply message is mandatory when Trigger Workflow is set to None (Auto-Reply Only)', 'warning');
+      return;
+    }
+
     const kwList = newRule.keywords.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
     const created: Omit<KeywordRule, 'id'> = {
       title: newRule.title.trim(),
       triggered_count: 0,
       active: true,
       keywords: kwList,
-      reply: newRule.reply.trim() || 'Automated reply from QBS-360 Assistant.',
+      reply: newRule.reply.trim(),
       attachment: newRule.attachment.trim() || undefined,
       workflow_name: newRule.workflow_name.trim() || undefined,
-      action_type: newRule.workflow_name.trim() ? 'workflow' : 'reply',
+      action_type: hasWorkflow ? 'workflow' : 'reply',
     };
     await addKeywordRule(created);
+    await saveAllKeywordRules();
     setIsNewRuleModalOpen(false);
     setNewRule({ title: '', keywords: '', reply: '', attachment: '', workflow_name: '' });
+    addToast('New keyword trigger rule created & saved successfully!', 'success');
   };
 
   // Toggle Working Hour day
@@ -4194,20 +4217,11 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Automated Reply Message *</label>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Hello! Here is our latest wholesale rate card catalog..."
-                  value={newRule.reply}
-                  onChange={(e) => setNewRule({ ...newRule, reply: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  ⚡ Trigger Workflow (When Keywords Match)
+                <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                  <span>⚡ Trigger Interactive Workflow</span>
+                  <span className="text-[10px] font-normal text-slate-400">
+                    {newRule.workflow_name ? 'Dynamic Canvas Flow' : 'Auto-Reply Mode'}
+                  </span>
                 </label>
                 <select
                   value={newRule.workflow_name || ''}
@@ -4240,15 +4254,58 @@ export const WorkflowBuilderView: React.FC = () => {
                     ))}
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  When a customer message matches, this workflow is automatically attached to the chat conversation.
+                  {newRule.workflow_name ? (
+                    <span className="text-emerald-700 font-medium">
+                      ✓ Interactive workflow selected. It will execute dynamically from canvas nodes (automated reply below becomes optional).
+                    </span>
+                  ) : (
+                    <span>
+                      Selecting <strong>None</strong> requires an Automated Reply Message below.
+                    </span>
+                  )}
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                  <span>
+                    {newRule.workflow_name
+                      ? 'Initial Reply Override (Optional)'
+                      : 'Automated Reply Message *'}
+                  </span>
+                  {newRule.workflow_name && (
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">
+                      Canvas Dynamic Execution
+                    </span>
+                  )}
+                </label>
+                <textarea
+                  required={!newRule.workflow_name}
+                  rows={4}
+                  placeholder={
+                    newRule.workflow_name
+                      ? `✨ Leave empty to dynamically use initial message and options from "${newRule.workflow_name}" canvas nodes...`
+                      : 'Hello! Here is our latest service catalog...'
+                  }
+                  value={newRule.reply}
+                  onChange={(e) => setNewRule({ ...newRule, reply: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed"
+                />
+                <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                  <span>Variables: {"{CUSTOMER_NAME}"}, {"{COMPANY_NAME}"}</span>
+                  {newRule.workflow_name ? (
+                    <span className="text-emerald-700 font-medium">Leave blank to use canvas nodes</span>
+                  ) : (
+                    <span className="text-amber-700 font-medium">* Required for auto-reply</span>
+                  )}
+                </div>
               </div>
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Attachment (Optional File/PDF)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Rate-Card-Catalog.pdf"
+                  placeholder="e.g. Service-Rate-Catalog.pdf"
                   value={newRule.attachment}
                   onChange={(e) => setNewRule({ ...newRule, attachment: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
@@ -4313,8 +4370,11 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  ⚡ Trigger Workflow (When Keywords Match)
+                <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                  <span>⚡ Trigger Workflow (When Keywords Match)</span>
+                  <span className="text-[10px] font-normal text-slate-400">
+                    {editingRule.workflow_name ? 'Dynamic Canvas Flow' : 'Auto-Reply Mode'}
+                  </span>
                 </label>
                 <select
                   value={editingRule.workflow_name || ''}
@@ -4347,7 +4407,15 @@ export const WorkflowBuilderView: React.FC = () => {
                     ))}
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  When matched, this workflow takes over customer interactions in conversations.
+                  {editingRule.workflow_name ? (
+                    <span className="text-emerald-700 font-medium">
+                      ✓ Interactive workflow selected. When keywords match, this workflow executes dynamically from canvas nodes.
+                    </span>
+                  ) : (
+                    <span>
+                      Selecting <strong>None</strong> requires an Automated Reply Message below.
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -4370,14 +4438,38 @@ export const WorkflowBuilderView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Automated Reply Message *</label>
+                <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                  <span>
+                    {editingRule.workflow_name
+                      ? 'Initial Reply Override (Optional)'
+                      : 'Automated Reply Message *'}
+                  </span>
+                  {editingRule.workflow_name && (
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">
+                      Canvas Dynamic Execution
+                    </span>
+                  )}
+                </label>
                 <textarea
-                  required
+                  required={!editingRule.workflow_name}
                   rows={4}
-                  value={editingRule.reply}
+                  placeholder={
+                    editingRule.workflow_name
+                      ? `✨ Leave empty to dynamically use initial message and options from "${editingRule.workflow_name}" canvas nodes...`
+                      : 'Enter automated WhatsApp response message...'
+                  }
+                  value={editingRule.reply || ''}
                   onChange={(e) => setEditingRule({ ...editingRule, reply: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed text-xs"
                 />
+                <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                  <span>Variables: {"{CUSTOMER_NAME}"}, {"{COMPANY_NAME}"}</span>
+                  {editingRule.workflow_name ? (
+                    <span className="text-emerald-700 font-medium">Leave blank to use canvas nodes</span>
+                  ) : (
+                    <span className="text-amber-700 font-medium">* Required for auto-reply</span>
+                  )}
+                </div>
               </div>
 
               <div>

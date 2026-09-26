@@ -320,7 +320,7 @@ DEFAULT_WORKFLOW_GROUPS = [
             {
                 'id': 'item-3-1',
                 'type': 'message',
-                'content': '📍 *Live Specialist Status & ETA*\n\nYour assigned specialist is on duty for {COMPANY_NAME} 🛵.\n• Current Status: En Route\n• Estimated Arrival: 15-20 minutes\n• Live GPS Tracking: https://track.whatsq.in/live\n• Priority Support: +91 98471 23456'
+                'content': '📍 *Live Specialist Status & ETA*\n\nYour assigned specialist is on duty for {COMPANY_NAME} 🛵.\n• Current Status: En Route\n• Estimated Arrival: 15-30 minutes\n• Live GPS Tracking: https://track.whatsq.in/live\n• Priority Support: +91 98471 23456'
             }
         ]
     },
@@ -572,15 +572,22 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         matched_rule.save(update_fields=['triggered_count'])
 
         # Bind the linked workflow to this conversation
-        if matched_rule.workflow_name or matched_rule.workflow:
-            target_wf_name = matched_rule.workflow_name or matched_rule.workflow.name
+        target_wf = None
+        target_wf_name = (matched_rule.workflow_name or (matched_rule.workflow.name if matched_rule.workflow else '')).strip()
+        if target_wf_name:
             conv.active_workflow = target_wf_name
             conv.save(update_fields=['active_workflow'])
             try:
                 emit_event('conversation.updated', ConversationSerializer(conv).data)
             except Exception:
                 pass
+            try:
+                from automation.models import Workflow
+                target_wf = matched_rule.workflow or Workflow.objects.filter(name__iexact=target_wf_name).first()
+            except Exception as wf_fetch_err:
+                logger.warning(f"[evaluate_workflow_response] Target workflow fetch error: {wf_fetch_err}")
 
+        # 1. If user configured a specific manual text override, send it
         if matched_rule.reply and matched_rule.reply.strip():
             reply_text = substitute_vars(matched_rule.reply.strip())
             step_name = f"Keyword Rule: {matched_rule.title}"
@@ -592,11 +599,25 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
                 }
             return reply_text, rich_card, step_name
 
-        elif matched_rule.workflow and matched_rule.workflow.nodes:
-            wf_reply = extract_workflow_node_reply(matched_rule.workflow.nodes, target_group_id=None, substitute_fn=substitute_vars)
+        # 2. Otherwise (reply is empty / omitted), dynamically extract & dispatch the initial message from the selected workflow canvas
+        if target_wf and target_wf.nodes:
+            wf_reply = extract_workflow_node_reply(target_wf.nodes, target_group_id=None, substitute_fn=substitute_vars)
             if wf_reply:
-                step_name = f"Workflow: {matched_rule.workflow.name}"
+                step_name = f"Workflow: {target_wf.name}"
                 return wf_reply, None, step_name
+        elif target_wf:
+            wf_reply = extract_workflow_node_reply(None, target_group_id=None, substitute_fn=substitute_vars)
+            if wf_reply:
+                step_name = f"Workflow: {target_wf.name}"
+                return wf_reply, None, step_name
+        elif target_wf_name:
+            wf_reply = extract_workflow_node_reply(None, target_group_id=None, substitute_fn=substitute_vars)
+            if wf_reply:
+                step_name = f"Workflow: {target_wf_name}"
+                return wf_reply, None, step_name
+        else:
+            reply_text = substitute_vars(f"👋 Welcome to {company_name}! How can we assist you today?")
+            return reply_text, None, f"Keyword Rule: {matched_rule.title}"
 
     # 4. Check Navigation & Options within Active Workflow
     # Option 1: Reschedule Booking / New Booking

@@ -34,6 +34,11 @@ class KeywordTriggerRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = KeywordTriggerRule
         fields = '__all__'
+        extra_kwargs = {
+            'reply': {'allow_blank': True, 'required': False},
+            'workflow_name': {'allow_blank': True, 'required': False},
+            'attachment': {'allow_blank': True, 'required': False},
+        }
 
 class WorkingHoursConfigSerializer(serializers.ModelSerializer):
     class Meta:
@@ -155,12 +160,13 @@ class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
             if not title:
                 continue
             
+            wf_name = (r_data.get('workflow_name') or '').strip()
             clean_fields = {
                 'title': title,
                 'keywords': r_data.get('keywords', []),
-                'action_type': r_data.get('action_type', 'reply'),
-                'workflow_name': r_data.get('workflow_name', ''),
-                'reply': r_data.get('reply', ''),
+                'action_type': 'workflow' if wf_name else r_data.get('action_type', 'reply'),
+                'workflow_name': wf_name,
+                'reply': (r_data.get('reply') or '').strip(),
                 'active': r_data.get('active', True),
                 'attachment': r_data.get('attachment', None),
             }
