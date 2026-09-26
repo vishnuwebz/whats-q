@@ -44,6 +44,7 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     senderName: (raw.senderName as string) || (raw.sender_name as string) || undefined,
     sender_device: (raw.sender_device as string) || undefined,
     sender_phone: (raw.sender_phone as string) || undefined,
+    recipient_phone: (raw.recipient_phone as string) || (raw.recipientPhone as string) || undefined,
     isTemplate: Boolean(raw.is_template || raw.isTemplate),
     workflowName: (raw.workflow_name as string) || (raw.workflowName as string) || undefined,
     text: rawText,

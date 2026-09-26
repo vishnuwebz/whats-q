@@ -500,12 +500,58 @@ export const ConversationsView: React.FC = () => {
     prevMsgCountRef.current = currentCount;
   }, [currentConv?.messages?.length, isScrolledUp]);
 
-  // Smooth auto-scroll for typing indicator (only if already near bottom)
+  // Auto-align the outbound sender line when opening or switching to an employee-linked conversation
   React.useEffect(() => {
-    if (currentConv && typingUsers[currentConv.id] && !isScrolledUp) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!currentConv) return;
+    if (
+      currentConv.active_line_type === 'employee' ||
+      Boolean(currentConv.active_employee_name) ||
+      (Boolean(currentConv.active_line_device) && !currentConv.active_line_device?.includes('Meta Cloud'))
+    ) {
+      const matched = linkedDevices.find((d) =>
+        (currentConv.active_line_device && (d.device_label === currentConv.active_line_device || String(d.id) === currentConv.active_line_device)) ||
+        (currentConv.active_line_phone && d.phone_number?.replace(/\D/g, '').endsWith(currentConv.active_line_phone.replace(/\D/g, '').slice(-10)))
+      );
+      if (matched && String(activeSenderDeviceId) !== String(matched.id)) {
+        setActiveSenderDeviceId(matched.id);
+      }
     }
-  }, [currentConv ? typingUsers[currentConv.id] : false, isScrolledUp]);
+  }, [currentConv?.id, currentConv?.active_line_type, currentConv?.active_line_device, currentConv?.active_line_phone, linkedDevices]);
+
+  // Active phone line channel for open conversation
+  const conversationActiveLine = useMemo(() => {
+    if (!currentConv) return null;
+
+    const hasEmpLine =
+      currentConv.active_line_type === 'employee' ||
+      Boolean(currentConv.active_employee_name) ||
+      (Boolean(currentConv.active_line_device) && !currentConv.active_line_device?.includes('Meta Cloud'));
+
+    if (hasEmpLine) {
+      const matchedDev = linkedDevices.find((d) =>
+        (currentConv.active_line_device && (d.device_label === currentConv.active_line_device || String(d.id) === currentConv.active_line_device)) ||
+        (currentConv.active_line_phone && (d.phone_number?.replace(/\D/g, '').endsWith(currentConv.active_line_phone.replace(/\D/g, '').slice(-10))))
+      );
+
+      return {
+        type: 'employee' as const,
+        employeeName: currentConv.active_employee_name || matchedDev?.employee_name || currentConv.active_line_device || 'Employee Line',
+        deviceLabel: currentConv.active_line_device || matchedDev?.device_label || 'Employee WhatsApp',
+        phone: currentConv.active_line_phone || matchedDev?.phone_number || '',
+        deviceId: matchedDev?.id ? String(matchedDev.id) : undefined,
+        isConnected: matchedDev ? matchedDev.status === 'connected' : true,
+      };
+    }
+
+    return {
+      type: 'meta_cloud' as const,
+      employeeName: 'Official System Line',
+      deviceLabel: 'Meta Cloud API',
+      phone: currentConv.active_line_phone || metaConfig?.business_phone_display || '+91 94963 00233',
+      deviceId: 'meta_cloud',
+      isConnected: true,
+    };
+  }, [currentConv, linkedDevices, metaConfig]);
 
   const counts = {
     all: conversations.length,
@@ -1900,7 +1946,7 @@ export const ConversationsView: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-1.5 mt-1.5">
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span
                           className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                             conv.category === 'Hot Lead'
@@ -1912,6 +1958,15 @@ export const ConversationsView: React.FC = () => {
                         >
                           {conv.category || 'Lead'}
                         </span>
+                        {(conv.active_line_type === 'employee' || Boolean(conv.active_employee_name)) && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200 shrink-0 max-w-[125px] truncate"
+                            title={`Active on employee line: ${conv.active_employee_name || conv.active_line_device} (${conv.active_line_phone || ''})`}
+                          >
+                            <Smartphone className="w-2.5 h-2.5 text-teal-600 shrink-0" />
+                            <span className="truncate">{conv.active_employee_name || conv.active_line_device || 'Employee Line'}</span>
+                          </span>
+                        )}
                         {(conv.unread_count || 0) > 0 && (
                           <span className="ml-auto w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold flex items-center justify-center">
                             {conv.unread_count}
@@ -2489,6 +2544,74 @@ export const ConversationsView: React.FC = () => {
                 </div>
               )}
 
+              {/* Active WhatsApp Line Channel Banner */}
+              {conversationActiveLine && (
+                <div className={`px-4 py-2 border-b flex items-center justify-between gap-3 text-xs transition-colors shrink-0 ${
+                  conversationActiveLine.type === 'employee'
+                    ? 'bg-gradient-to-r from-teal-50/95 via-emerald-50/80 to-teal-50/90 border-teal-200/90 text-teal-950'
+                    : 'bg-slate-50/90 border-slate-200 text-slate-700'
+                }`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs font-bold ${
+                      conversationActiveLine.type === 'employee'
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-emerald-600 text-white'
+                    }`}>
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                          {conversationActiveLine.type === 'employee'
+                            ? `Active Chat Line: ${conversationActiveLine.employeeName}`
+                            : 'Active Chat Line: Meta Cloud API'}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          conversationActiveLine.type === 'employee'
+                            ? 'bg-teal-100 text-teal-800 border border-teal-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${conversationActiveLine.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                          {conversationActiveLine.type === 'employee' ? 'Employee Linked Number' : 'Official Verified Business Line'}
+                        </span>
+                        {conversationActiveLine.deviceLabel && (
+                          <span className="text-[10px] text-slate-600 bg-white/90 px-1.5 py-0.5 rounded border border-slate-200/80 font-medium">
+                            {conversationActiveLine.deviceLabel}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                        <span className="font-bold text-slate-800">{conversationActiveLine.phone}</span>
+                        <span>•</span>
+                        <span className="font-sans text-[10.5px] text-slate-600 truncate">
+                          {conversationActiveLine.type === 'employee'
+                            ? 'Replies directly to this employee phone appear here live. Broadcasts & templates remain sent via Meta Cloud API (+91 94963 00233).'
+                            : 'Customer messages and official template broadcasts routed via Meta Cloud API.'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Outbound Line Switcher Quick Button */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsLineSelectorOpen(true)}
+                      className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-[11px] font-semibold transition shadow-2xs cursor-pointer"
+                      title="Select which WhatsApp line to send outgoing replies from"
+                    >
+                      <span className="text-slate-500">Outbound:</span>
+                      <span className="text-teal-700 font-bold truncate max-w-[120px]">
+                        {activeSenderDeviceId === 'meta_cloud'
+                          ? 'Meta Cloud API'
+                          : (linkedDevices.find(d => String(d.id) === String(activeSenderDeviceId))?.device_label || 'Employee Line')}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Chat Messages Body & Floating Controls */}
               <div className="relative flex-1 min-h-0 flex flex-col">
                 <div
@@ -2617,6 +2740,45 @@ export const ConversationsView: React.FC = () => {
                           };
                         })() : null;
 
+                        const incomingRecipient = isCustomer ? (() => {
+                          const lineCard = (msg.richCard as any)?.received_on_line;
+                          if (lineCard) {
+                            return {
+                              phone: lineCard.phone_number || lineCard.phone,
+                              deviceLabel: lineCard.device_label || lineCard.deviceLabel,
+                              employeeName: lineCard.employee_name || lineCard.employeeName,
+                              lineType: lineCard.line_type || 'employee',
+                            };
+                          }
+                          if (msg.recipient_phone) {
+                            const matchedDev = linkedDevices.find((d) => {
+                              const devClean = (d.phone_number || '').replace(/\D/g, '');
+                              const recipClean = (msg.recipient_phone || '').replace(/\D/g, '');
+                              return devClean && recipClean && (devClean.endsWith(recipClean.slice(-10)) || recipClean.endsWith(devClean.slice(-10)));
+                            });
+                            return {
+                              phone: msg.recipient_phone,
+                              deviceLabel: matchedDev?.device_label || (msg.recipient_phone.includes('94963') ? 'Meta Cloud API' : 'Employee WhatsApp'),
+                              employeeName: matchedDev?.employee_name || '',
+                              lineType: matchedDev ? 'employee' : (msg.recipient_phone.includes('94963') ? 'meta_cloud' : 'employee'),
+                            };
+                          }
+                          if (currentConv.active_line_type === 'employee' && (currentConv.active_line_phone || currentConv.active_line_device)) {
+                            return {
+                              phone: currentConv.active_line_phone,
+                              deviceLabel: currentConv.active_line_device,
+                              employeeName: currentConv.active_employee_name,
+                              lineType: 'employee',
+                            };
+                          }
+                          return {
+                            phone: metaConfig?.business_phone_display || '+91 94963 00233',
+                            deviceLabel: 'Meta Cloud API',
+                            employeeName: '',
+                            lineType: 'meta_cloud',
+                          };
+                        })() : null;
+
                         return (
                           <div
                             key={msg.id}
@@ -2632,6 +2794,29 @@ export const ConversationsView: React.FC = () => {
                                   : 'bg-emerald-600 text-white rounded-tr-sm'
                               }`}
                             >
+                              {/* 1. Header: Incoming Customer Message Received Channel */}
+                              {isCustomer && incomingRecipient && (
+                                <div className="flex items-center justify-between gap-2 pb-1.5 mb-2.5 border-b border-slate-100 text-[10.5px]">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Smartphone className={`w-3.5 h-3.5 shrink-0 ${incomingRecipient.lineType === 'employee' ? 'text-teal-600' : 'text-slate-400'}`} />
+                                    <span className="text-slate-400 text-[10px] font-medium shrink-0">Received on:</span>
+                                    <span className={`font-mono font-bold tracking-wide text-[10.5px] truncate ${incomingRecipient.lineType === 'employee' ? 'text-teal-700' : 'text-slate-600'}`}>
+                                      {incomingRecipient.phone}
+                                    </span>
+                                  </div>
+                                  <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full shrink-0 truncate max-w-[150px] shadow-2xs ${
+                                    incomingRecipient.lineType === 'employee'
+                                      ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                                      : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                  }`}>
+                                    {incomingRecipient.employeeName
+                                      ? `👤 ${incomingRecipient.employeeName}`
+                                      : incomingRecipient.deviceLabel
+                                      ? `📱 ${incomingRecipient.deviceLabel}`
+                                      : 'Meta Cloud API'}
+                                  </span>
+                                </div>
+                              )}
                               {/* 1. Header: Outgoing Sender Phone & Channel on ALL green messages to avoid any confusion */}
                               {!isCustomer && outgoingSender && (
                                 <div className="flex items-center justify-between gap-2 pb-1.5 mb-2.5 border-b border-white/20 text-[10.5px]">

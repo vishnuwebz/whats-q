@@ -679,7 +679,7 @@ interface QiyamState {
     conversationId: string | number,
     staffName: string
   ) => Promise<{ success: boolean; lead_owner?: string; whatsapp_notified?: boolean; staff_phone?: string }>;
-  simulateInboundWhatsApp: (name: string, phone: string, text: string, avatar?: string) => Promise<void>;
+  simulateInboundWhatsApp: (name: string, phone: string, text: string, avatar?: string, recipientDeviceId?: string | number) => Promise<void>;
   saveMetaTemplate: (template: Partial<WhatsAppTemplateItem>) => Promise<WhatsAppTemplateItem | null>;
   submitTemplateToMeta: (templateId: string | number) => Promise<boolean>;
   syncTemplatesWithMeta: () => Promise<void>;
@@ -1999,16 +1999,23 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         return message.timestamp || conv.last_contact_date || 'Just now';
       })();
 
+      const lineMeta = message.richCard?.received_on_line;
       const updatedConv: Conversation = {
         ...conv,
         messages: updatedMessages,
         last_contact_date: resolvedLastContact,
         unread_count: newUnreadCount,
+        active_line_device: lineMeta?.device_label || conv.active_line_device,
+        active_line_phone: lineMeta?.phone_number || conv.active_line_phone,
+        active_employee_name: lineMeta?.employee_name || conv.active_employee_name,
+        active_line_type: (lineMeta?.line_type as any) || conv.active_line_type,
+        lead_owner: (lineMeta?.employee_name && (!conv.lead_owner || conv.lead_owner === 'Unassigned' || conv.lead_owner === 'Support Desk')) ? lineMeta.employee_name : conv.lead_owner,
       };
 
       const nextConversations = [...state.conversations];
       nextConversations.splice(convIndex, 1);
       nextConversations.unshift(updatedConv);
+      persistConversations(nextConversations);
 
       return {
         conversations: nextConversations,
@@ -2037,6 +2044,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       } else {
         nextConversations[idx] = merged;
       }
+      persistConversations(nextConversations);
       return { conversations: nextConversations };
     });
   },
@@ -3355,6 +3363,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         ...conv,
         is_deleted: false,
         last_contact_date: 'Just now',
+        active_line_device: isEmployeeDevice ? (employeeDevice?.device_label || resolvedSenderDevice) : (conv.active_line_device || 'Meta Cloud API (+91 94963 00233)'),
+        active_line_phone: isEmployeeDevice ? (employeeDevice?.phone_number || resolvedSenderPhone) : (conv.active_line_phone || '+91 94963 00233'),
+        active_employee_name: isEmployeeDevice ? (employeeDevice?.employee_name || resolvedSenderName) : conv.active_employee_name,
+        active_line_type: isEmployeeDevice ? 'employee' : (conv.active_line_type || 'meta_cloud'),
+        lead_owner: isEmployeeDevice && (employeeDevice?.employee_name || resolvedSenderName) && (!conv.lead_owner || conv.lead_owner === 'Unassigned' || conv.lead_owner === 'Support Desk')
+          ? (employeeDevice?.employee_name || resolvedSenderName)
+          : conv.lead_owner,
         messages: [...conv.messages, optimisticMsg],
       };
 
@@ -3398,6 +3413,11 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             if (String(c.id) !== String(conversationId)) return c;
             return {
               ...c,
+              active_line_device: res.active_line_device || c.active_line_device,
+              active_line_phone: res.active_line_phone || c.active_line_phone,
+              active_employee_name: res.active_employee_name || c.active_employee_name,
+              active_line_type: res.active_line_type || c.active_line_type,
+              lead_owner: res.lead_owner || c.lead_owner,
               messages: c.messages.map((m) =>
                 m.id === tempId ? { ...m, id: res.id, status: res.status || 'sent' } : m
               ),
@@ -3506,8 +3526,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
   },
 
-  simulateInboundWhatsApp: async (name, phone, text, avatar) => {
-    const res = await apiClient.post('/conversations/simulate/', { name, phone, text, avatar });
+  simulateInboundWhatsApp: async (name, phone, text, avatar, recipientDeviceId) => {
+    const res = await apiClient.post('/conversations/simulate/', {
+      name,
+      phone,
+      text,
+      avatar,
+      recipient_device_id: recipientDeviceId,
+    });
     if (res?.conversation) {
       const conv = mapConversation(res.conversation as Record<string, unknown>);
       removeDeletedConversationId(conv.id);
@@ -3524,7 +3550,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           selectedConversationId: conv.id,
         };
       });
-      get().addToast(`WhatsApp chat with ${name || phone} started`, 'success');
+      const lineNote = conv.active_line_device ? ` on line [${conv.active_line_device}]` : '';
+      get().addToast(`WhatsApp chat with ${name || phone} started${lineNote}`, 'success');
       return;
     }
     get().addToast(res?.error || 'Failed to start WhatsApp conversation', 'error');

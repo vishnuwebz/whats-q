@@ -71,6 +71,10 @@ class Conversation(models.Model):
     is_blocked = models.BooleanField(default=False)
     is_opted_out = models.BooleanField(default=False)
     suppression_reason = models.CharField(max_length=255, blank=True, default='')
+    active_line_device = models.CharField(max_length=150, blank=True, default='')
+    active_line_phone = models.CharField(max_length=50, blank=True, default='')
+    active_employee_name = models.CharField(max_length=150, blank=True, default='')
+    active_line_type = models.CharField(max_length=50, blank=True, default='meta_cloud') # "meta_cloud" or "employee"
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -102,6 +106,7 @@ class Message(models.Model):
     meta_message_id = models.CharField(max_length=150, blank=True, default='') # wamid.HBgL...
     sender_device = models.CharField(max_length=150, blank=True, default='') # e.g. "Ramesh Kumar (Sales Desk)", "Meta Cloud API"
     sender_phone = models.CharField(max_length=50, blank=True, default='') # e.g. "+91 98471 23456"
+    recipient_phone = models.CharField(max_length=50, blank=True, default='') # Phone line that received this message
     error_details = models.JSONField(blank=True, null=True)
     rich_card = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

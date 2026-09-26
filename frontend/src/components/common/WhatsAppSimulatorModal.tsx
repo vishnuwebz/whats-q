@@ -64,6 +64,7 @@ export const WhatsAppSimulatorModal: React.FC = () => {
 
   // Simulator options
   const [simulatedMessage, setSimulatedMessage] = useState('Hello, I would like to inquire about your services.');
+  const [simulatedRecipientDeviceId, setSimulatedRecipientDeviceId] = useState<string>('meta_cloud');
 
   // Loading state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -287,7 +288,8 @@ export const WhatsAppSimulatorModal: React.FC = () => {
           cleanName || 'WhatsApp Customer',
           cleanPhone,
           cleanSim,
-          avatarUrl.trim() || undefined
+          avatarUrl.trim() || undefined,
+          simulatedRecipientDeviceId !== 'meta_cloud' ? simulatedRecipientDeviceId : undefined
         );
 
         setIsSimulatorOpen(false);
@@ -775,6 +777,51 @@ export const WhatsAppSimulatorModal: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-purple-800 leading-relaxed">
                   This simulates an incoming message from the customer into your system. Use this to verify that AI auto-responses, intent classifiers, and booking bot steps respond correctly without sending real WhatsApp messages or consuming Meta API quota.
+                </p>
+              </div>
+
+              {/* Destination WhatsApp Line (Employee or Meta Cloud) */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Destination WhatsApp Line (Customer texting to)</span>
+                  <span className="text-[10px] text-purple-700 font-bold">Select Employee Line or Meta API</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {senderOptions.map((opt) => {
+                    const isSelected = simulatedRecipientDeviceId === opt.id;
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => setSimulatedRecipientDeviceId(opt.id)}
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                          isSelected
+                            ? 'bg-purple-50/80 border-purple-500 ring-1 ring-purple-500/30 shadow-2xs'
+                            : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            <Smartphone className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 text-[11px] truncate flex items-center gap-1.5">
+                              <span>{opt.label}</span>
+                              {opt.isOfficial && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-extrabold">Meta</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono truncate">{opt.sublabel}</div>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Selecting an employee's number simulates the customer replying directly to that employee's phone on WhatsApp.
                 </p>
               </div>
 

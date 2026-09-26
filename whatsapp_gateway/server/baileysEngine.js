@@ -514,57 +514,130 @@ export class BaileysEngine {
         for (const msg of messages) {
           if (!msg.message || msg.key.fromMe) continue;
           const senderJid = msg.key.remoteJid || '';
+          if (!senderJid || senderJid === 'status@broadcast' || senderJid.endsWith('@broadcast')) continue;
+
+          // If group message, check group ignore or handle
+          const isGroup = senderJid.endsWith('@g.us');
+          if (isGroup) {
+            // Can be monitored if needed, but skip for 1-on-1 customer chat
+            continue;
+          }
+
           const participant = msg.key.participant || '';
           const participantAlt = msg.key.participantAlt || msg.key.senderPn || '';
 
           // Cache any LID to Phone mappings found in message key
           if (participant && participantAlt && participant.endsWith('@lid') && participantAlt.endsWith('@s.whatsapp.net')) {
-            const cleanPn = participantAlt.split('@')[0].replace(/[^\d]/g, '');
+            const cleanPn = participantAlt.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
             sessionMeta.contacts.set(participant, { id: participantAlt, phone: cleanPn, lid: participant });
           }
 
-          const senderPhone = '+' + senderJid.replace('@s.whatsapp.net', '');
+          // Extract pure clean phone digits
+          const rawSender = senderJid.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
+          if (!rawSender || rawSender.length < 7) continue;
+          const senderPhone = '+' + rawSender;
+
           const text =
             msg.message.conversation ||
             msg.message.extendedTextMessage?.text ||
             msg.message.imageMessage?.caption ||
+            msg.message.videoMessage?.caption ||
+            msg.message.documentMessage?.title ||
+            msg.message.documentMessage?.fileName ||
+            msg.message.buttonsResponseMessage?.selectedDisplayText ||
+            msg.message.templateButtonReplyMessage?.selectedDisplayText ||
+            msg.message.listResponseMessage?.title ||
+            (msg.message.audioMessage ? '🎙️ Voice note' : '') ||
+            (msg.message.imageMessage ? '📷 Photo' : '') ||
+            (msg.message.videoMessage ? '🎥 Video' : '') ||
+            (msg.message.documentMessage ? '📄 Document' : '') ||
+            (msg.message.locationMessage ? '📍 Location' : '') ||
             '';
 
-          console.log(`[Baileys Engine] 📩 Incoming message from ${senderPhone}: "${text}"`);
+          const msgType = msg.message.audioMessage
+            ? 'audio'
+            : msg.message.imageMessage
+            ? 'image'
+            : msg.message.videoMessage
+            ? 'video'
+            : msg.message.documentMessage
+            ? 'document'
+            : 'text';
 
-          this.emitEvent('incoming_message', {
+          const employeePhone = sessionMeta.phoneNumber || '';
+          const employeeName = sessionMeta.displayName || 'Employee WhatsApp Line';
+
+          console.log(`[Baileys Engine] 📩 Incoming customer reply from ${senderPhone} to employee line ${employeeName} (${employeePhone || accountId}): "${text}"`);
+
+          const incomingPayload = {
             accountId,
             senderPhone,
             text,
+            messageType: msgType,
+            employeePhone,
+            employeeName,
+            deviceLabel: employeeName,
             timestamp: new Date().toISOString(),
-          });
+          };
 
-          // Forward incoming message to Django backend webhook
+          this.emitEvent('incoming_message', incomingPayload);
+
+          // Forward incoming customer reply to Django backend webhook
+          const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
           try {
-            fetch('http://127.0.0.1:8000/api/conversations/webhook/', {
+            fetch(`${backendUrl}/api/conversations/webhook/`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Internal-Gateway': 'baileys',
+                'X-Gateway-Account': accountId,
+              },
               body: JSON.stringify({
                 entry: [{
                   changes: [{
                     field: 'messages',
                     value: {
+                      messaging_product: 'whatsapp',
+                      metadata: {
+                        display_phone_number: employeePhone ? employeePhone.replace(/[^\d]/g, '') : '',
+                        phone_number_id: accountId,
+                        line_type: 'employee',
+                      },
+                      recipient_line: {
+                        phone_number: employeePhone,
+                        device_label: employeeName,
+                        employee_name: employeeName,
+                        account_id: accountId,
+                        line_type: 'employee',
+                      },
                       messages: [{
-                        from: senderPhone.replace('+', ''),
+                        from: rawSender,
                         id: msg.key.id || `baileys-${Date.now()}`,
-                        type: 'text',
+                        type: msgType,
                         text: { body: text },
                         timestamp: String(Math.floor(Date.now() / 1000)),
                       }],
                       contacts: [{
                         profile: { name: sessionMeta.contacts.get(senderJid)?.name || senderPhone },
+                        wa_id: rawSender,
                       }],
                     },
                   }],
                 }],
               }),
-            }).catch(() => {});
-          } catch (e) {}
+            }).then(async (res) => {
+              if (!res.ok) {
+                const errText = await res.text().catch(() => '');
+                console.warn(`[Baileys Engine] Django webhook error HTTP ${res.status}:`, errText);
+              } else {
+                console.log(`[Baileys Engine] ✅ Inbound message successfully synced to Django for ${senderPhone} (received on employee ${employeeName})`);
+              }
+            }).catch((err) => {
+              console.warn('[Baileys Engine] Failed to dispatch incoming message to Django:', err.message);
+            });
+          } catch (e) {
+            console.warn('[Baileys Engine] Webhook dispatch exception:', e.message);
+          }
         }
       });
 
@@ -572,7 +645,9 @@ export class BaileysEngine {
       sock.ev.on('presence.update', async ({ id, presences }) => {
         try {
           if (!id) return;
-          const senderPhone = '+' + id.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+          const cleanId = id.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
+          if (!cleanId) return;
+          const senderPhone = '+' + cleanId;
           let isTyping = false;
           let state = 'available';
 
@@ -595,9 +670,14 @@ export class BaileysEngine {
           });
 
           // Forward to Django backend webhook
-          fetch('http://127.0.0.1:8000/api/conversations/webhook/', {
+          const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+          fetch(`${backendUrl}/api/conversations/webhook/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Internal-Gateway': 'baileys',
+              'X-Gateway-Account': accountId,
+            },
             body: JSON.stringify({
               event: 'presence.update',
               phone: senderPhone,
@@ -633,9 +713,14 @@ export class BaileysEngine {
               });
 
               // Forward to Django webhook
-              fetch('http://127.0.0.1:8000/api/conversations/webhook/', {
+              const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+              fetch(`${backendUrl}/api/conversations/webhook/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Internal-Gateway': 'baileys',
+                  'X-Gateway-Account': accountId,
+                },
                 body: JSON.stringify({
                   event: 'messages.update',
                   status_id: u.key.id,

@@ -203,6 +203,7 @@ export interface WhatsAppMessage {
   senderName?: string;
   sender_device?: string;
   sender_phone?: string;
+  recipient_phone?: string;
   text: string;
   timestamp: string;
   created_at?: string;
@@ -227,6 +228,13 @@ export interface WhatsAppMessage {
     audioUrl?: string;
     duration?: number;
     waveform?: number[];
+    received_on_line?: {
+      device_label?: string;
+      phone_number?: string;
+      employee_name?: string;
+      line_type?: 'meta_cloud' | 'employee' | string;
+      device_id?: string | number;
+    };
   };
 }
 
@@ -255,6 +263,10 @@ export interface Conversation {
   lead_owner: string;
   lead_stage: string;
   source: string;
+  active_line_device?: string;
+  active_line_phone?: string;
+  active_employee_name?: string;
+  active_line_type?: 'meta_cloud' | 'employee';
   first_contact_date: string;
   last_contact_date: string;
   location: string;

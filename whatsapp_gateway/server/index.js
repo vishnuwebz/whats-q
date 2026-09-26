@@ -65,6 +65,10 @@ function broadcastWsEvent(type, payload) {
 baileysEngine.onEvent((type, payload) => {
   broadcastWsEvent(type, payload);
 
+  if (type === 'incoming_message') {
+    broadcastWsEvent('new_inbox_message', payload);
+  }
+
   if (type === 'session_ready') {
     const db = getDb();
     const acc = db.accounts.find((a) => a.id === payload.accountId);
