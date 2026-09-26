@@ -173,7 +173,7 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
           store.triggerOtaDeploymentUpdate({
             latest_commit: data.commit || 'latest',
             latest_message: data.message || 'New production release deployed to origin/main',
-            latest_author: data.author || 'WhatsQ Core Team',
+            latest_author: data.author || 'QBS-360 Core Team',
             latest_date: data.date || 'Just now',
             update_available: true,
           });

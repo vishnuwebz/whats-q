@@ -1,5 +1,5 @@
 /**
- * WhatsQ / Qiyam Business OS - Backup & Restore Manager
+ * QBS-360 / Qiyam Business OS - Backup & Restore Manager
  * Handles complete multi-entity data snapshots, JSON export/import,
  * schema validation, auto-backup intervals, and local snapshot archives.
  */
@@ -165,7 +165,7 @@ export function generateFullBackupPayload(type: 'auto' | 'manual' | 'pre_update'
   const checksum = generateSimpleChecksum(jsonString);
 
   const metadata: BackupMetadata = {
-    app: 'WhatsQ / Qiyam Business OS',
+    app: 'QBS-360 / Qiyam Business OS',
     version: store.versionInfo?.current_commit || 'v2.4.2',
     schemaVersion: '2.4.2',
     createdAt: new Date().toISOString(),
@@ -290,7 +290,7 @@ export async function parseAndValidateBackup(file: File): Promise<{
 
       const normalizedPayload: FullBackupPayload = {
         metadata: {
-          app: 'WhatsQ / Qiyam Business OS',
+          app: 'QBS-360 / Qiyam Business OS',
           version: parsed.version || 'v2.4.2',
           schemaVersion: '1.0.0',
           createdAt: parsed.timestamp || new Date().toISOString(),
@@ -342,7 +342,7 @@ export async function parseAndValidateBackup(file: File): Promise<{
 
     return {
       valid: false,
-      error: 'Invalid backup file format. Expected a valid WhatsQ JSON backup payload.',
+      error: 'Invalid backup file format. Expected a valid QBS-360 JSON backup payload.',
     };
   } catch (err: any) {
     return {

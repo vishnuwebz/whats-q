@@ -122,7 +122,7 @@ export const SystemUpdateModal: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base sm:text-lg leading-snug tracking-tight text-white">
-                {versionInfo.update_available ? 'New WhatsQ Update Available' : 'WhatsQ is Up to Date'}
+                {versionInfo.update_available ? 'New QBS-360 Update Available' : 'QBS-360 is Up to Date'}
               </h3>
               <p className="text-emerald-200/90 text-xs mt-1 leading-relaxed">
                 {versionInfo.update_available
@@ -180,7 +180,7 @@ export const SystemUpdateModal: React.FC = () => {
               </div>
 
               <p className="text-[10.5px] text-slate-600 leading-snug">
-                WhatsQ will automatically clear browser CacheStorage, unregister ServiceWorkers, and hard-refresh to load the new production build.
+                QBS-360 will automatically clear browser CacheStorage, unregister ServiceWorkers, and hard-refresh to load the new production build.
               </p>
             </div>
           )}
@@ -310,7 +310,7 @@ export const SystemUpdateModal: React.FC = () => {
                 <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full animate-pulse w-4/5 transition-all duration-500" />
               </div>
               <p className="text-[10px] text-slate-400">
-                Please do not refresh or close this window. WhatsQ will cleanly reload once finished.
+                Please do not refresh or close this window. QBS-360 will cleanly reload once finished.
               </p>
             </div>
           )}

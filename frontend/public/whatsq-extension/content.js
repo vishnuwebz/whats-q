@@ -1,6 +1,6 @@
-// WhatsQ Group Grabber - WhatsApp Web Content Script
+// QBS-360 Group Grabber - WhatsApp Web Content Script
 (function initWhatsQExtension() {
-  console.log('🚀 WhatsQ Group Grabber Extension loaded on WhatsApp Web');
+  console.log('🚀 QBS-360 Group Grabber Extension loaded on WhatsApp Web');
 
   // Insert Grab Button in WhatsApp Web Header
   function insertWhatsQButton() {
@@ -14,8 +14,8 @@
 
     const btn = document.createElement('button');
     btn.id = 'whatsq-header-btn';
-    btn.innerHTML = '⚡ WhatsQ Grab';
-    btn.setAttribute('title', 'Extract Group Member Names & Phone Numbers into WhatsQ');
+    btn.innerHTML = '⚡ QBS-360 Grab';
+    btn.setAttribute('title', 'Extract Group Member Names & Phone Numbers into QBS-360');
     btn.style.cssText = `
       margin-left: 12px;
       padding: 6px 14px;
@@ -107,7 +107,7 @@
             ⚡
           </div>
           <div>
-            <div style="font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">WhatsQ Group Grabber</div>
+            <div style="font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">QBS-360 Group Grabber</div>
             <div style="font-size: 11px; color: #6ee7b7;">100% Real WhatsApp Web Roster</div>
           </div>
         </div>
@@ -136,7 +136,7 @@
 
       <div style="padding: 16px 20px; background: #0b1120; border-top: 1px solid #1e293b; display: flex; flex-direction: column; gap: 8px;">
         <button id="whatsq-send-btn" class="whatsq-btn" style="padding: 12px; background: #059669; color: #fff; font-size: 13px;">
-          🚀 Copy All &amp; Send to WhatsQ
+          🚀 Copy All &amp; Send to QBS-360
         </button>
         <div style="display: flex; gap: 8px;">
           <button id="whatsq-csv-btn" class="whatsq-btn" style="flex: 1; padding: 9px; background: #1e293b; color: #cbd5e1; font-size: 11px; border: 1px solid #334155;">
@@ -147,7 +147,7 @@
           </button>
         </div>
         <div id="whatsq-status-text" style="font-size: 10px; color: #64748b; text-align: center; margin-top: 2px;">
-          WhatsQ Business OS • High Privacy Multi-Device Grabber
+          QBS-360 Business OS • High Privacy Multi-Device Grabber
         </div>
       </div>
     `;
@@ -185,7 +185,7 @@
               role: m.isAdmin ? 'admin' : 'member',
               country: 'Verified Contact',
               isValidWhatsApp: true,
-              statusMessage: 'Discovered via WhatsQ Extension',
+              statusMessage: 'Discovered via QBS-360 Extension',
               joinedAt: new Date().toLocaleDateString()
             }))
           }
@@ -194,7 +194,7 @@
 
       const statusEl = document.getElementById('whatsq-status-text');
       if (statusEl) {
-        statusEl.innerHTML = '✅ <strong>Copied ' + groupInfo.members.length + ' contacts!</strong> Switch to WhatsQ and click "Paste from Clipboard".';
+        statusEl.innerHTML = '✅ <strong>Copied ' + groupInfo.members.length + ' contacts!</strong> Switch to QBS-360 and click "Paste from Clipboard".';
         statusEl.style.color = '#34d399';
       }
     };

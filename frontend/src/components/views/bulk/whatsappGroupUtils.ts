@@ -316,7 +316,7 @@ export const parseGroupInviteLink = (
  * Extracts genuine contact names AND phone numbers from the active WhatsApp Web group!
  */
 export const WHATSAPP_WEB_GRABBER_SCRIPT = `
-(function runWhatsQGrabber() {
+(function runQBS360Grabber() {
   try {
     const existing = document.getElementById('whatsq-grabber-overlay');
     if (existing) existing.remove();
@@ -396,7 +396,7 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
 
     const members = Array.from(contactsMap.values());
     if (members.length === 0) {
-      alert('⚠️ No participant phone numbers found in current view.\\n\\nPlease click on the group name ("' + groupName + '") at the top of the chat to open the Group Info drawer, then click the WhatsQ Grabber bookmark/button again!');
+      alert('⚠️ No participant phone numbers found in current view.\\n\\nPlease click on the group name ("' + groupName + '") at the top of the chat to open the Group Info drawer, then click the QBS-360 Grabber bookmark/button again!');
       return;
     }
 
@@ -405,7 +405,7 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
       navigator.clipboard.writeText(members.map((m) => m.phone).join('\\n'));
     }
 
-    // Build Group Object for WhatsQ
+    // Build Group Object for QBS-360
     const groupObj = {
       id: 'grp-web-' + Date.now(),
       jid: '120363' + Date.now() + '@g.us',
@@ -440,17 +440,17 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
       });
     } catch(e) {}
 
-    // 3. Inject Floating WhatsQ Widget on WhatsApp Web
+    // 3. Inject Floating QBS-360 Widget on WhatsApp Web
     const overlay = document.createElement('div');
     overlay.id = 'whatsq-grabber-overlay';
     overlay.style.cssText = 'position:fixed;top:20px;right:20px;width:380px;max-width:92vw;max-height:85vh;background:#0f172a;color:#f8fafc;border-radius:18px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7),0 0 0 2px #059669;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;z-index:999999;display:flex;flex-direction:column;overflow:hidden;';
 
     const itemsHtml = members.map((m, idx) => '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:' + (idx%2===0?'rgba(30,41,59,0.7)':'rgba(15,23,42,0.5)') + ';border-radius:8px;margin-bottom:3px;font-size:11px;"><div style="display:flex;align-items:center;gap:8px;overflow:hidden;"><div style="width:24px;height:24px;border-radius:6px;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:10px;">' + (m.name.charAt(0).toUpperCase() || 'M') + '</div><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><div style="font-weight:600;color:#f1f5f9;">' + m.name.replace(/</g,'&lt;') + '</div><div style="color:#94a3b8;font-family:monospace;font-size:10px;">' + m.phone + '</div></div></div>' + (m.isAdmin ? '<span style="font-size:9px;padding:2px 5px;background:rgba(245,158,11,0.2);color:#fbbf24;border-radius:4px;font-weight:bold;">ADMIN</span>' : '') + '</div>').join('');
 
-    overlay.innerHTML = '<div style="padding:14px 16px;background:linear-gradient(135deg,#065f46,#0f172a);display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:18px;">⚡</div><div><div style="font-size:13px;font-weight:800;color:#fff;">WhatsQ Group Grabber</div><div style="font-size:10px;color:#6ee7b7;">100% Real WhatsApp Web Roster</div></div></div><button id="whatsq-w-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:2px 6px;">✕</button></div>' +
+    overlay.innerHTML = '<div style="padding:14px 16px;background:linear-gradient(135deg,#065f46,#0f172a);display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:18px;">⚡</div><div><div style="font-size:13px;font-weight:800;color:#fff;">QBS-360 Group Grabber</div><div style="font-size:10px;color:#6ee7b7;">100% Real WhatsApp Web Roster</div></div></div><button id="whatsq-w-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:2px 6px;">✕</button></div>' +
       '<div style="padding:10px 16px;background:rgba(30,41,59,0.5);border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-size:12px;font-weight:700;color:#e2e8f0;">' + groupName.replace(/</g,'&lt;') + '</div><div style="font-size:10px;color:#94a3b8;">' + members.length + ' contacts discovered</div></div><span style="background:#059669;color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;">' + members.length + ' Found</span></div>' +
       '<div style="padding:10px 16px;flex:1;overflow-y:auto;max-height:38vh;">' + itemsHtml + '</div>' +
-      '<div style="padding:12px 16px;background:#0b1120;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px;"><button id="whatsq-w-send" style="width:100%;padding:10px;border-radius:10px;border:none;background:#059669;color:#fff;font-weight:700;font-size:12px;cursor:pointer;">🚀 Send All to WhatsQ Dashboard</button><div style="display:flex;gap:6px;"><button id="whatsq-w-csv" style="flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:10px;font-weight:600;cursor:pointer;">📥 Download CSV</button><button id="whatsq-w-copy" style="flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:10px;font-weight:600;cursor:pointer;">📋 Copy Numbers</button></div><div id="whatsq-w-status" style="font-size:10px;color:#34d399;text-align:center;margin-top:2px;">All ' + members.length + ' numbers are copied to clipboard!</div></div>';
+      '<div style="padding:12px 16px;background:#0b1120;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px;"><button id="whatsq-w-send" style="width:100%;padding:10px;border-radius:10px;border:none;background:#059669;color:#fff;font-weight:700;font-size:12px;cursor:pointer;">🚀 Send All to QBS-360 Dashboard</button><div style="display:flex;gap:6px;"><button id="whatsq-w-csv" style="flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:10px;font-weight:600;cursor:pointer;">📥 Download CSV</button><button id="whatsq-w-copy" style="flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:10px;font-weight:600;cursor:pointer;">📋 Copy Numbers</button></div><div id="whatsq-w-status" style="font-size:10px;color:#34d399;text-align:center;margin-top:2px;">All ' + members.length + ' numbers are copied to clipboard!</div></div>';
 
     document.body.appendChild(overlay);
 
@@ -458,7 +458,7 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
     document.getElementById('whatsq-w-send').onclick = () => {
       navigator.clipboard.writeText(members.map((m) => m.phone).join('\\n'));
       const s = document.getElementById('whatsq-w-status');
-      if (s) s.innerHTML = '✅ <strong>Saved to clipboard!</strong> Go to WhatsQ & click "Paste from Clipboard".';
+      if (s) s.innerHTML = '✅ <strong>Saved to clipboard!</strong> Go to QBS-360 & click "Paste from Clipboard".';
       try {
         const ch = new BroadcastChannel('qiyam_group_grabber');
         ch.postMessage({ type: 'GROUP_PUSHED', group: groupObj });
@@ -480,7 +480,7 @@ export const WHATSAPP_WEB_GRABBER_SCRIPT = `
 
     return groupObj;
   } catch(err) {
-    alert('WhatsQ Grabber error: ' + err.message);
+    alert('QBS-360 Grabber error: ' + err.message);
   }
 })();
 `.trim();

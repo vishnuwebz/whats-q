@@ -21,7 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[WhatsQ ErrorBoundary] Caught error:', error, errorInfo);
+    console.error('[QBS-360 ErrorBoundary] Caught error:', error, errorInfo);
   }
 
   private handleReset = () => {

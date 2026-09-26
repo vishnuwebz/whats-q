@@ -62,7 +62,7 @@ export const NotificationSettings: React.FC = () => {
     if ('Notification' in window) {
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          new Notification('WhatsQ Business Alert', {
+          new Notification('QBS-360 Business Alert', {
             body: 'Incoming message from +91 98765 43210 (Test Notification)',
             icon: '/vite.svg',
           });
@@ -92,7 +92,7 @@ export const NotificationSettings: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { id: 'chime', name: 'WhatsQ Chime', desc: 'Pleasant dual bell' },
+            { id: 'chime', name: 'QBS-360 Chime', desc: 'Pleasant dual bell' },
             { id: 'ding', name: 'Modern Ding', desc: 'Short crisp chime' },
             { id: 'pop', name: 'Soft Bubble Pop', desc: 'Subtle notification' },
             { id: 'subtle', name: 'Zen Tone', desc: 'Minimalist unobtrusive' },
@@ -174,7 +174,7 @@ export const NotificationSettings: React.FC = () => {
             <span>Desktop Push Notifications & Quiet Hours</span>
           </h3>
           <p className="text-slate-500 text-xs mt-0.5">
-            Deliver browser push alerts even when WhatsQ is minimized or in a background tab.
+            Deliver browser push alerts even when QBS-360 is minimized or in a background tab.
           </p>
         </div>
 

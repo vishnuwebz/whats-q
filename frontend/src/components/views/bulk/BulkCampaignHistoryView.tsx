@@ -1441,7 +1441,7 @@ export const BulkCampaignHistoryView: React.FC = () => {
                     )}
                     {isSent && (
                       <p>
-                        The message was validated, accepted, and dispatched by Meta Cloud API servers (<strong>Single Tick ✓</strong>). It has left WhatsQ's servers and is traversing WhatsApp's worldwide delivery network.
+                        The message was validated, accepted, and dispatched by Meta Cloud API servers (<strong>Single Tick ✓</strong>). It has left QBS-360's servers and is traversing WhatsApp's worldwide delivery network.
                       </p>
                     )}
                     {isQueued && (

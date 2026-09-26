@@ -878,7 +878,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-400 font-semibold text-[10.5px]">
                         <th className="pb-2">API Scope</th>
-                        <th className="pb-2">Purpose in WhatsQ</th>
+                        <th className="pb-2">Purpose in QBS-360</th>
                         <th className="pb-2 text-right">Requirement</th>
                       </tr>
                     </thead>
@@ -1052,7 +1052,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                       <div className="p-4 flex items-center justify-between">
                         <div>
                           <div className="font-bold text-slate-900 text-xs">Deal Pipeline Stage Sync</div>
-                          <div className="text-[11px] text-slate-500">Keeps WhatsQ CRM Deal stages synchronized with Zoho Deals in real-time.</div>
+                          <div className="text-[11px] text-slate-500">Keeps QBS-360 CRM Deal stages synchronized with Zoho Deals in real-time.</div>
                         </div>
                         <input
                           type="checkbox"
@@ -1070,7 +1070,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                       <div className="p-4 flex items-center justify-between">
                         <div>
                           <div className="font-bold text-slate-900 text-xs">Auto-Record Invoices to QuickBooks Ledger</div>
-                          <div className="text-[11px] text-slate-500">Posts finalized WhatsQ customer invoices to QuickBooks accounts receivable.</div>
+                          <div className="text-[11px] text-slate-500">Posts finalized QBS-360 customer invoices to QuickBooks accounts receivable.</div>
                         </div>
                         <input
                           type="checkbox"
@@ -1196,7 +1196,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                       <div className="p-4 flex items-center justify-between">
                         <div>
                           <div className="font-bold text-slate-900 text-xs">Auto-Sync Customer to CRM Leads</div>
-                          <div className="text-[11px] text-slate-500">Automatically creates or updates WhatsQ CRM customer profile, shipping address, and order history.</div>
+                          <div className="text-[11px] text-slate-500">Automatically creates or updates QBS-360 CRM customer profile, shipping address, and order history.</div>
                         </div>
                         <input
                           type="checkbox"

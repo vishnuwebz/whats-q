@@ -40,7 +40,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     portalUrl: 'https://console.cloud.google.com/apis/dashboard',
     badge: 'OAuth 2.0 & Service Account',
     overview:
-      'Connect WhatsQ directly to Google Workspace to automatically sync technician appointments to Google Calendar, send email summaries via Gmail API, and back up invoices and PDF media directly to Google Drive.',
+      'Connect QBS-360 directly to Google Workspace to automatically sync technician appointments to Google Calendar, send email summaries via Gmail API, and back up invoices and PDF media directly to Google Drive.',
     prerequisites: [
       'A Google Account or Google Workspace Admin Account',
       'Access to Google Cloud Console with Project Creation permissions',
@@ -50,7 +50,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 1,
         title: 'Create or Select a Google Cloud Project',
         description:
-          'Open Google Cloud Console, click the Project dropdown in the top header, and click "New Project". Give it a descriptive name like "WhatsQ Business Automation" and click Create.',
+          'Open Google Cloud Console, click the Project dropdown in the top header, and click "New Project". Give it a descriptive name like "QBS-360 Business Automation" and click Create.',
         directLink: { label: 'Open Google Cloud Console', url: 'https://console.cloud.google.com/projectcreate' },
         tip: 'If using Google Workspace, ensure you select your organization so internal permissions are granted automatically.',
       },
@@ -66,20 +66,20 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 3,
         title: 'Configure OAuth Consent Screen',
         description:
-          'Navigate to "APIs & Services" > "OAuth consent screen". Choose "Internal" (if using Google Workspace) or "External". Enter "WhatsQ" as the App Name, provide your support email, and save.',
+          'Navigate to "APIs & Services" > "OAuth consent screen". Choose "Internal" (if using Google Workspace) or "External". Enter "QBS-360" as the App Name, provide your support email, and save.',
         directLink: { label: 'OAuth Consent Screen', url: 'https://console.cloud.google.com/apis/credentials/consent' },
       },
       {
         stepNumber: 4,
         title: 'Create OAuth 2.0 Web Application Credentials',
         description:
-          'Go to "APIs & Services" > "Credentials" > click "+ CREATE CREDENTIALS" > choose "OAuth client ID". Select "Web application". Under "Authorized redirect URIs", paste the WhatsQ callback URL shown below.',
+          'Go to "APIs & Services" > "Credentials" > click "+ CREATE CREDENTIALS" > choose "OAuth client ID". Select "Web application". Under "Authorized redirect URIs", paste the QBS-360 callback URL shown below.',
         codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/integrations/google/callback/',
         tip: 'For headless server background automation, you can also create a "Service Account" and download its JSON key.',
       },
       {
         stepNumber: 5,
-        title: 'Copy Client ID & Client Secret into WhatsQ',
+        title: 'Copy Client ID & Client Secret into QBS-360',
         description:
           'Copy your Client ID (ends with .apps.googleusercontent.com) and Client Secret. Switch to the "Credentials & Keys" tab in this modal, paste both values, and click "Test Connection".',
       },
@@ -92,7 +92,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     troubleshooting: [
       {
         issue: 'Error: redirect_uri_mismatch (Error 400)',
-        solution: 'Verify that the exact Redirect URI in Google Cloud Console matches the WhatsQ domain with trailing slash.',
+        solution: 'Verify that the exact Redirect URI in Google Cloud Console matches the QBS-360 domain with trailing slash.',
       },
       {
         issue: 'Access blocked: Authorization Error',
@@ -108,17 +108,17 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     portalUrl: 'https://api.slack.com/apps',
     badge: 'Bot Token & Incoming Webhooks',
     overview:
-      'Connect WhatsQ with your team Slack workspace to instantly broadcast high-value customer inquiries, field job escalations, technician check-in alerts, and daily sales summaries directly into dedicated channels.',
+      'Connect QBS-360 with your team Slack workspace to instantly broadcast high-value customer inquiries, field job escalations, technician check-in alerts, and daily sales summaries directly into dedicated channels.',
     prerequisites: [
       'A Slack Workspace where you have permissions to install apps',
-      'A Slack channel created for alerts (e.g. #whatsq-alerts, #leads)',
+      'A Slack channel created for alerts (e.g. #qbs-alerts, #leads)',
     ],
     steps: [
       {
         stepNumber: 1,
         title: 'Create a Slack App',
         description:
-          'Go to the Slack API portal and click "Create New App". Choose "From scratch", name the app "WhatsQ Dispatcher", and pick your target team workspace.',
+          'Go to the Slack API portal and click "Create New App". Choose "From scratch", name the app "QBS-360 Dispatcher", and pick your target team workspace.',
         directLink: { label: 'Create Slack App', url: 'https://api.slack.com/apps?new_app=1' },
       },
       {
@@ -145,11 +145,11 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 5,
         title: 'Paste Credentials & Test Channel Dispatch',
         description:
-          'Paste the Bot Token (xoxb-...) and default alert channel name (e.g. #whatsq-alerts) into WhatsQ. Click "Test Connection" to trigger a live Slack notification.',
+          'Paste the Bot Token (xoxb-...) and default alert channel name (e.g. #qbs-alerts) into QBS-360. Click "Test Connection" to trigger a live Slack notification.',
       },
     ],
     scopes: [
-      { name: 'chat:write', description: 'Send messages and interactive job cards as WhatsQ Bot', level: 'Required' },
+      { name: 'chat:write', description: 'Send messages and interactive job cards as QBS-360 Bot', level: 'Required' },
       { name: 'chat:write.public', description: 'Post to any public channel without being explicitly invited', level: 'Recommended' },
       { name: 'incoming-webhook', description: 'Post messages to a specific channel via incoming webhook', level: 'Recommended' },
       { name: 'channels:read', description: 'List available public channels for dropdown selection', level: 'Optional' },
@@ -163,7 +163,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     troubleshooting: [
       {
         issue: 'Error: channel_not_found',
-        solution: 'Ensure the channel name begins with "#" (e.g. #whatsq-alerts) or invite @WhatsQ directly to private channels with /invite @WhatsQ.',
+        solution: 'Ensure the channel name begins with "#" (e.g. #qbs-alerts) or invite @QBS-360 directly to private channels with /invite @QBS-360.',
       },
       {
         issue: 'Error: invalid_auth',
@@ -179,7 +179,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     portalUrl: 'https://api-console.zoho.com',
     badge: 'OAuth 2.0 & REST API',
     overview:
-      'Establish a real-time bidirectional bridge between WhatsQ and Zoho CRM. Automatically create Zoho Leads whenever new customers message on WhatsApp, update Deal stages, and sync customer conversation transcripts.',
+      'Establish a real-time bidirectional bridge between QBS-360 and Zoho CRM. Automatically create Zoho Leads whenever new customers message on WhatsApp, update Deal stages, and sync customer conversation transcripts.',
     prerequisites: [
       'A Zoho CRM Account with Administrator access',
       'Knowledge of your Zoho Data Center domain (.com, .in, .eu, etc.)',
@@ -195,9 +195,9 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
       },
       {
         stepNumber: 2,
-        title: 'Register WhatsQ as a Server Client',
+        title: 'Register QBS-360 as a Server Client',
         description:
-          'Set Client Name to "WhatsQ Automation Bridge". Set Homepage URL to your domain, and set "Authorized Redirect URIs" to the WhatsQ callback endpoint below.',
+          'Set Client Name to "QBS-360 Automation Bridge". Set Homepage URL to your domain, and set "Authorized Redirect URIs" to the QBS-360 callback endpoint below.',
         codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/integrations/zoho/callback/',
       },
       {
@@ -212,7 +212,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         description:
           'In Zoho API Console, click "Generate Code". In the Scope field enter: ZohoCRM.modules.ALL,ZohoCRM.settings.ALL. Choose Scope Duration: 10 minutes, enter any description, and click CREATE.',
         codeSnippet: 'ZohoCRM.modules.ALL,ZohoCRM.settings.ALL',
-        tip: 'This code is exchanged once by WhatsQ for a permanent Refresh Token that never expires.',
+        tip: 'This code is exchanged once by QBS-360 for a permanent Refresh Token that never expires.',
       },
       {
         stepNumber: 5,
@@ -233,7 +233,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
       },
       {
         issue: 'Wrong Data Center / Region',
-        solution: 'Ensure the Data Center selector in WhatsQ matches your Zoho region (.in for India, .com for US, .eu for Europe).',
+        solution: 'Ensure the Data Center selector in QBS-360 matches your Zoho region (.in for India, .com for US, .eu for Europe).',
       },
     ],
   },
@@ -245,7 +245,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     portalUrl: 'https://developer.intuit.com/app/developer/dashboard',
     badge: 'Intuit OAuth 2.0 Ledger',
     overview:
-      'Synchronize WhatsQ invoices, technician payments, and service items automatically with QuickBooks Online ledger. Keep books balanced without manual data entry.',
+      'Synchronize QBS-360 invoices, technician payments, and service items automatically with QuickBooks Online ledger. Keep books balanced without manual data entry.',
     prerequisites: [
       'Intuit Developer Account',
       'QuickBooks Online Company (Sandbox or Production)',
@@ -268,7 +268,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 3,
         title: 'Configure Redirect URI',
         description:
-          'Under the "Redirect URIs" section in Intuit Dashboard, click "Add URI" and paste the WhatsQ QuickBooks callback URL.',
+          'Under the "Redirect URIs" section in Intuit Dashboard, click "Add URI" and paste the QBS-360 QuickBooks callback URL.',
         codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/integrations/quickbooks/callback/',
       },
       {
@@ -317,7 +317,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 1,
         title: 'Navigate to App Development in Shopify Admin',
         description:
-          'In your Shopify Store Admin, navigate to Settings > Apps and sales channels > click "Develop apps" in the top bar. Click "Create an app" and title it "WhatsQ WhatsApp Automation".',
+          'In your Shopify Store Admin, navigate to Settings > Apps and sales channels > click "Develop apps" in the top bar. Click "Create an app" and title it "QBS-360 WhatsApp Automation".',
         directLink: { label: 'Shopify Apps Admin', url: 'https://admin.shopify.com/settings/apps' },
         tip: 'If App Development is not yet enabled on your store, click "Allow custom app development".',
       },
@@ -338,14 +338,14 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 4,
         title: 'Setup Webhook Subscriptions',
         description:
-          'In Shopify Admin, go to Settings > Notifications > scroll to "Webhooks" > click "Create webhook". Add "Order creation" (JSON) pointing to WhatsQ webhook URL.',
+          'In Shopify Admin, go to Settings > Notifications > scroll to "Webhooks" > click "Create webhook". Add "Order creation" (JSON) pointing to QBS-360 webhook URL.',
         codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/integrations/shopify/webhook/',
       },
       {
         stepNumber: 5,
-        title: 'Test Store Connection in WhatsQ',
+        title: 'Test Store Connection in QBS-360',
         description:
-          'Enter your store domain (e.g. my-brand.myshopify.com) and the Admin API token into WhatsQ. Click "Test Connection" to fetch store catalog status.',
+          'Enter your store domain (e.g. my-brand.myshopify.com) and the Admin API token into QBS-360. Click "Test Connection" to fetch store catalog status.',
       },
     ],
     scopes: [
@@ -410,26 +410,26 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 4,
         title: 'Configure Razorpay Webhook',
         description:
-          'Go to Account & Settings > "Webhooks" > click "+ Add New Webhook". In the Webhook URL field, paste the WhatsQ payments webhook endpoint below. Enter a secure Secret (e.g. whatsq_whsec_2026).',
+          'Go to Account & Settings > "Webhooks" > click "+ Add New Webhook". In the Webhook URL field, paste the QBS-360 payments webhook endpoint below. Enter a secure Secret (e.g. whatsq_whsec_2026).',
         codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/finance/payments/webhook/',
       },
       {
         stepNumber: 5,
         title: 'Select Active Webhook Events',
         description:
-          'Check the following events: payment.captured, payment.failed, order.paid, invoice.paid. Click "Save" in Razorpay, then paste the Key ID, Secret, and Webhook Secret into WhatsQ.',
+          'Check the following events: payment.captured, payment.failed, order.paid, invoice.paid. Click "Save" in Razorpay, then paste the Key ID, Secret, and Webhook Secret into QBS-360.',
       },
     ],
     scopes: [
       { name: 'payment.links.create', description: 'Generate instant dynamic UPI payment links for WhatsApp invoices', level: 'Required' },
       { name: 'payment.fetch', description: 'Query payment status and transaction reference numbers', level: 'Required' },
-      { name: 'refund.create', description: 'Process customer cancellation refunds directly from WhatsQ', level: 'Optional' },
+      { name: 'refund.create', description: 'Process customer cancellation refunds directly from QBS-360', level: 'Optional' },
     ],
     webhookInfo: {
       endpointPath: '/api/finance/payments/webhook/',
       events: ['payment.captured', 'payment.failed', 'order.paid', 'invoice.paid'],
       secretName: 'Webhook Secret',
-      instructions: 'Ensures WhatsQ verifies the cryptographic HMAC signature of incoming payment confirmation pings.',
+      instructions: 'Ensures QBS-360 verifies the cryptographic HMAC signature of incoming payment confirmation pings.',
     },
     troubleshooting: [
       {
@@ -438,7 +438,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
       },
       {
         issue: 'Webhook Signature Verification Failed',
-        solution: 'Ensure the Webhook Secret string in WhatsQ matches the secret you entered in Razorpay Webhooks dashboard.',
+        solution: 'Ensure the Webhook Secret string in QBS-360 matches the secret you entered in Razorpay Webhooks dashboard.',
       },
     ],
   },
@@ -449,7 +449,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
     portalUrl: 'https://woocommerce.com',
     badge: 'REST API v3 & Webhooks',
     overview:
-      'Connect your WordPress WooCommerce store to WhatsQ to automate order confirmation notifications on WhatsApp, dispatch live shipment tracking updates, recover abandoned checkouts, and synchronize customer orders directly into CRM Leads.',
+      'Connect your WordPress WooCommerce store to QBS-360 to automate order confirmation notifications on WhatsApp, dispatch live shipment tracking updates, recover abandoned checkouts, and synchronize customer orders directly into CRM Leads.',
     prerequisites: [
       'A WordPress website with the WooCommerce plugin activated (version 3.5+)',
       'Administrator privileges on WordPress Admin dashboard',
@@ -476,21 +476,21 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
         stepNumber: 3,
         title: 'Generate API Keys (Consumer Key & Consumer Secret)',
         description:
-          'Click the "Add key" or "Create an API Key" button. Enter Description: "WhatsQ WhatsApp Automation". Set User to your Administrator user. Set Permissions to "Read/Write". Click "Generate API key".',
+          'Click the "Add key" or "Create an API Key" button. Enter Description: "QBS-360 WhatsApp Automation". Set User to your Administrator user. Set Permissions to "Read/Write". Click "Generate API key".',
         tip: 'Important: Copy the Consumer Key (ck_...) and Consumer Secret (cs_...) immediately! WooCommerce permanently masks the secret once you leave or refresh the page.',
       },
       {
         stepNumber: 4,
         title: 'Create Order Notification Webhooks',
         description:
-          'In WooCommerce > Settings > Advanced > click the "Webhooks" sub-tab > click "Add webhook". Set Name to "WhatsQ Order Confirmation", Status to "Active", Topic to "Order created". In Delivery URL, paste the WhatsQ Webhook URL below.',
+          'In WooCommerce > Settings > Advanced > click the "Webhooks" sub-tab > click "Add webhook". Set Name to "QBS-360 Order Confirmation", Status to "Active", Topic to "Order created". In Delivery URL, paste the QBS-360 Webhook URL below.',
         codeSnippet: 'https://whatsq.qiyambusinesssolutions.com/api/core/integrations/woocommerce/webhook/',
       },
       {
         stepNumber: 5,
-        title: 'Set Webhook Secret & Test Connection in WhatsQ',
+        title: 'Set Webhook Secret & Test Connection in QBS-360',
         description:
-          'In the Webhook "Secret" field, enter a secure secret string (e.g. wc_whsec_qiyam_2026). Set API Version to "WP REST API Integration v3". Click "Save webhook". Then paste your Store URL, Consumer Key, Consumer Secret, and Webhook Secret in WhatsQ and click "Test Connection".',
+          'In the Webhook "Secret" field, enter a secure secret string (e.g. wc_whsec_qiyam_2026). Set API Version to "WP REST API Integration v3". Click "Save webhook". Then paste your Store URL, Consumer Key, Consumer Secret, and Webhook Secret in QBS-360 and click "Test Connection".',
       },
     ],
     scopes: [
@@ -516,7 +516,7 @@ export const INTEGRATION_GUIDES: Record<string, IntegrationGuide> = {
       },
       {
         issue: 'Webhook Signature verification mismatch',
-        solution: 'Verify that the Webhook Secret string in WooCommerce Settings > Advanced > Webhooks exactly matches the secret entered in WhatsQ.',
+        solution: 'Verify that the Webhook Secret string in WooCommerce Settings > Advanced > Webhooks exactly matches the secret entered in QBS-360.',
       },
     ],
   },

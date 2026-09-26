@@ -111,13 +111,13 @@ export const WhatsAppGuidelinesModal: React.FC<WhatsAppGuidelinesModalProps> = (
             </h4>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800">WhatsQ Anti-ban Throttling</span>
+                <span className="font-semibold text-slate-800">QBS-360 Anti-ban Throttling</span>
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                   PROTECTION ACTIVE
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                WhatsQ automatically introduces randomized dispatch delays (1.2s – 2.8s) between
+                QBS-360 automatically introduces randomized dispatch delays (1.2s – 2.8s) between
                 recipients and enforces Meta rate limits. Never send thousands of messages in a
                 single second to prevent spam flags.
               </p>

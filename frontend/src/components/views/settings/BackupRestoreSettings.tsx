@@ -241,7 +241,7 @@ export const BackupRestoreSettings: React.FC = () => {
     setIsValidatingFile(false);
 
     if (!result.valid || !result.payload) {
-      setImportError(result.error || 'The file is corrupted or not a valid WhatsQ backup.');
+      setImportError(result.error || 'The file is corrupted or not a valid QBS-360 backup.');
       setImportPreview(null);
     } else {
       setImportPreview({
@@ -671,7 +671,7 @@ export const BackupRestoreSettings: React.FC = () => {
                     Click to browse or drag & drop backup file
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Accepts official WhatsQ schema .json exports (Max 100MB)
+                    Accepts official QBS-360 schema .json exports (Max 100MB)
                   </p>
                 </div>
               </div>

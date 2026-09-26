@@ -632,13 +632,13 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
   const handleLaunchCompanionWindow = () => {
     const w = window.open(
       'https://web.whatsapp.com',
-      'WhatsQ_WhatsApp_Web_Companion',
+      'QBS360_WhatsApp_Web_Companion',
       'width=1180,height=820,menubar=no,status=no,toolbar=no'
     );
     if (!w) {
-      addToast('Popup was blocked by browser. Please allow popups for WhatsQ to launch companion!', 'error');
+      addToast('Popup was blocked by browser. Please allow popups for QBS-360 to launch companion!', 'error');
     } else {
-      addToast('WhatsApp Web Companion opened! Click the WhatsQ Bookmarklet on that window to grab members.', 'info');
+      addToast('WhatsApp Web Companion opened! Click the QBS-360 Bookmarklet on that window to grab members.', 'info');
     }
   };
 
@@ -1285,7 +1285,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                           draggable={true}
                           className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition cursor-grab flex items-center gap-2 active:cursor-grabbing border-2 border-emerald-300"
                         >
-                          <span>⭐ Drag to Bookmarks: WhatsQ Grabber</span>
+                          <span>⭐ Drag to Bookmarks: QBS-360 Grabber</span>
                         </a>
 
                         <button
@@ -1655,7 +1655,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                                     draggable={true}
                                     className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-grab active:cursor-grabbing border border-emerald-400 flex items-center gap-1.5"
                                   >
-                                    <span>⭐ Drag to Bookmarks: WhatsQ Grabber</span>
+                                    <span>⭐ Drag to Bookmarks: QBS-360 Grabber</span>
                                   </a>
 
                                   <button
@@ -1681,7 +1681,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                                 </div>
                                 <div className="p-2.5 bg-white/80 rounded-xl border border-emerald-200 flex items-start gap-2">
                                   <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
-                                  <span>Click <strong>WhatsQ Grabber</strong> in your bookmarks. The floating card appears with Names &amp; Numbers!</span>
+                                  <span>Click <strong>QBS-360 Grabber</strong> in your bookmarks. The floating card appears with Names &amp; Numbers!</span>
                                 </div>
                               </div>
                             </div>
@@ -1690,7 +1690,7 @@ export const WhatsAppGroupExtractorModal: React.FC<WhatsAppGroupExtractorModalPr
                             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-700">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold">Method 2: Permanent Chrome Extension</span>
-                                <span className="text-slate-500 text-[11px] hidden sm:inline">• Adds a permanent "⚡ WhatsQ Grab" button inside WhatsApp Web</span>
+                                <span className="text-slate-500 text-[11px] hidden sm:inline">• Adds a permanent "⚡ QBS-360 Grab" button inside WhatsApp Web</span>
                               </div>
                               <a
                                 href="/whatsq-extension/README.md"

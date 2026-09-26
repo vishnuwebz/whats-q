@@ -223,7 +223,7 @@ export const CustomerAvatarModal: React.FC<CustomerAvatarModalProps> = ({
                 Meta's <strong>WhatsApp Cloud API</strong> strictly omits personal customer profile pictures from webhook payloads to comply with global data privacy regulations (GDPR), even when customer WhatsApp privacy is set to <em>"Everyone"</em>.
               </p>
               <p className="text-[11px] leading-relaxed text-amber-800">
-                Uploading or pasting their WhatsApp picture below permanently syncs it across WhatsQ. If no picture is set, WhatsQ automatically shows the smart <strong>First &amp; Last Letter ({initials})</strong> initials badge with a live online dot.
+                Uploading or pasting their WhatsApp picture below permanently syncs it across QBS-360. If no picture is set, QBS-360 automatically shows the smart <strong>First &amp; Last Letter ({initials})</strong> initials badge with a live online dot.
               </p>
             </div>
           </div>

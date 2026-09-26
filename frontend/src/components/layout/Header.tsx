@@ -380,7 +380,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-emerald-600" />
-                  <h3 className="font-bold text-sm text-slate-900">Qiyam OS Quick Help</h3>
+                  <h3 className="font-bold text-sm text-slate-900">QBS-360 Quick Help</h3>
                 </div>
                 <button onClick={() => setIsHelpOpen(false)} className="text-slate-400 hover:text-slate-600">
                   <X className="w-4 h-4" />
@@ -388,7 +388,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               <div className="space-y-2.5 text-slate-600 leading-relaxed">
-                <p>Welcome to <strong>Qiyam Business OS</strong> — your end-to-end WhatsApp CRM, dispatch operations, and financial management suite.</p>
+                <p>Welcome to <strong>QBS-360</strong> — your end-to-end WhatsApp CRM, dispatch operations, and financial management suite.</p>
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1.5 font-medium">
                   <div>• <strong>Omni Search:</strong> Press <kbd className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">Ctrl + /</kbd> anywhere to search all records.</div>
                   <div>• <strong>Real Export:</strong> Click "Export" to download a CSV file of any page.</div>

@@ -363,7 +363,7 @@ export const INITIAL_WORKING_HOURS: DaySchedule[] = [
   { day: 'Sunday', time: 'Closed', enabled: false },
 ];
 
-export const DEFAULT_AWAY_MESSAGE = "Hi there! Thanks for reaching out to WhatsQ. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!";
+export const DEFAULT_AWAY_MESSAGE = "Hi there! Thanks for reaching out to QBS-360. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!";
 
 function getStoredAwayMessage(): string {
   if (typeof window === 'undefined') return DEFAULT_AWAY_MESSAGE;
@@ -2415,11 +2415,11 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     const merged: VersionInfo = {
       current_commit: current?.current_commit || 'active',
-      current_author: current?.current_author || 'WhatsQ',
+      current_author: current?.current_author || 'QBS-360',
       current_date: current?.current_date || nowFormatted,
       current_message: current?.current_message || 'Current running release',
       latest_commit: info.latest_commit || 'latest',
-      latest_author: info.latest_author || 'WhatsQ Core Team',
+      latest_author: info.latest_author || 'QBS-360 Core Team',
       latest_date: info.latest_date || nowFormatted,
       latest_message: info.latest_message || 'New production release deployed to origin/main',
       update_available: true,
@@ -3127,7 +3127,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           buttons: Array.isArray(t.buttons) ? t.buttons : [],
           qualityRating: t.quality_score === 'GREEN' ? 'High' : t.quality_score === 'YELLOW' ? 'Medium' : 'Low',
           lastUpdated: t.last_updated || (t.updated_at ? new Date(t.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
-          updatedBy: t.author || 'WhatsQ Staff',
+          updatedBy: t.author || 'QBS-360 Staff',
         };
       }),
       metaConfig: metaConfig || getStoredMetaConfig(),
@@ -4584,7 +4584,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             buttons: Array.isArray(t.buttons) ? t.buttons : [],
             qualityRating: t.quality_score === 'GREEN' ? 'High' : t.quality_score === 'YELLOW' ? 'Medium' : 'Low',
             lastUpdated: t.last_updated || (t.updated_at ? new Date(t.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
-            updatedBy: t.author || 'WhatsQ Staff',
+            updatedBy: t.author || 'QBS-360 Staff',
           };
         });
 
@@ -6932,7 +6932,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         current_date: get().versionInfo?.current_date || nowFormatted,
         current_message: 'System running production release',
         latest_commit: '9c8f12a',
-        latest_author: 'WhatsQ Core Team',
+        latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
         latest_message: 'Instant OTA Hard-Refresh & Real-Time Sync v2.4.3',
         update_available: true,
@@ -7048,7 +7048,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
           } else if (attempts <= 18) {
             set({ updateProgressStep: '⚡ Compiling new production frontend release...' });
           } else {
-            set({ updateProgressStep: '🚀 Hot-reloading WhatsQ backend services...' });
+            set({ updateProgressStep: '🚀 Hot-reloading QBS-360 backend services...' });
           }
 
           try {
@@ -7072,7 +7072,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       await new Promise((r) => setTimeout(r, 800));
     }
 
-    set({ updateProgressStep: '✅ System synchronized! Refreshing WhatsQ...' });
+    set({ updateProgressStep: '✅ System synchronized! Refreshing QBS-360...' });
     await new Promise((r) => setTimeout(r, 600));
 
     // Force hard refresh now that server is completely finished

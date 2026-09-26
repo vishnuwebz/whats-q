@@ -7,7 +7,7 @@ document.getElementById('grab-btn').addEventListener('click', async () => {
         if (typeof window.openWhatsQGrabberOverlay === 'function') {
           window.openWhatsQGrabberOverlay();
         } else {
-          alert('Please refresh WhatsApp Web tab once to activate WhatsQ Grabber!');
+          alert('Please refresh WhatsApp Web tab once to activate QBS-360 Grabber!');
         }
       }
     });

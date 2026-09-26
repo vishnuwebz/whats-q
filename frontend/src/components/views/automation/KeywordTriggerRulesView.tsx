@@ -221,7 +221,7 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
       triggered_count: 0,
       active: true,
       keywords: kwList,
-      reply: newRule.reply.trim() || 'Automated reply from WhatsQ Assistant.',
+      reply: newRule.reply.trim() || 'Automated reply from QBS-360 Assistant.',
       attachment: newRule.attachment.trim() || undefined,
       workflow_name: newRule.workflow_name.trim() || undefined,
       action_type: newRule.workflow_name.trim() ? 'workflow' : 'reply',

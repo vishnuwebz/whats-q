@@ -582,7 +582,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                     </h4>
                     <p className="text-slate-600 text-[11px] leading-relaxed mt-1">
                       Meta Cloud API permits only <strong>one webhook callback URL per phone number</strong>. 
-                      WhatsQ solves this by acting as your <strong>Intelligent Routing Gateway</strong>:
+                      QBS-360 solves this by acting as your <strong>Intelligent Routing Gateway</strong>:
                     </p>
                   </div>
                 </div>
@@ -598,7 +598,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                   <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200/60 flex items-start gap-2">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</div>
                     <div>
-                      <strong className="text-slate-900 block">Customer / WhatsQ CRM Intent</strong>
+                      <strong className="text-slate-900 block">Customer / QBS-360 CRM Intent</strong>
                       <span className="text-slate-500">Customer inquiries and button clicks (&quot;Reschedule&quot;, &quot;Track Technician&quot;, &quot;Pricing&quot;) receive automated, individualized CRM responses.</span>
                     </div>
                   </div>
@@ -614,7 +614,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                     </div>
                     <div>
                       <h5 className="font-bold text-slate-900 text-xs sm:text-sm">
-                        Automated WhatsApp Responses (WhatsQ Bot)
+                        Automated WhatsApp Responses (QBS-360 Bot)
                       </h5>
                       <p className="text-[11px] text-slate-500">
                         Automatically dispatch personalized responses when customers interact or tap template buttons.
@@ -680,7 +680,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                         Dual-Workspace Routing Proxy
                       </h5>
                       <p className="text-[11px] text-slate-500">
-                        Enable co-existence between your existing Staff Portal bot and WhatsQ on this number.
+                        Enable co-existence between your existing Staff Portal bot and QBS-360 on this number.
                       </p>
                     </div>
                   </div>
@@ -730,7 +730,7 @@ export const MetaConfigModal: React.FC<MetaConfigModalProps> = ({
                         </button>
                       </div>
                       <p className="text-[10px] text-slate-400 mt-1">
-                        When a staff member sends a message or invokes the Staff Portal, WhatsQ transparently forwards the raw Meta payload to this URL.
+                        When a staff member sends a message or invokes the Staff Portal, QBS-360 transparently forwards the raw Meta payload to this URL.
                       </p>
 
                       {/* Test Forward Result */}

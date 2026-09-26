@@ -204,7 +204,7 @@ export const Sidebar: React.FC = () => {
 
   // Brand Header & Workspace Name
   const [brandTitle, setBrandTitle] = useState(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('whatsq_workspace_name') || 'Qiyam Business OS' : 'Qiyam Business OS'
+    typeof window !== 'undefined' ? localStorage.getItem('whatsq_workspace_name') || 'QBS-360' : 'QBS-360'
   );
   const [brandLogo, setBrandLogo] = useState<string | null>(() =>
     typeof window !== 'undefined' ? localStorage.getItem('whatsq_brand_logo') : null
@@ -213,7 +213,7 @@ export const Sidebar: React.FC = () => {
   useEffect(() => {
     const handleWorkspaceSync = (e?: any) => {
       if (typeof window !== 'undefined') {
-        setBrandTitle(localStorage.getItem('whatsq_workspace_name') || 'Qiyam Business OS');
+        setBrandTitle(localStorage.getItem('whatsq_workspace_name') || 'QBS-360');
         setBrandLogo(localStorage.getItem('whatsq_brand_logo'));
         const newId = e?.detail?.tenantId || e?.detail?.id || localStorage.getItem('whatsq_active_tenant_id') || localStorage.getItem('whatsq_active_workspace_id');
         if (newId) {
@@ -632,7 +632,7 @@ export const Sidebar: React.FC = () => {
     // 1. Perform automated backup of all state
     const backedUp = handleBackupAllData();
     if (backedUp) {
-      addToast('All data backed up successfully! Force hard-refreshing WhatsQ...', 'success');
+      addToast('All data backed up successfully! Force hard-refreshing QBS-360...', 'success');
     }
 
     // 2. Trigger forceful hard refresh & backend update
@@ -850,7 +850,7 @@ export const Sidebar: React.FC = () => {
                   </div>
                 )}
                 <div className="text-[11px] text-emerald-400 font-medium truncate">
-                  Qiyam Business OS
+                  QBS-360
                 </div>
               </div>
             )}
@@ -1981,7 +1981,7 @@ export const Sidebar: React.FC = () => {
           rel="noopener noreferrer"
           onClick={() => setExpandedSection(null)}
           className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'} rounded-lg transition-all text-slate-400 hover:text-emerald-400 hover:bg-[#16233B] border border-dashed border-slate-700/60 my-1 group`}
-          title="Open WhatsQ Cloud API Docs & Swagger UI"
+          title="Open QBS-360 Cloud API Docs & Swagger UI"
         >
           {isCollapsed ? (
             <span className="font-mono text-xs font-bold text-emerald-400">&lt;/&gt;</span>
@@ -2174,7 +2174,7 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center justify-between text-[11px] py-0.5">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80" />
-                <span className="font-mono text-[10px] text-slate-300 font-medium">WhatsQ {currentVersion}</span>
+                <span className="font-mono text-[10px] text-slate-300 font-medium">QBS-360 {currentVersion}</span>
               </div>
               <button
                 onClick={handleCheckForUpdates}
@@ -2207,14 +2207,14 @@ export const Sidebar: React.FC = () => {
               <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
             </span>
           ) : checkResult === 'latest' ? (
-            <span title={`WhatsQ ${currentVersion} is up to date`}>
+            <span title={`QBS-360 ${currentVersion} is up to date`}>
               <Check className="w-4 h-4 text-emerald-400" />
             </span>
           ) : (
             <button
               onClick={handleCheckForUpdates}
               className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-[#16233B] transition cursor-pointer"
-              title={`WhatsQ ${currentVersion} • Click to check for updates`}
+              title={`QBS-360 ${currentVersion} • Click to check for updates`}
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
@@ -2506,7 +2506,7 @@ export const Sidebar: React.FC = () => {
                 <HelpCircle className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Qiyam Business OS Help</h3>
+                <h3 className="text-sm font-bold text-white">QBS-360 Help</h3>
                 <p className="text-[11px] text-slate-400">Documentation & Shortcuts</p>
               </div>
             </div>

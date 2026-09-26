@@ -1040,7 +1040,7 @@ export const WorkflowBuilderView: React.FC = () => {
       triggered_count: 0,
       active: true,
       keywords: kwList,
-      reply: newRule.reply.trim() || 'Automated reply from WhatsQ Assistant.',
+      reply: newRule.reply.trim() || 'Automated reply from QBS-360 Assistant.',
       attachment: newRule.attachment.trim() || undefined,
       workflow_name: newRule.workflow_name.trim() || undefined,
       action_type: newRule.workflow_name.trim() ? 'workflow' : 'reply',
@@ -3630,7 +3630,7 @@ export const WorkflowBuilderView: React.FC = () => {
                           }
                         });
                       }}
-                      placeholder="Hi {name}! Welcome to WhatsQ..."
+                      placeholder="Hi {name}! Welcome to QBS-360..."
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed text-xs"
                     />
                   </div>
@@ -3890,7 +3890,7 @@ export const WorkflowBuilderView: React.FC = () => {
                   <Bot className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm leading-tight">WhatsQ Test Bot</h3>
+                  <h3 className="font-bold text-sm leading-tight">QBS-360 Test Bot</h3>
                   <div className="text-[11px] text-emerald-300">Live Simulator (Testing {botTitle})</div>
                 </div>
               </div>
@@ -4581,7 +4581,7 @@ export const WorkflowBuilderView: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                         <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                        <span>Service Booking Flow (WhatsQ Official)</span>
+                        <span>Service Booking Flow (QBS-360 Official)</span>
                       </span>
                       <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">Active</span>
                     </div>
