@@ -138,11 +138,11 @@ export const EmployeeVouchersView: React.FC = () => {
     const q = search.toLowerCase().trim();
     if (q) {
       return (
-        v.name.toLowerCase().includes(q) ||
-        v.employee_id_str.toLowerCase().includes(q) ||
-        v.category.toLowerCase().includes(q) ||
-        v.bill_number.toLowerCase().includes(q) ||
-        v.description.toLowerCase().includes(q)
+        (v.name || '').toLowerCase().includes(q) ||
+        (v.employee_id_str || '').toLowerCase().includes(q) ||
+        (v.category || '').toLowerCase().includes(q) ||
+        (v.bill_number || '').toLowerCase().includes(q) ||
+        (v.description || '').toLowerCase().includes(q)
       );
     }
     return true;

@@ -114,10 +114,10 @@ export const EmployeePerformanceView: React.FC = () => {
     const q = search.toLowerCase().trim();
     if (q) {
       return (
-        r.employee_name.toLowerCase().includes(q) ||
-        r.customer_name.toLowerCase().includes(q) ||
-        r.review_text.toLowerCase().includes(q) ||
-        r.service.toLowerCase().includes(q)
+        (r.employee_name || '').toLowerCase().includes(q) ||
+        (r.customer_name || '').toLowerCase().includes(q) ||
+        (r.review_text || '').toLowerCase().includes(q) ||
+        (r.service || '').toLowerCase().includes(q)
       );
     }
     return true;

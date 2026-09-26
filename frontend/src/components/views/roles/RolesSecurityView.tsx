@@ -73,7 +73,7 @@ export const RolesSecurityView: React.FC = () => {
     if (!searchQuery.trim()) return ALL_ROLE_MODULES;
     const q = searchQuery.toLowerCase();
     return ALL_ROLE_MODULES.filter(
-      (m) => m.label.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
+      (m) => (m.label || '').toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q)
     );
   }, [searchQuery]);
 

@@ -2122,7 +2122,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   saveWorkflow: async (wfData) => {
     const nowStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const existing = get().workflows.find((w) => (wfData.id && String(w.id) === String(wfData.id)) || w.name.toLowerCase() === wfData.name.toLowerCase());
+    const existing = get().workflows.find((w) => (wfData.id && String(w.id) === String(wfData.id)) || (w?.name || '').toLowerCase() === (wfData?.name || '').toLowerCase());
 
     const payload = {
       name: wfData.name || 'Chatbot 1',
@@ -2273,7 +2273,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   addKeywordToRule: async (ruleId, kw) => {
-    const cleanKw = kw.trim().toLowerCase();
+    const cleanKw = (kw || '').trim().toLowerCase();
     if (!cleanKw) return;
     const rule = get().keywordRules.find((r) => r.id === ruleId);
     if (!rule || rule.keywords.includes(cleanKw)) return;
@@ -2757,14 +2757,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
     if (notif.target === 'conversations') {
       const conv = get().conversations.find(
-        (c) => c.id === notif.itemId || c.contact_name.toLowerCase().includes('amit')
+        (c) => c.id === notif.itemId || (c?.contact_name || '').toLowerCase().includes('amit')
       );
       if (conv) {
         set({ selectedConversationId: conv.id });
       }
     } else if (notif.target === 'crm-leads') {
       const lead = get().leads.find(
-        (l) => l.id === notif.itemId || l.phone.includes('90000') || l.name.toLowerCase().includes('inquiry')
+        (l) => l.id === notif.itemId || (l?.phone || '').includes('90000') || (l?.name || '').toLowerCase().includes('inquiry')
       );
       if (lead) {
         set({ selectedLead: lead, isLeadDrawerOpen: true, targetHighlightId: lead.id });
@@ -3208,7 +3208,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       knowledgeArticles,
       integrations: (integrations && integrations.length > 0)
         ? integrations.map((i) => {
-            const match = INITIAL_INTEGRATIONS.find((init) => init.name.toLowerCase() === i.name.toLowerCase());
+            const match = INITIAL_INTEGRATIONS.find((init) => (init?.name || '').toLowerCase() === (i?.name || '').toLowerCase());
             return {
               ...i,
               config: i.config && Object.keys(i.config).length > 0 ? i.config : (match?.config || {}),
@@ -6700,7 +6700,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     // Dynamically update corresponding account balance in /finance/accounts
     if (item.account) {
       const matchAccount = get().accounts.find(
-        (a) => a.name.toLowerCase() === (item.account || '').toLowerCase()
+        (a) => (a?.name || '').toLowerCase() === (item.account || '').toLowerCase()
       );
       if (matchAccount) {
         const delta =

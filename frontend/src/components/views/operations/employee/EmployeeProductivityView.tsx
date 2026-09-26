@@ -89,10 +89,10 @@ export const EmployeeProductivityView: React.FC = () => {
     const q = search.toLowerCase().trim();
     if (q) {
       return (
-        g.name.toLowerCase().includes(q) ||
-        g.employee_id_str.toLowerCase().includes(q) ||
-        g.department.toLowerCase().includes(q) ||
-        g.role.toLowerCase().includes(q)
+        (g.name || '').toLowerCase().includes(q) ||
+        (g.employee_id_str || '').toLowerCase().includes(q) ||
+        (g.department || '').toLowerCase().includes(q) ||
+        (g.role || '').toLowerCase().includes(q)
       );
     }
     return true;

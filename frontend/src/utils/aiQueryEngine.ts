@@ -98,12 +98,14 @@ export function queryAIEngine(query: string, ctx: AIStoreContext): string {
   if (isPayrollQuery) {
     // A. Check if the query asks about a specific employee by name or ID
     const matchedEmp = payrollEmployees.find((e) => {
-      const nameParts = e.name.toLowerCase().split(/\s+/);
+      const empName = (e.name || '').toLowerCase();
+      const empId = (e.employee_id || '').toLowerCase();
+      const nameParts = empName.split(/\s+/);
       const firstName = nameParts[0] || '';
       const lastName = nameParts[1] || '';
       return (
-        lower.includes(e.name.toLowerCase()) ||
-        lower.includes(e.employee_id.toLowerCase()) ||
+        (empName && lower.includes(empName)) ||
+        (empId && lower.includes(empId)) ||
         (firstName.length >= 3 && lower.includes(firstName)) ||
         (lastName.length >= 3 && lower.includes(lastName))
       );

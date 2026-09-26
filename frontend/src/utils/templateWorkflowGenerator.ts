@@ -488,7 +488,7 @@ export function generateWorkflowFromTemplate(
 
   return {
     title,
-    description: `Automated interactive WhatsApp flowchart synthesized from template "${template.name}". Includes ${groups.length} node groups with ${analysis.intentLabel.toLowerCase()} logic.`,
+    description: `Automated interactive WhatsApp flowchart synthesized from template "${template.name}". Includes ${groups.length} node groups with ${(analysis?.intentLabel || 'general').toLowerCase()} logic.`,
     groups,
     keywordRules,
     analysis

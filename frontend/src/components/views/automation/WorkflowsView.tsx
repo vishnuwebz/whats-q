@@ -14,10 +14,10 @@ export const WorkflowsView: React.FC = () => {
     if (globalFilter.query) {
       const q = globalFilter.query.toLowerCase();
       return (
-        wf.name.toLowerCase().includes(q) ||
-        wf.description.toLowerCase().includes(q) ||
-        (wf.business_function && wf.business_function.toLowerCase().includes(q)) ||
-        (wf.trigger_type && wf.trigger_type.toLowerCase().includes(q))
+        (wf?.name || '').toLowerCase().includes(q) ||
+        (wf?.description || '').toLowerCase().includes(q) ||
+        (wf?.business_function && (wf.business_function || '').toLowerCase().includes(q)) ||
+        (wf?.trigger_type && (wf.trigger_type || '').toLowerCase().includes(q))
       );
     }
     return true;

@@ -634,7 +634,7 @@ export const WorkflowBuilderView: React.FC = () => {
       return {
         id: `item-${ts}`,
         type: 'collect',
-        varName: varMap[blockTitle] || blockTitle.toLowerCase().replace(/\s+/g, '_'),
+        varName: varMap[blockTitle] || (blockTitle || '').toLowerCase().replace(/\s+/g, '_'),
       };
     }
     if (category === 'CHOICES') {
@@ -942,7 +942,7 @@ export const WorkflowBuilderView: React.FC = () => {
       wfNameLower.includes('welcome')
     ) {
       targetGroups = SERVICE_BOOKING_FLOW_GROUPS;
-    } else if (wfName.toLowerCase().includes('price') || wfName.toLowerCase().includes('quotation')) {
+    } else if (wfNameLower.includes('price') || wfNameLower.includes('quotation')) {
       targetGroups = [
         {
           id: 'group-quo-1',
