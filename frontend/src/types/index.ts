@@ -62,6 +62,7 @@ export type TabType =
   | 'settings'
   | 'settings-backup'
   | 'settings-whatsapp'
+  | 'settings-notifications'
   | 'roles'
   | 'super-admin';
 

@@ -7,7 +7,7 @@ import {
   IndianRupee, Globe, Send, BookOpen, Layers, Ban, UserCheck,
   CreditCard, Wallet, BarChart3, Bot, Sparkles, Settings as SettingsIcon,
   Database, Puzzle, Award, FileCheck, CheckSquare, Plus, GitBranch,
-  ShieldAlert, CornerDownLeft, Sparkle, Crown
+  ShieldAlert, CornerDownLeft, Sparkle, Crown, Bell
 } from 'lucide-react';
 import { TabType } from '@/types';
 
@@ -99,6 +99,7 @@ const ALL_SYSTEM_PAGES: SystemPageItem[] = [
   { tab: 'settings', title: 'Workspace Settings', subtitle: 'Settings • Company branding, business profile, default currency & business timezone', category: 'Settings', icon: SettingsIcon, keywords: 'workspace general preferences business brand organization profile settings' },
   { tab: 'settings-backup', title: 'Data Backup & Restore', subtitle: 'Settings • Automated database backups, manual JSON snapshots, restore & recovery', category: 'Settings', icon: Database, keywords: 'backup restore data auto-backup last backup import export snapshot database disaster recovery postgresql sqlite' },
   { tab: 'settings-whatsapp', title: 'WhatsApp Cloud API Config', subtitle: 'Settings • Meta Business phone numbers, webhook verification token & access keys', category: 'Settings', icon: MessageSquare, keywords: 'whatsapp cloud api meta configuration webhook token access settings' },
+  { tab: 'settings-notifications', title: 'Notifications & Sounds Settings', subtitle: 'Settings • Audio chimes, push alerts, lead/deal notifications & quiet hours', category: 'Settings', icon: Bell, keywords: 'notifications sounds alerts chimes quiet hours volume ringtones settings' },
   { tab: 'roles', title: 'Roles & Security (RBAC)', subtitle: 'Settings • RBAC security permissions matrix, user role assignments & access control', category: 'Settings', icon: ShieldCheck, keywords: 'roles permissions rbac security access control admin users matrix privileges superadmin' },
   { tab: 'super-admin', title: 'Platform Super Admin', subtitle: 'Platform • SaaS multi-tenant control, licenses, Meta WABA engine & emergency kill-switch', category: 'Platform', icon: Crown, keywords: 'super admin platform tenants multi-tenant workspaces licenses saas billing waba gateway audit logs pro master root' },
   { tab: 'landing', title: 'Landing Showcase', subtitle: 'Main • Public landing page, features showcase & customer portal', category: 'Main', icon: Globe, keywords: 'landing website marketing showcase public portal' },

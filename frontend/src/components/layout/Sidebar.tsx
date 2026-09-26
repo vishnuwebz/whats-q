@@ -1932,7 +1932,7 @@ export const Sidebar: React.FC = () => {
           onClick={() => handleTabClick('settings')}
           title="Workspace Settings"
           className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'} rounded-lg transition-all cursor-pointer ${
-            isActive('settings')
+            isActive('settings') || activeTab === 'settings-whatsapp' || activeTab === 'settings-notifications'
               ? 'bg-emerald-600 text-white font-semibold shadow-sm'
               : 'hover:bg-[#16233B] text-slate-300'
           }`}

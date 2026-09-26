@@ -180,7 +180,7 @@ export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
   if (tab === 'integrations') return 'integrations';
   if (tab === 'roles') return 'roles';
   if (tab === 'settings-backup') return 'settings-backup';
-  if (tab === 'settings' || tab === 'settings-whatsapp') return 'settings';
+  if (tab === 'settings' || tab === 'settings-whatsapp' || tab === 'settings-notifications') return 'settings';
 
   return null;
 };

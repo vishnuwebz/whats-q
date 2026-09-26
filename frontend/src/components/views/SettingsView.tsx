@@ -33,6 +33,7 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'general' }) => {
   const { addToast, activeTab } = useQiyamStore();
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(() => {
+    if (activeTab === 'settings-notifications') return 'notifications';
     if (activeTab === 'settings-whatsapp') return 'whatsapp';
     if (activeTab === 'settings-backup') return 'backup';
     return initialTab;
@@ -40,7 +41,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'genera
   const [searchQuery, setSearchQuery] = useState('');
 
   React.useEffect(() => {
-    if (activeTab === 'settings-whatsapp') {
+    if (activeTab === 'settings-notifications') {
+      setActiveSettingsTab('notifications');
+    } else if (activeTab === 'settings-whatsapp') {
       setActiveSettingsTab('whatsapp');
     } else if (activeTab === 'settings-backup') {
       setActiveSettingsTab('backup');

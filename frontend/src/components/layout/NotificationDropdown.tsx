@@ -211,7 +211,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   const handleNavigateToSettings = () => {
     onClose();
-    setActiveTab('settings');
+    setActiveTab('settings-notifications');
   };
 
   return (

@@ -66,6 +66,7 @@ export const TAB_TO_PATH: Record<TabType, string> = {
   'settings': '/settings',
   'settings-backup': '/settings/backup',
   'settings-whatsapp': '/settings/whatsapp',
+  'settings-notifications': '/settings/notifications',
   'landing': '/landing',
   'roles': '/roles',
   'super-admin': '/super-admin',
@@ -73,6 +74,13 @@ export const TAB_TO_PATH: Record<TabType, string> = {
 
 // Common path aliases for convenience and deep links
 const PATH_ALIASES: Record<string, TabType> = {
+  '/settings/notifications': 'settings-notifications',
+  '/settings-notifications': 'settings-notifications',
+  '/settings/sounds': 'settings-notifications',
+  '/settings/alerts': 'settings-notifications',
+  '/notifications/settings': 'settings-notifications',
+  '/notifications-settings': 'settings-notifications',
+  '/alerts-settings': 'settings-notifications',
   '/super-admin': 'super-admin',
   '/superadmin': 'super-admin',
   '/platform-admin': 'super-admin',

@@ -329,6 +329,8 @@ export const App: React.FC = () => {
         return <SettingsView initialTab="backup" />;
       case 'settings-whatsapp':
         return <SettingsView initialTab="whatsapp" />;
+      case 'settings-notifications':
+        return <SettingsView initialTab="notifications" />;
       case 'roles':
         return <RolesSecurityView />;
       case 'super-admin':
