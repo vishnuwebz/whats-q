@@ -305,10 +305,12 @@ class RealtimeSyncManager {
         if (event.data && event.data.id) {
           removeDeletedConversationId(event.data.id);
           store.applyRealtimeConversation(event.data);
-          if (event.data.is_opted_out === false && event.data.is_blocked === false && event.data.phone_number) {
-            store.removeSuppressionRecord(event.data.phone_number, event.data.id);
+          if (event.data.is_opted_out === false && event.data.is_blocked === false) {
+            if (store.isPhoneSuppressed(event.data.phone_number || '')) {
+              store.applyRealtimeResubscribe(event.data.phone_number, event.data.id);
+            }
           } else if ((event.data.is_opted_out === true || event.data.is_blocked === true) && event.data.phone_number) {
-            store.addSuppressionRecord({
+            store.applyRealtimeSuppression({
               id: `sup-conv-${event.data.id}`,
               name: event.data.contact_name || 'Customer',
               phone: event.data.phone_number,
@@ -320,7 +322,7 @@ class RealtimeSyncManager {
               canResubscribe: true,
               source: event.data.is_blocked ? 'WhatsApp Block' : 'Inbound WhatsApp Keyword (STOP)',
               conversation_id: event.data.id,
-            });
+            }, event.data.id);
           }
         }
         break;
@@ -329,7 +331,7 @@ class RealtimeSyncManager {
       case 'contact.resubscribed': {
         const { conversation_id, phone } = event.data || {};
         if (phone || conversation_id) {
-          store.removeSuppressionRecord(phone || String(conversation_id), conversation_id);
+          store.applyRealtimeResubscribe(phone || String(conversation_id), conversation_id);
         }
         break;
       }
@@ -337,7 +339,7 @@ class RealtimeSyncManager {
       case 'contact.opted_out': {
         const { conversation_id, phone, name, reason, date, record } = event.data || {};
         if (phone) {
-          store.addSuppressionRecord({
+          store.applyRealtimeSuppression({
             id: record?.id || `sup-${Date.now()}`,
             name: name || record?.name || 'Customer',
             phone,
@@ -348,7 +350,7 @@ class RealtimeSyncManager {
             canResubscribe: true,
             source: record?.source || 'Inbound WhatsApp Keyword (STOP)',
             conversation_id,
-          });
+          }, conversation_id);
         }
         break;
       }
@@ -356,7 +358,7 @@ class RealtimeSyncManager {
       case 'contact.blocked': {
         const { conversation_id, phone, name, reason, date, code, record } = event.data || {};
         if (phone) {
-          store.addSuppressionRecord({
+          store.applyRealtimeSuppression({
             id: record?.id || `sup-${Date.now()}`,
             name: name || record?.name || 'Customer',
             phone,
@@ -368,7 +370,7 @@ class RealtimeSyncManager {
             canResubscribe: false,
             source: record?.source || 'Meta Cloud API Webhook (Delivery Failed: 131051)',
             conversation_id,
-          });
+          }, conversation_id);
         }
         break;
       }

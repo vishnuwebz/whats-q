@@ -1013,6 +1013,26 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if not conv and conv_id:
             conv = Conversation.objects.filter(whatsapp_lid=str(conv_id).strip()).first()
 
+        # Clear any matching SuppressionRecord from DB (runs whether conv exists or not)
+        try:
+            cand_digits = re.sub(r'\D', '', str(phone or conv_id or (conv.phone_number if conv else '')))
+            cand_suffix = cand_digits[-10:] if len(cand_digits) >= 10 else cand_digits
+            for rec in list(SuppressionRecord.objects.all()):
+                r_digits = re.sub(r'\D', '', rec.phone or '')
+                match = False
+                if conv and rec.conversation_id == conv.id:
+                    match = True
+                elif cand_suffix and r_digits and (r_digits.endswith(cand_suffix) or cand_suffix.endswith(r_digits[-10:])):
+                    match = True
+                elif conv_id and str(rec.id) == str(conv_id):
+                    match = True
+                if match:
+                    rec.delete()
+        except Exception as e:
+            logger.warning(f"Error clearing suppression record during resubscribe: {e}")
+
+        now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+
         if conv:
             conv.is_blocked = False
             conv.is_opted_out = False
@@ -1023,23 +1043,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
             conv.tags = cleaned_tags
             conv.save()
 
-            # Clear any matching SuppressionRecord from DB
-            try:
-                cand_digits = re.sub(r'\D', '', str(phone or conv_id or (conv.phone_number if conv else '')))
-                cand_suffix = cand_digits[-10:] if len(cand_digits) >= 10 else cand_digits
-                for rec in list(SuppressionRecord.objects.all()):
-                    r_digits = re.sub(r'\D', '', rec.phone or '')
-                    match = False
-                    if conv and rec.conversation_id == conv.id:
-                        match = True
-                    elif cand_suffix and r_digits and (r_digits.endswith(cand_suffix) or cand_suffix.endswith(r_digits[-10:])):
-                        match = True
-                    if match:
-                        rec.delete()
-            except Exception as e:
-                logger.warning(f"Error clearing suppression record during resubscribe: {e}")
-
-            now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
             conv_data = ConversationSerializer(conv).data
 
             # Emit real-time SSE events so all open browsers update immediately
@@ -1081,6 +1084,13 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'conversation': conv_data
             }, status=status.HTTP_200_OK)
 
+        # Fallback when only phone/record was in suppression list without a conversation row
+        emit_event('contact.resubscribed', {
+            'conversation_id': None,
+            'phone': phone or conv_id,
+            'name': phone or conv_id,
+            'date': now_full,
+        })
         return Response({
             'success': True,
             'message': 'Suppression record cleared.'
