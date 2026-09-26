@@ -716,9 +716,11 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         kw_rule = None
         try:
             from automation.models import KeywordTriggerRule
-            kw_rule = KeywordTriggerRule.objects.filter(active=True).filter(
-                Q(keywords__icontains='track') | Q(keywords__icontains='eta') | Q(title__icontains='Specialist') | Q(title__icontains='ETA')
-            ).order_by('-id').first()
+            for r in KeywordTriggerRule.objects.filter(active=True).order_by('-id'):
+                r_keywords = [str(k).lower() for k in (r.keywords or [])]
+                if any(x in r_keywords for x in ['track', 'technician', 'specialist', 'status', 'eta', '2']) or 'specialist' in r.title.lower() or 'eta' in r.title.lower():
+                    kw_rule = r
+                    break
         except Exception:
             pass
 
