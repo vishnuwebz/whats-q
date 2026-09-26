@@ -279,47 +279,137 @@ class ConversationSerializer(serializers.ModelSerializer):
 
 # --- Automated Workflow Engine ---
 
+DEFAULT_WORKFLOW_GROUPS = [
+    {
+        'id': 'group-1',
+        'title': 'Group #1 - Welcome & Menu Trigger',
+        'items': [
+            {
+                'id': 'item-1-1',
+                'type': 'message',
+                'content': '👋 *Welcome to {COMPANY_NAME}!* \n\nHow can we assist you today?'
+            },
+            {
+                'id': 'item-1-2',
+                'type': 'choice',
+                'question': 'Please select an option from our service menu:',
+                'options': [
+                    {'label': '1️⃣ Reschedule / Book Service', 'targetGroup': 'group-2'},
+                    {'label': '2️⃣ Live Specialist ETA', 'targetGroup': 'group-3'},
+                    {'label': '3️⃣ Price Quotation', 'targetGroup': 'group-4'},
+                    {'label': '4️⃣ Speak with Agent', 'targetGroup': 'group-5'},
+                ]
+            }
+        ]
+    },
+    {
+        'id': 'group-2',
+        'title': 'Group #2 - Reschedule Booking',
+        'items': [
+            {
+                'id': 'item-2-1',
+                'type': 'message',
+                'content': '📅 *Reschedule Your Appointment*\n\nPlease select an upcoming available slot from our operations schedule:\n1️⃣ Tomorrow 02:00 PM\n2️⃣ Friday 10:30 AM\n3️⃣ Saturday 11:00 AM\n\nOr reply with your preferred date and time!'
+            }
+        ]
+    },
+    {
+        'id': 'group-3',
+        'title': 'Group #3 - Live Specialist ETA',
+        'items': [
+            {
+                'id': 'item-3-1',
+                'type': 'message',
+                'content': '📍 *Live Specialist Status & ETA*\n\nYour assigned specialist is on duty for {COMPANY_NAME} 🛵.\n• Current Status: En Route\n• Estimated Arrival: 15-20 minutes\n• Live GPS Tracking: https://track.whatsq.in/live\n• Priority Support: +91 98471 23456'
+            }
+        ]
+    },
+    {
+        'id': 'group-4',
+        'title': 'Group #4 - Price Quotation',
+        'items': [
+            {
+                'id': 'item-4-1',
+                'type': 'message',
+                'content': '💰 *Service Quotation & Pricing*\n\nOfficial estimate for our standard service:\n• Inspection & Diagnostics: ₹800\n• Labour & Service: ₹2,000\n• *Total Estimated Amount: ₹2,800*\n\nTo approve and lock your slot, reply *CONFIRM*!'
+            }
+        ]
+    },
+    {
+        'id': 'group-5',
+        'title': 'Group #5 - Speak with Agent',
+        'items': [
+            {
+                'id': 'item-5-1',
+                'type': 'message',
+                'content': '👨‍💼 *Connecting with Support Specialist*\n\nA senior specialist has been assigned to your chat on behalf of {COMPANY_NAME} and will assist you directly.\n\nHelpline: +91 98471 23456.'
+            }
+        ]
+    },
+    {
+        'id': 'group-6',
+        'title': 'Group #6 - Booking Confirmed',
+        'items': [
+            {
+                'id': 'item-6-1',
+                'type': 'message',
+                'content': '✅ *Booking Confirmed!*\n\nThank you for choosing {COMPANY_NAME}. Your service appointment is locked on our schedule.\nOur certified specialist will arrive promptly.'
+            }
+        ]
+    }
+]
+
 def extract_workflow_node_reply(nodes, target_group_id=None, choice_index=None, substitute_fn=None):
     """
     Extracts customer-facing text and interactive options from a workflow's nodes JSON definition.
-    Supports FlowGroup structure (items with 'message' and 'choice' types)
-    and visual node structure.
+    Supports FlowGroup structure (items with 'message' and 'choice' types).
+    Never returns trigger node descriptions such as 'When a new message is received'.
     """
-    if not nodes or not isinstance(nodes, list):
-        return None
+    valid_groups = []
+    if nodes and isinstance(nodes, list):
+        for n in nodes:
+            if isinstance(n, dict):
+                # Skip pure trigger nodes
+                if n.get('type') == 'trigger' or str(n.get('id', '')) == '1':
+                    continue
+                # If it's a flow group with items or has custom content
+                if n.get('items') or n.get('content'):
+                    valid_groups.append(n)
+
+    # If the workflow nodes only had visual trigger nodes, fall back to DEFAULT_WORKFLOW_GROUPS
+    if not valid_groups:
+        valid_groups = DEFAULT_WORKFLOW_GROUPS
 
     target_group = None
     if target_group_id:
-        for node in nodes:
-            if isinstance(node, dict):
-                n_id = str(node.get('id', '')).lower()
-                n_title = str(node.get('title', '')).lower()
-                target_l = str(target_group_id).lower()
-                if n_id == target_l or target_l in n_id or target_l in n_title:
-                    target_group = node
-                    break
+        for node in valid_groups:
+            n_id = str(node.get('id', '')).lower()
+            n_title = str(node.get('title', '')).lower()
+            target_l = str(target_group_id).lower()
+            if n_id == target_l or target_l in n_id or target_l in n_title:
+                target_group = node
+                break
 
     # If choice_index specified (0 for option 1, 1 for option 2, etc.), follow targetGroup edge from root
-    if not target_group and choice_index is not None:
-        root_group = nodes[0] if len(nodes) > 0 and isinstance(nodes[0], dict) else None
-        if root_group:
-            items = root_group.get('items', [])
-            for it in items:
-                if isinstance(it, dict) and it.get('type') == 'choice':
-                    options = it.get('options', [])
-                    if 0 <= choice_index < len(options):
-                        opt = options[choice_index]
-                        tg_id = opt.get('targetGroup') if isinstance(opt, dict) else None
-                        if tg_id:
-                            for n in nodes:
-                                if isinstance(n, dict) and str(n.get('id', '')).lower() == str(tg_id).lower():
-                                    target_group = n
-                                    break
-                    break
+    if not target_group and choice_index is not None and valid_groups:
+        root_group = valid_groups[0]
+        items = root_group.get('items', [])
+        for it in items:
+            if isinstance(it, dict) and it.get('type') == 'choice':
+                options = it.get('options', [])
+                if 0 <= choice_index < len(options):
+                    opt = options[choice_index]
+                    tg_id = opt.get('targetGroup') if isinstance(opt, dict) else None
+                    if tg_id:
+                        for n in valid_groups:
+                            if str(n.get('id', '')).lower() == str(tg_id).lower():
+                                target_group = n
+                                break
+                break
 
-    # Default to first/root node if no group specified
-    if not target_group and target_group_id is None and len(nodes) > 0 and isinstance(nodes[0], dict):
-        target_group = nodes[0]
+    # Default to first/root group if no specific group specified
+    if not target_group and target_group_id is None and valid_groups:
+        target_group = valid_groups[0]
 
     if not target_group:
         return None
@@ -347,8 +437,9 @@ def extract_workflow_node_reply(nodes, target_group_id=None, choice_index=None, 
     if choice_parts:
         combined = (combined + "\n\n" if combined else "") + "\n".join(choice_parts)
 
-    if not combined and target_group.get('subtitle'):
-        combined = target_group.get('subtitle')
+    # Strictly disallow trigger text
+    if combined and 'when a new message' in combined.lower():
+        combined = ""
 
     if combined and substitute_fn:
         combined = substitute_fn(combined)
@@ -764,6 +855,17 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         )
     except Exception as log_err:
         logger.warning(f"[Automation Log] Failed to log workflow execution: {log_err}")
+
+    if not reply_text or 'when a new message' in reply_text.lower():
+        reply_text = (
+            f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+            f"How can we assist you today?\n"
+            f"1️⃣ Reschedule / Book Service\n"
+            f"2️⃣ Live Specialist ETA\n"
+            f"3️⃣ Price Quotation\n"
+            f"4️⃣ Speak with Agent\n\n"
+            f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+        )
 
     return reply_text, rich_card, step_name
 
