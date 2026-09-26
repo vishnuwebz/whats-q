@@ -1,4 +1,4 @@
-from rest_framework import serializers, viewsets, status
+from rest_framework import serializers, viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -2674,6 +2674,9 @@ class WhatsAppWebhookView(APIView):
     - GET: Hub challenge verification handshake
     - POST: Incoming messages, status receipts (sent, delivered, read), and template status updates
     """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = []
+
     def get(self, request):
         mode = request.GET.get('hub.mode')
         token = request.GET.get('hub.verify_token')
@@ -3755,6 +3758,9 @@ class SimulateWhatsAppMessageView(APIView):
     """
     Simulates incoming WhatsApp customer message and triggers AI Intent understanding & Auto responses
     """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = []
+
     def post(self, request):
         phone = (request.data.get('phone') or '').strip()
         if not phone:
