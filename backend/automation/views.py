@@ -57,8 +57,58 @@ class ApprovalViewSet(viewsets.ModelViewSet):
     serializer_class = ApprovalSerializer
 
 class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
-    queryset = KeywordTriggerRule.objects.all().order_by('-updated_at')
+    queryset = KeywordTriggerRule.objects.all()
     serializer_class = KeywordTriggerRuleSerializer
+
+    def get_queryset(self):
+        try:
+            if KeywordTriggerRule.objects.count() == 0:
+                self._seed_default_rules()
+        except Exception:
+            pass
+        return KeywordTriggerRule.objects.all().order_by('-updated_at')
+
+    @classmethod
+    def _seed_default_rules(cls):
+        default_rules = [
+            {
+                'title': 'Inbound Greetings Auto-Responder ("Hi" / "Hello")',
+                'keywords': ['hi', 'hello', 'hey', 'start', 'greetings', 'menu', 'good morning', 'good evening'],
+                'action_type': 'workflow',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '👋 *Welcome to {COMPANY_NAME}!* \nHello {CUSTOMER_NAME}! How can we assist you today?\n\n1️⃣ Reschedule / Book Service\n2️⃣ Live Specialist ETA\n3️⃣ Price Quotation\n4️⃣ Speak with Agent\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!',
+                'active': True
+            },
+            {
+                'title': 'Price List Auto-Reply',
+                'keywords': ['price', 'catalog', 'rate', 'cost', 'quotation', 'rate card', 'pricing'],
+                'action_type': 'reply',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '💰 *Service Quotation & Rate Card*\n\nHello {CUSTOMER_NAME}! Thank you for reaching out to {COMPANY_NAME}.\n\nOur current rates for {SERVICE_NAME} start at standard base pricing:\n• Inspection & Diagnostics: ₹800\n• Full Service & Labour: ₹2,000\n• *Estimated Total: ₹2,800*\n\nReply *CONFIRM* to lock your preferred slot!',
+                'active': True
+            },
+            {
+                'title': 'Service Booking & Appointment Trigger',
+                'keywords': ['book', 'appointment', 'schedule', 'slot', 'reserve', 'reschedule'],
+                'action_type': 'workflow',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '📅 *Schedule / Reschedule Appointment*\n\nHello {CUSTOMER_NAME}! Please reply with your preferred date and time (e.g., *"Tomorrow 2:00 PM"*), or choose from our available slots:\n1️⃣ Tomorrow 02:00 PM\n2️⃣ Friday 10:30 AM\n3️⃣ Saturday 11:00 AM',
+                'active': True
+            },
+            {
+                'title': 'Live Support Desk Handover',
+                'keywords': ['agent', 'human', 'support', 'help', 'speak', 'person', 'operator', 'representative'],
+                'action_type': 'reply',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '👨‍💼 *Connecting with Support Specialist*\n\nHello {CUSTOMER_NAME}, a senior specialist has been assigned to your chat on behalf of {COMPANY_NAME} and will assist you directly.\n\nHelpline: +91 98471 23456.',
+                'active': True
+            }
+        ]
+        created = []
+        for r in default_rules:
+            obj, _ = KeywordTriggerRule.objects.get_or_create(title=r['title'], defaults=r)
+            created.append(obj)
+        return created
 
     @action(detail=True, methods=['post'])
     def toggle(self, request, pk=None):
@@ -66,6 +116,12 @@ class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
         rule.active = not rule.active
         rule.save(update_fields=['active', 'updated_at'])
         return Response(self.get_serializer(rule).data)
+
+    @action(detail=False, methods=['post'])
+    def seed_defaults(self, request):
+        self._seed_default_rules()
+        rules = KeywordTriggerRule.objects.all().order_by('-updated_at')
+        return Response(self.get_serializer(rules, many=True).data)
 
 class WorkingHoursView(APIView):
     def get(self, request):

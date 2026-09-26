@@ -4,7 +4,7 @@ from conversations.models import Conversation, Message, WhatsAppTemplate
 from crm.models import Lead, Deal, FollowUp, Customer
 from operations.models import Job, Appointment, Employee, ScheduleShift, AttendanceRecord, Task, Route, InventoryItem
 from finance.models import Transaction, Invoice, Expense, PaymentAccount, Quotation
-from automation.models import Workflow, WorkflowTemplate, AutomationLog, Approval
+from automation.models import Workflow, WorkflowTemplate, AutomationLog, Approval, KeywordTriggerRule, WorkingHoursConfig
 from ai_assistant.models import KnowledgeArticle, AISettings
 from analytics.models import ChannelMetric, IntentMetric, DailyMetric
 
@@ -871,6 +871,59 @@ class Command(BaseCommand):
                 {'id': '7', 'type': 'action', 'title': 'Request Payment (30% Advance)', 'subtitle': 'Request advance payment to confirm booking', 'category': 'ACTIONS', 'iconName': 'CreditCard', 'color': 'emerald', 'config': {}, 'position': {'x': 250, 'y': 680}},
                 {'id': '8', 'type': 'action', 'title': 'Assign Nearest Employee', 'subtitle': 'Assign nearest available technician (Ramesh Kumar)', 'category': 'ACTIONS', 'iconName': 'Users', 'color': 'purple', 'config': {}, 'position': {'x': 600, 'y': 480}},
             ]
+        )
+
+        KeywordTriggerRule.objects.all().delete()
+        kw_rules_data = [
+            {
+                'title': 'Inbound Greetings Auto-Responder ("Hi" / "Hello")',
+                'keywords': ['hi', 'hello', 'hey', 'start', 'greetings', 'menu', 'good morning', 'good evening'],
+                'action_type': 'workflow',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '👋 *Welcome to {COMPANY_NAME}!* \nHello {CUSTOMER_NAME}! How can we assist you today?\n\n1️⃣ Reschedule / Book Service\n2️⃣ Live Specialist ETA\n3️⃣ Price Quotation\n4️⃣ Speak with Agent\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!',
+                'active': True
+            },
+            {
+                'title': 'Price List Auto-Reply',
+                'keywords': ['price', 'catalog', 'rate', 'cost', 'quotation', 'rate card', 'pricing'],
+                'action_type': 'reply',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '💰 *Service Quotation & Rate Card*\n\nHello {CUSTOMER_NAME}! Thank you for reaching out to {COMPANY_NAME}.\n\nOur current rates for {SERVICE_NAME} start at standard base pricing:\n• Inspection & Diagnostics: ₹800\n• Full Service & Labour: ₹2,000\n• *Estimated Total: ₹2,800*\n\nReply *CONFIRM* to lock your preferred slot!',
+                'active': True
+            },
+            {
+                'title': 'Service Booking & Appointment Trigger',
+                'keywords': ['book', 'appointment', 'schedule', 'slot', 'reserve', 'reschedule'],
+                'action_type': 'workflow',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '📅 *Schedule / Reschedule Appointment*\n\nHello {CUSTOMER_NAME}! Please reply with your preferred date and time (e.g., *"Tomorrow 2:00 PM"*), or choose from our available slots:\n1️⃣ Tomorrow 02:00 PM\n2️⃣ Friday 10:30 AM\n3️⃣ Saturday 11:00 AM',
+                'active': True
+            },
+            {
+                'title': 'Live Support Desk Handover',
+                'keywords': ['agent', 'human', 'support', 'help', 'speak', 'person', 'operator', 'representative'],
+                'action_type': 'reply',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '👨‍💼 *Connecting with Support Specialist*\n\nHello {CUSTOMER_NAME}, a senior specialist has been assigned to your chat on behalf of {COMPANY_NAME} and will assist you directly.\n\nHelpline: +91 98471 23456.',
+                'active': True
+            }
+        ]
+        for kr in kw_rules_data:
+            KeywordTriggerRule.objects.create(**kr)
+
+        WorkingHoursConfig.objects.all().delete()
+        WorkingHoursConfig.objects.create(
+            schedule=[
+                {'day': 'Monday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                {'day': 'Tuesday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                {'day': 'Wednesday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                {'day': 'Thursday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                {'day': 'Friday', 'time': '9:30 AM - 7:30 PM', 'enabled': True},
+                {'day': 'Saturday', 'time': '10:00 AM - 8:00 PM', 'enabled': True},
+                {'day': 'Sunday', 'time': 'Closed', 'enabled': False},
+            ],
+            away_message='Hi there! Thanks for reaching out to {COMPANY_NAME}. Our team is currently away from the desk. We will get back to you promptly when we open tomorrow morning!',
+            is_active=True
         )
 
         AutomationLog.objects.all().delete()

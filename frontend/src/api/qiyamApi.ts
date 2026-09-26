@@ -270,7 +270,7 @@ export const qiyamApi = {
   },
 
   async updateKeywordRule(id: string | number, data: Partial<KeywordRule>): Promise<KeywordRule> {
-    return apiClient.put(`/automation/keyword-rules/${id}/`, data);
+    return apiClient.patch(`/automation/keyword-rules/${id}/`, data);
   },
 
   async deleteKeywordRule(id: string | number): Promise<boolean> {
