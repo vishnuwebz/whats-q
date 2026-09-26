@@ -245,14 +245,18 @@ export const WorkflowBuilderView: React.FC = () => {
   ];
 
   // Helper to retrieve tied Inbound Keywords for each Canvas Group
+  // Helper to retrieve tied Inbound Keywords for each Canvas Group
   const getGroupTriggerKeywords = (grp: FlowGroup, index: number): { keywords: string[]; ruleTitle?: string; isInitial: boolean } | null => {
+    const grpTitleLower = (grp?.title || '').toLowerCase();
+    const activeWfTitleLower = (activeWorkflowTitle || '').toLowerCase();
+
     // 1. Initial Node / Group 1 / Welcome Trigger
-    if (index === 0 || grp.id === 'group-1' || grp.title.toLowerCase().includes('welcome') || grp.title.toLowerCase().includes('menu trigger')) {
+    if (index === 0 || grp.id === 'group-1' || grpTitleLower.includes('welcome') || grpTitleLower.includes('menu trigger')) {
       const matched = (keywordRules || []).find((r) => r.active && (
-        r.workflow_name?.toLowerCase() === activeWorkflowTitle.toLowerCase() ||
-        r.title.toLowerCase().includes('greeting') ||
-        r.title.toLowerCase().includes('welcome') ||
-        (r.keywords || []).includes('hi')
+        (activeWfTitleLower && (r.workflow_name || '').toLowerCase() === activeWfTitleLower) ||
+        (r.title || '').toLowerCase().includes('greeting') ||
+        (r.title || '').toLowerCase().includes('welcome') ||
+        (r.keywords || []).some((k) => String(k || '').toLowerCase() === 'hi')
       ));
       return {
         keywords: matched?.keywords || ['hi', 'hello', 'hey', 'start', 'greetings', 'menu'],
@@ -261,8 +265,11 @@ export const WorkflowBuilderView: React.FC = () => {
       };
     }
     // 2. Booking / Reschedule Group
-    if (grp.id === 'group-2' || grp.title.toLowerCase().includes('booking') || grp.title.toLowerCase().includes('reschedule')) {
-      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('booking') || (r.keywords || []).includes('book')));
+    if (grp.id === 'group-2' || grpTitleLower.includes('booking') || grpTitleLower.includes('reschedule')) {
+      const matched = (keywordRules || []).find((r) => r.active && (
+        (r.title || '').toLowerCase().includes('booking') ||
+        (r.keywords || []).some((k) => String(k || '').toLowerCase().includes('book'))
+      ));
       return {
         keywords: matched?.keywords || ['book', 'appointment', 'schedule', 'reschedule'],
         ruleTitle: matched?.title || 'Booking & Appointment Trigger',
@@ -270,8 +277,11 @@ export const WorkflowBuilderView: React.FC = () => {
       };
     }
     // 3. Specialist Status & ETA Group
-    if (grp.id === 'group-3' || grp.title.toLowerCase().includes('specialist') || grp.title.toLowerCase().includes('eta') || grp.title.toLowerCase().includes('status')) {
-      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('specialist') || (r.keywords || []).includes('track')));
+    if (grp.id === 'group-3' || grpTitleLower.includes('specialist') || grpTitleLower.includes('eta') || grpTitleLower.includes('status')) {
+      const matched = (keywordRules || []).find((r) => r.active && (
+        (r.title || '').toLowerCase().includes('specialist') ||
+        (r.keywords || []).some((k) => ['track', 'technician', 'specialist', 'status', 'eta'].includes(String(k || '').toLowerCase()))
+      ));
       return {
         keywords: matched?.keywords || ['track', 'technician', 'specialist', 'status', 'eta'],
         ruleTitle: matched?.title || 'Live Specialist Status & ETA',
@@ -279,8 +289,11 @@ export const WorkflowBuilderView: React.FC = () => {
       };
     }
     // 4. Price Quotation Group
-    if (grp.id === 'group-4' || grp.title.toLowerCase().includes('price') || grp.title.toLowerCase().includes('quotation')) {
-      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('price') || (r.keywords || []).includes('price')));
+    if (grp.id === 'group-4' || grpTitleLower.includes('price') || grpTitleLower.includes('quotation')) {
+      const matched = (keywordRules || []).find((r) => r.active && (
+        (r.title || '').toLowerCase().includes('price') ||
+        (r.keywords || []).some((k) => String(k || '').toLowerCase().includes('price'))
+      ));
       return {
         keywords: matched?.keywords || ['price', 'rate', 'cost', 'quotation', 'pricing'],
         ruleTitle: matched?.title || 'Price List Auto-Reply',
@@ -288,8 +301,11 @@ export const WorkflowBuilderView: React.FC = () => {
       };
     }
     // 5. Agent Handover Group
-    if (grp.id === 'group-5' || grp.title.toLowerCase().includes('agent') || grp.title.toLowerCase().includes('handover') || grp.title.toLowerCase().includes('support')) {
-      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('support') || (r.keywords || []).includes('agent')));
+    if (grp.id === 'group-5' || grpTitleLower.includes('agent') || grpTitleLower.includes('handover') || grpTitleLower.includes('support')) {
+      const matched = (keywordRules || []).find((r) => r.active && (
+        (r.title || '').toLowerCase().includes('support') ||
+        (r.keywords || []).some((k) => ['agent', 'human', 'support', 'help'].includes(String(k || '').toLowerCase()))
+      ));
       return {
         keywords: matched?.keywords || ['agent', 'human', 'support', 'help'],
         ruleTitle: matched?.title || 'Live Support Desk Handover',
@@ -910,9 +926,10 @@ export const WorkflowBuilderView: React.FC = () => {
   // Open Workflow in Interactive Canvas
   const handleOpenWorkflowInCanvas = (wfName: string) => {
     if (!wfName) return;
+    const wfNameLower = wfName.toLowerCase().trim();
 
     const matchedWf = (workflows || []).find(
-      (w) => w.name.toLowerCase() === wfName.toLowerCase()
+      (w) => (w?.name || '').toLowerCase().trim() === wfNameLower
     );
 
     let targetGroups: FlowGroup[] = [];
@@ -920,9 +937,9 @@ export const WorkflowBuilderView: React.FC = () => {
     if (matchedWf && matchedWf.nodes && Array.isArray(matchedWf.nodes)) {
       targetGroups = normalizeToFlowGroups(matchedWf.nodes, matchedWf.name);
     } else if (
-      wfName.toLowerCase().includes('service') ||
-      wfName.toLowerCase().includes('booking') ||
-      wfName.toLowerCase().includes('welcome')
+      wfNameLower.includes('service') ||
+      wfNameLower.includes('booking') ||
+      wfNameLower.includes('welcome')
     ) {
       targetGroups = SERVICE_BOOKING_FLOW_GROUPS;
     } else if (wfName.toLowerCase().includes('price') || wfName.toLowerCase().includes('quotation')) {
@@ -1418,9 +1435,9 @@ export const WorkflowBuilderView: React.FC = () => {
         if (item.type === 'choice' && Array.isArray(item.options)) {
           const matched = item.options.find(
             (o) =>
-              o.label.toLowerCase().trim() === optLower ||
-              optLower.includes(o.label.toLowerCase().trim()) ||
-              o.label.toLowerCase().trim().includes(optLower)
+              (o.label || '').toLowerCase().trim() === optLower ||
+              optLower.includes((o.label || '').toLowerCase().trim()) ||
+              (o.label || '').toLowerCase().trim().includes(optLower)
           );
           if (matched && matched.targetGroup) {
             nextTargetId = matched.targetGroup;
@@ -1447,8 +1464,8 @@ export const WorkflowBuilderView: React.FC = () => {
     if (!nextTargetId) {
       const matchedGroup = groups.find(
         (g) =>
-          g.title.toLowerCase().includes(optLower) ||
-          optLower.includes(g.title.toLowerCase().replace(/group\s*#?\d+\s*-?\s*/i, '').trim())
+          (g.title || '').toLowerCase().includes(optLower) ||
+          optLower.includes((g.title || '').toLowerCase().replace(/group\s*#?\d+\s*-?\s*/i, '').trim())
       );
       if (matchedGroup) {
         nextTargetId = matchedGroup.id;
@@ -1457,8 +1474,9 @@ export const WorkflowBuilderView: React.FC = () => {
 
     // 3. If target found, load that group's messages
     if (nextTargetId) {
+      const nextTargetLower = (nextTargetId || '').toLowerCase();
       const targetGroup = groups.find(
-        (g) => g.id === nextTargetId || g.title.toLowerCase() === nextTargetId?.toLowerCase()
+        (g) => g.id === nextTargetId || (g.title || '').toLowerCase() === nextTargetLower
       );
       if (targetGroup) {
         setCurrentStep(targetGroup.id);
@@ -1524,8 +1542,8 @@ export const WorkflowBuilderView: React.FC = () => {
           }
           const matched = item.options.find(
             (o) =>
-              o.label.toLowerCase().includes(txtLower) ||
-              txtLower.includes(o.label.toLowerCase())
+              (o.label || '').toLowerCase().includes(txtLower) ||
+              txtLower.includes((o.label || '').toLowerCase())
           );
           if (matched) {
             matchedOptionLabel = matched.label;
@@ -1552,7 +1570,7 @@ export const WorkflowBuilderView: React.FC = () => {
 
     // Check keyword rules
     const matchedRule = (keywordRules || []).find((r) =>
-      r.active && (r.keywords || []).some((k) => txtLower.includes(k.toLowerCase().trim()))
+      r.active && (r.keywords || []).some((k) => txtLower.includes(String(k || '').toLowerCase().trim()))
     );
     if (matchedRule) {
       if (matchedRule.workflow_name) {
@@ -1560,7 +1578,8 @@ export const WorkflowBuilderView: React.FC = () => {
           sender: 'bot',
           text: `⚡ *Workflow Triggered: [${matchedRule.workflow_name}]*\n\n${replaceSimulatedVars(matchedRule.reply, simulatedVars)}`,
         });
-        if (matchedRule.workflow_name.toLowerCase().includes('booking') || matchedRule.workflow_name.toLowerCase().includes('service')) {
+        const wfNameLower = (matchedRule.workflow_name || '').toLowerCase();
+        if (wfNameLower.includes('booking') || wfNameLower.includes('service')) {
           const firstGroup = SERVICE_BOOKING_FLOW_GROUPS[0];
           if (firstGroup) {
             setCurrentStep(firstGroup.id);
@@ -1599,7 +1618,7 @@ export const WorkflowBuilderView: React.FC = () => {
           item.options.forEach((opt, optIdx) => {
             if (!opt.targetGroup) return;
             const targetGrp = groups.find(
-              (g) => g.id === opt.targetGroup || g.title.toLowerCase() === opt.targetGroup?.toLowerCase()
+              (g) => g.id === opt.targetGroup || (g.title || '').toLowerCase() === (opt.targetGroup || '').toLowerCase()
             );
             if (!targetGrp) return;
 
@@ -1634,7 +1653,7 @@ export const WorkflowBuilderView: React.FC = () => {
           // Success target
           if (item.successTarget) {
             const targetGrp = groups.find(
-              (g) => g.id === item.successTarget || g.title.toLowerCase() === item.successTarget?.toLowerCase()
+              (g) => g.id === item.successTarget || (g.title || '').toLowerCase() === (item.successTarget || '').toLowerCase()
             );
             if (targetGrp) {
               const sourceX = sourceGrp.x + 300;
@@ -1665,7 +1684,7 @@ export const WorkflowBuilderView: React.FC = () => {
           // Failed target
           if (item.failedTarget) {
             const targetGrp = groups.find(
-              (g) => g.id === item.failedTarget || g.title.toLowerCase() === item.failedTarget?.toLowerCase()
+              (g) => g.id === item.failedTarget || (g.title || '').toLowerCase() === (item.failedTarget || '').toLowerCase()
             );
             if (targetGrp) {
               const sourceX = sourceGrp.x + 300;
@@ -1698,7 +1717,7 @@ export const WorkflowBuilderView: React.FC = () => {
         // Jump routing
         if (item.type === 'jump' && item.targetGroup) {
           const targetGrp = groups.find(
-            (g) => g.id === item.targetGroup || g.title.toLowerCase() === item.targetGroup?.toLowerCase()
+            (g) => g.id === item.targetGroup || (g.title || '').toLowerCase() === (item.targetGroup || '').toLowerCase()
           );
           if (targetGrp) {
             const sourceX = sourceGrp.x + 300;

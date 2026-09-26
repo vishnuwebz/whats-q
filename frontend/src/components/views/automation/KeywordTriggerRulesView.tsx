@@ -79,9 +79,9 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
       const now = new Date();
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const currentDay = days[now.getDay()];
-      const daySchedule = (workingHours || []).find((d) => d.day.toLowerCase() === currentDay.toLowerCase());
+      const daySchedule = (workingHours || []).find((d) => (d.day || '').toLowerCase() === currentDay.toLowerCase());
 
-      if (!daySchedule || !daySchedule.enabled || daySchedule.time.toLowerCase().includes('closed')) {
+      if (!daySchedule || !daySchedule.enabled || (daySchedule.time || '').toLowerCase().includes('closed')) {
         return { isOpen: false, text: `Closed today (${currentDay})` };
       }
 
@@ -138,10 +138,10 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       return (
-        rule.title.toLowerCase().includes(q) ||
-        (rule.workflow_name && rule.workflow_name.toLowerCase().includes(q)) ||
-        rule.reply.toLowerCase().includes(q) ||
-        (rule.keywords || []).some((k) => k.toLowerCase().includes(q))
+        (rule.title || '').toLowerCase().includes(q) ||
+        (rule.workflow_name || '').toLowerCase().includes(q) ||
+        (rule.reply || '').toLowerCase().includes(q) ||
+        (rule.keywords || []).some((k) => String(k || '').toLowerCase().includes(q))
       );
     }
     return true;
