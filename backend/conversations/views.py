@@ -4,7 +4,9 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.http import HttpResponse, FileResponse
 from django.conf import settings
-from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice, BulkCampaign, BulkCampaignLog
+from django.db import models
+from django.db.models import Q
+from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice, BulkCampaign, BulkCampaignLog, SuppressionRecord
 from .meta_service import MetaWhatsAppService
 from .grabber_views import link_grabber_session
 from core.events import emit_event
@@ -1020,6 +1022,22 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 cleaned_tags.append('Opted In')
             conv.tags = cleaned_tags
             conv.save()
+
+            # Clear any matching SuppressionRecord from DB
+            try:
+                cand_digits = re.sub(r'\D', '', str(phone or conv_id or (conv.phone_number if conv else '')))
+                cand_suffix = cand_digits[-10:] if len(cand_digits) >= 10 else cand_digits
+                for rec in list(SuppressionRecord.objects.all()):
+                    r_digits = re.sub(r'\D', '', rec.phone or '')
+                    match = False
+                    if conv and rec.conversation_id == conv.id:
+                        match = True
+                    elif cand_suffix and r_digits and (r_digits.endswith(cand_suffix) or cand_suffix.endswith(r_digits[-10:])):
+                        match = True
+                    if match:
+                        rec.delete()
+            except Exception as e:
+                logger.warning(f"Error clearing suppression record during resubscribe: {e}")
 
             now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
             conv_data = ConversationSerializer(conv).data
@@ -3078,13 +3096,53 @@ class WhatsAppWebhookView(APIView):
                                 cur_tags.append('Opted Out')
                             conv.tags = [t for t in cur_tags if str(t).lower() != 'opted in']
                             logger.info(f"[Meta Webhook] Contact {conv.phone_number} opted out via keyword '{text_body.strip()}'")
-                            emit_event('contact.opted_out', {
+
+                            # Persist to SuppressionRecord model
+                            supp_rec = None
+                            try:
+                                clean_p = re.sub(r'\D', '', conv.phone_number or '')
+                                p_suffix = clean_p[-10:] if len(clean_p) >= 10 else clean_p
+                                for r in SuppressionRecord.objects.all():
+                                    r_c = re.sub(r'\D', '', r.phone or '')
+                                    if (conv.id and r.conversation_id == conv.id) or (p_suffix and r_c.endswith(p_suffix)):
+                                        supp_rec = r
+                                        break
+                                if not supp_rec:
+                                    supp_rec = SuppressionRecord.objects.create(
+                                        phone=conv.phone_number,
+                                        name=conv.contact_name or 'Customer',
+                                        suppression_type='opt_out_stop',
+                                        reason=conv.suppression_reason,
+                                        source=f"Inbound WhatsApp Keyword ({clean_upper})",
+                                        status='Suppressed',
+                                        can_resubscribe=True,
+                                        conversation=conv
+                                    )
+                                else:
+                                    supp_rec.name = conv.contact_name or supp_rec.name
+                                    supp_rec.suppression_type = 'opt_out_stop'
+                                    supp_rec.reason = conv.suppression_reason
+                                    supp_rec.status = 'Suppressed'
+                                    supp_rec.conversation = conv
+                                    supp_rec.save()
+                            except Exception as e:
+                                logger.warning(f"Error persisting SuppressionRecord on opt-out: {e}")
+
+                            supp_dict = supp_rec.to_dict() if supp_rec else {
+                                'id': f"sup-{int(time.time()*1000)}",
                                 'conversation_id': conv.id,
                                 'phone': conv.phone_number,
                                 'name': conv.contact_name,
-                                'reason': text_body.strip(),
-                                'date': now_full
-                            })
+                                'type': 'opt_out_stop',
+                                'reason': conv.suppression_reason,
+                                'date': now_full,
+                                'timestamp': int(time.time() * 1000),
+                                'status': 'Suppressed',
+                                'canResubscribe': True,
+                                'source': 'Inbound WhatsApp Keyword (STOP)',
+                            }
+
+                            emit_event('contact.opted_out', supp_dict)
                             emit_event('notification.new', {
                                 'id': int(time.time() * 1000),
                                 'title': '🛑 Customer Unsubscribed (STOP)',
@@ -3103,6 +3161,18 @@ class WhatsAppWebhookView(APIView):
                             if 'Opted In' not in conv.tags:
                                 conv.tags.append('Opted In')
                             logger.info(f"[Meta Webhook] Contact {conv.phone_number} re-subscribed via keyword '{text_body.strip()}'")
+
+                            # Clear SuppressionRecord from DB
+                            try:
+                                clean_p = re.sub(r'\D', '', conv.phone_number or '')
+                                p_suffix = clean_p[-10:] if len(clean_p) >= 10 else clean_p
+                                for r in list(SuppressionRecord.objects.all()):
+                                    r_c = re.sub(r'\D', '', r.phone or '')
+                                    if (conv.id and r.conversation_id == conv.id) or (p_suffix and r_c.endswith(p_suffix)):
+                                        r.delete()
+                            except Exception as e:
+                                logger.warning(f"Error removing SuppressionRecord on opt-in: {e}")
+
                             emit_event('contact.resubscribed', {
                                 'conversation_id': conv.id,
                                 'phone': conv.phone_number,
@@ -3321,15 +3391,60 @@ class WhatsAppWebhookView(APIView):
                                             c.suppression_reason = f"Meta Error {err_code}: {err_title or 'User blocked business number'}"
                                             if 'Blocked' not in c.tags:
                                                 c.tags.append('Blocked')
+                                            c.tags = [t for t in c.tags if str(t).lower() != 'opted in']
                                             c.save()
                                             logger.warning(f"[Meta Webhook] Contact {c.phone_number} blocked business line (Error {err_code})")
-                                            emit_event('contact.blocked', {
+
+                                            # Persist to SuppressionRecord model
+                                            supp_rec = None
+                                            try:
+                                                clean_p = re.sub(r'\D', '', c.phone_number or '')
+                                                p_suffix = clean_p[-10:] if len(clean_p) >= 10 else clean_p
+                                                for r in SuppressionRecord.objects.all():
+                                                    r_c = re.sub(r'\D', '', r.phone or '')
+                                                    if (c.id and r.conversation_id == c.id) or (p_suffix and r_c.endswith(p_suffix)):
+                                                        supp_rec = r
+                                                        break
+                                                if not supp_rec:
+                                                    supp_rec = SuppressionRecord.objects.create(
+                                                        phone=c.phone_number,
+                                                        name=c.contact_name or 'Customer',
+                                                        suppression_type='blocked',
+                                                        reason=c.suppression_reason,
+                                                        meta_error_code=err_code,
+                                                        source=f"Meta Webhook (Error {err_code})",
+                                                        status='Suppressed',
+                                                        can_resubscribe=True,
+                                                        conversation=c
+                                                    )
+                                                else:
+                                                    supp_rec.name = c.contact_name or supp_rec.name
+                                                    supp_rec.suppression_type = 'blocked'
+                                                    supp_rec.reason = c.suppression_reason
+                                                    supp_rec.meta_error_code = err_code
+                                                    supp_rec.status = 'Suppressed'
+                                                    supp_rec.conversation = c
+                                                    supp_rec.save()
+                                            except Exception as e:
+                                                logger.warning(f"Error persisting SuppressionRecord on 131051: {e}")
+
+                                            now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+                                            supp_dict = supp_rec.to_dict() if supp_rec else {
+                                                'id': f"sup-{int(time.time()*1000)}",
                                                 'conversation_id': c.id,
                                                 'phone': c.phone_number,
                                                 'name': c.contact_name,
-                                                'code': err_code,
-                                                'reason': c.suppression_reason
-                                            })
+                                                'type': 'blocked',
+                                                'reason': c.suppression_reason,
+                                                'metaErrorCode': err_code,
+                                                'date': now_full,
+                                                'timestamp': int(time.time() * 1000),
+                                                'status': 'Suppressed',
+                                                'canResubscribe': True,
+                                                'source': f"Meta Cloud API Webhook ({err_code})",
+                                            }
+
+                                            emit_event('contact.blocked', supp_dict)
                                             emit_event('notification.new', {
                                                 'id': int(time.time() * 1000),
                                                 'title': '⛔ WhatsApp Number Blocked',
@@ -4837,3 +4952,266 @@ class BulkCampaignViewSet(viewsets.ModelViewSet):
             for log in logs_qs
         ]
         return Response({'logs': data, 'total': len(data)})
+
+
+class SuppressionRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SuppressionRecord
+        fields = '__all__'
+
+
+class SuppressionViewSet(viewsets.ModelViewSet):
+    """
+    Suppression & Opt-Out Compliance ViewSet.
+    Provides real-time synchronized management of blocked numbers, STOP keywords,
+    and Meta Error 131051 opt-outs.
+    """
+    queryset = SuppressionRecord.objects.all().order_by('-created_at')
+    serializer_class = SuppressionRecordSerializer
+
+    def list(self, request, *args, **kwargs):
+        # 1. Self-healing sync: Ensure any Conversation with is_opted_out or is_blocked has a SuppressionRecord
+        try:
+            suppressed_convs = Conversation.objects.filter(
+                Q(is_opted_out=True) | Q(is_blocked=True)
+            )
+            for conv in suppressed_convs:
+                clean_phone = re.sub(r'\D', '', conv.phone_number or '')
+                suffix = clean_phone[-10:] if len(clean_phone) >= 10 else clean_phone
+                existing = None
+                if suffix:
+                    for rec in SuppressionRecord.objects.all():
+                        r_clean = re.sub(r'\D', '', rec.phone or '')
+                        if r_clean and (r_clean.endswith(suffix) or suffix.endswith(r_clean[-10:])):
+                            existing = rec
+                            break
+                if not existing:
+                    supp_type = 'blocked' if conv.is_blocked else 'opt_out_stop'
+                    reason = conv.suppression_reason or ('Blocked by customer' if conv.is_blocked else 'Replied STOP on WhatsApp')
+                    SuppressionRecord.objects.create(
+                        phone=conv.phone_number,
+                        name=conv.contact_name or 'Customer',
+                        suppression_type=supp_type,
+                        reason=reason,
+                        meta_error_code='131051' if conv.is_blocked else '',
+                        source='Conversation Compliance State',
+                        status='Suppressed',
+                        can_resubscribe=True,
+                        conversation=conv
+                    )
+        except Exception as e:
+            logger.warning(f"Error during suppression sync: {e}")
+
+        records = SuppressionRecord.objects.all().order_by('-created_at')
+        data = [r.to_dict() for r in records]
+        return Response(data, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        raw_phone = request.data.get('phone', '').strip()
+        name = request.data.get('name', '').strip() or 'Customer'
+        supp_type = request.data.get('type') or request.data.get('suppression_type', 'opt_out_stop')
+        reason = request.data.get('reason', '').strip() or (
+            'Manual block entered by operator' if supp_type == 'blocked' else 'Manual opt-out entered by operator'
+        )
+        notes = request.data.get('notes', '').strip()
+        meta_error_code = request.data.get('metaErrorCode') or request.data.get('meta_error_code', '')
+        if supp_type == 'blocked' and not meta_error_code:
+            meta_error_code = '131051'
+        campaign_name = request.data.get('campaignName') or request.data.get('campaign_name', '')
+        source = request.data.get('source', 'Manual Compliance Entry')
+
+        if not raw_phone:
+            return Response({'error': 'Phone number is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Match conversation
+        clean_phone = re.sub(r'\D', '', raw_phone)
+        suffix = clean_phone[-10:] if len(clean_phone) >= 10 else clean_phone
+        conv = None
+        if suffix:
+            for c in Conversation.objects.all():
+                c_clean = re.sub(r'\D', '', c.phone_number or '')
+                if c_clean and (c_clean.endswith(suffix) or suffix.endswith(c_clean[-10:])):
+                    conv = c
+                    break
+
+        if conv:
+            conv.is_blocked = (supp_type == 'blocked')
+            conv.is_opted_out = (supp_type != 'blocked')
+            conv.suppression_reason = reason
+            tags = [t for t in (conv.tags or []) if str(t).lower() not in ['opted in']]
+            tag_to_add = 'Blocked' if supp_type == 'blocked' else 'Opted Out'
+            if tag_to_add not in tags:
+                tags.append(tag_to_add)
+            conv.tags = tags
+            conv.save()
+            if not name or name == 'Customer':
+                name = conv.contact_name
+
+        # Create or update SuppressionRecord
+        rec = None
+        if suffix:
+            for r in SuppressionRecord.objects.all():
+                r_clean = re.sub(r'\D', '', r.phone or '')
+                if r_clean and (r_clean.endswith(suffix) or suffix.endswith(r_clean[-10:])):
+                    rec = r
+                    break
+
+        if not rec:
+            rec = SuppressionRecord.objects.create(
+                phone=raw_phone,
+                name=name,
+                suppression_type=supp_type,
+                reason=reason,
+                meta_error_code=meta_error_code,
+                campaign_name=campaign_name,
+                source=source,
+                notes=notes,
+                status='Suppressed',
+                can_resubscribe=True,
+                conversation=conv
+            )
+        else:
+            rec.name = name
+            rec.phone = raw_phone
+            rec.suppression_type = supp_type
+            rec.reason = reason
+            rec.meta_error_code = meta_error_code
+            rec.campaign_name = campaign_name
+            rec.source = source
+            rec.notes = notes
+            rec.status = 'Suppressed'
+            rec.conversation = conv
+            rec.save()
+
+        rec_dict = rec.to_dict()
+
+        # Emit real-time SSE events so dashboard updates live
+        event_name = 'contact.blocked' if supp_type == 'blocked' else 'contact.opted_out'
+        emit_event(event_name, rec_dict)
+        if conv:
+            emit_event('conversation.updated', {
+                'id': conv.id,
+                'contact_name': conv.contact_name,
+                'phone_number': conv.phone_number,
+                'is_opted_out': conv.is_opted_out,
+                'is_blocked': conv.is_blocked,
+                'suppression_reason': conv.suppression_reason,
+                'tags': conv.tags,
+                'last_contact_date': conv.last_contact_date,
+            })
+        emit_event('notification.new', {
+            'id': int(time.time() * 1000),
+            'title': '⛔ Contact Suppressed' if supp_type == 'blocked' else '🛑 Contact Opted Out',
+            'text': f"{rec.name} ({rec.phone}) added to compliance suppression list: {rec.reason}",
+            'time': 'Just now',
+            'unread': True,
+            'target': 'bulk-recipients',
+            'itemId': conv.id if conv else rec.id,
+            'itemType': 'conversation'
+        })
+
+        return Response(rec_dict, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def resubscribe(self, request):
+        """
+        Re-subscribes contact with consent. Clears flags on Conversation,
+        deletes SuppressionRecord, and broadcasts SSE.
+        """
+        target = (request.data.get('phone') or request.data.get('id') or '').strip()
+        conv_id = request.data.get('conv_id') or request.data.get('conversation_id')
+        clean_target = re.sub(r'\D', '', target)
+        suffix = clean_target[-10:] if len(clean_target) >= 10 else clean_target
+
+        deleted_count = 0
+        phone_for_event = target
+        name_for_event = ''
+
+        # 1. Delete matching suppression records
+        for rec in list(SuppressionRecord.objects.all()):
+            r_clean = re.sub(r'\D', '', rec.phone or '')
+            match = False
+            if str(rec.id) == target or f"sup-{rec.id}" == target:
+                match = True
+            elif suffix and r_clean and (r_clean.endswith(suffix) or suffix.endswith(r_clean[-10:])):
+                match = True
+            elif conv_id and rec.conversation_id and str(rec.conversation_id) == str(conv_id):
+                match = True
+
+            if match:
+                phone_for_event = rec.phone
+                name_for_event = rec.name
+                rec.delete()
+                deleted_count += 1
+
+        # 2. Update conversation
+        conv = None
+        if conv_id:
+            conv = Conversation.objects.filter(id=conv_id).first()
+        if not conv and suffix:
+            for c in Conversation.objects.all():
+                c_clean = re.sub(r'\D', '', c.phone_number or '')
+                if c_clean and (c_clean.endswith(suffix) or suffix.endswith(c_clean[-10:])):
+                    conv = c
+                    break
+
+        if conv:
+            conv.is_blocked = False
+            conv.is_opted_out = False
+            conv.suppression_reason = ''
+            conv.tags = [t for t in (conv.tags or []) if str(t).lower() not in ['blocked', 'opted out', 'opt-out', 'unsubscribed']]
+            if 'Opted In' not in conv.tags:
+                conv.tags.append('Opted In')
+            conv.save()
+            phone_for_event = conv.phone_number
+            name_for_event = conv.contact_name
+
+            emit_event('conversation.updated', {
+                'id': conv.id,
+                'contact_name': conv.contact_name,
+                'phone_number': conv.phone_number,
+                'is_opted_out': False,
+                'is_blocked': False,
+                'suppression_reason': '',
+                'tags': conv.tags,
+                'last_contact_date': conv.last_contact_date,
+            })
+
+        now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+        emit_event('contact.resubscribed', {
+            'conversation_id': conv.id if conv else None,
+            'phone': phone_for_event,
+            'name': name_for_event or 'Customer',
+            'date': now_full,
+        })
+        emit_event('notification.new', {
+            'id': int(time.time() * 1000),
+            'title': '✅ Customer Re-subscribed',
+            'text': f"{name_for_event or phone_for_event} re-subscribed with consent.",
+            'time': 'Just now',
+            'unread': True,
+            'target': 'conversations',
+            'itemId': conv.id if conv else None,
+            'itemType': 'conversation',
+        })
+
+        return Response({
+            'success': True,
+            'message': f"Consent verified. {name_for_event or phone_for_event} re-subscribed.",
+            'deleted_count': deleted_count,
+        }, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        return self.resubscribe(request)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        notes = request.data.get('notes')
+        reason = request.data.get('reason')
+        if notes is not None:
+            instance.notes = notes
+        if reason is not None:
+            instance.reason = reason
+        instance.save()
+        return Response(instance.to_dict(), status=status.HTTP_200_OK)
+

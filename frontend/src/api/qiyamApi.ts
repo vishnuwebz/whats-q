@@ -27,6 +27,7 @@ import type {
   Expense,
   KeywordRule,
   WorkingHoursConfig,
+  SuppressionRecord,
 } from '../types';
 
 async function list<T>(endpoint: string): Promise<T[]> {
@@ -136,6 +137,51 @@ export const qiyamApi = {
     } catch (e) {
       console.warn('Could not fetch deleted conversations:', e);
       return [];
+    }
+  },
+
+  async fetchSuppressionList(): Promise<SuppressionRecord[]> {
+    try {
+      const rows = await list<SuppressionRecord>('/conversations/suppression/');
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      console.warn('Could not fetch suppression list from backend:', e);
+      return [];
+    }
+  },
+
+  async createSuppressionRecord(data: Partial<SuppressionRecord>): Promise<SuppressionRecord | null> {
+    try {
+      const res = await apiClient.post('/conversations/suppression/', data);
+      return res as SuppressionRecord;
+    } catch (e) {
+      console.warn('Could not create suppression record on backend:', e);
+      return null;
+    }
+  },
+
+  async resubscribeSuppressionRecord(phoneOrId: string, convId?: string | number): Promise<boolean> {
+    try {
+      await apiClient.post('/conversations/suppression/resubscribe/', {
+        phone: phoneOrId,
+        id: phoneOrId,
+        conv_id: convId,
+      });
+      return true;
+    } catch (e) {
+      console.warn('Could not resubscribe suppression record on backend:', e);
+      return false;
+    }
+  },
+
+  async updateSuppressionRecord(id: string, updates: Partial<SuppressionRecord>): Promise<SuppressionRecord | null> {
+    try {
+      const cleanId = id.replace(/^sup-/, '');
+      const res = await apiClient.patch(`/conversations/suppression/${cleanId}/`, updates);
+      return res as SuppressionRecord;
+    } catch (e) {
+      console.warn('Could not update suppression record on backend:', e);
+      return null;
     }
   },
 

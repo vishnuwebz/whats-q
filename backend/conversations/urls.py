@@ -12,6 +12,7 @@ from .views import (
     InspectGroupInviteView,
     LinkedEmployeeDeviceViewSet,
     BulkCampaignViewSet,
+    SuppressionViewSet,
 )
 from .grabber_views import GroupGrabberSessionView
 
@@ -22,6 +23,7 @@ router.register(r'templates', WhatsAppTemplateViewSet)
 router.register(r'meta-config', MetaConfigViewSet, basename='meta-config')
 router.register(r'linked-devices', LinkedEmployeeDeviceViewSet, basename='linked-devices')
 router.register(r'bulk-campaigns', BulkCampaignViewSet, basename='bulk-campaigns')
+router.register(r'suppression', SuppressionViewSet, basename='suppression')
 
 urlpatterns = [
     path('webhook/', WhatsAppWebhookView.as_view(), name='whatsapp_webhook'),

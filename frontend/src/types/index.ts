@@ -1016,6 +1016,7 @@ export interface SuppressionRecord {
   notes?: string;
   canResubscribe: boolean;
   source?: string;
+  conversation_id?: number | string;
 }
 
 export type RolePermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'execute' | 'export';

@@ -283,3 +283,60 @@ class BulkCampaignLog(models.Model):
 
     def __str__(self):
         return f"{self.phone} [{self.status}] — {self.campaign.name}"
+
+
+class SuppressionRecord(models.Model):
+    """
+    Compliance and Suppression List model for WhatsApp Meta Cloud API and Gateway sending.
+    Persists contacts who have:
+    - Sent opt-out keywords (STOP, UNSUBSCRIBE, CANCEL)
+    - Clicked Meta template marketing opt-out buttons (STOP_PROMOTIONS)
+    - Triggered Meta Error 131051 (User blocked business phone number)
+    - Been manually suppressed by an administrator or compliance officer
+    """
+    TYPE_CHOICES = [
+        ('opt_out_stop', 'Opt-out (STOP Keyword)'),
+        ('opt_out_button', 'Opt-out (Template Button)'),
+        ('blocked', 'Blocked (Meta 131051)'),
+        ('manual', 'Manual Compliance Entry'),
+    ]
+
+    phone = models.CharField(max_length=50, db_index=True)
+    name = models.CharField(max_length=150, default='Customer')
+    suppression_type = models.CharField(max_length=50, choices=TYPE_CHOICES, default='opt_out_stop')
+    reason = models.CharField(max_length=255, default='Customer opted out of WhatsApp messages')
+    meta_error_code = models.CharField(max_length=50, blank=True, default='')
+    campaign_name = models.CharField(max_length=150, blank=True, default='')
+    source = models.CharField(max_length=150, default='Inbound WhatsApp Keyword (STOP)')
+    notes = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=50, default='Suppressed')
+    can_resubscribe = models.BooleanField(default=True)
+    conversation = models.ForeignKey(Conversation, null=True, blank=True, on_delete=models.SET_NULL, related_name='suppression_records')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.phone}) - {self.suppression_type}"
+
+    def to_dict(self):
+        return {
+            'id': f"sup-{self.id}",
+            'db_id': self.id,
+            'conversation_id': self.conversation.id if self.conversation else None,
+            'name': self.name or (self.conversation.contact_name if self.conversation else 'Customer'),
+            'phone': self.phone,
+            'type': self.suppression_type,
+            'reason': self.reason,
+            'metaErrorCode': self.meta_error_code or ('131051' if self.suppression_type == 'blocked' else ''),
+            'campaignName': self.campaign_name,
+            'date': self.created_at.strftime('%b %d, %Y, %I:%M %p'),
+            'timestamp': int(self.created_at.timestamp() * 1000),
+            'status': self.status,
+            'canResubscribe': self.can_resubscribe,
+            'source': self.source,
+            'notes': self.notes,
+        }
+

@@ -1361,65 +1361,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
   },
 ];
 
-export const INITIAL_SUPPRESSION_LIST: SuppressionRecord[] = [
-  {
-    id: 'sup-01',
-    name: 'Inactive Contact (Opted Out)',
-    phone: '+91 80000 00000',
-    type: 'opt_out_stop',
-    reason: 'Replied "STOP" to promotional broadcast',
-    campaignName: 'Summer AC Cleaning 2026',
-    date: 'Sep 10, 2026, 02:45 PM',
-    timestamp: 1789031700000,
-    status: 'Suppressed',
-    canResubscribe: true,
-    source: 'Inbound WhatsApp Keyword (STOP)',
-    notes: 'Customer explicitly texted STOP. Excluded from all automated broadcasts.',
-  },
-  {
-    id: 'sup-02',
-    name: 'Kareem Mansoor',
-    phone: '+971 50 111 2233',
-    type: 'blocked',
-    reason: 'Meta Error 131051: User blocked business phone number',
-    metaErrorCode: '131051',
-    campaignName: 'Chiller AMC Annual Renewal',
-    date: 'Sep 12, 2026, 11:20 AM',
-    timestamp: 1789191000000,
-    status: 'Suppressed',
-    canResubscribe: false,
-    source: 'Meta Cloud API Webhook (Delivery Failed: 131051)',
-    notes: 'Message undeliverable. User blocked business line on WhatsApp. Auto-paused.',
-  },
-  {
-    id: 'sup-03',
-    name: 'Fahad Al-Otaibi',
-    phone: '+966 55 222 3344',
-    type: 'opt_out_button',
-    reason: 'Tapped "Stop Promotions" Quick-Reply Button',
-    campaignName: 'VIP Club Exclusive Offers',
-    date: 'Sep 14, 2026, 04:15 PM',
-    timestamp: 1789367100000,
-    status: 'Suppressed',
-    canResubscribe: true,
-    source: 'Meta Template Quick Reply (STOP_PROMOTIONS)',
-    notes: 'Clicked standard Meta marketing opt-out button.',
-  },
-  {
-    id: 'sup-04',
-    name: 'Sunil Varma',
-    phone: '+91 94000 99887',
-    type: 'opt_out_stop',
-    reason: 'Replied "UNSUBSCRIBE" to newsletter',
-    campaignName: 'HVAC Maintenance Tips Q3',
-    date: 'Sep 16, 2026, 09:30 AM',
-    timestamp: 1789531800000,
-    status: 'Suppressed',
-    canResubscribe: true,
-    source: 'Inbound WhatsApp Keyword (UNSUBSCRIBE)',
-    notes: 'Replied to marketing broadcast requesting removal.',
-  },
-];
+export const INITIAL_SUPPRESSION_LIST: SuppressionRecord[] = [];
 
 const getStoredCustomRecipientLists = (): BulkRecipientList[] => {
   try {
@@ -1464,10 +1406,17 @@ const getStoredSuppressionList = (): SuppressionRecord[] => {
     const raw = localStorage.getItem('whatsq_suppression_list');
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out legacy prototype mock records
+        return parsed.filter(
+          (r: any) =>
+            !['sup-01', 'sup-02', 'sup-03', 'sup-04'].includes(r.id) &&
+            !['+91 80000 00000', '+971 50 111 2233', '+966 55 222 3344', '+91 94000 99887'].includes(r.phone)
+        );
+      }
     }
   } catch {}
-  return INITIAL_SUPPRESSION_LIST;
+  return [];
 };
 
 const persistSuppressionList = (list: SuppressionRecord[]) => {
@@ -2864,6 +2813,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       qiyamApi.fetchQuotations(),         // 28
       qiyamApi.fetchKeywordRules(),       // 29
       qiyamApi.fetchWorkingHours(),       // 30
+      qiyamApi.fetchSuppressionList(),    // 31
     ]);
 
     const current = get();
@@ -3103,9 +3053,53 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       ...uniqueCustomLists.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)),
     ];
 
+    // Reconcile real suppression list from backend and actual conversations
+    const backendSuppression = (results[31]?.status === 'fulfilled' && Array.isArray((results[31] as any).value))
+      ? (results[31] as any).value
+      : [];
+
+    const unifiedSuppressionMap = new Map<string, SuppressionRecord>();
+
+    (backendSuppression || []).forEach((s: SuppressionRecord) => {
+      const cleanPhone = (s.phone || '').replace(/\D/g, '');
+      const key = cleanPhone.slice(-10) || s.phone || s.id;
+      unifiedSuppressionMap.set(key, s);
+    });
+
+    (sanitizedConversations || []).forEach((c) => {
+      const cleanPhone = (c.phone_number || '').replace(/\D/g, '');
+      const key = cleanPhone.slice(-10) || c.phone_number || String(c.id);
+
+      if (c.is_opted_out || c.is_blocked) {
+        const existing = unifiedSuppressionMap.get(key);
+        unifiedSuppressionMap.set(key, {
+          id: existing?.id || `sup-conv-${c.id}`,
+          name: c.contact_name || existing?.name || 'Customer',
+          phone: c.phone_number,
+          type: c.is_blocked ? 'blocked' : (existing?.type || 'opt_out_stop'),
+          reason: c.suppression_reason || existing?.reason || (c.is_blocked ? 'Blocked by customer' : 'Customer opted out (STOP)'),
+          metaErrorCode: c.is_blocked ? (existing?.metaErrorCode || '131051') : undefined,
+          campaignName: existing?.campaignName,
+          date: existing?.date || c.last_contact_date || 'Recent',
+          timestamp: existing?.timestamp || Date.now(),
+          status: 'Suppressed',
+          canResubscribe: true,
+          source: existing?.source || (c.is_blocked ? 'WhatsApp Block' : 'Inbound WhatsApp Keyword (STOP)'),
+          notes: existing?.notes,
+          conversation_id: c.id,
+        });
+      } else {
+        unifiedSuppressionMap.delete(key);
+      }
+    });
+
+    const suppressionList = Array.from(unifiedSuppressionMap.values());
+    persistSuppressionList(suppressionList);
+
     set({
       backendOnline: true,
       conversations: sanitizedConversations,
+      suppressionList,
       bulkRecipientLists: mergedRecipientLists,
       templates,
       bulkTemplates: (templates || []).map((t: any): BulkTemplateItem => {
@@ -4026,7 +4020,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     });
   },
 
-  updateSuppressionRecord: (idOrPhone: string, updates: Partial<SuppressionRecord>) => {
+  updateSuppressionRecord: async (idOrPhone: string, updates: Partial<SuppressionRecord>) => {
     set((state) => {
       const updated = state.suppressionList.map((s) => {
         if (s.id === idOrPhone || s.phone === idOrPhone) {
@@ -4038,9 +4032,15 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       return { suppressionList: updated };
     });
     get().addToast('Suppression record updated successfully', 'success');
+
+    try {
+      await qiyamApi.updateSuppressionRecord(idOrPhone, updates);
+    } catch (e) {
+      console.warn('Backend updateSuppressionRecord notice:', e);
+    }
   },
 
-  addSuppressionRecord: (record) => {
+  addSuppressionRecord: async (record) => {
     const now = new Date();
     const dateStr = record.date || now.toLocaleString('en-US', {
       month: 'short',
@@ -4055,7 +4055,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       phone: record.phone,
       type: record.type,
       reason: record.reason,
-      metaErrorCode: record.metaErrorCode,
+      metaErrorCode: record.metaErrorCode || (record.type === 'blocked' ? '131051' : undefined),
       campaignName: record.campaignName,
       date: dateStr,
       timestamp: Date.now(),
@@ -4064,25 +4064,32 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       source: record.source || 'Manual Compliance Entry',
       notes: record.notes,
     };
+
+    let updatedConvs: Conversation[] = [];
     set((state) => {
       const updatedSuppression = [newRecord, ...state.suppressionList.filter((s) => s.phone !== record.phone)];
       persistSuppressionList(updatedSuppression);
+
+      updatedConvs = state.conversations.map((c) => {
+        const cPhone = c.phone_number.replace(/[^0-9]/g, '');
+        const rPhone = record.phone.replace(/[^0-9]/g, '');
+        if (cPhone && rPhone && (cPhone.endsWith(rPhone.slice(-10)) || rPhone.endsWith(cPhone.slice(-10)))) {
+          return {
+            ...c,
+            is_blocked: record.type === 'blocked',
+            is_opted_out: record.type !== 'blocked',
+            suppression_reason: record.reason,
+            suppression_date: dateStr,
+          };
+        }
+        return c;
+      });
+
+      persistConversations(updatedConvs);
+
       return {
         suppressionList: updatedSuppression,
-        conversations: state.conversations.map((c) => {
-          const cPhone = c.phone_number.replace(/[^0-9]/g, '');
-          const rPhone = record.phone.replace(/[^0-9]/g, '');
-          if (cPhone && rPhone && (cPhone.endsWith(rPhone.slice(-10)) || rPhone.endsWith(cPhone.slice(-10)))) {
-            return {
-              ...c,
-              is_blocked: record.type === 'blocked',
-              is_opted_out: record.type !== 'blocked',
-              suppression_reason: record.reason,
-              suppression_date: dateStr,
-            };
-          }
-          return c;
-        }),
+        conversations: updatedConvs,
         notifications: [
           {
             id: Date.now(),
@@ -4098,6 +4105,29 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       };
     });
     get().addToast(`Added ${record.phone} to Suppression List`, 'warning');
+
+    // Persist to backend database API
+    try {
+      const res = await qiyamApi.createSuppressionRecord({
+        name: record.name,
+        phone: record.phone,
+        type: record.type,
+        reason: record.reason,
+        metaErrorCode: record.metaErrorCode,
+        campaignName: record.campaignName,
+        source: record.source || 'Manual Compliance Entry',
+        notes: record.notes,
+      });
+      if (res && res.id) {
+        set((state) => ({
+          suppressionList: state.suppressionList.map((s) =>
+            s.phone === record.phone ? { ...s, ...res } : s
+          ),
+        }));
+      }
+    } catch (e) {
+      console.warn('Backend createSuppressionRecord error:', e);
+    }
   },
 
   removeSuppressionRecord: async (idOrPhone, convId) => {
@@ -4171,7 +4201,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     get().addToast(`Consent verified! ${targetName ? `${targetName} (${targetPhone})` : targetPhone} re-subscribed.`, 'success');
 
-    // 2. Persist to backend API
+    // 2. Persist to backend API (both thread resubscribe and suppression resubscribe)
     try {
       const convMatch = updatedConversations.find(
         (c) => (convId !== undefined && String(c.id) === String(convId)) ||
@@ -4191,6 +4221,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           ),
         }));
       }
+      await qiyamApi.resubscribeSuppressionRecord(targetPhone, convId || (convMatch ? convMatch.id : undefined));
     } catch (e) {
       console.warn('Backend resubscribe sync notice:', e);
     }

@@ -187,9 +187,15 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
       addToast('Please enter a valid phone number.', 'warning');
       return;
     }
+    const matchingConv = (conversations || []).find((c) => {
+      const cDigits = (c.phone_number || '').replace(/\D/g, '');
+      const mDigits = manualPhone.replace(/\D/g, '');
+      return Boolean(cDigits && mDigits && (cDigits.endsWith(mDigits.slice(-10)) || mDigits.endsWith(cDigits.slice(-10))));
+    });
+
     addSuppressionRecord({
       id: `supp-manual-${Date.now()}`,
-      name: manualName.trim() || 'Manual Contact',
+      name: manualName.trim() || matchingConv?.contact_name || 'Manual Contact',
       phone: manualPhone.trim(),
       type: manualType === 'blocked' ? 'blocked' : 'opt_out_stop',
       reason: manualReason.trim() || (manualType === 'blocked' ? 'Manual block entered by operator' : 'Manual opt-out entered by operator'),
@@ -200,6 +206,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
       notes: manualReason.trim(),
       canResubscribe: true,
       source: 'Manual operator entry',
+      conversation_id: matchingConv?.id,
     });
     addToast(`Added ${manualPhone} to compliance suppression list!`, 'success');
     setIsAddManualSuppressionOpen(false);
@@ -1637,7 +1644,12 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    removeSuppressionRecord(record.phone);
+                                    const matchingConv = (conversations || []).find((c) => {
+                                      const cDigits = (c.phone_number || '').replace(/\D/g, '');
+                                      const rDigits = (record.phone || '').replace(/\D/g, '');
+                                      return Boolean(cDigits && rDigits && (cDigits.endsWith(rDigits.slice(-10)) || rDigits.endsWith(cDigits.slice(-10))));
+                                    });
+                                    removeSuppressionRecord(record.phone, record.conversation_id || (matchingConv ? matchingConv.id : undefined));
                                   }}
                                   className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
                                   title="Re-subscribe contact with customer consent"
