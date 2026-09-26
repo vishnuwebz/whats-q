@@ -354,6 +354,50 @@ class ChatbotWorkflowEngineTests(TestCase):
         self.conv.refresh_from_db()
         self.assertEqual(self.conv.active_workflow, 'Service Booking Flow')
 
+    def test_inbound_hi_returns_dynamic_company_welcome(self):
+        """Sending 'hi' or 'hello' returns the configured Workflow Builder Welcome Menu, never 'When a new message is received'"""
+        self.config.business_name = "QBS-360 Enterprise"
+        self.config.save()
+
+        resp = self.client.post('/api/conversations/simulate/', {
+            'phone': '+91 98470 12345',
+            'name': 'Rahul Verma',
+            'text': 'Hi'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bot_reply = resp.data.get('bot_reply', {})
+        text = bot_reply.get('text', '')
+        self.assertNotIn("When a new message is received", text)
+        self.assertIn("QBS-360 Enterprise", text)
+        self.assertIn("1️⃣", text)
+
+    def test_keyword_trigger_rule_dynamic_reply(self):
+        """Active KeywordTriggerRule takes priority and substitutes dynamic company & customer placeholders"""
+        from automation.models import KeywordTriggerRule
+        self.config.business_name = "QBS-360 Solutions"
+        self.config.save()
+
+        KeywordTriggerRule.objects.create(
+            title="Custom Pricing Rule",
+            keywords=["rate card", "pricing"],
+            reply="Hello {CUSTOMER_NAME}! Welcome to {COMPANY_NAME}. Current rates for {SERVICE_NAME} start at AED 150.",
+            active=True
+        )
+
+        resp = self.client.post('/api/conversations/simulate/', {
+            'phone': '+91 98470 12345',
+            'name': 'Rahul Verma',
+            'text': 'Please send rate card'
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bot_reply = resp.data.get('bot_reply', {})
+        text = bot_reply.get('text', '')
+        self.assertIn("Hello Rahul Verma!", text)
+        self.assertIn("Welcome to QBS-360 Solutions", text)
+        self.assertIn("Current rates for AC Repair start at AED 150.", text)
+
+
+
 
 class InspectGroupInviteLinkTests(TestCase):
     def setUp(self):
