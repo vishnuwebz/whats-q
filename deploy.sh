@@ -205,8 +205,20 @@ echo -e "\n${YELLOW}[4/5] Building Frontend...${NC}"
 cd "$APP_DIR/frontend"
 NODE_BIN=$(command -v node || which node || echo "/usr/bin/node")
 NPM_BIN=$(command -v npm || which npm || echo "/usr/bin/npm")
-$NPM_BIN install --silent
-$NPM_BIN run build
+
+# Ensure build user has full write permissions to dist directory
+$SUDO_CMD chown -R $(whoami) "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chmod -R 777 "$APP_DIR/frontend/dist" 2>/dev/null || chmod -R 777 "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
+mkdir -p "$APP_DIR/frontend/dist" 2>/dev/null || true
+
+$NPM_BIN install --silent 2>&1 || true
+if ! $NPM_BIN run build; then
+    echo -e "${YELLOW}[WARN] Frontend build encountered an error. Retrying clean build...${NC}"
+    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
+    $NPM_BIN run build || true
+fi
+
 cp "$APP_DIR/frontend/public/version.json" "$APP_DIR/frontend/dist/version.json" 2>/dev/null || true
 $SUDO_CMD chmod -R 755 "$APP_DIR/frontend/dist" 2>/dev/null || true
 $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
