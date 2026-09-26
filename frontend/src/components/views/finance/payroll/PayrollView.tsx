@@ -341,7 +341,7 @@ export const PayrollView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       {/* Pinned Top Navigation Bar & Sub-Nav Toolbar */}
       <div className="sticky top-0 z-30 bg-white shadow-xs shrink-0">
         <Header

@@ -281,9 +281,9 @@ export const LeadsView: React.FC = () => {
       </div>
 
       {/* Main Kanban Content Area */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-h-0">
         {viewMode === 'kanban' ? (
-          <div className="flex-1 overflow-x-auto p-3 sm:p-6 flex gap-3 sm:gap-4 items-start scrollbar-thin">
+          <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-5 md:p-6 flex gap-3 sm:gap-4 items-stretch scrollbar-thin min-h-0">
             {stages.map((col) => {
               const colLeads = filteredLeads.filter((l) => l.stage === col.id);
 
@@ -292,10 +292,10 @@ export const LeadsView: React.FC = () => {
                   key={col.id}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, col.id)}
-                  className="w-[85vw] sm:w-72 bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col max-h-full shrink-0 shadow-sm"
+                  className="w-[85vw] sm:w-72 bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col h-full max-h-full min-h-0 shrink-0 shadow-sm"
                 >
                   {/* Column Header */}
-                  <div className="p-3.5 border-b border-slate-200/60 flex items-center justify-between">
+                  <div className="p-3.5 border-b border-slate-200/60 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${col.color}`}>
                         {col.count}
@@ -308,7 +308,7 @@ export const LeadsView: React.FC = () => {
                   </div>
 
                   {/* Column Cards */}
-                  <div className="p-3 overflow-y-auto space-y-3 flex-1 scrollbar-thin">
+                  <div className="p-3 pb-8 overflow-y-auto space-y-3 flex-1 min-h-0 scrollbar-thin overscroll-contain">
                     {colLeads.map((lead) => (
                       <div
                         key={lead.id}

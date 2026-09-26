@@ -35,39 +35,40 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
 
   // If already unlocked, render the children directly!
   if (entitlement.isUnlocked && children) {
+    if (entitlement.reason !== 'trial') {
+      return <>{children}</>;
+    }
     return (
       <div className="relative w-full h-full flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* If under trial, render a sleek sticky trial countdown banner on top */}
-        {entitlement.reason === 'trial' && (
-          <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white px-4 py-2 flex flex-col sm:flex-row items-center justify-between text-xs shadow-md z-30 shrink-0 gap-2">
-            <div className="flex items-center gap-2 font-medium">
-              <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
-              <span>⏳ <strong>Free Trial Active:</strong> You have <strong>{entitlement.trialHoursLeft} hours</strong> ({entitlement.trialDaysLeft} days) remaining on <strong>{modInfo.label}</strong>.</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={async () => {
-                  if (!activeTenant) return;
-                  setIsProcessing(true);
-                  try {
-                    await purchaseTenantModuleAddon(activeTenant.id, moduleId);
-                    addToast(`Unlocked ${modInfo.label} add-on permanently!`, 'success');
-                    if (onUnlocked) onUnlocked();
-                  } catch (e) {
-                    addToast('Failed to purchase add-on', 'error');
-                  } finally {
-                    setIsProcessing(false);
-                  }
-                }}
-                disabled={isProcessing}
-                className="px-3 py-1 bg-white text-amber-900 hover:bg-amber-50 font-bold rounded-lg shadow-xs transition cursor-pointer text-[11px] flex items-center gap-1"
-              >
-                <Zap className="w-3 h-3 text-amber-600 fill-amber-600" />
-                <span>Keep Permanently (₹{modInfo.addonMonthlyPrice}/mo)</span>
-              </button>
-            </div>
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white px-4 py-2 flex flex-col sm:flex-row items-center justify-between text-xs shadow-md z-30 shrink-0 gap-2">
+          <div className="flex items-center gap-2 font-medium">
+            <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
+            <span>⏳ <strong>Free Trial Active:</strong> You have <strong>{entitlement.trialHoursLeft} hours</strong> ({entitlement.trialDaysLeft} days) remaining on <strong>{modInfo.label}</strong>.</span>
           </div>
-        )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                if (!activeTenant) return;
+                setIsProcessing(true);
+                try {
+                  await purchaseTenantModuleAddon(activeTenant.id, moduleId);
+                  addToast(`Unlocked ${modInfo.label} add-on permanently!`, 'success');
+                  if (onUnlocked) onUnlocked();
+                } catch (e) {
+                  addToast('Failed to purchase add-on', 'error');
+                } finally {
+                  setIsProcessing(false);
+                }
+              }}
+              disabled={isProcessing}
+              className="px-3 py-1 bg-white text-amber-900 hover:bg-amber-50 font-bold rounded-lg shadow-xs transition cursor-pointer text-[11px] flex items-center gap-1"
+            >
+              <Zap className="w-3 h-3 text-amber-600 fill-amber-600" />
+              <span>Keep Permanently (₹{modInfo.addonMonthlyPrice}/mo)</span>
+            </button>
+          </div>
+        </div>
         <div className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden">{children}</div>
       </div>
     );
