@@ -54,7 +54,7 @@ export const ApprovalsView: React.FC = () => {
   });
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Approvals Center"
         subtitle="Manage pending purchase orders, expense releases, employee leaves, and authorizations."

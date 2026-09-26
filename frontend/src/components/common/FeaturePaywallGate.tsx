@@ -36,7 +36,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
   // If already unlocked, render the children directly!
   if (entitlement.isUnlocked && children) {
     return (
-      <div className="relative w-full h-full flex flex-col">
+      <div className="relative w-full h-full flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* If under trial, render a sleek sticky trial countdown banner on top */}
         {entitlement.reason === 'trial' && (
           <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white px-4 py-2 flex flex-col sm:flex-row items-center justify-between text-xs shadow-md z-30 shrink-0 gap-2">
@@ -68,7 +68,7 @@ export const FeaturePaywallGate: React.FC<FeaturePaywallGateProps> = ({
             </div>
           </div>
         )}
-        <div className="flex-1 overflow-hidden">{children}</div>
+        <div className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden">{children}</div>
       </div>
     );
   }

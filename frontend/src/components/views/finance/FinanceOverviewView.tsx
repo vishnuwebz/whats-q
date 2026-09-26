@@ -39,7 +39,7 @@ export const FinanceOverviewView: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Financial Overview"
         subtitle="Summary of company revenue, expenses, net profit, and banking cash flows."

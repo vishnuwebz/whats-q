@@ -400,7 +400,7 @@ export const BranchesView: React.FC = () => {
 
   return (
     <div
-      className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans"
+      className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans"
       onClick={() => {
         if (activeActionMenuId) setActiveActionMenuId(null);
         if (isFilterDropdownOpen) setIsFilterDropdownOpen(false);

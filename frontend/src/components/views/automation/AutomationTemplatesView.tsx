@@ -219,7 +219,7 @@ export const AutomationTemplatesView: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Automation Templates Gallery"
         subtitle="Pre-built 1-click workflow blueprints tested for service businesses."

@@ -81,7 +81,7 @@ export const AITemplatesView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-h-screen overflow-y-auto font-sans">
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="WhatsApp & AI Message Templates"
         subtitle="Meta WhatsApp Cloud API pre-approved templates with dynamic variables, sample values, and interactive CTA buttons."
