@@ -152,7 +152,7 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
   }, [isOpen, sessionToken, connectionState, phoneLabel, baileysQrCode, addToast]);
 
   // Instant Test Scan simulator (for fast Localhost verification)
-  const handleSimulateScan = async (samplePhone: string = '+91 90746 40425', sampleLabel: string = 'Surat Wholesale Line') => {
+  const handleSimulateScan = async (samplePhone: string = '+91 80861 66091', sampleLabel: string = 'Surat Wholesale Line') => {
     setConnectionState('connecting');
     setPhoneNumber(samplePhone);
     if (!phoneLabel || phoneLabel === 'Surat Wholesale Line') {
@@ -365,7 +365,7 @@ export const LinkEmployeeWhatsAppModal: React.FC<LinkEmployeeWhatsAppModalProps>
                   className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition shadow-2xs"
                 />
                 <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {['Ramesh Kumar', 'Priya Patel', 'Vishnu (Manager)', 'Amit Sharma'].map((staff) => (
+                  {['Habeeb', 'Ramesh Kumar', 'Priya Patel', 'Vishnu (Manager)', 'Amit Sharma'].map((staff) => (
                     <button
                       key={staff}
                       type="button"

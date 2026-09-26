@@ -286,6 +286,16 @@
       "sentToday": 0,
       "createdAt": "2026-09-24T19:38:34.270Z",
       "warmupScore": 90
+    },
+    {
+      "id": "emp_wa_1790414891180",
+      "phoneNumber": "",
+      "displayName": "Habeeb Phone",
+      "status": "connecting",
+      "dailyLimit": 2500,
+      "sentToday": 0,
+      "createdAt": "2026-09-26T09:28:12.182Z",
+      "warmupScore": 90
     }
   ],
   "contacts": [

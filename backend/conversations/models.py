@@ -75,6 +75,7 @@ class Conversation(models.Model):
     active_line_phone = models.CharField(max_length=50, blank=True, default='')
     active_employee_name = models.CharField(max_length=150, blank=True, default='')
     active_line_type = models.CharField(max_length=50, blank=True, default='meta_cloud') # "meta_cloud" or "employee"
+    whatsapp_lid = models.CharField(max_length=100, blank=True, default='')
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

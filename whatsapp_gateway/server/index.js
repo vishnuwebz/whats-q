@@ -322,7 +322,7 @@ app.post('/api/campaigns/:id/pause', (req, res) => {
 
 // 4. Direct WhatsApp Message Send API (Dual Engine: Meta Cloud API + Baileys Socket)
 app.post('/api/messages/send-direct', async (req, res) => {
-  const { accountId, recipientPhone, messageText, buttons, mediaUrl, mediaName, mediaType } = req.body;
+  const { accountId, recipientPhone, messageText, buttons, mediaUrl, mediaName, mediaType, senderPhone } = req.body;
   const db = getDb();
   const targetAcc = (db.accounts || []).find((a) => a.id === accountId);
   const isMetaRequested =
@@ -364,7 +364,9 @@ app.post('/api/messages/send-direct', async (req, res) => {
       messageText,
       buttons,
       mediaUrl,
-      mediaName
+      mediaName,
+      mediaType || 'image',
+      senderPhone || null
     );
     res.json({ success: true, result, channel: 'baileys_socket' });
   } catch (err) {

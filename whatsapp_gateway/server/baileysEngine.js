@@ -505,6 +505,21 @@ export class BaileysEngine {
             displayName: sessionMeta.displayName,
             status: 'online',
           });
+
+          // Immediately sync linked device to Django backend
+          const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+          fetch(`${backendUrl}/api/conversations/linked-devices/pair_session/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: accountId,
+              phone: sessionMeta.phoneNumber,
+              device_label: sessionMeta.displayName || 'Employee WhatsApp Line',
+              employee_name: sessionMeta.displayName || 'Employee Line',
+            }),
+          }).catch((syncErr) => {
+            console.warn('[Baileys Engine] Notice syncing linked device to Django:', syncErr.message);
+          });
         }
       });
 
@@ -547,24 +562,39 @@ export class BaileysEngine {
           sessionMeta.phoneNumber = employeePhone;
           sessionMeta.displayName = employeeName;
 
-          // 2. Resolve Customer Phone Number (handling WhatsApp @lid privacy IDs, remoteJidAlt, senderPn, participantAlt)
+          // 2. Resolve Customer Phone Number (handling WhatsApp @lid privacy IDs, remoteJidAlt, senderPn, participantPn)
           let customerJid = remoteJid;
-          const altJid = msg.key.remoteJidAlt || msg.key.senderPn || msg.key.participantAlt || msg.key.cleanedParticipant || '';
+          let customerLid = remoteJid.endsWith('@lid') ? remoteJid : (msg.key.senderLid || '');
 
-          if (altJid && altJid.endsWith('@s.whatsapp.net')) {
-            customerJid = altJid;
-            // Cache LID -> Phone mapping
-            sessionMeta.contacts.set(remoteJid, {
-              id: altJid,
-              phone: altJid.split('@')[0].replace(/[^\d]/g, ''),
-              lid: remoteJid,
-            });
-          } else if (customerJid.endsWith('@lid') && sessionMeta.contacts.has(customerJid)) {
-            const cached = sessionMeta.contacts.get(customerJid);
-            if (cached?.phone) {
-              customerJid = `${cached.phone}@s.whatsapp.net`;
-            } else if (cached?.id && cached.id.endsWith('@s.whatsapp.net')) {
-              customerJid = cached.id;
+          const rawPnCandidate = msg.key.senderPn || msg.key.participantPn || msg.key.remoteJidAlt || msg.key.cleanedParticipant || '';
+          const cleanedPn = String(rawPnCandidate).replace(/\D/g, '');
+          if (cleanedPn && cleanedPn.length >= 7) {
+            customerJid = `${cleanedPn}@s.whatsapp.net`;
+            if (customerLid) {
+              sessionMeta.contacts.set(customerLid, {
+                id: customerJid,
+                phone: cleanedPn,
+                lid: customerLid,
+              });
+              this.saveContactsCache(accountId, sessionMeta.contacts);
+            }
+          } else if (customerJid.endsWith('@lid')) {
+            // Check contacts cache
+            if (sessionMeta.contacts.has(customerJid)) {
+              const cached = sessionMeta.contacts.get(customerJid);
+              if (cached?.phone) {
+                customerJid = `${cached.phone}@s.whatsapp.net`;
+              } else if (cached?.id && cached.id.endsWith('@s.whatsapp.net')) {
+                customerJid = cached.id;
+              }
+            } else {
+              // Iterate all entries in contacts cache
+              for (const entry of sessionMeta.contacts.values()) {
+                if (entry.lid === customerJid && entry.phone) {
+                  customerJid = `${entry.phone}@s.whatsapp.net`;
+                  break;
+                }
+              }
             }
           }
 
@@ -582,8 +612,8 @@ export class BaileysEngine {
           // Cache in contacts map
           if (customerJid.endsWith('@s.whatsapp.net')) {
             sessionMeta.contacts.set(rawCustomer, { id: customerJid, phone: rawCustomer });
-            if (remoteJid !== customerJid) {
-              sessionMeta.contacts.set(remoteJid, { id: customerJid, phone: rawCustomer, lid: remoteJid });
+            if (customerLid) {
+              sessionMeta.contacts.set(customerLid, { id: customerJid, phone: rawCustomer, lid: customerLid });
             }
           }
 
@@ -664,7 +694,10 @@ export class BaileysEngine {
                       messaging_product: 'whatsapp',
                       from_me: isFromMe,
                       customer_phone: customerPhone,
+                      customer_jid: customerJid,
+                      customer_lid: customerLid,
                       employee_phone: employeePhone,
+                      employee_name: employeeName,
                       metadata: {
                         display_phone_number: employeePhone ? employeePhone.replace(/[^\d]/g, '') : '',
                         phone_number_id: accountId,
@@ -673,6 +706,8 @@ export class BaileysEngine {
                       recipient_line: {
                         phone_number: employeePhone,
                         customer_phone: customerPhone,
+                        customer_jid: customerJid,
+                        customer_lid: customerLid,
                         device_label: employeeName,
                         employee_name: employeeName,
                         account_id: accountId,
@@ -686,6 +721,8 @@ export class BaileysEngine {
                         text: { body: text },
                         from_me: isFromMe,
                         customer_phone: customerPhone,
+                        customer_jid: customerJid,
+                        customer_lid: customerLid,
                         timestamp: String(Math.floor(Date.now() / 1000)),
                       }],
                       contacts: [{
@@ -848,22 +885,33 @@ export class BaileysEngine {
    * 2. If Meta Cloud API is configured -> sends via Meta Graph API.
    * 3. If in test/development mode with no active socket -> logs delivery clearly and returns detailed payload.
    */
-  async sendMessage(accountId, recipientPhone, text, buttons = [], mediaUrl = null, mediaName = null, mediaType = 'image') {
+  async sendMessage(accountId, recipientPhone, text, buttons = [], mediaUrl = null, mediaName = null, mediaType = 'image', senderPhone = null) {
     const normalizedPhone = normalizeWhatsAppNumber(recipientPhone);
     if (!normalizedPhone || normalizedPhone.length < 10) {
       throw new Error(`Invalid recipient phone number: "${recipientPhone}". Please enter a valid 10-digit mobile number.`);
     }
 
-    console.log(`[Baileys Engine] Dispatching WhatsApp message to +${normalizedPhone} (raw: "${recipientPhone}")... Requested Account: ${accountId}`);
+    console.log(`[Baileys Engine] Dispatching WhatsApp message to +${normalizedPhone} (raw: "${recipientPhone}")... Requested Account: ${accountId}, SenderPhone: ${senderPhone || 'None'}`);
 
     // 1. Try to find session by exact accountId
     let targetSession = this.sessions.get(accountId);
 
-    // 2. If targetSession is not found by ID, look for session matching account's phone number
+    // 2. If targetSession is not found by ID, look for session matching senderPhone or account's phone number
     if (!targetSession || targetSession.status !== 'online') {
       const allOnlineSessions = Array.from(this.sessions.values()).filter((s) => s.status === 'online' && s.sock);
       
-      if (accountId && accountId !== 'auto' && accountId !== 'all') {
+      // Check senderPhone first if passed
+      if (senderPhone) {
+        const cleanSender = String(senderPhone).replace(/\D/g, '');
+        if (cleanSender.length >= 7) {
+          const matchBySenderPhone = allOnlineSessions.find(
+            (s) => s.phoneNumber && s.phoneNumber.replace(/\D/g, '').endsWith(cleanSender.slice(-10))
+          );
+          if (matchBySenderPhone) targetSession = matchBySenderPhone;
+        }
+      }
+
+      if (!targetSession && accountId && accountId !== 'auto' && accountId !== 'all') {
         // Look for session with matching phone digits
         const cleanReq = String(accountId).replace(/\D/g, '');
         const matchingPhoneSession = allOnlineSessions.find(
@@ -880,9 +928,9 @@ export class BaileysEngine {
           const requestedLabel = requestedAcc ? `${requestedAcc.phoneNumber || requestedAcc.displayName}` : accountId;
           throw new Error(`Selected sender phone "${requestedLabel}" is disconnected (needs QR scan). Please scan its QR code on Connected Phones or select an active online line.`);
         }
-      } else if (allOnlineSessions.length > 0) {
+      } else if (!targetSession && allOnlineSessions.length > 0) {
         targetSession = allOnlineSessions[0];
-      } else {
+      } else if (!targetSession) {
         throw new Error(`No active WhatsApp sender phone is connected. Please scan QR Code on Connected Phones.`);
       }
     }

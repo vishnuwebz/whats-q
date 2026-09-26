@@ -1185,19 +1185,51 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         # Check if sending via a specific linked employee device
         is_employee_device = False
+        dev = None
         if sender_device_id and str(sender_device_id) != 'meta_cloud':
-            dev = None
             if str(sender_device_id).isdigit():
                 dev = LinkedEmployeeDevice.objects.filter(pk=int(sender_device_id)).first()
             if not dev:
+                dev = LinkedEmployeeDevice.objects.filter(session_token=str(sender_device_id)).first()
+            if not dev:
                 dev = LinkedEmployeeDevice.objects.filter(device_label=str(sender_device_id)).first()
-            if dev:
-                is_employee_device = True
-                sender_device = dev.device_label
-                sender_phone = dev.phone_number
-                sender_name = dev.employee_name or dev.device_label
-                dev.last_active = datetime.datetime.now()
-                dev.save(update_fields=['last_active'])
+            if not dev:
+                dev = LinkedEmployeeDevice.objects.filter(employee_name__iexact=str(sender_device_id)).first()
+            s_digits = re.sub(r'\D', '', str(sender_device_id))
+            if not dev and len(s_digits) >= 10:
+                dev = LinkedEmployeeDevice.objects.filter(phone_number__endswith=s_digits[-10:]).first()
+                if not dev:
+                    for d in LinkedEmployeeDevice.objects.all():
+                        d_dig = re.sub(r'\D', '', str(d.phone_number))
+                        if d_dig and d_dig.endswith(s_digits[-10:]):
+                            dev = d
+                            break
+
+        if not dev and sender_phone and '94963' not in str(sender_phone):
+            sp_digits = re.sub(r'\D', '', str(sender_phone))
+            if len(sp_digits) >= 10:
+                for d in LinkedEmployeeDevice.objects.all():
+                    d_dig = re.sub(r'\D', '', str(d.phone_number))
+                    if d_dig and d_dig.endswith(sp_digits[-10:]):
+                        dev = d
+                        break
+
+        if not dev and str(sender_device_id) != 'meta_cloud' and conversation.active_line_type == 'employee' and conversation.active_line_phone:
+            alp_digits = re.sub(r'\D', '', str(conversation.active_line_phone))
+            if len(alp_digits) >= 10:
+                for d in LinkedEmployeeDevice.objects.all():
+                    d_dig = re.sub(r'\D', '', str(d.phone_number))
+                    if d_dig and d_dig.endswith(alp_digits[-10:]):
+                        dev = d
+                        break
+
+        if dev:
+            is_employee_device = True
+            sender_device = dev.device_label
+            sender_phone = dev.phone_number
+            sender_name = dev.employee_name or dev.device_label
+            dev.last_active = datetime.datetime.now()
+            dev.save(update_fields=['last_active'])
 
         if not sender_phone:
             dev_active = LinkedEmployeeDevice.objects.filter(status='connected').first()
@@ -1282,7 +1314,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         # High-Speed WhatsApp Cloud API & Baileys Asynchronous Background Dispatch
         # Removes external network blocking from request thread, returning HTTP 201 in <15ms
-        def async_dispatch_worker(message_id, conv_id, phone, msg_text, rc, emp_device, dev_acc_id, dev_pk, v_info=None):
+        def async_dispatch_worker(message_id, conv_id, phone, msg_text, rc, emp_device, dev_acc_id, dev_pk, v_info=None, dev_phone=None):
             try:
                 import django
                 django.db.connections.close_all()
@@ -1347,6 +1379,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     clean_recipient = re.sub(r'[^\d]', '', phone or '')
                     baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data={
                         'accountId': dev_acc_id,
+                        'senderPhone': dev_phone or '',
                         'recipientPhone': clean_recipient,
                         'messageText': msg_text,
                     })
@@ -1383,13 +1416,14 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         target_acc_id = (getattr(dev, 'session_token', None) or getattr(dev, 'phone_number', None) or 'auto') if is_employee_device else None
         dev_id_val = dev.id if (is_employee_device and dev) else None
+        dev_phone_val = getattr(dev, 'phone_number', None) if (is_employee_device and dev) else None
 
         if 'test' in sys.argv:
-            async_dispatch_worker(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val, voice_info)
+            async_dispatch_worker(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val, voice_info, dev_phone_val)
         else:
             t = threading.Thread(
                 target=async_dispatch_worker,
-                args=(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val, voice_info),
+                args=(msg.id, conversation.id, conversation.phone_number, text, rich_card, is_employee_device, target_acc_id, dev_id_val, voice_info, dev_phone_val),
                 daemon=True
             )
             t.start()
@@ -2502,34 +2536,51 @@ class WhatsAppWebhookView(APIView):
                     recipient_meta = value.get('recipient_line', {}) or {}
                     recip_phone_raw = recipient_meta.get('phone_number') or metadata.get('display_phone_number') or value.get('employee_phone') or ''
                     account_token = recipient_meta.get('account_id') or metadata.get('phone_number_id') or ''
+                    recip_emp_name = recipient_meta.get('employee_name') or value.get('employee_name') or ''
+                    recip_dev_label = recipient_meta.get('device_label') or ''
 
                     matched_employee_device = None
-                    if recip_phone_raw:
-                        recip_digits = re.sub(r'\D', '', str(recip_phone_raw))
-                        if len(recip_digits) >= 10:
-                            matched_employee_device = LinkedEmployeeDevice.objects.filter(
-                                phone_number__endswith=recip_digits[-10:]
-                            ).first()
-                            if not matched_employee_device:
-                                for ed in LinkedEmployeeDevice.objects.all():
-                                    ed_digits = re.sub(r'\D', '', str(ed.phone_number))
-                                    if ed_digits and (ed_digits.endswith(recip_digits[-10:]) or recip_digits.endswith(ed_digits[-10:])):
-                                        matched_employee_device = ed
-                                        break
+                    recip_digits = re.sub(r'\D', '', str(recip_phone_raw))
+                    if len(recip_digits) >= 10:
+                        matched_employee_device = LinkedEmployeeDevice.objects.filter(
+                            phone_number__endswith=recip_digits[-10:]
+                        ).first()
+                        if not matched_employee_device:
+                            for ed in LinkedEmployeeDevice.objects.all():
+                                ed_digits = re.sub(r'\D', '', str(ed.phone_number))
+                                if ed_digits and (ed_digits.endswith(recip_digits[-10:]) or recip_digits.endswith(ed_digits[-10:])):
+                                    matched_employee_device = ed
+                                    break
 
                     if not matched_employee_device and account_token:
                         matched_employee_device = LinkedEmployeeDevice.objects.filter(session_token=account_token).first()
                         if not matched_employee_device and str(account_token).isdigit():
                             matched_employee_device = LinkedEmployeeDevice.objects.filter(pk=int(account_token)).first()
 
-                    if not matched_employee_device and recipient_meta.get('device_label'):
-                        matched_employee_device = LinkedEmployeeDevice.objects.filter(device_label=recipient_meta.get('device_label')).first()
+                    if not matched_employee_device and recip_dev_label:
+                        matched_employee_device = LinkedEmployeeDevice.objects.filter(device_label=recip_dev_label).first()
+
+                    if not matched_employee_device and recip_emp_name:
+                        matched_employee_device = LinkedEmployeeDevice.objects.filter(employee_name__iexact=recip_emp_name).first()
+
+                    # Auto-seed/sync employee device if arrived from an active employee line
+                    if not matched_employee_device and len(recip_digits) >= 10 and not recip_digits.endswith('9496300233'):
+                        matched_employee_device, _ = LinkedEmployeeDevice.objects.update_or_create(
+                            phone_number=f"+{recip_digits}" if not recip_digits.startswith('+') else recip_digits,
+                            defaults={
+                                'device_label': recip_dev_label or (f"{recip_emp_name}'s Line" if recip_emp_name else 'Surat Wholesale Line'),
+                                'employee_name': recip_emp_name or 'Habeeb',
+                                'session_token': str(account_token or f"emp_wa_{recip_digits[-10:]}"),
+                                'status': 'connected',
+                                'is_active': True,
+                            }
+                        )
 
                     config_biz_phone = (config.business_phone_display if config and config.business_phone_display else '+91 94963 00233')
-                    resolved_line_label = recipient_meta.get('device_label') or (matched_employee_device.device_label if matched_employee_device else 'Meta Cloud API')
-                    resolved_line_phone = (matched_employee_device.phone_number if matched_employee_device else recipient_meta.get('phone_number')) or config_biz_phone
-                    resolved_emp_name = recipient_meta.get('employee_name') or ((matched_employee_device.employee_name or matched_employee_device.device_label) if matched_employee_device else '')
-                    resolved_line_type = 'employee' if (matched_employee_device or recipient_meta.get('line_type') == 'employee' or value.get('line_type') == 'employee') else 'meta_cloud'
+                    resolved_line_label = (matched_employee_device.device_label if matched_employee_device else None) or recip_dev_label or 'Surat Wholesale Line'
+                    resolved_line_phone = (matched_employee_device.phone_number if matched_employee_device else None) or recip_phone_raw or config_biz_phone
+                    resolved_emp_name = (matched_employee_device.employee_name if matched_employee_device else None) or recip_emp_name or 'Habeeb'
+                    resolved_line_type = 'employee' if (matched_employee_device or recipient_meta.get('line_type') == 'employee' or value.get('line_type') == 'employee' or (len(recip_digits) >= 10 and not recip_digits.endswith('9496300233'))) else 'meta_cloud'
 
                     for msg in messages:
                         is_from_me = bool(msg.get('from_me', False) or value.get('from_me', False))
@@ -2857,58 +2908,65 @@ class WhatsAppWebhookView(APIView):
                         # -------------------------------------------------------------
                         conv = None
                         is_new_conversation = False
-                        if clean_sender:
-                            # 1. Match exact active non-deleted first
-                            conv = Conversation.objects.filter(is_deleted=False, phone_number=f"+{clean_sender}").order_by('-id').first()
-                            if not conv:
-                                conv = Conversation.objects.filter(is_deleted=False, phone_number=clean_sender).order_by('-id').first()
-                            if not conv and len(clean_sender) >= 10:
-                                last_10 = clean_sender[-10:]
-                                conv = Conversation.objects.filter(is_deleted=False, phone_number__endswith=last_10).order_by('-id').first()
-                                if not conv:
-                                    for c in Conversation.objects.filter(is_deleted=False).order_by('-id'):
-                                        c_clean = re.sub(r'\D', '', str(c.phone_number))
-                                        if c_clean.endswith(last_10):
-                                            conv = c
-                                            break
-                            # 2. If no active conversation found, look in soft-deleted conversations and restore!
-                            if not conv:
-                                conv = Conversation.objects.filter(phone_number=f"+{clean_sender}").order_by('-id').first()
-                                if not conv:
-                                    conv = Conversation.objects.filter(phone_number=clean_sender).order_by('-id').first()
-                                if not conv and len(clean_sender) >= 10:
-                                    last_10 = clean_sender[-10:]
-                                    conv = Conversation.objects.filter(phone_number__endswith=last_10).order_by('-id').first()
-                                    if not conv:
-                                        for c in Conversation.objects.all().order_by('-id'):
-                                            c_clean = re.sub(r'\D', '', str(c.phone_number))
-                                            if c_clean.endswith(last_10):
-                                                conv = c
-                                                break
-                                if conv and getattr(conv, 'is_deleted', False):
-                                    conv.is_deleted = False
-                                    conv.deleted_at = None
-                                    conv.save(update_fields=['is_deleted', 'deleted_at'])
-                                    logger.info(f"[Meta Webhook] Restored soft-deleted conversation {conv.id} for incoming customer message from {clean_sender}")
+                        incoming_lid = msg.get('customer_lid') or recipient_meta.get('customer_lid') or value.get('customer_lid') or ''
+                        clean_sender = re.sub(r'\D', '', str(sender_phone))
+                        last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
+
+                        # 1. Match by WhatsApp Privacy LID if known
+                        if incoming_lid:
+                            conv = Conversation.objects.filter(whatsapp_lid=incoming_lid).order_by('-id').first()
+
+                        # 2. Match by normalized phone digits (both active and soft-deleted)
+                        if not conv and len(last_10) >= 10:
+                            for c in Conversation.objects.all().order_by('-id'):
+                                c_clean = re.sub(r'\D', '', str(c.phone_number))
+                                if c_clean and (c_clean.endswith(last_10) or last_10.endswith(c_clean[-10:])):
+                                    conv = c
+                                    break
+
+                        # 3. Match by Active Employee Line if incoming sender was a LID or unknown format
+                        if not conv and resolved_line_type == 'employee' and (len(clean_sender) > 12 or incoming_lid):
+                            emp_last10 = re.sub(r'\D', '', str(resolved_line_phone))[-10:] if resolved_line_phone else ''
+                            for c in Conversation.objects.filter(is_deleted=False).order_by('-updated_at', '-id'):
+                                c_line = re.sub(r'\D', '', str(c.active_line_phone or ''))
+                                if emp_last10 and c_line.endswith(emp_last10):
+                                    conv = c
+                                    break
+                                elif resolved_emp_name and c.active_employee_name and c.active_employee_name.lower() == resolved_emp_name.lower():
+                                    conv = c
+                                    break
+
+                        # 4. If conversation was soft-deleted, restore it immediately
+                        if conv and getattr(conv, 'is_deleted', False):
+                            conv.is_deleted = False
+                            conv.deleted_at = None
+                            conv.save(update_fields=['is_deleted', 'deleted_at'])
+                            logger.info(f"[Meta Webhook] Restored soft-deleted conversation {conv.id} for incoming customer message from {clean_sender}")
+
+                        # 5. Link LID to conversation if available and not set
+                        if conv and incoming_lid and not getattr(conv, 'whatsapp_lid', ''):
+                            conv.whatsapp_lid = incoming_lid
+                            conv.save(update_fields=['whatsapp_lid'])
 
                         if not conv:
                             conv = Conversation.objects.create(
-                                phone_number=f"+{clean_sender}",
-                                contact_name=profile_name,
+                                phone_number=f"+{clean_sender}" if not str(sender_phone).startswith('+') else str(sender_phone),
+                                contact_name=profile_name if profile_name != 'WhatsApp Customer' else f"Customer (+{clean_sender[-4:] if len(clean_sender) >= 4 else clean_sender})",
                                 avatar='',
                                 category='Lead',
                                 status='open',
-                                lead_owner=resolved_emp_name if matched_employee_device else 'Ramesh Kumar',
+                                lead_owner=resolved_emp_name if resolved_line_type == 'employee' else 'Ramesh Kumar',
                                 lead_stage='New Lead',
-                                source=f"WhatsApp ({resolved_line_label})" if matched_employee_device else 'WhatsApp Cloud API',
+                                source=f"WhatsApp ({resolved_line_label})" if resolved_line_type == 'employee' else 'WhatsApp Cloud API',
                                 active_line_device=resolved_line_label,
                                 active_line_phone=resolved_line_phone,
                                 active_employee_name=resolved_emp_name,
                                 active_line_type=resolved_line_type,
+                                whatsapp_lid=incoming_lid,
                                 first_contact_date=now_full,
                                 last_contact_date=now_full,
                                 location='Kozhikode, Kerala',
-                                tags=['WhatsApp Inbound', f"Line: {resolved_line_label}"] if matched_employee_device else ['WhatsApp Inbound'],
+                                tags=['WhatsApp Inbound', f"Line: {resolved_line_label}"] if resolved_line_type == 'employee' else ['WhatsApp Inbound'],
                                 notes=f"Initiated contact via {resolved_line_label} ({resolved_line_phone}).",
                                 unread_count=0,
                                 is_online=True,
@@ -2918,7 +2976,7 @@ class WhatsAppWebhookView(APIView):
                         else:
                             if profile_name != 'WhatsApp Customer' and conv.contact_name in ['WhatsApp Customer', '']:
                                 conv.contact_name = profile_name
-                            if matched_employee_device or resolved_line_type == 'employee':
+                            if resolved_line_type == 'employee':
                                 conv.active_line_device = resolved_line_label
                                 conv.active_line_phone = resolved_line_phone
                                 conv.active_employee_name = resolved_emp_name
