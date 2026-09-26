@@ -308,7 +308,12 @@ export const LeadsView: React.FC = () => {
                   </div>
 
                   {/* Column Cards */}
-                  <div className="p-3 pb-8 overflow-y-auto space-y-3 flex-1 min-h-0 scrollbar-thin overscroll-contain">
+                  <div
+                    data-vertical-scroll="true"
+                    data-no-horizontal-wheel="true"
+                    data-no-horizontal-drag="true"
+                    className="p-3 pb-8 overflow-y-auto space-y-3 flex-1 min-h-0 scrollbar-thin overscroll-contain kanban-column-cards"
+                  >
                     {colLeads.map((lead) => (
                       <div
                         key={lead.id}

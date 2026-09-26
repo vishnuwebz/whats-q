@@ -151,7 +151,13 @@ export const DealsView: React.FC = () => {
                 <span className="text-xs font-bold text-slate-600">₹{stageAmount.toLocaleString()}</span>
               </div>
 
-              <div className="p-3 pb-8 space-y-3 overflow-y-auto flex-1 min-h-0 scrollbar-thin overscroll-contain">
+              {/* Column Cards */}
+              <div
+                data-vertical-scroll="true"
+                data-no-horizontal-wheel="true"
+                data-no-horizontal-drag="true"
+                className="p-3 pb-8 space-y-3 overflow-y-auto flex-1 min-h-0 scrollbar-thin overscroll-contain kanban-column-cards"
+              >
                 {stageDeals.map((deal) => (
                   <div
                     key={deal.id}

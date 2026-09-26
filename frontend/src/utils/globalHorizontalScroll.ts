@@ -10,6 +10,32 @@
 
 let isInitialized = false;
 
+/**
+ * Checks if target or any ancestor up to stopAt has active vertical scrolling
+ * or is explicitly designated as a vertical scroll container.
+ */
+function hasVerticalScrollAncestor(target: HTMLElement | null, stopAt: HTMLElement | null): boolean {
+  let el = target;
+  while (el && el !== stopAt && el !== document.body && el !== document.documentElement) {
+    if (
+      el.hasAttribute('data-no-horizontal-wheel') ||
+      el.hasAttribute('data-vertical-scroll') ||
+      el.classList.contains('kanban-column-cards')
+    ) {
+      return true;
+    }
+
+    const style = window.getComputedStyle(el);
+    const overflowY = style.overflowY;
+    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 2) {
+      return true;
+    }
+
+    el = el.parentElement;
+  }
+  return false;
+}
+
 function findHorizontalScrollContainer(target: EventTarget | null): HTMLElement | null {
   let el = target as HTMLElement | null;
   while (el && el !== document.body && el !== document.documentElement) {
@@ -60,8 +86,16 @@ export function initGlobalHorizontalScroll() {
       // Don't intercept if modifier keys like Ctrl (zoom) are pressed
       if (e.ctrlKey || e.metaKey) return;
 
-      const container = findHorizontalScrollContainer(e.target);
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      const container = findHorizontalScrollContainer(target);
       if (!container) return;
+
+      // If hovering over an element that has vertical scrolling, preserve native vertical wheel scroll!
+      if (hasVerticalScrollAncestor(target, container)) {
+        return;
+      }
 
       // Only translate if deltaY is the primary scroll direction (normal mouse wheel)
       if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
@@ -94,8 +128,12 @@ export function initGlobalHorizontalScroll() {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Don't hijack clicks on form controls
-      if (target.closest('input, textarea, select, option, [contenteditable="true"]')) {
+      // Don't hijack clicks on form controls, draggable cards, or vertical scroll areas
+      if (
+        target.closest(
+          'input, textarea, select, option, [contenteditable="true"], [draggable="true"], [data-vertical-scroll="true"], [data-no-horizontal-drag="true"]'
+        )
+      ) {
         return;
       }
 
