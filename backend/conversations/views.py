@@ -279,19 +279,95 @@ class ConversationSerializer(serializers.ModelSerializer):
 
 # --- Automated Workflow Engine ---
 
+def extract_workflow_node_reply(nodes, target_group_id=None, choice_index=None, substitute_fn=None):
+    """
+    Extracts customer-facing text and interactive options from a workflow's nodes JSON definition.
+    Supports FlowGroup structure (items with 'message' and 'choice' types)
+    and visual node structure.
+    """
+    if not nodes or not isinstance(nodes, list):
+        return None
+
+    target_group = None
+    if target_group_id:
+        for node in nodes:
+            if isinstance(node, dict):
+                n_id = str(node.get('id', '')).lower()
+                n_title = str(node.get('title', '')).lower()
+                target_l = str(target_group_id).lower()
+                if n_id == target_l or target_l in n_id or target_l in n_title:
+                    target_group = node
+                    break
+
+    # If choice_index specified (0 for option 1, 1 for option 2, etc.), follow targetGroup edge from root
+    if not target_group and choice_index is not None:
+        root_group = nodes[0] if len(nodes) > 0 and isinstance(nodes[0], dict) else None
+        if root_group:
+            items = root_group.get('items', [])
+            for it in items:
+                if isinstance(it, dict) and it.get('type') == 'choice':
+                    options = it.get('options', [])
+                    if 0 <= choice_index < len(options):
+                        opt = options[choice_index]
+                        tg_id = opt.get('targetGroup') if isinstance(opt, dict) else None
+                        if tg_id:
+                            for n in nodes:
+                                if isinstance(n, dict) and str(n.get('id', '')).lower() == str(tg_id).lower():
+                                    target_group = n
+                                    break
+                    break
+
+    # Default to first/root node if no group specified
+    if not target_group and target_group_id is None and len(nodes) > 0 and isinstance(nodes[0], dict):
+        target_group = nodes[0]
+
+    if not target_group:
+        return None
+
+    items = target_group.get('items', [])
+    msg_parts = []
+    choice_parts = []
+    if isinstance(items, list):
+        for it in items:
+            if isinstance(it, dict):
+                if it.get('type') == 'message' and it.get('content'):
+                    msg_parts.append(it.get('content').strip())
+                elif it.get('type') == 'choice':
+                    if it.get('question'):
+                        choice_parts.append(it.get('question').strip())
+                    for opt in it.get('options', []):
+                        if isinstance(opt, dict) and opt.get('label'):
+                            choice_parts.append(opt.get('label'))
+                        elif isinstance(opt, str) and opt.strip():
+                            choice_parts.append(opt.strip())
+
+    combined = ""
+    if msg_parts:
+        combined = "\n\n".join(msg_parts)
+    if choice_parts:
+        combined = (combined + "\n\n" if combined else "") + "\n".join(choice_parts)
+
+    if not combined and target_group.get('subtitle'):
+        combined = target_group.get('subtitle')
+
+    if combined and substitute_fn:
+        combined = substitute_fn(combined)
+
+    return combined if combined and combined.strip() else None
+
+
 def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking_id, slot_time, technician_name, tech_phone, est_price, est_val_num):
     """
-    Evaluates customer inbound message against the active workflow decision tree.
-    Properly matches numeric choices ('1', '1️⃣', '2', '2️⃣', '3', '3️⃣', '4', '4️⃣', 'option 1'...),
-    keywords, slot rescheduling follow-ups, agent handover, and booking confirmations.
-    Dynamically loads the company name from MetaWhatsAppConfig or Workspace, and respects
-    any custom welcome flow / keyword rules configured in the Workflow Builder.
+    Evaluates customer inbound message against the active workflow decision tree & Keyword Trigger Rules.
+    Enables dynamic, company-configured responses from the Workflow Builder canvas and Keyword Rules.
+    Respects working hours away messages, active conversation workflows, and dynamically replaces
+    placeholders like {COMPANY_NAME}, {STAT_NAME}, {CUSTOMER_NAME}, {SERVICE_NAME}, and {BOOKING_ID}.
     """
     lower_text = text_body.strip().lower()
     clean_choice = re.sub(r'[^a-zA-Z0-9]', '', lower_text)
 
     # 1. Resolve Company Name dynamically (White-label & Multi-tenant)
-    company_name = 'Our Support Team'
+    company_name = 'QBS-360'
     try:
         from conversations.models import MetaWhatsAppConfig
         cfg = MetaWhatsAppConfig.objects.first()
@@ -299,7 +375,7 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
             company_name = cfg.business_name.strip()
     except Exception:
         pass
-    if company_name in ['Our Support Team', 'CoolFix Services', '']:
+    if company_name in ['Our Support Team', 'CoolFix Services', 'CoolFix', '']:
         try:
             from users.models import Workspace
             ws = Workspace.objects.first()
@@ -307,12 +383,131 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
                 company_name = ws.name.strip()
         except Exception:
             pass
-    if not company_name or company_name == 'CoolFix Services':
-        company_name = 'Our Support Team'
+    if not company_name or company_name in ['CoolFix Services', 'CoolFix']:
+        company_name = 'QBS-360'
 
     # Check if contact has an authentic booking/service history
     has_booking = bool(service_name and booking_id and str(booking_id).strip() and str(service_name).strip())
 
+    # Substitute template variables
+    def substitute_vars(tpl):
+        if not tpl:
+            return ""
+        res = tpl
+        for k in ['{STAT_NAME}', '{{customer_name}}', '{cust_name}', '{customer_name}', '{name}', '{{name}}', '{CUSTOMER_NAME}']:
+            res = res.replace(k, cust_name)
+        for k in ['{COMPANY_NAME}', '{{company_name}}', '{company_name}']:
+            res = res.replace(k, company_name)
+        res = res.replace('CoolFix Services', company_name).replace('CoolFix', company_name)
+        if service_name:
+            res = res.replace('{service_name}', service_name).replace('{{service_name}}', service_name).replace('{SERVICE_NAME}', service_name)
+        else:
+            res = res.replace('{service_name}', 'our services').replace('{{service_name}}', 'our services').replace('{SERVICE_NAME}', 'our services')
+        if booking_id:
+            res = res.replace('{booking_id}', booking_id).replace('{{booking_id}}', booking_id).replace('{BOOKING_ID}', booking_id)
+        else:
+            res = res.replace('{booking_id}', '').replace('{{booking_id}}', '').replace('{BOOKING_ID}', '')
+        return res
+
+    reply_text = ''
+    rich_card = None
+    step_name = 'Inbound Received'
+
+    # Voice Note Inbound Detection
+    is_voice_note = (
+        '🎙️' in text_body or
+        'voice note' in lower_text or
+        lower_text.startswith('voice') or
+        lower_text == '🎙️ voice note'
+    )
+    if is_voice_note:
+        srv_mention = f" regarding *{service_name}* (Booking {booking_id})" if has_booking else ""
+        reply_text = (
+            f"🎙️ *Voice Note Received*\n\n"
+            f"Hi {cust_name}, thank you! We have received your voice note{srv_mention}.\n\n"
+            f"Our team at {company_name} is listening to your audio message and will reply to you promptly."
+        )
+        rich_card = {
+            'type': 'agent_handover',
+            'title': 'Voice Note Received',
+            'agent': technician_name,
+            'phone': tech_phone,
+            'status': 'Voice Message Under Review',
+            'actionText': 'Listening to Audio'
+        }
+        conv.status = 'in_progress'
+        conv.lead_stage = 'Voice Note Received'
+        step_name = 'Voice Note Handover'
+        return reply_text, rich_card, step_name
+
+    # 2. Check Working Hours (Outside Active Hours Away Message)
+    try:
+        from automation.models import WorkingHoursConfig
+        import datetime
+        wh_cfg = WorkingHoursConfig.objects.first()
+        if wh_cfg and wh_cfg.is_active and wh_cfg.away_message:
+            now_dt = datetime.datetime.now()
+            day_name = now_dt.strftime('%A')
+            day_entry = next((item for item in (wh_cfg.schedule or []) if item.get('day') == day_name), None)
+            if day_entry and not day_entry.get('enabled', True):
+                reply_text = substitute_vars(wh_cfg.away_message)
+                step_name = 'Outside Hours Away Message'
+                return reply_text, None, step_name
+    except Exception as wh_err:
+        logger.warning(f"[evaluate_workflow_response] Working hours check: {wh_err}")
+
+    # 3. PRIORITY: Check Active Keyword Trigger Rules from Workflow Builder
+    # Allows each company to dynamically and manually configure triggers & responses
+    matched_rule = None
+    try:
+        from automation.models import KeywordTriggerRule
+        active_rules = KeywordTriggerRule.objects.filter(active=True).order_by('-id')
+        for rule in active_rules:
+            for kw in (rule.keywords or []):
+                k = str(kw).strip().lower()
+                if not k:
+                    continue
+                pattern = r'\b' + re.escape(k) + r'\b'
+                if re.search(pattern, lower_text) or k == lower_text or k == clean_choice:
+                    matched_rule = rule
+                    break
+            if matched_rule:
+                break
+    except Exception as kw_err:
+        logger.warning(f"[evaluate_workflow_response] Keyword rule error: {kw_err}")
+
+    if matched_rule:
+        matched_rule.triggered_count = (matched_rule.triggered_count or 0) + 1
+        matched_rule.save(update_fields=['triggered_count'])
+
+        # Bind the linked workflow to this conversation
+        if matched_rule.workflow_name or matched_rule.workflow:
+            target_wf_name = matched_rule.workflow_name or matched_rule.workflow.name
+            conv.active_workflow = target_wf_name
+            conv.save(update_fields=['active_workflow'])
+            try:
+                emit_event('conversation.updated', ConversationSerializer(conv).data)
+            except Exception:
+                pass
+
+        if matched_rule.reply and matched_rule.reply.strip():
+            reply_text = substitute_vars(matched_rule.reply.strip())
+            step_name = f"Keyword Rule: {matched_rule.title}"
+            if matched_rule.attachment:
+                rich_card = {
+                    'type': 'attachment',
+                    'title': matched_rule.title,
+                    'fileName': matched_rule.attachment
+                }
+            return reply_text, rich_card, step_name
+
+        elif matched_rule.workflow and matched_rule.workflow.nodes:
+            wf_reply = extract_workflow_node_reply(matched_rule.workflow.nodes, target_group_id=None, substitute_fn=substitute_vars)
+            if wf_reply:
+                step_name = f"Workflow: {matched_rule.workflow.name}"
+                return wf_reply, None, step_name
+
+    # 4. Check Navigation & Options within Active Workflow
     # Option 1: Reschedule Booking / New Booking
     is_option_1 = (
         clean_choice in ['1', 'one'] or
@@ -363,38 +558,18 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
     # Confirm Booking
     is_confirm = any(w in lower_text for w in ['confirm', 'accept quote', 'proceed', 'approve', 'lock slot', 'book now'])
 
-    # Voice Note Inbound Detection
-    is_voice_note = (
-        '🎙️' in text_body or
-        'voice note' in lower_text or
-        lower_text.startswith('voice') or
-        lower_text == '🎙️ voice note'
-    )
+    # Retrieve current active workflow if exists
+    active_wf_obj = None
+    try:
+        from automation.models import Workflow
+        if getattr(conv, 'active_workflow', None):
+            active_wf_obj = Workflow.objects.filter(name__iexact=conv.active_workflow, status='active').first()
+        if not active_wf_obj:
+            active_wf_obj = Workflow.objects.filter(status='active').first()
+    except Exception:
+        pass
 
-    reply_text = ''
-    rich_card = None
-    step_name = 'Inbound Received'
-
-    if is_voice_note:
-        srv_mention = f" regarding *{service_name}* (Booking {booking_id})" if has_booking else ""
-        reply_text = (
-            f"🎙️ *Voice Note Received*\n\n"
-            f"Hi {cust_name}, thank you! We have received your voice note{srv_mention}.\n\n"
-            f"Our team at {company_name} is listening to your audio message and will reply to you promptly."
-        )
-        rich_card = {
-            'type': 'agent_handover',
-            'title': 'Voice Note Received',
-            'agent': technician_name,
-            'phone': tech_phone,
-            'status': 'Voice Message Under Review',
-            'actionText': 'Listening to Audio'
-        }
-        conv.status = 'in_progress'
-        conv.lead_stage = 'Voice Note Received'
-        step_name = 'Voice Note Handover'
-
-    elif is_reschedule_slot:
+    if is_reschedule_slot:
         srv_mention = f" *{service_name}* (Booking {booking_id})" if has_booking else " service request"
         reply_text = (
             f"✅ *Appointment Slot Updated!*\n\n"
@@ -415,20 +590,25 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Slot Updated'
 
     elif is_option_1:
-        if has_booking:
-            header_slot = f"your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
+        # Check if active workflow defines custom node for option 1
+        wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-2', choice_index=0, substitute_fn=substitute_vars) if active_wf_obj else None
+        if wf_custom:
+            reply_text = wf_custom
         else:
-            header_slot = f"schedule your upcoming service or consultation with *{company_name}*.\n\n"
+            if has_booking:
+                header_slot = f"your *{service_name}* service is currently scheduled for *{slot_time}*.\n\n"
+            else:
+                header_slot = f"schedule your upcoming service or consultation with *{company_name}*.\n\n"
 
-        reply_text = (
-            f"📅 *Schedule / Reschedule Appointment*\n\n"
-            f"Hi {cust_name}, {header_slot}"
-            f"Please reply with your preferred date and time (e.g., *\"Tomorrow 2:00 PM\"*), or choose one of our upcoming open slots:\n"
-            f"1️⃣ Tomorrow 02:00 PM\n"
-            f"2️⃣ Friday 10:30 AM\n"
-            f"3️⃣ Saturday 11:00 AM\n\n"
-            f"Our team will immediately confirm the slot for you!"
-        )
+            reply_text = (
+                f"📅 *Schedule / Reschedule Appointment*\n\n"
+                f"Hi {cust_name}, {header_slot}"
+                f"Please reply with your preferred date and time (e.g., *\"Tomorrow 2:00 PM\"*), or choose one of our upcoming open slots:\n"
+                f"1️⃣ Tomorrow 02:00 PM\n"
+                f"2️⃣ Friday 10:30 AM\n"
+                f"3️⃣ Saturday 11:00 AM\n\n"
+                f"Our team will immediately confirm the slot for you!"
+            )
         rich_card = {
             'type': 'reschedule',
             'title': 'Reschedule Requested',
@@ -442,23 +622,27 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Option 1: Reschedule'
 
     elif is_option_2:
-        tracking_url = f"https://track.whatsq.in/{str(booking_id).replace('#', '')}" if booking_id else "https://track.whatsq.in/live"
-        if has_booking:
-            reply_text = (
-                f"📍 *Live Technician Status*\n\n"
-                f"Hi {cust_name}, your assigned specialist is *{technician_name}* ({tech_phone}).\n\n"
-                f"• Service: *{service_name}* (Booking {booking_id})\n"
-                f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
-                f"• Estimated Arrival: *15-20 minutes*\n\n"
-                f"Track technician live on map:\n"
-                f"{tracking_url}"
-            )
+        wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-3', choice_index=1, substitute_fn=substitute_vars) if active_wf_obj else None
+        if wf_custom:
+            reply_text = wf_custom
         else:
-            reply_text = (
-                f"📍 *Live Technician Status*\n\n"
-                f"Hi {cust_name}, our field specialist *{technician_name}* ({tech_phone}) is on duty for *{company_name}*.\n\n"
-                f"You currently have no active dispatch. To schedule an appointment or book a service, reply *1*!"
-            )
+            tracking_url = f"https://track.whatsq.in/{str(booking_id).replace('#', '')}" if booking_id else "https://track.whatsq.in/live"
+            if has_booking:
+                reply_text = (
+                    f"📍 *Live Specialist Status*\n\n"
+                    f"Hi {cust_name}, your assigned specialist is *{technician_name}* ({tech_phone}).\n\n"
+                    f"• Service: *{service_name}* (Booking {booking_id})\n"
+                    f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
+                    f"• Estimated Arrival: *15-20 minutes*\n\n"
+                    f"Track technician live on map:\n"
+                    f"{tracking_url}"
+                )
+            else:
+                reply_text = (
+                    f"📍 *Live Specialist Status*\n\n"
+                    f"Hi {cust_name}, our field specialist *{technician_name}* ({tech_phone}) is on duty for *{company_name}*.\n\n"
+                    f"You currently have no active dispatch. To schedule an appointment or book a service, reply *1*!"
+                )
         rich_card = {
             'type': 'tracking',
             'title': 'Specialist Status',
@@ -471,12 +655,32 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         }
         step_name = 'Option 2: Track Specialist'
 
+    elif is_option_3:
+        wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-4', choice_index=2, substitute_fn=substitute_vars) if active_wf_obj else None
+        if wf_custom:
+            reply_text = wf_custom
+        else:
+            srv_label = f"*{service_name}*" if service_name else "our professional services"
+            reply_text = (
+                f"💰 *Service Quotation & Pricing*\n\n"
+                f"Hi {cust_name}, here is the official estimate for {srv_label}:\n"
+                f"• Inspection & Diagnostics: ₹800\n"
+                f"• Labour & Service: ₹2,000\n"
+                f"• *Total Estimated Amount: {est_price}*\n\n"
+                f"To approve and reserve your specialist slot, reply *CONFIRM*!"
+            )
+        step_name = 'Option 3: Quotation & Pricing'
+
     elif is_option_4:
-        reply_text = (
-            f"👨‍💼 *Connecting with Support Specialist*\n\n"
-            f"Hi {cust_name}, our senior specialist *{technician_name}* has been assigned to your chat and will assist you directly on behalf of *{company_name}*.\n\n"
-            f"Direct Helpline: *{tech_phone}*."
-        )
+        wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-5', choice_index=3, substitute_fn=substitute_vars) if active_wf_obj else None
+        if wf_custom:
+            reply_text = wf_custom
+        else:
+            reply_text = (
+                f"👨‍💼 *Connecting with Support Specialist*\n\n"
+                f"Hi {cust_name}, our senior specialist *{technician_name}* has been assigned to your chat and will assist you directly on behalf of *{company_name}*.\n\n"
+                f"Direct Helpline: *{tech_phone}*."
+            )
         rich_card = {
             'type': 'agent_handover',
             'title': 'Agent Assigned',
@@ -489,26 +693,18 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         conv.lead_stage = 'Agent Assigned'
         step_name = 'Option 4: Agent Handover'
 
-    elif is_option_3:
-        srv_label = f"*{service_name}*" if service_name else "our professional services"
-        reply_text = (
-            f"💰 *Service Quotation & Pricing*\n\n"
-            f"Hi {cust_name}, here is the official estimate for {srv_label}:\n"
-            f"• Inspection & Diagnostics: ₹800\n"
-            f"• Labour & Service: ₹2,000\n"
-            f"• *Total Estimated Amount: {est_price}*\n\n"
-            f"To approve and reserve your specialist slot, reply *CONFIRM*!"
-        )
-        step_name = 'Option 3: Quotation & Pricing'
-
     elif is_confirm:
-        srv_str = f" for *{service_name}*" if service_name else ""
-        b_str = f" {booking_id}" if booking_id else ""
-        reply_text = (
-            f"✅ *Booking Confirmed!*\n\n"
-            f"Thank you {cust_name}! Your booking{b_str}{srv_str} on *{slot_time}* is confirmed.\n\n"
-            f"Specialist *{technician_name}* will arrive at your premises on time."
-        )
+        wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-6', choice_index=4, substitute_fn=substitute_vars) if active_wf_obj else None
+        if wf_custom:
+            reply_text = wf_custom
+        else:
+            srv_str = f" for *{service_name}*" if service_name else ""
+            b_str = f" {booking_id}" if booking_id else ""
+            reply_text = (
+                f"✅ *Booking Confirmed!*\n\n"
+                f"Thank you {cust_name}! Your booking{b_str}{srv_str} on *{slot_time}* is confirmed.\n\n"
+                f"Specialist *{technician_name}* will arrive at your premises on time."
+            )
         rich_card = {
             'type': 'booking',
             'title': 'Booking Confirmed',
@@ -523,173 +719,39 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Booking Confirmed'
 
     else:
-        # Inbound Welcome Menu / Greeting Flow (Executed when customer sends "hi", "hello", or opens a chat)
-        # Substitute template variables
-        def substitute_vars(tpl):
-            if not tpl:
-                return ""
-            res = tpl
-            res = res.replace('{STAT_NAME}', cust_name).replace('{{customer_name}}', cust_name).replace('{cust_name}', cust_name).replace('{name}', cust_name).replace('{{name}}', cust_name)
-            res = res.replace('{COMPANY_NAME}', company_name).replace('{{company_name}}', company_name).replace('{company_name}', company_name)
-            res = res.replace('CoolFix Services', company_name).replace('CoolFix', company_name)
-            if service_name:
-                res = res.replace('{service_name}', service_name).replace('{{service_name}}', service_name)
-            if booking_id:
-                res = res.replace('{booking_id}', booking_id).replace('{{booking_id}}', booking_id)
-            return res
-
-        # 1. Check Working Hours (Outside Active Hours Away Message)
-        try:
-            from automation.models import WorkingHoursConfig
-            import datetime
-            wh_cfg = WorkingHoursConfig.objects.first()
-            if wh_cfg and wh_cfg.is_active and wh_cfg.away_message:
-                now_dt = datetime.datetime.now()
-                day_name = now_dt.strftime('%A')
-                day_entry = next((item for item in (wh_cfg.schedule or []) if item.get('day') == day_name), None)
-                if day_entry and not day_entry.get('enabled', True):
-                    reply_text = substitute_vars(wh_cfg.away_message)
-                    step_name = 'Outside Hours Away Message'
-                    return reply_text, None, step_name
-        except Exception as wh_err:
-            logger.warning(f"[evaluate_workflow_response] Working hours check: {wh_err}")
-
-        # 2. Check active Keyword Trigger Rules configured in Workflow Builder
-        matched_rule = None
-        try:
-            from automation.models import KeywordTriggerRule
-            active_rules = KeywordTriggerRule.objects.filter(active=True).order_by('-id')
-            for rule in active_rules:
-                for kw in (rule.keywords or []):
-                    k = str(kw).strip().lower()
-                    if not k:
-                        continue
-                    pattern = r'\b' + re.escape(k) + r'\b'
-                    if re.search(pattern, lower_text) or k in lower_text or k == clean_choice:
-                        matched_rule = rule
-                        break
-                if matched_rule:
-                    break
-        except Exception as kw_err:
-            logger.warning(f"[evaluate_workflow_response] Keyword rule error: {kw_err}")
-
-        if matched_rule:
-            matched_rule.triggered_count = (matched_rule.triggered_count or 0) + 1
-            matched_rule.save(update_fields=['triggered_count'])
-
-            # Automatically activate the linked workflow on this customer conversation!
-            if matched_rule.workflow_name or matched_rule.workflow:
-                target_wf_name = matched_rule.workflow_name or matched_rule.workflow.name
-                conv.active_workflow = target_wf_name
-                conv.save(update_fields=['active_workflow'])
-                try:
-                    emit_event('conversation.updated', ConversationSerializer(conv).data)
-                except Exception:
-                    pass
-
-            if matched_rule.reply and matched_rule.reply.strip():
-                reply_text = substitute_vars(matched_rule.reply.strip())
-                step_name = f"Keyword Rule: {matched_rule.title}"
-                if matched_rule.attachment:
-                    rich_card = {
-                        'type': 'attachment',
-                        'title': matched_rule.title,
-                        'fileName': matched_rule.attachment
-                    }
-            elif matched_rule.workflow and matched_rule.workflow.nodes:
-                for node in matched_rule.workflow.nodes:
-                    if isinstance(node, dict):
-                        items = node.get('items', [])
-                        if isinstance(items, list):
-                            for it in items:
-                                if isinstance(it, dict) and it.get('type') == 'message' and it.get('content'):
-                                    reply_text = substitute_vars(it.get('content'))
-                                    break
-                    if reply_text:
-                        break
-                step_name = f"Workflow: {matched_rule.workflow.name}"
-
-        # 3. If no keyword rule matched, attempt to load custom greeting & menu options from active Workflow in DB
-        if not reply_text:
-            custom_welcome_text = None
-            custom_menu_options = []
-            try:
-                from automation.models import Workflow
-                active_wfs = Workflow.objects.filter(status='active').order_by('-id')
-                welcome_wf = (
-                    active_wfs.filter(name__icontains='welcome').first() or
-                    active_wfs.filter(trigger_type__icontains='message').first() or
-                    active_wfs.filter(name__icontains='inbound').first() or
-                    active_wfs.filter(name__icontains='service').first() or
-                    active_wfs.first()
-                )
-                if welcome_wf and welcome_wf.nodes and isinstance(welcome_wf.nodes, list):
-                    for node in welcome_wf.nodes:
-                        if isinstance(node, dict):
-                            # Format 1: FlowGroup structure with items
-                            items = node.get('items', [])
-                            if isinstance(items, list):
-                                for it in items:
-                                    if isinstance(it, dict):
-                                        if it.get('type') == 'message' and it.get('content') and not custom_welcome_text:
-                                            custom_welcome_text = it.get('content').strip()
-                                        elif it.get('type') == 'choice' and it.get('options') and not custom_menu_options:
-                                            for opt in it.get('options'):
-                                                if isinstance(opt, dict) and opt.get('label'):
-                                                    custom_menu_options.append(opt.get('label'))
-                                                elif isinstance(opt, str) and opt.strip():
-                                                    custom_menu_options.append(opt.strip())
-                            # Format 2: Flat visual nodes
-                            if not custom_welcome_text and node.get('type') in ['trigger', 'action', 'message']:
-                                title_l = node.get('title', '').lower()
-                                if any(k in title_l for k in ['welcome', 'greeting', 'inbound', 'message']):
-                                    if node.get('subtitle'):
-                                        custom_welcome_text = node.get('subtitle').strip()
-                        if custom_welcome_text and custom_menu_options:
-                            break
-            except Exception as wf_err:
-                logger.warning(f"[evaluate_workflow_response] Error loading workflow template: {wf_err}")
-
-            if custom_welcome_text:
-                cleaned_custom = substitute_vars(custom_welcome_text)
-                if custom_menu_options and not any(opt in cleaned_custom for opt in custom_menu_options[:2]):
-                    opts_str = "\n".join(custom_menu_options)
-                    reply_text = f"{cleaned_custom}\n\n{opts_str}\n\nReply with 1, 2, 3, or 4 and our team will assist you immediately!"
-                else:
-                    reply_text = cleaned_custom
-            elif has_booking:
-                reply_text = (
-                    f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
-                    f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
-                    f"1️⃣ Reschedule booking\n"
-                    f"2️⃣ Track specialist status\n"
-                    f"3️⃣ View quotation & pricing\n"
-                    f"4️⃣ Speak with an agent\n\n"
-                    f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
-                )
-            else:
-                reply_text = (
-                    f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
-                    f"How can we assist you today?\n"
-                    f"1️⃣ Book a service or appointment\n"
-                    f"2️⃣ Track existing request\n"
-                    f"3️⃣ View quotation & pricing\n"
-                    f"4️⃣ Speak with an agent\n\n"
-                    f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
-                )
-            step_name = 'Welcome Menu'
+        # Fallback Welcome Menu / Greetings Flow (e.g. customer sent an unrecognised message or greeting)
+        # Check active workflow in DB for root welcome node
+        wf_welcome = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id=None, choice_index=None, substitute_fn=substitute_vars) if active_wf_obj else None
+        if wf_welcome:
+            reply_text = wf_welcome
+        elif has_booking:
+            reply_text = (
+                f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+                f"We received your message regarding *{service_name}* (Booking {booking_id}). How can we assist you today?\n"
+                f"1️⃣ Reschedule booking\n"
+                f"2️⃣ Track specialist status\n"
+                f"3️⃣ View quotation & pricing\n"
+                f"4️⃣ Speak with an agent\n\n"
+                f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+            )
+        else:
+            reply_text = (
+                f"👋 *Welcome to {company_name}, {cust_name}!* \n\n"
+                f"How can we assist you today?\n"
+                f"1️⃣ Book a service or appointment\n"
+                f"2️⃣ Track existing request\n"
+                f"3️⃣ View quotation & pricing\n"
+                f"4️⃣ Speak with an agent\n\n"
+                f"Reply with 1, 2, 3, or 4 and our team will assist you immediately!"
+            )
+        step_name = 'Welcome Menu'
 
     # Increment runs count and log automation execution
     try:
         from automation.models import Workflow, AutomationLog
-        w = (
-            Workflow.objects.filter(status='active', name__icontains='Welcome').first() or
-            Workflow.objects.filter(status='active', name__icontains='Booking').first() or
-            Workflow.objects.first()
-        )
-        if w:
-            w.runs_this_month = (w.runs_this_month or 0) + 1
-            w.save(update_fields=['runs_this_month'])
+        if active_wf_obj:
+            active_wf_obj.runs_this_month = (active_wf_obj.runs_this_month or 0) + 1
+            active_wf_obj.save(update_fields=['runs_this_month'])
         AutomationLog.objects.create(
             time_str=datetime.datetime.now().strftime('%b %d, %Y %I:%M:%S %p'),
             workflow_action=step_name,
@@ -2615,46 +2677,57 @@ class WhatsAppWebhookView(APIView):
 
                     matched_employee_device = None
                     recip_digits = re.sub(r'\D', '', str(recip_phone_raw))
-                    if len(recip_digits) >= 10:
-                        matched_employee_device = LinkedEmployeeDevice.objects.filter(
-                            phone_number__endswith=recip_digits[-10:]
-                        ).first()
-                        if not matched_employee_device:
-                            for ed in LinkedEmployeeDevice.objects.all():
-                                ed_digits = re.sub(r'\D', '', str(ed.phone_number))
-                                if ed_digits and (ed_digits.endswith(recip_digits[-10:]) or recip_digits.endswith(ed_digits[-10:])):
-                                    matched_employee_device = ed
-                                    break
-
-                    if not matched_employee_device and account_token:
-                        matched_employee_device = LinkedEmployeeDevice.objects.filter(session_token=account_token).first()
-                        if not matched_employee_device and str(account_token).isdigit():
-                            matched_employee_device = LinkedEmployeeDevice.objects.filter(pk=int(account_token)).first()
-
-                    if not matched_employee_device and recip_dev_label:
-                        matched_employee_device = LinkedEmployeeDevice.objects.filter(device_label=recip_dev_label).first()
-
-                    if not matched_employee_device and recip_emp_name:
-                        matched_employee_device = LinkedEmployeeDevice.objects.filter(employee_name__iexact=recip_emp_name).first()
-
-                    # Auto-seed/sync employee device if arrived from an active employee line
-                    if not matched_employee_device and len(recip_digits) >= 10 and not recip_digits.endswith('9496300233'):
-                        matched_employee_device, _ = LinkedEmployeeDevice.objects.update_or_create(
-                            phone_number=f"+{recip_digits}" if not recip_digits.startswith('+') else recip_digits,
-                            defaults={
-                                'device_label': recip_dev_label or (f"{recip_emp_name}'s Line" if recip_emp_name else 'Surat Wholesale Line'),
-                                'employee_name': recip_emp_name or 'Habeeb',
-                                'session_token': str(account_token or f"emp_wa_{recip_digits[-10:]}"),
-                                'status': 'connected',
-                                'is_active': True,
-                            }
-                        )
-
                     config_biz_phone = (config.business_phone_display if config and config.business_phone_display else '+91 94963 00233')
-                    resolved_line_label = (matched_employee_device.device_label if matched_employee_device else None) or recip_dev_label or 'Surat Wholesale Line'
+                    biz_digits = re.sub(r'\D', '', str(config_biz_phone))[-10:] if config_biz_phone else '9496300233'
+                    recip_digits = re.sub(r'\D', '', str(recip_phone_raw))
+
+                    is_gateway_call = bool(
+                        request.headers.get('X-Internal-Gateway') == 'baileys' or
+                        recipient_meta.get('line_type') == 'employee' or
+                        value.get('line_type') == 'employee'
+                    )
+
+                    matched_employee_device = None
+                    if is_gateway_call:
+                        if len(recip_digits) >= 10 and not (biz_digits and recip_digits.endswith(biz_digits)):
+                            matched_employee_device = LinkedEmployeeDevice.objects.filter(
+                                phone_number__endswith=recip_digits[-10:]
+                            ).first()
+                            if not matched_employee_device:
+                                for ed in LinkedEmployeeDevice.objects.all():
+                                    ed_digits = re.sub(r'\D', '', str(ed.phone_number))
+                                    if ed_digits and (ed_digits.endswith(recip_digits[-10:]) or recip_digits.endswith(ed_digits[-10:])):
+                                        matched_employee_device = ed
+                                        break
+
+                        if not matched_employee_device and account_token:
+                            matched_employee_device = LinkedEmployeeDevice.objects.filter(session_token=account_token).first()
+                            if not matched_employee_device and str(account_token).isdigit():
+                                matched_employee_device = LinkedEmployeeDevice.objects.filter(pk=int(account_token)).first()
+
+                        if not matched_employee_device and recip_dev_label:
+                            matched_employee_device = LinkedEmployeeDevice.objects.filter(device_label=recip_dev_label).first()
+
+                        if not matched_employee_device and recip_emp_name:
+                            matched_employee_device = LinkedEmployeeDevice.objects.filter(employee_name__iexact=recip_emp_name).first()
+
+                        # Auto-seed/sync employee device if arrived from an active employee line
+                        if not matched_employee_device and len(recip_digits) >= 10 and not (biz_digits and recip_digits.endswith(biz_digits)):
+                            matched_employee_device, _ = LinkedEmployeeDevice.objects.update_or_create(
+                                phone_number=f"+{recip_digits}" if not recip_digits.startswith('+') else recip_digits,
+                                defaults={
+                                    'device_label': recip_dev_label or (f"{recip_emp_name}'s Line" if recip_emp_name else 'Surat Wholesale Line'),
+                                    'employee_name': recip_emp_name or 'Habeeb',
+                                    'session_token': str(account_token or f"emp_wa_{recip_digits[-10:]}"),
+                                    'status': 'connected',
+                                    'is_active': True,
+                                }
+                            )
+
+                    resolved_line_label = (matched_employee_device.device_label if matched_employee_device else None) or recip_dev_label or ('Surat Wholesale Line' if is_gateway_call else 'Meta Cloud API')
                     resolved_line_phone = (matched_employee_device.phone_number if matched_employee_device else None) or recip_phone_raw or config_biz_phone
-                    resolved_emp_name = (matched_employee_device.employee_name if matched_employee_device else None) or recip_emp_name or 'Habeeb'
-                    resolved_line_type = 'employee' if (matched_employee_device or recipient_meta.get('line_type') == 'employee' or value.get('line_type') == 'employee' or (len(recip_digits) >= 10 and not recip_digits.endswith('9496300233'))) else 'meta_cloud'
+                    resolved_emp_name = (matched_employee_device.employee_name if matched_employee_device else None) or recip_emp_name or ('Habeeb' if is_gateway_call else '')
+                    resolved_line_type = 'employee' if (is_gateway_call and (matched_employee_device or recipient_meta.get('line_type') == 'employee' or value.get('line_type') == 'employee')) else 'meta_cloud'
 
                     for msg in messages:
                         is_from_me = bool(msg.get('from_me', False) or value.get('from_me', False))

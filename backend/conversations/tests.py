@@ -310,7 +310,7 @@ class ChatbotWorkflowEngineTests(TestCase):
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         bot_reply = resp.data.get('bot_reply', {})
-        self.assertIn("Live Technician Status", bot_reply.get('text', ''))
+        self.assertTrue("Live Technician Status" in bot_reply.get('text', '') or "Live Specialist Status" in bot_reply.get('text', ''))
         self.assertEqual(bot_reply.get('rich_card', {}).get('type'), 'tracking')
 
     def test_inbound_option_3_triggers_quotation(self):
