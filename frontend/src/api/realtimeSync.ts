@@ -1,4 +1,4 @@
-import { useQiyamStore } from '../store/useQiyamStore';
+import { useQiyamStore, removeDeletedConversationId } from '../store/useQiyamStore';
 import { mapMessage } from './mappers';
 import { API_BASE } from './client';
 
@@ -82,6 +82,15 @@ class RealtimeSyncManager {
           this.handleEvent(payload);
         } catch (err) {
           console.warn('[RealtimeSync] Error parsing message.created event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('conversation.created', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload);
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing conversation.created event:', err);
         }
       });
 
@@ -266,8 +275,17 @@ class RealtimeSyncManager {
         break;
       }
 
+      case 'conversation.created': {
+        if (event.data && event.data.id) {
+          removeDeletedConversationId(event.data.id);
+          store.refreshConversations();
+        }
+        break;
+      }
+
       case 'conversation.updated': {
         if (event.data && event.data.id) {
+          removeDeletedConversationId(event.data.id);
           store.applyRealtimeConversation(event.data);
         }
         break;

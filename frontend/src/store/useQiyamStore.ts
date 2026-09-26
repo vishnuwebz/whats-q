@@ -1934,6 +1934,9 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   applyRealtimeMessage: (conversationId, message) => {
+    if (conversationId) {
+      removeDeletedConversationId(conversationId);
+    }
     // When real incoming message arrives from customer, they stopped typing and are actively online
     get().setClientTyping(conversationId, false);
     if (message.sender === 'customer') {
@@ -2024,6 +2027,9 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   applyRealtimeConversation: (convUpdate) => {
+    if (convUpdate?.id) {
+      removeDeletedConversationId(convUpdate.id);
+    }
     set((state) => {
       const idx = state.conversations.findIndex((c) => String(c.id) === String(convUpdate.id));
       if (idx === -1) {

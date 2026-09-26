@@ -508,81 +508,145 @@ export class BaileysEngine {
         }
       });
 
-      // Handle incoming messages
+      // Handle incoming & outgoing messages on linked companion socket
       sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
         for (const msg of messages) {
-          if (!msg.message || msg.key.fromMe) continue;
-          const senderJid = msg.key.remoteJid || '';
-          if (!senderJid || senderJid === 'status@broadcast' || senderJid.endsWith('@broadcast')) continue;
+          if (!msg.message) continue;
+          const remoteJid = msg.key.remoteJid || '';
+          if (!remoteJid || remoteJid === 'status@broadcast' || remoteJid.endsWith('@broadcast')) continue;
 
-          // If group message, check group ignore or handle
-          const isGroup = senderJid.endsWith('@g.us');
-          if (isGroup) {
-            // Can be monitored if needed, but skip for 1-on-1 customer chat
-            continue;
+          // If group message, skip for 1-on-1 customer chat
+          if (remoteJid.endsWith('@g.us')) continue;
+
+          const isFromMe = Boolean(msg.key.fromMe);
+
+          // 1. Resolve Employee Phone & Name from sessionMeta / db.accounts / sock credentials
+          let employeePhone = sessionMeta.phoneNumber || '';
+          let employeeName = sessionMeta.displayName || '';
+
+          if (!employeePhone || !employeeName || employeeName === 'WhatsApp Line') {
+            try {
+              const db = getDb();
+              const acc = (db.accounts || []).find((a) => a.id === accountId);
+              if (acc) {
+                if (!employeePhone && acc.phoneNumber) employeePhone = acc.phoneNumber;
+                if (!employeeName && acc.displayName) employeeName = acc.displayName;
+              }
+            } catch {}
+          }
+          if (!employeePhone) {
+            const userJid = sock.user?.id || sock.authState?.creds?.me?.id || '';
+            if (userJid) {
+              const dPhone = userJid.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
+              if (dPhone) employeePhone = '+' + dPhone;
+            }
+          }
+          if (!employeeName || employeeName === 'WhatsApp Line') {
+            employeeName = sessionMeta.displayName || 'Employee Line';
+          }
+          sessionMeta.phoneNumber = employeePhone;
+          sessionMeta.displayName = employeeName;
+
+          // 2. Resolve Customer Phone Number (handling WhatsApp @lid privacy IDs, remoteJidAlt, senderPn, participantAlt)
+          let customerJid = remoteJid;
+          const altJid = msg.key.remoteJidAlt || msg.key.senderPn || msg.key.participantAlt || msg.key.cleanedParticipant || '';
+
+          if (altJid && altJid.endsWith('@s.whatsapp.net')) {
+            customerJid = altJid;
+            // Cache LID -> Phone mapping
+            sessionMeta.contacts.set(remoteJid, {
+              id: altJid,
+              phone: altJid.split('@')[0].replace(/[^\d]/g, ''),
+              lid: remoteJid,
+            });
+          } else if (customerJid.endsWith('@lid') && sessionMeta.contacts.has(customerJid)) {
+            const cached = sessionMeta.contacts.get(customerJid);
+            if (cached?.phone) {
+              customerJid = `${cached.phone}@s.whatsapp.net`;
+            } else if (cached?.id && cached.id.endsWith('@s.whatsapp.net')) {
+              customerJid = cached.id;
+            }
           }
 
-          const participant = msg.key.participant || '';
-          const participantAlt = msg.key.participantAlt || msg.key.senderPn || '';
+          let rawCustomer = customerJid.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
+          if (!rawCustomer || rawCustomer.length < 7) {
+            const fallbackNum = remoteJid.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
+            if (fallbackNum && fallbackNum.length >= 7) {
+              rawCustomer = fallbackNum;
+            } else {
+              continue;
+            }
+          }
+          const customerPhone = '+' + rawCustomer;
 
-          // Cache any LID to Phone mappings found in message key
-          if (participant && participantAlt && participant.endsWith('@lid') && participantAlt.endsWith('@s.whatsapp.net')) {
-            const cleanPn = participantAlt.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
-            sessionMeta.contacts.set(participant, { id: participantAlt, phone: cleanPn, lid: participant });
+          // Cache in contacts map
+          if (customerJid.endsWith('@s.whatsapp.net')) {
+            sessionMeta.contacts.set(rawCustomer, { id: customerJid, phone: rawCustomer });
+            if (remoteJid !== customerJid) {
+              sessionMeta.contacts.set(remoteJid, { id: customerJid, phone: rawCustomer, lid: remoteJid });
+            }
           }
 
-          // Extract pure clean phone digits
-          const rawSender = senderJid.split('@')[0].split(':')[0].replace(/[^\d]/g, '');
-          if (!rawSender || rawSender.length < 7) continue;
-          const senderPhone = '+' + rawSender;
+          // 3. Unwrap nested message wrappers (ephemeral, viewOnce, caption)
+          let innerMsg = msg.message;
+          while (
+            innerMsg?.ephemeralMessage?.message ||
+            innerMsg?.viewOnceMessage?.message ||
+            innerMsg?.viewOnceMessageV2?.message ||
+            innerMsg?.documentWithCaptionMessage?.message
+          ) {
+            innerMsg =
+              innerMsg.ephemeralMessage?.message ||
+              innerMsg.viewOnceMessage?.message ||
+              innerMsg.viewOnceMessageV2?.message ||
+              innerMsg.documentWithCaptionMessage?.message;
+          }
 
           const text =
-            msg.message.conversation ||
-            msg.message.extendedTextMessage?.text ||
-            msg.message.imageMessage?.caption ||
-            msg.message.videoMessage?.caption ||
-            msg.message.documentMessage?.title ||
-            msg.message.documentMessage?.fileName ||
-            msg.message.buttonsResponseMessage?.selectedDisplayText ||
-            msg.message.templateButtonReplyMessage?.selectedDisplayText ||
-            msg.message.listResponseMessage?.title ||
-            (msg.message.audioMessage ? '🎙️ Voice note' : '') ||
-            (msg.message.imageMessage ? '📷 Photo' : '') ||
-            (msg.message.videoMessage ? '🎥 Video' : '') ||
-            (msg.message.documentMessage ? '📄 Document' : '') ||
-            (msg.message.locationMessage ? '📍 Location' : '') ||
+            innerMsg.conversation ||
+            innerMsg.extendedTextMessage?.text ||
+            innerMsg.imageMessage?.caption ||
+            innerMsg.videoMessage?.caption ||
+            innerMsg.documentMessage?.title ||
+            innerMsg.documentMessage?.fileName ||
+            innerMsg.buttonsResponseMessage?.selectedDisplayText ||
+            innerMsg.templateButtonReplyMessage?.selectedDisplayText ||
+            innerMsg.listResponseMessage?.title ||
+            (innerMsg.audioMessage ? '🎙️ Voice note' : '') ||
+            (innerMsg.imageMessage ? '📷 Photo' : '') ||
+            (innerMsg.videoMessage ? '🎥 Video' : '') ||
+            (innerMsg.documentMessage ? '📄 Document' : '') ||
+            (innerMsg.locationMessage ? '📍 Location' : '') ||
             '';
 
-          const msgType = msg.message.audioMessage
+          const msgType = innerMsg.audioMessage
             ? 'audio'
-            : msg.message.imageMessage
+            : innerMsg.imageMessage
             ? 'image'
-            : msg.message.videoMessage
+            : innerMsg.videoMessage
             ? 'video'
-            : msg.message.documentMessage
+            : innerMsg.documentMessage
             ? 'document'
             : 'text';
 
-          const employeePhone = sessionMeta.phoneNumber || '';
-          const employeeName = sessionMeta.displayName || 'Employee WhatsApp Line';
-
-          console.log(`[Baileys Engine] 📩 Incoming customer reply from ${senderPhone} to employee line ${employeeName} (${employeePhone || accountId}): "${text}"`);
+          console.log(`[Baileys Engine] ${isFromMe ? '📤 Outbound (from mobile phone)' : '📩 Inbound (customer reply)'}: Customer ${customerPhone} <-> Employee ${employeeName} (${employeePhone}): "${text}"`);
 
           const incomingPayload = {
             accountId,
-            senderPhone,
+            senderPhone: isFromMe ? employeePhone : customerPhone,
+            recipientPhone: isFromMe ? customerPhone : employeePhone,
             text,
             messageType: msgType,
             employeePhone,
             employeeName,
             deviceLabel: employeeName,
+            fromMe: isFromMe,
             timestamp: new Date().toISOString(),
           };
 
-          this.emitEvent('incoming_message', incomingPayload);
+          this.emitEvent(isFromMe ? 'outbound_message' : 'incoming_message', incomingPayload);
 
-          // Forward incoming customer reply to Django backend webhook
+          // 4. Forward message to Django backend webhook
           const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
           try {
             fetch(`${backendUrl}/api/conversations/webhook/`, {
@@ -598,6 +662,9 @@ export class BaileysEngine {
                     field: 'messages',
                     value: {
                       messaging_product: 'whatsapp',
+                      from_me: isFromMe,
+                      customer_phone: customerPhone,
+                      employee_phone: employeePhone,
                       metadata: {
                         display_phone_number: employeePhone ? employeePhone.replace(/[^\d]/g, '') : '',
                         phone_number_id: accountId,
@@ -605,21 +672,25 @@ export class BaileysEngine {
                       },
                       recipient_line: {
                         phone_number: employeePhone,
+                        customer_phone: customerPhone,
                         device_label: employeeName,
                         employee_name: employeeName,
                         account_id: accountId,
                         line_type: 'employee',
                       },
                       messages: [{
-                        from: rawSender,
+                        from: isFromMe ? (employeePhone.replace(/[^\d]/g, '') || accountId) : rawCustomer,
+                        to: isFromMe ? rawCustomer : (employeePhone.replace(/[^\d]/g, '') || ''),
                         id: msg.key.id || `baileys-${Date.now()}`,
                         type: msgType,
                         text: { body: text },
+                        from_me: isFromMe,
+                        customer_phone: customerPhone,
                         timestamp: String(Math.floor(Date.now() / 1000)),
                       }],
                       contacts: [{
-                        profile: { name: sessionMeta.contacts.get(senderJid)?.name || senderPhone },
-                        wa_id: rawSender,
+                        profile: { name: isFromMe ? employeeName : (msg.pushName || sessionMeta.contacts.get(customerJid)?.name || customerPhone) },
+                        wa_id: isFromMe ? (employeePhone.replace(/[^\d]/g, '') || accountId) : rawCustomer,
                       }],
                     },
                   }],
@@ -630,10 +701,10 @@ export class BaileysEngine {
                 const errText = await res.text().catch(() => '');
                 console.warn(`[Baileys Engine] Django webhook error HTTP ${res.status}:`, errText);
               } else {
-                console.log(`[Baileys Engine] ✅ Inbound message successfully synced to Django for ${senderPhone} (received on employee ${employeeName})`);
+                console.log(`[Baileys Engine] ✅ Message synced to Django: ${isFromMe ? 'Employee Outbound' : 'Customer Inbound'} (${customerPhone}) on line [${employeeName}]`);
               }
             }).catch((err) => {
-              console.warn('[Baileys Engine] Failed to dispatch incoming message to Django:', err.message);
+              console.warn('[Baileys Engine] Failed to dispatch message to Django:', err.message);
             });
           } catch (e) {
             console.warn('[Baileys Engine] Webhook dispatch exception:', e.message);
@@ -827,9 +898,24 @@ export class BaileysEngine {
           if (Array.isArray(results) && results.length > 0 && results[0]?.exists && results[0]?.jid) {
             jid = results[0].jid;
             console.log(`[Baileys Engine] Verified WhatsApp recipient JID: ${jid}`);
+            if (targetSession.contacts) {
+              const entry = { id: jid, phone: normalizedPhone, lid: results[0].lid || null };
+              targetSession.contacts.set(normalizedPhone, entry);
+              targetSession.contacts.set(jid, entry);
+              if (results[0].lid) {
+                targetSession.contacts.set(results[0].lid, entry);
+              }
+              this.saveContactsCache(targetSession.id || accountId, targetSession.contacts);
+            }
           }
         } catch (onWaErr) {
           console.warn(`[Baileys Engine] onWhatsApp check note for ${jid}:`, onWaErr.message);
+        }
+
+        if (targetSession.contacts && !targetSession.contacts.has(normalizedPhone)) {
+          targetSession.contacts.set(normalizedPhone, { id: jid, phone: normalizedPhone });
+          targetSession.contacts.set(jid, { id: jid, phone: normalizedPhone });
+          this.saveContactsCache(targetSession.id || accountId, targetSession.contacts);
         }
 
         let sentResult;
