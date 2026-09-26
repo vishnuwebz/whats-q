@@ -713,27 +713,39 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         step_name = 'Option 1: Reschedule'
 
     elif is_option_2:
-        wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-3', choice_index=1, substitute_fn=substitute_vars) if active_wf_obj else None
-        if wf_custom:
-            reply_text = wf_custom
+        kw_rule = None
+        try:
+            from automation.models import KeywordTriggerRule
+            kw_rule = KeywordTriggerRule.objects.filter(active=True).filter(
+                Q(keywords__icontains='track') | Q(keywords__icontains='eta') | Q(title__icontains='Specialist') | Q(title__icontains='ETA')
+            ).order_by('-id').first()
+        except Exception:
+            pass
+
+        if kw_rule and kw_rule.reply and kw_rule.reply.strip():
+            reply_text = substitute_vars(kw_rule.reply.strip())
         else:
-            tracking_url = f"https://track.whatsq.in/{str(booking_id).replace('#', '')}" if booking_id else "https://track.whatsq.in/live"
-            if has_booking:
-                reply_text = (
-                    f"📍 *Live Specialist Status*\n\n"
-                    f"Hi {cust_name}, your assigned specialist is *{technician_name}* ({tech_phone}).\n\n"
-                    f"• Service: *{service_name}* (Booking {booking_id})\n"
-                    f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
-                    f"• Estimated Arrival: *15-20 minutes*\n\n"
-                    f"Track technician live on map:\n"
-                    f"{tracking_url}"
-                )
+            wf_custom = extract_workflow_node_reply(active_wf_obj.nodes if active_wf_obj else None, target_group_id='group-3', choice_index=1, substitute_fn=substitute_vars) if active_wf_obj else None
+            if wf_custom:
+                reply_text = wf_custom
             else:
-                reply_text = (
-                    f"📍 *Live Specialist Status*\n\n"
-                    f"Hi {cust_name}, our field specialist *{technician_name}* ({tech_phone}) is on duty for *{company_name}*.\n\n"
-                    f"You currently have no active dispatch. To schedule an appointment or book a service, reply *1*!"
-                )
+                tracking_url = f"https://track.whatsq.in/{str(booking_id).replace('#', '')}" if booking_id else "https://track.whatsq.in/live"
+                if has_booking:
+                    reply_text = (
+                        f"📍 *Live Specialist Status*\n\n"
+                        f"Hi {cust_name}, your assigned specialist is *{technician_name}* ({tech_phone}).\n\n"
+                        f"• Service: *{service_name}* (Booking {booking_id})\n"
+                        f"• Current Status: *Technician Dispatched & En Route* 🛵\n"
+                        f"• Estimated Arrival: *15-30 minutes*\n\n"
+                        f"Track technician live on map:\n"
+                        f"{tracking_url}"
+                    )
+                else:
+                    reply_text = (
+                        f"📍 *Live Specialist Status*\n\n"
+                        f"Hi {cust_name}, our field specialist *{technician_name}* ({tech_phone}) is on duty for *{company_name}*.\n\n"
+                        f"You currently have no active dispatch. To schedule an appointment or book a service, reply *1*!"
+                    )
         rich_card = {
             'type': 'tracking',
             'title': 'Specialist Status',

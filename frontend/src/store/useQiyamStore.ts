@@ -349,7 +349,7 @@ export const INITIAL_KEYWORD_RULES: KeywordRule[] = [
     active: true,
     keywords: ['track', 'technician', 'specialist', 'status', 'eta', 'where', 'location'],
     action_type: 'reply',
-    reply: '📍 *Live Specialist Status*\nYour assigned technician is on duty and will reach within 15-20 minutes!'
+    reply: '📍 *Live Specialist Status*\nYour assigned technician is on duty and will reach within 15-30 minutes!'
   }
 ];
 
@@ -838,6 +838,7 @@ interface QiyamState {
   updateWorkingDayTime: (dayName: string, time: string) => void;
   setOutsideHoursMessage: (msg: string) => void;
   saveWorkingHoursConfig: (hours?: DaySchedule[], msg?: string) => Promise<void>;
+  saveAllKeywordRules: () => Promise<void>;
   syncAutomationRules: () => Promise<void>;
 
   syncStatus: 'connected' | 'reconnecting' | 'offline';
@@ -2225,14 +2226,27 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   updateKeywordRule: async (id, partial) => {
+    let updatedRule: KeywordRule | undefined;
     set((state) => {
-      const next = state.keywordRules.map((r) => r.id === id ? { ...r, ...partial } : r);
+      const next = state.keywordRules.map((r) => {
+        if (r.id === id) {
+          updatedRule = { ...r, ...partial };
+          return updatedRule;
+        }
+        return r;
+      });
       persistCache('keywordRules', next);
       return { keywordRules: next };
     });
     try {
       await qiyamApi.updateKeywordRule(id, partial);
-    } catch {}
+    } catch {
+      if (updatedRule) {
+        try {
+          await qiyamApi.bulkSaveKeywordRules([updatedRule]);
+        } catch {}
+      }
+    }
   },
 
   deleteKeywordRule: async (id) => {
@@ -2328,6 +2342,31 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       get().addToast('Working hours & away message saved to server!', 'success');
     } catch {
       get().addToast('Working hours saved locally!', 'info');
+    }
+  },
+
+  saveAllKeywordRules: async () => {
+    const rules = get().keywordRules;
+    try {
+      const saved = await qiyamApi.bulkSaveKeywordRules(rules);
+      if (Array.isArray(saved) && saved.length > 0) {
+        set({ keywordRules: saved });
+        persistCache('keywordRules', saved);
+        get().addToast(`Saved ${saved.length} keyword rules successfully to server!`, 'success');
+        return;
+      }
+    } catch (err) {
+      console.warn('[Store] bulkSaveKeywordRules error, falling back to individual updates:', err);
+      for (const r of rules) {
+        try {
+          if (r.id && typeof r.id === 'number') {
+            await qiyamApi.updateKeywordRule(r.id, r);
+          } else {
+            await qiyamApi.createKeywordRule(r);
+          }
+        } catch {}
+      }
+      get().addToast('All keyword rules saved and synced!', 'success');
     }
   },
 

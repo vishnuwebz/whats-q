@@ -900,6 +900,14 @@ class Command(BaseCommand):
                 'active': True
             },
             {
+                'title': 'Live Specialist Status & ETA',
+                'keywords': ['track', 'technician', 'specialist', 'status', 'eta', 'where', 'location'],
+                'action_type': 'reply',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '📍 *Live Specialist Status*\nYour assigned technician is on duty and will reach within 15-30 minutes!',
+                'active': True
+            },
+            {
                 'title': 'Live Support Desk Handover',
                 'keywords': ['agent', 'human', 'support', 'help', 'speak', 'person', 'operator', 'representative'],
                 'action_type': 'reply',

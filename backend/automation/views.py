@@ -64,6 +64,17 @@ class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
         try:
             if KeywordTriggerRule.objects.count() == 0:
                 self._seed_default_rules()
+            elif not KeywordTriggerRule.objects.filter(keywords__icontains='track').exists():
+                KeywordTriggerRule.objects.get_or_create(
+                    title='Live Specialist Status & ETA',
+                    defaults={
+                        'keywords': ['track', 'technician', 'specialist', 'status', 'eta', 'where', 'location'],
+                        'action_type': 'reply',
+                        'workflow_name': 'Inbound Welcome & Service Flow',
+                        'reply': '📍 *Live Specialist Status*\nYour assigned technician is on duty and will reach within 15-30 minutes!',
+                        'active': True
+                    }
+                )
         except Exception:
             pass
         return KeywordTriggerRule.objects.all().order_by('-updated_at')
@@ -96,6 +107,14 @@ class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
                 'active': True
             },
             {
+                'title': 'Live Specialist Status & ETA',
+                'keywords': ['track', 'technician', 'specialist', 'status', 'eta', 'where', 'location'],
+                'action_type': 'reply',
+                'workflow_name': 'Inbound Welcome & Service Flow',
+                'reply': '📍 *Live Specialist Status*\nYour assigned technician is on duty and will reach within 15-30 minutes!',
+                'active': True
+            },
+            {
                 'title': 'Live Support Desk Handover',
                 'keywords': ['agent', 'human', 'support', 'help', 'speak', 'person', 'operator', 'representative'],
                 'action_type': 'reply',
@@ -122,6 +141,45 @@ class KeywordTriggerRuleViewSet(viewsets.ModelViewSet):
         self._seed_default_rules()
         rules = KeywordTriggerRule.objects.all().order_by('-updated_at')
         return Response(self.get_serializer(rules, many=True).data)
+
+    @action(detail=False, methods=['post', 'put'])
+    def bulk_save(self, request):
+        rules_data = request.data.get('rules') if isinstance(request.data, dict) else request.data
+        if not isinstance(rules_data, list):
+            return Response({'error': 'Expected a list of rules under "rules" or body'}, status=400)
+        
+        saved_rules = []
+        for r_data in rules_data:
+            r_id = r_data.get('id')
+            title = (r_data.get('title') or '').strip()
+            if not title:
+                continue
+            
+            clean_fields = {
+                'title': title,
+                'keywords': r_data.get('keywords', []),
+                'action_type': r_data.get('action_type', 'reply'),
+                'workflow_name': r_data.get('workflow_name', ''),
+                'reply': r_data.get('reply', ''),
+                'active': r_data.get('active', True),
+                'attachment': r_data.get('attachment', None),
+            }
+            rule = None
+            if r_id and str(r_id).isdigit():
+                rule = KeywordTriggerRule.objects.filter(id=int(r_id)).first()
+            if not rule:
+                rule = KeywordTriggerRule.objects.filter(title__iexact=title).first()
+            
+            if rule:
+                for k, v in clean_fields.items():
+                    setattr(rule, k, v)
+                rule.save()
+                saved_rules.append(rule)
+            else:
+                new_rule = KeywordTriggerRule.objects.create(**clean_fields)
+                saved_rules.append(new_rule)
+        
+        return Response(self.get_serializer(saved_rules, many=True).data)
 
 class WorkingHoursView(APIView):
     def get(self, request):

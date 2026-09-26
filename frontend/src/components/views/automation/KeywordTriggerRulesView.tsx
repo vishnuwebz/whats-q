@@ -5,7 +5,7 @@ import {
   Trash2, Edit3, ExternalLink, RefreshCw, Paperclip, Copy,
   Smartphone, LayoutGrid, List, CheckCircle2, AlertCircle,
   Calendar, ChevronRight, Sparkles, Send, ArrowRight, ShieldCheck,
-  Bot
+  Bot, Save
 } from 'lucide-react';
 import { KeywordRule, DaySchedule } from '@/types';
 
@@ -32,6 +32,7 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
     updateWorkingDayTime,
     setOutsideHoursMessage,
     saveWorkingHoursConfig,
+    saveAllKeywordRules,
     syncAutomationRules,
     workflows,
     addToast,
@@ -42,14 +43,17 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
   const [filterTab, setFilterTab] = useState<'all' | 'active' | 'workflows' | 'reply_only'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSavingRules, setIsSavingRules] = useState(false);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<KeywordRule | null>(null);
 
-  // Inline add keyword state
+  // Inline add keyword & inline reply edit state
   const [activeKeywordInputRuleId, setActiveKeywordInputRuleId] = useState<string | number | null>(null);
   const [inlineKeywordText, setInlineKeywordText] = useState('');
+  const [inlineEditingReplyRuleId, setInlineEditingReplyRuleId] = useState<string | number | null>(null);
+  const [inlineReplyText, setInlineReplyText] = useState('');
 
   // Working Hours state
   const [editingDayTime, setEditingDayTime] = useState<{ day: string; time: string } | null>(null);
@@ -204,8 +208,27 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
       action_type: editingRule.workflow_name ? 'workflow' : 'reply',
       attachment: editingRule.attachment?.trim() || undefined,
     });
+    await saveAllKeywordRules();
     setEditingRule(null);
-    addToast(`Updated "${editingRule.title}"`, 'success');
+    addToast(`Saved & updated "${editingRule.title}" to server!`, 'success');
+  };
+
+  const handleSaveInlineReply = async (ruleId: string | number) => {
+    if (!inlineReplyText.trim()) {
+      addToast('Reply message cannot be empty', 'warning');
+      return;
+    }
+    const rule = keywordRules.find((r) => r.id === ruleId);
+    await updateKeywordRule(ruleId, { reply: inlineReplyText.trim() });
+    await saveAllKeywordRules();
+    setInlineEditingReplyRuleId(null);
+    addToast(`Updated reply for "${rule?.title || 'Rule'}" and saved to database!`, 'success');
+  };
+
+  const handleSaveAllRules = async () => {
+    setIsSavingRules(true);
+    await saveAllKeywordRules();
+    setIsSavingRules(false);
   };
 
   const handleCreateRuleSubmit = async (e: React.FormEvent) => {
@@ -434,6 +457,18 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
             >
               <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Syncing...' : 'Live Sync'}</span>
+            </button>
+
+            {/* Save All Rules Button */}
+            <button
+              type="button"
+              onClick={handleSaveAllRules}
+              disabled={isSavingRules}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap active:scale-95 disabled:opacity-50"
+              title="Save all keyword rules and responses directly to database"
+            >
+              <Save className={`w-3.5 h-3.5 ${isSavingRules ? 'animate-spin' : ''}`} />
+              <span>{isSavingRules ? 'Saving...' : 'Save Rules'}</span>
             </button>
 
             {/* Create Rule Button */}
@@ -783,23 +818,82 @@ export const KeywordTriggerRulesView: React.FC<KeywordTriggerRulesViewProps> = (
                       </div>
                     </div>
 
-                    {/* Section: REPLY WITH... (WhatsApp Styled Preview Bubble) */}
+                    {/* Section: REPLY WITH... (WhatsApp Styled Preview Bubble or Inline Edit) */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                         <span>REPLY WITH...</span>
-                        <button
-                          type="button"
-                          onClick={() => setEditingRule(rule)}
-                          className="text-[11px] text-emerald-700 hover:underline font-semibold cursor-pointer"
-                        >
-                          Edit Reply
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {inlineEditingReplyRuleId === rule.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveInlineReply(rule.id)}
+                                className="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-0.5 rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition"
+                              >
+                                <Save className="w-3 h-3" />
+                                <span>Save Reply</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setInlineEditingReplyRuleId(null)}
+                                className="text-[11px] text-slate-400 hover:text-slate-600 font-semibold cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setInlineEditingReplyRuleId(rule.id);
+                                setInlineReplyText(rule.reply || '');
+                              }}
+                              className="text-[11px] text-emerald-700 hover:text-emerald-900 hover:underline font-semibold cursor-pointer flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit Reply</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {/* WhatsApp Message Preview Bubble */}
-                      <div className="bg-[#F0F2F5]/90 border-l-4 border-emerald-600 p-4 rounded-r-2xl rounded-l-xs border-y border-r border-slate-200/80 text-xs text-slate-800 leading-relaxed font-sans whitespace-pre-line shadow-2xs">
-                        {renderFormattedReply(rule.reply)}
-                      </div>
+                      {inlineEditingReplyRuleId === rule.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={inlineReplyText}
+                            onChange={(e) => setInlineReplyText(e.target.value)}
+                            rows={4}
+                            className="w-full text-xs p-3 bg-white border-2 border-emerald-500 rounded-xl focus:outline-none text-slate-800 shadow-inner font-sans leading-relaxed"
+                            placeholder="Enter the automated WhatsApp response message..."
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-slate-500">
+                            <span className="text-[10px] text-slate-400 font-mono">Use variables: &#123;CUSTOMER_NAME&#125;, &#123;COMPANY_NAME&#125;</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveInlineReply(rule.id)}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition"
+                            >
+                              <Save className="w-3.5 h-3.5" />
+                              <span>Save Reply to Server</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* WhatsApp Message Preview Bubble */
+                        <div
+                          onClick={() => {
+                            setInlineEditingReplyRuleId(rule.id);
+                            setInlineReplyText(rule.reply || '');
+                          }}
+                          className="bg-[#F0F2F5]/90 border-l-4 border-emerald-600 p-4 rounded-r-2xl rounded-l-xs border-y border-r border-slate-200/80 text-xs text-slate-800 leading-relaxed font-sans whitespace-pre-line shadow-2xs hover:bg-[#E9ECF0] transition cursor-pointer group/bubble"
+                          title="Click to edit reply directly"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">{renderFormattedReply(rule.reply)}</div>
+                            <Edit3 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/bubble:opacity-100 transition shrink-0 mt-0.5" />
+                          </div>
+                        </div>
+                      )}
 
                       {rule.attachment && (
                         <div className="flex items-center gap-2 pt-1">

@@ -243,6 +243,61 @@ export const WorkflowBuilderView: React.FC = () => {
     },
   ];
 
+  // Helper to retrieve tied Inbound Keywords for each Canvas Group
+  const getGroupTriggerKeywords = (grp: FlowGroup, index: number): { keywords: string[]; ruleTitle?: string; isInitial: boolean } | null => {
+    // 1. Initial Node / Group 1 / Welcome Trigger
+    if (index === 0 || grp.id === 'group-1' || grp.title.toLowerCase().includes('welcome') || grp.title.toLowerCase().includes('menu trigger')) {
+      const matched = (keywordRules || []).find((r) => r.active && (
+        r.workflow_name?.toLowerCase() === activeWorkflowTitle.toLowerCase() ||
+        r.title.toLowerCase().includes('greeting') ||
+        r.title.toLowerCase().includes('welcome') ||
+        (r.keywords || []).includes('hi')
+      ));
+      return {
+        keywords: matched?.keywords || ['hi', 'hello', 'hey', 'start', 'greetings', 'menu'],
+        ruleTitle: matched?.title || 'Inbound Greetings Trigger',
+        isInitial: true,
+      };
+    }
+    // 2. Booking / Reschedule Group
+    if (grp.id === 'group-2' || grp.title.toLowerCase().includes('booking') || grp.title.toLowerCase().includes('reschedule')) {
+      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('booking') || (r.keywords || []).includes('book')));
+      return {
+        keywords: matched?.keywords || ['book', 'appointment', 'schedule', 'reschedule'],
+        ruleTitle: matched?.title || 'Booking & Appointment Trigger',
+        isInitial: false,
+      };
+    }
+    // 3. Specialist Status & ETA Group
+    if (grp.id === 'group-3' || grp.title.toLowerCase().includes('specialist') || grp.title.toLowerCase().includes('eta') || grp.title.toLowerCase().includes('status')) {
+      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('specialist') || (r.keywords || []).includes('track')));
+      return {
+        keywords: matched?.keywords || ['track', 'technician', 'specialist', 'status', 'eta'],
+        ruleTitle: matched?.title || 'Live Specialist Status & ETA',
+        isInitial: false,
+      };
+    }
+    // 4. Price Quotation Group
+    if (grp.id === 'group-4' || grp.title.toLowerCase().includes('price') || grp.title.toLowerCase().includes('quotation')) {
+      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('price') || (r.keywords || []).includes('price')));
+      return {
+        keywords: matched?.keywords || ['price', 'rate', 'cost', 'quotation', 'pricing'],
+        ruleTitle: matched?.title || 'Price List Auto-Reply',
+        isInitial: false,
+      };
+    }
+    // 5. Agent Handover Group
+    if (grp.id === 'group-5' || grp.title.toLowerCase().includes('agent') || grp.title.toLowerCase().includes('handover') || grp.title.toLowerCase().includes('support')) {
+      const matched = (keywordRules || []).find((r) => r.active && (r.title.toLowerCase().includes('support') || (r.keywords || []).includes('agent')));
+      return {
+        keywords: matched?.keywords || ['agent', 'human', 'support', 'help'],
+        ruleTitle: matched?.title || 'Live Support Desk Handover',
+        isInitial: false,
+      };
+    }
+    return null;
+  };
+
   // Create Workflow / Template Tutorial Modal State
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
@@ -2235,6 +2290,83 @@ export const WorkflowBuilderView: React.FC = () => {
 
                       {/* Card Items */}
                       <div className="p-3.5 space-y-3 text-xs flex-1">
+                        {/* INBOUND TRIGGER KEYWORD BADGE / BLOCK */}
+                        {(() => {
+                          const triggerInfo = getGroupTriggerKeywords(grp, groups.indexOf(grp));
+                          if (!triggerInfo) return null;
+
+                          if (triggerInfo.isInitial) {
+                            return (
+                              <div className="bg-gradient-to-br from-amber-500/10 via-emerald-500/10 to-teal-500/10 border-2 border-amber-400/90 rounded-xl p-3 space-y-2 shadow-xs">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px] uppercase tracking-wider">
+                                    <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400 animate-pulse" />
+                                    <span>Trigger Keywords</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMode('keyword_rules');
+                                    }}
+                                    className="text-[10px] text-emerald-800 hover:text-emerald-950 font-bold bg-white/95 hover:bg-white border border-emerald-300 rounded-lg px-2 py-0.5 shadow-2xs flex items-center gap-1 cursor-pointer transition active:scale-95"
+                                    title="Configure Trigger Keywords & Rules"
+                                  >
+                                    <span>Edit Triggers</span>
+                                    <ArrowRight className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+
+                                <div className="text-[10px] text-slate-600 leading-snug">
+                                  Incoming customer WhatsApp message matching any keyword below starts this flow:
+                                </div>
+
+                                <div className="flex flex-wrap gap-1">
+                                  {triggerInfo.keywords.map((kw, kIdx) => (
+                                    <span
+                                      key={kIdx}
+                                      className="inline-flex items-center gap-0.5 bg-white border border-amber-300 text-amber-950 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold shadow-2xs"
+                                    >
+                                      <span className="text-amber-500">#</span>
+                                      <span>{kw}</span>
+                                    </span>
+                                  ))}
+                                </div>
+
+                                <div className="flex items-center justify-between text-[9px] pt-1 border-t border-amber-200/50 text-slate-500">
+                                  <span className="flex items-center gap-1 text-emerald-700 font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Webhook Active
+                                  </span>
+                                  <span className="font-mono text-[9px] text-slate-400">{triggerInfo.ruleTitle}</span>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="bg-slate-50/90 border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-[10px] text-slate-600 shadow-2xs">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+                                  <span className="font-semibold text-slate-700">Keywords:</span>
+                                  <span className="font-mono text-emerald-700 truncate">
+                                    {triggerInfo.keywords.slice(0, 3).join(', ')}{triggerInfo.keywords.length > 3 ? '...' : ''}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMode('keyword_rules');
+                                  }}
+                                  className="text-[9px] text-emerald-700 hover:underline font-bold shrink-0 ml-1 cursor-pointer"
+                                >
+                                  Rules
+                                </button>
+                              </div>
+                            );
+                          }
+                        })()}
+
                         {(grp.items || []).map((item) => (
                           <div
                             key={item.id}

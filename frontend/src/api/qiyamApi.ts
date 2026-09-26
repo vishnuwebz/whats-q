@@ -273,6 +273,10 @@ export const qiyamApi = {
     return apiClient.patch(`/automation/keyword-rules/${id}/`, data);
   },
 
+  async bulkSaveKeywordRules(rules: Partial<KeywordRule>[]): Promise<KeywordRule[]> {
+    return apiClient.post('/automation/keyword-rules/bulk_save/', { rules });
+  },
+
   async deleteKeywordRule(id: string | number): Promise<boolean> {
     return apiClient.delete(`/automation/keyword-rules/${id}/`);
   },
