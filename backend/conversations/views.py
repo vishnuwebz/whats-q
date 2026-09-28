@@ -2637,12 +2637,47 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
 
             components = []
 
-            # Handle dynamic header parameter
-            if template.header_type == 'TEXT' and template.header_text and '{{' in template.header_text:
+            # Handle dynamic header parameter (Text, Image, Document, Video)
+            custom_header = request.data.get('header_url') or request.data.get('headerUrl') or getattr(template, 'header_url', None) or getattr(template, 'header_sample', None)
+            h_type = (getattr(template, 'header_type', None) or '').upper()
+
+            if h_type == 'TEXT' and template.header_text and '{{' in template.header_text:
                 header_val = template.header_sample or 'Update'
                 components.append({
                     "type": "header",
                     "parameters": [{"type": "text", "text": header_val}]
+                })
+            elif h_type == 'IMAGE' and custom_header:
+                if str(custom_header).startswith('data:image/'):
+                    try:
+                        import uuid
+                        header_data, base64_data = str(custom_header).split(';base64,', 1)
+                        ext = 'png' if 'png' in header_data else 'webp' if 'webp' in header_data else 'jpeg' if 'jpeg' in header_data else 'jpg'
+                        media_filename = f"test_header_{uuid.uuid4().hex[:12]}.{ext}"
+                        target_dir = os.path.join(settings.MEDIA_ROOT, 'campaign_headers')
+                        os.makedirs(target_dir, exist_ok=True)
+                        target_path = os.path.join(target_dir, media_filename)
+                        with open(target_path, 'wb') as f:
+                            f.write(base64.b64decode(base64_data))
+                        custom_header = f"https://whatsq.qiyambusinesssolutions.com/media/campaign_headers/{media_filename}"
+                    except Exception as e:
+                        logger.warning(f"[TestSend] Failed to convert base64 image: {e}")
+                components.append({
+                    "type": "header",
+                    "parameters": [{"type": "image", "image": {"link": custom_header}}]
+                })
+            elif h_type == 'DOCUMENT' and custom_header:
+                components.append({
+                    "type": "header",
+                    "parameters": [{
+                        "type": "document",
+                        "document": {"link": custom_header, "filename": (template.header_text or "Document.pdf")}
+                    }]
+                })
+            elif h_type == 'VIDEO' and custom_header:
+                components.append({
+                    "type": "header",
+                    "parameters": [{"type": "video", "video": {"link": custom_header}}]
                 })
 
             # Handle body parameters
@@ -4566,6 +4601,24 @@ def _dispatch_bulk_campaign_worker(campaign_id, account_ids=None, min_delay=0.4,
         header_comp = None
         header_type = (template_obj.header_type if template_obj else '').upper()
         h_url = header_url or (template_obj.header_url if template_obj else '')
+
+        # Auto-convert base64 data URLs to publicly hosted URLs if uploaded from browser
+        if h_url and str(h_url).startswith('data:image/'):
+            try:
+                import uuid
+                header_data, base64_data = str(h_url).split(';base64,', 1)
+                ext = 'png' if 'png' in header_data else 'webp' if 'webp' in header_data else 'jpeg' if 'jpeg' in header_data else 'jpg'
+                media_filename = f"campaign_header_{uuid.uuid4().hex[:12]}.{ext}"
+                target_dir = os.path.join(settings.MEDIA_ROOT, 'campaign_headers')
+                os.makedirs(target_dir, exist_ok=True)
+                target_path = os.path.join(target_dir, media_filename)
+                with open(target_path, 'wb') as f:
+                    f.write(base64.b64decode(base64_data))
+                base_domain = "https://whatsq.qiyambusinesssolutions.com"
+                h_url = f"{base_domain}/media/campaign_headers/{media_filename}"
+                logger.info(f"[BulkCampaignWorker] Converted base64 image header to public URL: {h_url}")
+            except Exception as e:
+                logger.warning(f"[BulkCampaignWorker] Failed to convert base64 image: {e}")
 
         if header_type == 'IMAGE' and h_url:
             header_comp = {

@@ -686,7 +686,7 @@ interface QiyamState {
   submitTemplateToMeta: (templateId: string | number) => Promise<boolean>;
   syncTemplatesWithMeta: () => Promise<void>;
   verifyMetaTemplate: (templateId: string | number) => Promise<any>;
-  testSendTemplate: (templateId: string | number, phone: string, variables: Record<string, string>) => Promise<{ success: boolean; error?: string; message?: string }>;
+  testSendTemplate: (templateId: string | number, phone: string, variables: Record<string, string>, headerUrl?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   deleteMetaTemplate: (templateId: string | number) => Promise<boolean>;
   saveMetaConfig: (config: Partial<MetaConfig>) => Promise<boolean>;
   testMetaConnection: (credentials: { phone_number_id: string; waba_id: string; access_token: string }) => Promise<any>;
@@ -3788,10 +3788,11 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
   },
 
-  testSendTemplate: async (templateId, phone, variables) => {
+  testSendTemplate: async (templateId, phone, variables, headerUrl) => {
     const res = await apiClient.post(`/conversations/templates/${templateId}/test_send/`, {
       phone_number: phone,
       variables,
+      header_url: headerUrl,
     });
     if (!res || res.status === 'error' || res.success === false || res.error) {
       return { success: false, error: res?.error || 'Failed to send template message via Meta' };
@@ -4482,7 +4483,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       templateId: msg.templateId,
       messageText: msg.messageText || '',
       contacts: msg.contacts || [],
-      mediaUrl: msg.mediaUrl,
+      mediaUrl: msg.mediaUrl || msg.headerUrl,
+      headerUrl: msg.headerUrl || msg.mediaUrl,
       mediaType: msg.mediaType,
       category: msg.category || 'marketing',
       status: 'QUEUED',

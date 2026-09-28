@@ -33,6 +33,11 @@ import {
   UserPlus,
   Phone,
   Plus,
+  Link2,
+  RotateCcw,
+  Edit3,
+  ImagePlus,
+  UploadCloud,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkContact, BulkRecipientList, BulkTemplateItem } from '../../../types';
@@ -40,6 +45,59 @@ import { MetaWalletCard } from './MetaWalletCard';
 import { WhatsAppGuidelinesModal } from './WhatsAppGuidelinesModal';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { CountryPhoneInput } from '../../common/CountryPhoneInput';
+
+export interface MarketingImagePreset {
+  id: string;
+  title: string;
+  category: string;
+  url: string;
+  description: string;
+}
+
+export const MARKETING_IMAGE_PRESETS: MarketingImagePreset[] = [
+  {
+    id: 'festival_sale',
+    title: 'Festival & Mega Sale',
+    category: 'Sales & Discounts',
+    url: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1200&q=80',
+    description: 'Vibrant festive shopping banner with promotional gift boxes',
+  },
+  {
+    id: 'special_offer',
+    title: 'Super Offers & Flash Deals',
+    category: 'Special Offers',
+    url: 'https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?auto=format&fit=crop&w=1200&q=80',
+    description: 'Black Friday & special weekend discount theme with stylish graphics',
+  },
+  {
+    id: 'grand_opening',
+    title: 'Grand Launch & Event',
+    category: 'Events & Launch',
+    url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
+    description: 'Executive celebration & grand opening ceremony visual',
+  },
+  {
+    id: 'corporate_consulting',
+    title: 'Corporate & Business Growth',
+    category: 'Corporate',
+    url: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=1200&q=80',
+    description: 'Professional modern corporate workspace & financial consulting',
+  },
+  {
+    id: 'retail_shopping',
+    title: 'New Season & Retail Boutique',
+    category: 'E-commerce',
+    url: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80',
+    description: 'Fashion retail, new collection launch, and luxury shopping',
+  },
+  {
+    id: 'tech_gadgets',
+    title: 'Smart Tech & Gadgets Showcase',
+    category: 'Technology',
+    url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80',
+    description: 'Premium electronics, gadgets and modern product presentation',
+  },
+];
 
 interface ExtractedVariable {
   index: number;
@@ -248,6 +306,13 @@ export const BulkSendMessageView: React.FC = () => {
     'Hello {{name}}, thank you for contacting Qiyam Business Solutions! How may we assist you today?'
   );
 
+  // Dynamic Campaign Header Image states (Meta-approved dynamic media)
+  const [customHeaderUrl, setCustomHeaderUrl] = useState<string>('');
+  const [isEditImageModalOpen, setIsEditImageModalOpen] = useState(false);
+  const [imageModalTab, setImageModalTab] = useState<'upload' | 'presets' | 'url'>('upload');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+
   // Dispatch & safety
   const [dispatchSpeed, setDispatchSpeed] = useState<number>(60); // msgs / min
   const [isSending, setIsSending] = useState(false);
@@ -369,6 +434,50 @@ export const BulkSendMessageView: React.FC = () => {
       });
     }
   }, [extractedVariables]);
+
+  // Sync custom header image when active template changes
+  React.useEffect(() => {
+    if (activeTemplate.headerType === 'IMAGE') {
+      const initialImg = activeTemplate.headerContent || '';
+      setCustomHeaderUrl(initialImg);
+      setImageUrlInput(initialImg);
+    } else {
+      setCustomHeaderUrl('');
+      setImageUrlInput('');
+    }
+  }, [activeTemplate.id, activeTemplate.headerType, activeTemplate.headerContent]);
+
+  const effectiveHeaderImage = customHeaderUrl || activeTemplate.headerContent || '';
+  const isCustomImageActive = !!customHeaderUrl && customHeaderUrl !== activeTemplate.headerContent;
+
+  // Image Upload Handler from User's Device
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file (JPG, PNG, WebP)', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image size exceeds 5MB limit. Please upload an image under 5MB.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setCustomHeaderUrl(dataUrl);
+        setImageUrlInput(dataUrl);
+        setIsEditImageModalOpen(false);
+        addToast('Custom campaign header image updated successfully!', 'success');
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Cost calculation based strictly on selected contacts
   const audienceCount = activeSelectedIds.size;
@@ -748,7 +857,7 @@ export const BulkSendMessageView: React.FC = () => {
             category,
             estimatedCost,
             templateVariables: messageType === 'template' ? templateVariables : undefined,
-            headerUrl: messageType === 'template' ? activeTemplate.headerContent : undefined,
+            headerUrl: messageType === 'template' ? (customHeaderUrl || activeTemplate.headerContent) : undefined,
           });
           setIsSending(false);
           setActiveTab('bulk-scheduled');
@@ -772,7 +881,7 @@ export const BulkSendMessageView: React.FC = () => {
             contacts: selectedContacts,
             cost: estimatedCost,
             templateVariables: messageType === 'template' ? templateVariables : undefined,
-            headerUrl: messageType === 'template' ? activeTemplate.headerContent : undefined,
+            headerUrl: messageType === 'template' ? (customHeaderUrl || activeTemplate.headerContent) : undefined,
           }).then((result: any) => {
             setIsSending(false);
             if (result?.success) {
@@ -813,7 +922,7 @@ export const BulkSendMessageView: React.FC = () => {
         contacts: [{ name: 'Test Recipient', phone }],
         cost: 0,
         templateVariables: messageType === 'template' ? templateVariables : undefined,
-        headerUrl: messageType === 'template' ? activeTemplate.headerContent : undefined,
+        headerUrl: messageType === 'template' ? (customHeaderUrl || activeTemplate.headerContent) : undefined,
       });
 
       setIsSendingTest(false);
@@ -1282,21 +1391,120 @@ export const BulkSendMessageView: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    {activeTemplate.headerType === 'IMAGE' && activeTemplate.headerContent && (
-                      <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center gap-3 text-xs shadow-2xs">
-                        <div className="w-12 h-10 rounded-lg bg-indigo-100 border border-indigo-200 overflow-hidden shrink-0">
-                          <img
-                            src={activeTemplate.headerContent}
-                            alt="Header"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="font-bold text-indigo-950">🖼️ Attached Image Header</div>
-                          <div className="text-[10px] text-indigo-600 truncate max-w-xs">
-                            {activeTemplate.headerContent}
+                    {activeTemplate.headerType === 'IMAGE' && (
+                      <div className="p-3.5 bg-gradient-to-br from-indigo-50/90 via-white to-slate-50 border border-indigo-200/90 rounded-xl space-y-3 shadow-2xs">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                              <ImageIcon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                                <span>Campaign Header Image</span>
+                                {isCustomImageActive ? (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                    <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                    Custom Image Active
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                                    Meta Approved Default
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-500">
+                                Dynamic Meta media parameter: swap images freely for every campaign without re-approval
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {isCustomImageActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomHeaderUrl(activeTemplate.headerContent || '');
+                                  setImageUrlInput(activeTemplate.headerContent || '');
+                                  addToast('Reset to Meta approved default image', 'info');
+                                }}
+                                className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                                title="Reset to original template default image"
+                              >
+                                <RotateCcw className="w-3 h-3 text-slate-500" />
+                                <span>Reset Default</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImageModalTab('upload');
+                                setIsEditImageModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Replace Image</span>
+                            </button>
                           </div>
                         </div>
+
+                        {/* Image Preview & URL Display */}
+                        <div className="flex items-center gap-3 p-2 bg-white/90 rounded-lg border border-slate-200">
+                          <div
+                            onClick={() => setIsEditImageModalOpen(true)}
+                            className="relative w-20 h-14 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 group cursor-pointer"
+                            title="Click to replace campaign header image"
+                          >
+                            {effectiveHeaderImage ? (
+                              <img
+                                src={effectiveHeaderImage}
+                                alt="Header preview"
+                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-[10px] gap-0.5">
+                                <ImageIcon className="w-4 h-4" />
+                                <span>No Image</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[11px] font-semibold text-slate-800 flex items-center justify-between">
+                              <span className="truncate">
+                                {isCustomImageActive
+                                  ? effectiveHeaderImage.startsWith('data:image/')
+                                    ? '📁 Uploaded from Device (Auto-hosted by Qiyam)'
+                                    : '🌐 Custom Marketing Image URL'
+                                  : '🖼️ Meta Template Approved Default Image'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                              {effectiveHeaderImage.startsWith('data:image/')
+                                ? `Base64 Image (${Math.round(effectiveHeaderImage.length / 1024)} KB)`
+                                : effectiveHeaderImage || 'No image attached'}
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium border border-emerald-100 flex items-center gap-1">
+                                <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                                Meta API Dynamic Parameter Ready
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Hidden file input for fast triggers */}
+                        <input
+                          type="file"
+                          ref={imageFileInputRef}
+                          accept="image/png,image/jpeg,image/webp,image/jpg"
+                          className="hidden"
+                          onChange={handleImageFileUpload}
+                        />
                       </div>
                     )}
 
@@ -1608,13 +1816,16 @@ export const BulkSendMessageView: React.FC = () => {
                   )}
 
                   {/* Header Media: Image */}
-                  {activeTemplate.headerType === 'IMAGE' && activeTemplate.headerContent && (
-                    <div className="rounded-lg overflow-hidden border border-slate-200 aspect-video bg-slate-100 mb-2">
+                  {activeTemplate.headerType === 'IMAGE' && (customHeaderUrl || activeTemplate.headerContent) && (
+                    <div className="rounded-lg overflow-hidden border border-slate-200 aspect-video bg-slate-100 mb-2 relative group">
                       <img
-                        src={activeTemplate.headerContent}
+                        src={customHeaderUrl || activeTemplate.headerContent}
                         alt="Header"
                         className="w-full h-full object-cover"
                       />
+                      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-bold text-white uppercase tracking-wider">
+                        {isCustomImageActive ? 'Custom Image' : 'Template Default'}
+                      </div>
                     </div>
                   )}
 
@@ -2112,6 +2323,28 @@ export const BulkSendMessageView: React.FC = () => {
                 </p>
               </div>
 
+              {/* Header Image Preview if image template */}
+              {messageType === 'template' && activeTemplate.headerType === 'IMAGE' && (customHeaderUrl || activeTemplate.headerContent) && (
+                <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1.5">
+                  <div className="text-[10px] font-bold text-indigo-900 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                      Attached Image Header:
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-200/80 text-indigo-800">
+                      {isCustomImageActive ? 'Custom Campaign Image' : 'Meta Approved Default'}
+                    </span>
+                  </div>
+                  <div className="rounded-lg overflow-hidden border border-indigo-200 aspect-video max-h-36 bg-white">
+                    <img
+                      src={customHeaderUrl || activeTemplate.headerContent}
+                      alt="Test Header"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                 <div className="text-[10px] font-bold text-slate-500 uppercase">Message Preview:</div>
                 <div className="text-xs text-slate-800 font-medium whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
@@ -2146,6 +2379,284 @@ export const BulkSendMessageView: React.FC = () => {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Header Image Customizer Modal */}
+      {isEditImageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                  <ImagePlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Customize Campaign Header Image</h3>
+                  <p className="text-xs text-slate-500">
+                    Template: <span className="font-semibold text-slate-700">{activeTemplate.name}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditImageModalOpen(false)}
+                className="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Explanatory Meta Callout Banner */}
+            <div className="bg-emerald-50/80 border-b border-emerald-100 px-6 py-2.5 flex items-center gap-2.5 text-xs text-emerald-900 shrink-0">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Meta Cloud API Rule:</strong> Approved templates with media headers allow dynamic image replacement on every broadcast without requiring new Meta template submission.
+              </span>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-2 px-6 pt-3 border-b border-slate-200 bg-white shrink-0">
+              <button
+                type="button"
+                onClick={() => setImageModalTab('upload')}
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition cursor-pointer ${
+                  imageModalTab === 'upload'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Upload From Device</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageModalTab('presets')}
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition cursor-pointer ${
+                  imageModalTab === 'presets'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Marketing Presets ({MARKETING_IMAGE_PRESETS.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageModalTab('url')}
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition cursor-pointer ${
+                  imageModalTab === 'url'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span>Web Image URL</span>
+              </button>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* TAB 1: Upload from device */}
+              {imageModalTab === 'upload' && (
+                <div className="space-y-4">
+                  <div
+                    onClick={() => imageFileInputRef.current?.click()}
+                    className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50/60 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition group"
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="w-7 h-7" />
+                    </div>
+                    <div className="font-bold text-sm text-slate-800">
+                      Click to choose an image from your computer
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Supports JPG, PNG, and WebP (up to 5MB, recommended 1200x630 or 16:9)
+                    </p>
+                    <div className="mt-4 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-xs">
+                      Browse Files
+                    </div>
+                  </div>
+
+                  {customHeaderUrl && customHeaderUrl.startsWith('data:image/') && (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700">Current Uploaded Image Preview:</span>
+                        <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100 px-2 py-0.5 rounded">
+                          Ready for Meta API Dispatch
+                        </span>
+                      </div>
+                      <div className="rounded-lg overflow-hidden border border-slate-200 aspect-video max-h-44 bg-slate-100">
+                        <img
+                          src={customHeaderUrl}
+                          alt="Uploaded preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: Marketing Gallery Presets */}
+              {imageModalTab === 'presets' && (
+                <div className="space-y-3">
+                  <div className="text-xs text-slate-600">
+                    Select a high-resolution promotional banner curated for high customer conversion rates:
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                    {MARKETING_IMAGE_PRESETS.map((preset) => {
+                      const isSelected = (customHeaderUrl || activeTemplate.headerContent) === preset.url;
+                      return (
+                        <div
+                          key={preset.id}
+                          onClick={() => {
+                            setCustomHeaderUrl(preset.url);
+                            setImageUrlInput(preset.url);
+                            addToast(`Selected "${preset.title}" banner!`, 'info');
+                          }}
+                          className={`rounded-xl border p-2.5 text-left transition cursor-pointer flex flex-col justify-between group ${
+                            isSelected
+                              ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
+                              : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200 relative mb-2">
+                            <img
+                              src={preset.url}
+                              alt={preset.title}
+                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            />
+                            {isSelected && (
+                              <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md">
+                                <Check className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-bold">
+                              {preset.category}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="font-bold text-xs text-slate-800 flex items-center justify-between">
+                              <span className="truncate">{preset.title}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                              {preset.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: Web Image URL */}
+              {imageModalTab === 'url' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Direct Public Image URL (HTTPS)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="url"
+                          value={imageUrlInput}
+                          onChange={(e) => setImageUrlInput(e.target.value)}
+                          placeholder="https://example.com/banner.jpg"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!imageUrlInput.trim().startsWith('http')) {
+                            addToast('Please enter a valid HTTP/HTTPS image URL', 'error');
+                            return;
+                          }
+                          setCustomHeaderUrl(imageUrlInput.trim());
+                          addToast('URL loaded for campaign preview', 'info');
+                        }}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition cursor-pointer shrink-0"
+                      >
+                        Load URL
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Must be a publicly accessible image URL reachable by Meta servers (e.g. AWS S3, Cloudinary, CDN, Imgur).
+                    </p>
+                  </div>
+
+                  {/* URL Live Preview */}
+                  {imageUrlInput && (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                      <div className="text-xs font-bold text-slate-700">Live URL Image Preview:</div>
+                      <div className="rounded-lg overflow-hidden border border-slate-200 aspect-video max-h-48 bg-slate-100 flex items-center justify-center">
+                        <img
+                          src={imageUrlInput}
+                          alt="URL preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+              <div>
+                {isCustomImageActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomHeaderUrl(activeTemplate.headerContent || '');
+                      setImageUrlInput(activeTemplate.headerContent || '');
+                      setIsEditImageModalOpen(false);
+                      addToast('Reset to Meta approved default template image', 'info');
+                    }}
+                    className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Reset to Default Image
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditImageModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 font-bold text-xs text-slate-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (imageModalTab === 'url' && imageUrlInput.trim()) {
+                      setCustomHeaderUrl(imageUrlInput.trim());
+                    }
+                    setIsEditImageModalOpen(false);
+                    addToast('Header image applied to campaign!', 'success');
+                  }}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Apply Image to Campaign
+                </button>
+              </div>
             </div>
           </div>
         </div>

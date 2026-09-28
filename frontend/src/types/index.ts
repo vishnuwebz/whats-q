@@ -909,6 +909,7 @@ export interface BulkScheduledMessage {
   contacts?: Array<{ name?: string; phone: string }>;
   templateId?: string;
   mediaUrl?: string;
+  headerUrl?: string;
   mediaType?: string;
 }
 
