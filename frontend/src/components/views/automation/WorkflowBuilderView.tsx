@@ -988,8 +988,8 @@ export const WorkflowBuilderView: React.FC = () => {
         {
           id: 'group-1',
           title: 'Group #1 - Welcome & Trigger',
-          x: 50,
-          y: 50,
+          x: 100,
+          y: 80,
           items: [
             {
               id: 'item-1-1',
@@ -1011,9 +1011,12 @@ export const WorkflowBuilderView: React.FC = () => {
     }
 
     setGroups(starterGroups);
-    setSelectedGroupId(starterGroups[0]?.id || 'group-1');
+    const firstGroupId = starterGroups[0]?.id || 'group-1';
+    setSelectedGroupId(firstGroupId);
+    setActiveJumpGroupId(firstGroupId);
     setActiveWorkflowGroups(starterGroups);
     setIsCreateWorkflowModalOpen(false);
+    setZoom(1);
 
     // Save initial version of the new workflow so it appears in Workflows list
     await saveWorkflow({
@@ -1025,8 +1028,20 @@ export const WorkflowBuilderView: React.FC = () => {
 
     addToast(`🎉 Initialized new workflow "${finalTitle}"!`, 'success');
 
-    // Automatically open the friendly beginner masterclass guide
-    setIsTutorialModalOpen(true);
+    // Immediately reset canvas scroll position so Group #1 is 100% visible front & center
+    if (canvasRef.current) {
+      canvasRef.current.scrollLeft = 0;
+      canvasRef.current.scrollTop = 0;
+    }
+    setTimeout(() => {
+      if (canvasRef.current && starterGroups[0]) {
+        canvasRef.current.scrollTo({
+          left: Math.max(0, starterGroups[0].x - 60),
+          top: Math.max(0, starterGroups[0].y - 40),
+          behavior: 'smooth'
+        });
+      }
+    }, 60);
   };
 
   // Active Selected Node & Drag-and-Drop state
@@ -1042,7 +1057,18 @@ export const WorkflowBuilderView: React.FC = () => {
     const safeGroups = normalizeToFlowGroups(activeWorkflowGroups, activeWorkflowTitle || 'Inbound Welcome & Service Flow');
     setGroups(safeGroups);
     if (safeGroups.length > 0) {
-      setSelectedGroupId(safeGroups[0].id);
+      const firstId = safeGroups[0].id;
+      setSelectedGroupId(firstId);
+      setActiveJumpGroupId(firstId);
+      setTimeout(() => {
+        if (canvasRef.current && safeGroups[0]) {
+          canvasRef.current.scrollTo({
+            left: Math.max(0, safeGroups[0].x - 60),
+            top: Math.max(0, safeGroups[0].y - 40),
+            behavior: 'smooth'
+          });
+        }
+      }, 80);
     }
   }, [activeWorkflowTitle, activeWorkflowGroups]);
 
@@ -1700,7 +1726,9 @@ export const WorkflowBuilderView: React.FC = () => {
     setBotTitle(wfName);
     setGroups(adjustedGroups);
     if (adjustedGroups.length > 0) {
-      setSelectedGroupId(adjustedGroups[0].id);
+      const firstId = adjustedGroups[0].id;
+      setSelectedGroupId(firstId);
+      setActiveJumpGroupId(firstId);
     }
     setActiveWorkflowTitle(wfName);
     if (matchedWf) {
@@ -1708,6 +1736,20 @@ export const WorkflowBuilderView: React.FC = () => {
     }
     setActiveWorkflowGroups(adjustedGroups);
     setActiveMode('canvas');
+    setZoom(1);
+    if (canvasRef.current) {
+      canvasRef.current.scrollLeft = 0;
+      canvasRef.current.scrollTop = 0;
+    }
+    setTimeout(() => {
+      if (canvasRef.current && adjustedGroups[0]) {
+        canvasRef.current.scrollTo({
+          left: Math.max(0, adjustedGroups[0].x - 60),
+          top: Math.max(0, adjustedGroups[0].y - 40),
+          behavior: 'smooth'
+        });
+      }
+    }, 60);
     addToast(`⚡ Flow "${wfName}" opened in Interactive Canvas!`, 'success');
   };
 
