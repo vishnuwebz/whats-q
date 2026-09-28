@@ -876,7 +876,23 @@ function getStoredNotifications(): QNotification[] {
     const raw = localStorage.getItem('whatsq_notifications_cache');
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((n) => n && typeof n === 'object')
+          .slice(0, 250)
+          .map((n, idx) => ({
+            id: n.id != null ? n.id : (Date.now() - idx),
+            title: typeof n.title === 'string' ? n.title : (n.title ? String(n.title) : 'Notification'),
+            text: typeof n.text === 'string' ? n.text : (n.text ? String(n.text) : ''),
+            time: n.time || 'Recent',
+            unread: Boolean(n.unread),
+            target: n.target || 'conversations',
+            itemId: n.itemId,
+            itemType: n.itemType,
+            severity: n.severity || 'info',
+            category: n.category,
+          }));
+      }
     }
   } catch {}
   return INITIAL_NOTIFICATIONS;
@@ -885,7 +901,7 @@ function getStoredNotifications(): QNotification[] {
 function persistNotifications(notifs: QNotification[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem('whatsq_notifications_cache', JSON.stringify(notifs));
+    localStorage.setItem('whatsq_notifications_cache', JSON.stringify((notifs || []).slice(0, 250)));
   } catch {}
 }
 
@@ -2153,11 +2169,24 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   applyRealtimeNotification: (notif) => {
+    if (!notif) return;
     set((state) => {
-      if (state.notifications.some((n) => n.id === notif.id)) {
+      if (notif.id && state.notifications.some((n) => n.id === notif.id)) {
         return {};
       }
-      const updated = [notif, ...state.notifications];
+      const safeNotif: QNotification = {
+        id: notif.id != null ? notif.id : Date.now(),
+        title: typeof notif.title === 'string' ? notif.title : (notif.title ? String(notif.title) : 'Notification'),
+        text: typeof notif.text === 'string' ? notif.text : (notif.text ? String(notif.text) : ''),
+        time: notif.time || 'Just now',
+        unread: notif.unread !== false,
+        target: notif.target || 'conversations',
+        itemId: notif.itemId,
+        itemType: notif.itemType,
+        severity: notif.severity || 'info',
+        category: notif.category,
+      };
+      const updated = [safeNotif, ...state.notifications].slice(0, 250);
       persistNotifications(updated);
       return {
         notifications: updated,
@@ -2915,27 +2944,32 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     get().addToast('Demo notifications restored', 'info');
   },
   handleNotificationClick: (notif) => {
-    get().markNotificationRead(notif.id);
-    set({ activeTab: notif.target });
-    if (notif.itemId) {
+    if (!notif) return;
+    if (notif.id != null) {
+      get().markNotificationRead(notif.id);
+    }
+    if (notif.target) {
+      set({ activeTab: notif.target });
+    }
+    if (notif.itemId != null) {
       set({ targetHighlightId: notif.itemId });
     }
     if (notif.target === 'conversations') {
       const conv = get().conversations.find(
-        (c) => c.id === notif.itemId || (c?.contact_name || '').toLowerCase().includes('amit')
+        (c) => c && (c.id === notif.itemId || (c?.contact_name || '').toLowerCase().includes('amit'))
       );
       if (conv) {
         set({ selectedConversationId: conv.id });
       }
     } else if (notif.target === 'crm-leads') {
       const lead = get().leads.find(
-        (l) => l.id === notif.itemId || (l?.phone || '').includes('90000') || (l?.name || '').toLowerCase().includes('inquiry')
+        (l) => l && (l.id === notif.itemId || (l?.phone || '').includes('90000') || (l?.name || '').toLowerCase().includes('inquiry'))
       );
       if (lead) {
         set({ selectedLead: lead, isLeadDrawerOpen: true, targetHighlightId: lead.id });
       }
     }
-    get().addToast(`Showing: ${notif.title}`, 'info');
+    get().addToast(`Showing: ${notif.title || 'Notification'}`, 'info');
   },
 
   conversations: getStoredConversations(),
@@ -4261,13 +4295,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             text: `${record.name} (${record.phone}) added to Suppression List: ${record.reason}`,
             time: 'Just now',
             unread: true,
-            target: 'bulk-recipients',
-            itemType: 'conversation',
-          },
+            target: 'bulk-recipients' as TabType,
+            itemType: 'conversation' as const,
+          } as QNotification,
           ...state.notifications,
-        ],
+        ].slice(0, 250),
       };
     });
+    persistNotifications(get().notifications);
     get().addToast(`Added ${record.phone} to Suppression List`, 'warning');
     get().rebuildRecipientLists();
 

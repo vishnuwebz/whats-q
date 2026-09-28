@@ -53,7 +53,13 @@ export const Header: React.FC<HeaderProps> = ({
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSyncingManual, setIsSyncingManual] = useState(false);
 
-  const unreadNotifsCount = notifications.filter((n) => n.unread).length;
+  const handleCloseNotif = React.useCallback(() => {
+    setIsNotifOpen(false);
+  }, []);
+
+  const unreadNotifsCount = React.useMemo(() => {
+    return Array.isArray(notifications) ? notifications.filter((n) => n && n.unread).length : 0;
+  }, [notifications]);
   const isFilterActive =
     (globalFilter.status && globalFilter.status !== 'all') ||
     (globalFilter.priority && globalFilter.priority !== 'all') ||
@@ -328,7 +334,10 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Notifications */}
           <div className="relative" ref={notifAnchorRef}>
             <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsNotifOpen((prev) => !prev);
+              }}
               className={`p-1.5 rounded-lg transition-all relative cursor-pointer ${
                 isNotifOpen
                   ? 'bg-emerald-50 text-emerald-700'
@@ -346,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <NotificationDropdown
               isOpen={isNotifOpen}
-              onClose={() => setIsNotifOpen(false)}
+              onClose={handleCloseNotif}
               anchorRef={notifAnchorRef}
             />
           </div>
