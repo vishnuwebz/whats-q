@@ -207,9 +207,9 @@ fi
 echo -e "\n${YELLOW}[4/5] Deploying & Verifying Frontend Assets...${NC}"
 cd "$APP_DIR/frontend"
 
-# Ensure dist exists and has proper permissions
-$SUDO_CMD chmod -R 755 "$APP_DIR/frontend/dist" 2>/dev/null || true
-$SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
+# Ensure dist exists and has proper permissions for both ubuntu and www-data
+$SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
 # If build_output/index.html is present, copy it cleanly to dist
 if [ -d "$APP_DIR/frontend/build_output" ] && [ -f "$APP_DIR/frontend/build_output/index.html" ]; then
@@ -238,8 +238,8 @@ else
 fi
 
 cp "$APP_DIR/frontend/public/version.json" "$APP_DIR/frontend/dist/version.json" 2>/dev/null || true
-$SUDO_CMD chmod -R 755 "$APP_DIR/frontend/dist" 2>/dev/null || true
-$SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
 # 5. RESTART SERVICES
 echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"
