@@ -598,6 +598,8 @@ interface QiyamState {
   suppressionList: SuppressionRecord[];
   suppressionSearchQuery: string;
   setSuppressionSearchQuery: (query: string) => void;
+  fetchSuppressionList: () => Promise<SuppressionRecord[]>;
+  rebuildRecipientLists: () => void;
 
   roles: RoleDefinition[];
   activeRoleId: string;
@@ -1429,6 +1431,145 @@ const persistSuppressionList = (list: SuppressionRecord[]) => {
     localStorage.setItem('whatsq_suppression_list', JSON.stringify(list));
   } catch {}
 };
+
+export function buildRecipientListsHelper(
+  conversations: Conversation[],
+  leads: any[],
+  customers: any[],
+  currentLists: BulkRecipientList[] = [],
+  suppressionRecords: SuppressionRecord[] = []
+): BulkRecipientList[] {
+  const suppressionPhoneSuffixes = new Set<string>();
+  (suppressionRecords || []).forEach((s) => {
+    const digits = (s.phone || '').replace(/\D/g, '');
+    if (digits.length >= 10) suppressionPhoneSuffixes.add(digits.slice(-10));
+    else if (digits) suppressionPhoneSuffixes.add(digits);
+  });
+
+  const isSuppressed = (phone: string, conversationFlag: boolean) => {
+    if (conversationFlag) return true;
+    const digits = (phone || '').replace(/\D/g, '');
+    const suffix = digits.length >= 10 ? digits.slice(-10) : digits;
+    return suffix ? suppressionPhoneSuffixes.has(suffix) : false;
+  };
+
+  // Deduplicate conversations by phone number (keep newest / opted_out if any)
+  const convMap = new Map<string, BulkContact>();
+  (conversations || []).forEach((c) => {
+    if (!c.phone_number) return;
+    const clean = c.phone_number.replace(/\D/g, '');
+    const key = clean.slice(-10) || c.phone_number;
+    const optedOut = isSuppressed(c.phone_number, Boolean(c.is_opted_out || c.is_blocked));
+    const existing = convMap.get(key);
+    if (!existing || (!existing.optedOut && optedOut)) {
+      convMap.set(key, {
+        id: `conv-${c.id}`,
+        name: c.contact_name || c.phone_number,
+        phone: c.phone_number,
+        tag: c.category || 'WhatsApp Contact',
+        validWhatsApp: true,
+        optedOut,
+        lastActive: c.last_contact_date || 'Recently',
+        source: 'WhatsApp',
+      });
+    }
+  });
+  const conversationContacts = Array.from(convMap.values());
+
+  const leadContacts: BulkContact[] = (leads || [])
+    .filter((l: any) => l.phone)
+    .map((l: any) => ({
+      id: `lead-${l.id}`,
+      name: l.name,
+      phone: l.phone,
+      email: l.email,
+      tag: l.stage || 'Lead',
+      validWhatsApp: true,
+      optedOut: isSuppressed(l.phone, false),
+      lastActive: l.last_contact_str || 'Recently',
+      source: 'CRM Lead',
+    }));
+
+  const customerContacts: BulkContact[] = (customers || [])
+    .filter((c: any) => c.phone)
+    .map((c: any) => ({
+      id: `cust-${c.id}`,
+      name: c.name,
+      phone: c.phone,
+      email: c.email,
+      tag: 'Customer',
+      validWhatsApp: true,
+      optedOut: isSuppressed(c.phone, false),
+      lastActive: 'Recently',
+      source: 'CRM Customer',
+    }));
+
+  const defaultRecipientLists: BulkRecipientList[] = [];
+
+  if (conversationContacts.length > 0) {
+    defaultRecipientLists.push({
+      id: 'lst-conversations',
+      name: 'All WhatsApp Conversations',
+      description: `All active customer conversations (${conversationContacts.length} numbers)`,
+      type: 'Customers',
+      contactCount: conversationContacts.length,
+      validWhatsAppCount: conversationContacts.filter((c) => !c.optedOut).length,
+      tags: ['Active', 'Conversations'],
+      createdAt: new Date().toISOString(),
+      contactItems: conversationContacts,
+    });
+  }
+
+  if (leadContacts.length > 0) {
+    defaultRecipientLists.push({
+      id: 'lst-leads',
+      name: 'CRM Leads',
+      description: `Inbound and active CRM leads (${leadContacts.length} numbers)`,
+      type: 'Leads',
+      contactCount: leadContacts.length,
+      validWhatsAppCount: leadContacts.filter((c) => !c.optedOut).length,
+      tags: ['Leads', 'CRM'],
+      createdAt: new Date().toISOString(),
+      contactItems: leadContacts,
+    });
+  }
+
+  if (customerContacts.length > 0) {
+    defaultRecipientLists.push({
+      id: 'lst-customers',
+      name: 'CRM Customers',
+      description: `Registered CRM customers (${customerContacts.length} numbers)`,
+      type: 'Customers',
+      contactCount: customerContacts.length,
+      validWhatsAppCount: customerContacts.filter((c) => !c.optedOut).length,
+      tags: ['Customers', 'CRM'],
+      createdAt: new Date().toISOString(),
+      contactItems: customerContacts,
+    });
+  }
+
+  const deletedListIds = getDeletedRecipientListIds();
+  const activeDefaultLists = defaultRecipientLists.filter((l) => !deletedListIds.includes(l.id));
+
+  const storedCustomLists = getStoredCustomRecipientLists().filter((l) => !deletedListIds.includes(l.id));
+  const existingCustomLists = [
+    ...storedCustomLists,
+    ...(currentLists || []).filter(
+      (l) => !deletedListIds.includes(l.id) && (l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-') || (!['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)))
+    ),
+  ];
+  const uniqueCustomLists = Array.from(new Map(existingCustomLists.map((l) => [l.id, l])).values());
+
+  const finalDefaultLists = activeDefaultLists.map((def) => {
+    const edited = storedCustomLists.find((s) => s.id === def.id);
+    return edited ? { ...def, ...edited } : def;
+  });
+
+  return [
+    ...finalDefaultLists,
+    ...uniqueCustomLists.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)),
+  ];
+}
 
 const inFlightResubscribes = new Set<string>();
 
@@ -2843,7 +2984,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   bulkCampaigns: getStoredCache('bulk_campaigns', initialBulkCampaigns),
   draftCampaign: null,
   setDraftCampaign: (campaign) => set({ draftCampaign: campaign }),
-  bulkRecipientLists: getStoredCustomRecipientLists(),
+  bulkRecipientLists: buildRecipientListsHelper(
+    getStoredConversations(),
+    getStoredCache('leads', INITIAL_LEADS),
+    getStoredCache('customers', []),
+    getStoredCustomRecipientLists(),
+    getStoredSuppressionList()
+  ),
   selectedBroadcastListId: null,
   setSelectedBroadcastListId: (listId) => set({ selectedBroadcastListId: listId }),
   bulkScheduledMessages: getStoredScheduledMessages(),
@@ -3020,115 +3167,6 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       String(c.id) === String(selectedConversationId) ? { ...c, unread_count: 0 } : c
     );
 
-    // Build real recipient lists from actual store data (conversations, leads, customers)
-    const conversationContacts: BulkContact[] = sanitizedConversations
-      .filter((c) => c.phone_number)
-      .map((c) => ({
-        id: `conv-${c.id}`,
-        name: c.contact_name || c.phone_number,
-        phone: c.phone_number,
-        tag: c.category || 'WhatsApp Contact',
-        validWhatsApp: true,
-        optedOut: !!c.is_opted_out,
-        lastActive: c.last_contact_date || 'Recently',
-        source: 'WhatsApp',
-      }));
-
-    const leadContacts: BulkContact[] = (leads || [])
-      .filter((l: any) => l.phone)
-      .map((l: any) => ({
-        id: `lead-${l.id}`,
-        name: l.name,
-        phone: l.phone,
-        email: l.email,
-        tag: l.stage || 'Lead',
-        validWhatsApp: true,
-        optedOut: false,
-        lastActive: l.last_contact_str || 'Recently',
-        source: 'CRM Lead',
-      }));
-
-    const customerContacts: BulkContact[] = (customers || [])
-      .filter((c: any) => c.phone)
-      .map((c: any) => ({
-        id: `cust-${c.id}`,
-        name: c.name,
-        phone: c.phone,
-        email: c.email,
-        tag: 'Customer',
-        validWhatsApp: true,
-        optedOut: false,
-        lastActive: 'Recently',
-        source: 'CRM Customer',
-      }));
-
-    const defaultRecipientLists: BulkRecipientList[] = [];
-
-    if (conversationContacts.length > 0) {
-      defaultRecipientLists.push({
-        id: 'lst-conversations',
-        name: 'All WhatsApp Conversations',
-        description: `All active customer conversations (${conversationContacts.length} numbers)`,
-        type: 'Customers',
-        contactCount: conversationContacts.length,
-        validWhatsAppCount: conversationContacts.filter((c) => !c.optedOut).length,
-        tags: ['Active', 'Conversations'],
-        createdAt: new Date().toISOString(),
-        contactItems: conversationContacts,
-      });
-    }
-
-    if (leadContacts.length > 0) {
-      defaultRecipientLists.push({
-        id: 'lst-leads',
-        name: 'CRM Leads',
-        description: `Inbound and active CRM leads (${leadContacts.length} numbers)`,
-        type: 'Leads',
-        contactCount: leadContacts.length,
-        validWhatsAppCount: leadContacts.length,
-        tags: ['Leads', 'CRM'],
-        createdAt: new Date().toISOString(),
-        contactItems: leadContacts,
-      });
-    }
-
-    if (customerContacts.length > 0) {
-      defaultRecipientLists.push({
-        id: 'lst-customers',
-        name: 'CRM Customers',
-        description: `Registered CRM customers (${customerContacts.length} numbers)`,
-        type: 'Customers',
-        contactCount: customerContacts.length,
-        validWhatsAppCount: customerContacts.length,
-        tags: ['Customers', 'CRM'],
-        createdAt: new Date().toISOString(),
-        contactItems: customerContacts,
-      });
-    }
-
-    const deletedListIds = getDeletedRecipientListIds();
-    const activeDefaultLists = defaultRecipientLists.filter((l) => !deletedListIds.includes(l.id));
-
-    const storedCustomLists = getStoredCustomRecipientLists().filter((l) => !deletedListIds.includes(l.id));
-    const existingCustomLists = [
-      ...storedCustomLists,
-      ...(current.bulkRecipientLists || []).filter(
-        (l) => !deletedListIds.includes(l.id) && (l.id.startsWith('lst-imported-') || l.id.startsWith('lst-custom-') || (!['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)))
-      ),
-    ];
-    const uniqueCustomLists = Array.from(new Map(existingCustomLists.map((l) => [l.id, l])).values());
-
-    // Apply any saved edits to default lists
-    const finalDefaultLists = activeDefaultLists.map((def) => {
-      const edited = storedCustomLists.find((s) => s.id === def.id);
-      return edited ? { ...def, ...edited } : def;
-    });
-
-    const mergedRecipientLists = [
-      ...finalDefaultLists,
-      ...uniqueCustomLists.filter((l) => !['lst-conversations', 'lst-leads', 'lst-customers'].includes(l.id)),
-    ];
-
     // Reconcile real suppression list from backend and actual conversations
     const backendSuppression = (results[31]?.status === 'fulfilled' && Array.isArray((results[31] as any).value))
       ? (results[31] as any).value
@@ -3136,12 +3174,21 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     const unifiedSuppressionMap = new Map<string, SuppressionRecord>();
 
+    // 1. Seed from stored suppression list
+    getStoredSuppressionList().forEach((s) => {
+      const cleanPhone = (s.phone || '').replace(/\D/g, '');
+      const key = cleanPhone.slice(-10) || s.phone || s.id;
+      if (key) unifiedSuppressionMap.set(key, s);
+    });
+
+    // 2. Merge backend suppression records
     (backendSuppression || []).forEach((s: SuppressionRecord) => {
       const cleanPhone = (s.phone || '').replace(/\D/g, '');
       const key = cleanPhone.slice(-10) || s.phone || s.id;
-      unifiedSuppressionMap.set(key, s);
+      if (key) unifiedSuppressionMap.set(key, s);
     });
 
+    // 3. Merge conversations marked as opted out or blocked
     (sanitizedConversations || []).forEach((c) => {
       const cleanPhone = (c.phone_number || '').replace(/\D/g, '');
       const key = cleanPhone.slice(-10) || c.phone_number || String(c.id);
@@ -3164,17 +3211,39 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           notes: existing?.notes,
           conversation_id: c.id,
         });
-      } else {
-        unifiedSuppressionMap.delete(key);
       }
     });
 
     const suppressionList = Array.from(unifiedSuppressionMap.values());
     persistSuppressionList(suppressionList);
 
+    // 4. Synchronize suppression flags onto conversations so all duplicate conversations for suppressed numbers reflect it
+    const synchronizedConversations = sanitizedConversations.map((c) => {
+      const cleanPhone = (c.phone_number || '').replace(/\D/g, '');
+      const key = cleanPhone.slice(-10) || c.phone_number || String(c.id);
+      const supp = unifiedSuppressionMap.get(key);
+      if (supp) {
+        return {
+          ...c,
+          is_blocked: supp.type === 'blocked' ? true : c.is_blocked,
+          is_opted_out: supp.type !== 'blocked' ? true : c.is_opted_out,
+          suppression_reason: supp.reason || c.suppression_reason,
+        };
+      }
+      return c;
+    });
+
+    const mergedRecipientLists = buildRecipientListsHelper(
+      synchronizedConversations,
+      leads,
+      customers,
+      current.bulkRecipientLists,
+      suppressionList
+    );
+
     set({
       backendOnline: true,
-      conversations: sanitizedConversations,
+      conversations: synchronizedConversations,
       suppressionList,
       bulkRecipientLists: mergedRecipientLists,
       templates,
@@ -4200,6 +4269,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       };
     });
     get().addToast(`Added ${record.phone} to Suppression List`, 'warning');
+    get().rebuildRecipientLists();
 
     // Persist to backend database API
     try {
@@ -4315,6 +4385,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       });
 
       get().addToast(`Consent verified! ${targetName ? `${targetName} (${targetPhone})` : targetPhone} re-subscribed.`, 'success');
+      get().rebuildRecipientLists();
 
       // 2. Persist to backend API
       const convMatch = updatedConversations.find(
@@ -4393,6 +4464,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         conversations: updatedConversations,
       };
     });
+    get().rebuildRecipientLists();
   },
 
   applyRealtimeSuppression: (record, convId) => {
@@ -4460,6 +4532,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         conversations: updatedConvs,
       };
     });
+    get().rebuildRecipientLists();
   },
 
   isPhoneSuppressed: (phone) => {
@@ -4473,6 +4546,104 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   setSuppressionSearchQuery: (query: string) => set({ suppressionSearchQuery: query }),
+
+  fetchSuppressionList: async (): Promise<SuppressionRecord[]> => {
+    try {
+      const backendRecords = await qiyamApi.fetchSuppressionList();
+      const unifiedSuppressionMap = new Map<string, SuppressionRecord>();
+
+      // 1. Seed from localStorage
+      getStoredSuppressionList().forEach((s) => {
+        const cleanPhone = (s.phone || '').replace(/\D/g, '');
+        const key = cleanPhone.slice(-10) || s.phone || s.id;
+        if (key) unifiedSuppressionMap.set(key, s);
+      });
+
+      // 2. Merge backend records
+      if (Array.isArray(backendRecords) && backendRecords.length > 0) {
+        backendRecords.forEach((s) => {
+          const cleanPhone = (s.phone || '').replace(/\D/g, '');
+          const key = cleanPhone.slice(-10) || s.phone || s.id;
+          if (key) unifiedSuppressionMap.set(key, s);
+        });
+      }
+
+      // 3. Merge conversations marked as opted out or blocked
+      const state = get();
+      (state.conversations || []).forEach((c) => {
+        if (c.is_opted_out || c.is_blocked) {
+          const cleanPhone = (c.phone_number || '').replace(/\D/g, '');
+          const key = cleanPhone.slice(-10) || c.phone_number || String(c.id);
+          const existing = unifiedSuppressionMap.get(key);
+          unifiedSuppressionMap.set(key, {
+            id: existing?.id || `sup-conv-${c.id}`,
+            name: c.contact_name || existing?.name || 'Customer',
+            phone: c.phone_number,
+            type: c.is_blocked ? 'blocked' : (existing?.type || 'opt_out_stop'),
+            reason: c.suppression_reason || existing?.reason || (c.is_blocked ? 'Blocked by customer' : 'Customer opted out (STOP)'),
+            metaErrorCode: c.is_blocked ? (existing?.metaErrorCode || '131051') : undefined,
+            campaignName: existing?.campaignName,
+            date: existing?.date || c.last_contact_date || 'Recent',
+            timestamp: existing?.timestamp || Date.now(),
+            status: 'Suppressed',
+            canResubscribe: true,
+            source: existing?.source || (c.is_blocked ? 'WhatsApp Block' : 'Inbound WhatsApp Keyword (STOP)'),
+            notes: existing?.notes,
+            conversation_id: c.id,
+          });
+        }
+      });
+
+      const suppressionList = Array.from(unifiedSuppressionMap.values());
+      persistSuppressionList(suppressionList);
+
+      const synchronizedConversations = (state.conversations || []).map((c) => {
+        const cleanPhone = (c.phone_number || '').replace(/\D/g, '');
+        const key = cleanPhone.slice(-10) || c.phone_number || String(c.id);
+        const supp = unifiedSuppressionMap.get(key);
+        if (supp) {
+          return {
+            ...c,
+            is_blocked: supp.type === 'blocked' ? true : c.is_blocked,
+            is_opted_out: supp.type !== 'blocked' ? true : c.is_opted_out,
+            suppression_reason: supp.reason || c.suppression_reason,
+          };
+        }
+        return c;
+      });
+
+      const updatedRecipientLists = buildRecipientListsHelper(
+        synchronizedConversations,
+        state.leads,
+        state.customers,
+        state.bulkRecipientLists,
+        suppressionList
+      );
+
+      set({
+        suppressionList,
+        conversations: synchronizedConversations,
+        bulkRecipientLists: updatedRecipientLists,
+      });
+
+      return suppressionList;
+    } catch (err) {
+      console.warn('[Store] fetchSuppressionList error:', err);
+      return get().suppressionList;
+    }
+  },
+
+  rebuildRecipientLists: () => {
+    const state = get();
+    const lists = buildRecipientListsHelper(
+      state.conversations,
+      state.leads,
+      state.customers,
+      state.bulkRecipientLists,
+      state.suppressionList
+    );
+    set({ bulkRecipientLists: lists });
+  },
 
   createScheduledMessage: (msg: any) => {
     const nowFull =

@@ -71,7 +71,30 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     customers,
     suppressionSearchQuery,
     setSuppressionSearchQuery,
+    fetchSuppressionList,
+    rebuildRecipientLists,
   } = useQiyamStore();
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    // Sync live suppression list and audience lists immediately on mount
+    fetchSuppressionList().catch((err) => console.warn('[BulkRecipientListsView] fetchSuppressionList error:', err));
+    rebuildRecipientLists();
+  }, []);
+
+  const handleLiveSync = async () => {
+    setIsSyncing(true);
+    try {
+      await fetchSuppressionList();
+      rebuildRecipientLists();
+      addToast('Live data synced successfully from backend', 'success');
+    } catch (e: any) {
+      addToast('Sync failed: ' + (e?.message || 'Network error'), 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // View mode tab state - auto switch to suppression if routed via /bulk/suppression or prop
   const isSuppressionTab = initialViewMode === 'suppression' || activeTab === 'bulk-suppression';
@@ -1259,26 +1282,43 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
             </button>
           </div>
 
-          {viewMode === 'suppression' && (
-            <div className="hidden sm:flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportSuppressionCsv}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
-              >
-                <FileDown className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export Audit CSV</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddManualSuppressionOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Add Opt-Out / Block</span>
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleLiveSync}
+              disabled={isSyncing}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer shadow-2xs active:scale-95 ${
+                isSyncing
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-emerald-700 hover:border-emerald-300'
+              }`}
+              title="Synchronize live suppression & audience data directly from the server"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Live Sync'}</span>
+            </button>
+
+            {viewMode === 'suppression' && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleExportSuppressionCsv}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export Audit CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddManualSuppressionOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Opt-Out / Block</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

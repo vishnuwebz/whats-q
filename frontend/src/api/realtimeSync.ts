@@ -305,11 +305,7 @@ class RealtimeSyncManager {
         if (event.data && event.data.id) {
           removeDeletedConversationId(event.data.id);
           store.applyRealtimeConversation(event.data);
-          if (event.data.is_opted_out === false && event.data.is_blocked === false) {
-            if (store.isPhoneSuppressed(event.data.phone_number || '')) {
-              store.applyRealtimeResubscribe(event.data.phone_number, event.data.id);
-            }
-          } else if ((event.data.is_opted_out === true || event.data.is_blocked === true) && event.data.phone_number) {
+          if ((event.data.is_opted_out === true || event.data.is_blocked === true) && event.data.phone_number) {
             store.applyRealtimeSuppression({
               id: `sup-conv-${event.data.id}`,
               name: event.data.contact_name || 'Customer',
