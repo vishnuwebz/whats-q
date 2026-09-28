@@ -10,7 +10,7 @@ import {
   ExternalLink, Sparkles, AlertCircle, ArrowRight, CornerDownRight,
   Move, Sliders, IndianRupee, RefreshCw, Eye, BookOpen, Info,
   ShieldCheck, ShoppingCart, Send, Compass, PanelRightClose, PanelRightOpen, Globe,
-  Upload, Link2, Search
+  Upload, Link2, Search, GraduationCap
 } from 'lucide-react';
 import { generateWorkflowFromTemplate } from '@/utils/templateWorkflowGenerator';
 import { SERVICE_BOOKING_FLOW_GROUPS, normalizeToFlowGroups, autoAdjustFlowGroupGaps } from '@/utils/serviceBookingFlow';
@@ -59,6 +59,320 @@ export interface FlowGroup {
   y: number;
   items: GroupItem[];
 }
+
+export interface BlockKnowledge {
+  name: string;
+  tagline: string;
+  badge: string;
+  badgeColor: string;
+  description: string;
+  useCase: string;
+  tip: string;
+}
+
+export const getBlockKnowledge = (label: string, category: string): BlockKnowledge => {
+  const lbl = (label || '').toLowerCase();
+  const cat = (category || '').toUpperCase();
+
+  // INPUTS category
+  if (cat === 'INPUTS') {
+    if (lbl.includes('number') || lbl.includes('quantity')) {
+      return {
+        name: 'Number / Quantity Input',
+        tagline: 'Numeric Validation & Capture',
+        badge: 'Validated Input',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Captures numeric data from the customer (e.g. quantity of ACs, PIN code, room count) and validates that the reply contains only numbers.',
+        useCase: 'Best for: order quantities, area PIN code, number of appliances, age.',
+        tip: 'Prevents non-numeric customer replies before proceeding to quotation or checkout.'
+      };
+    }
+    if (lbl.includes('email')) {
+      return {
+        name: 'Email Address Collector',
+        tagline: 'RFC Format Email Validation',
+        badge: 'Validated Email',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Prompts the customer for their official email address and verifies correct format before saving to CRM and dispatching PDF invoices.',
+        useCase: 'Best for: warranty registrations, invoice dispatch, email notifications.',
+        tip: 'Automatically syncs to Customer CRM and Deal records.'
+      };
+    }
+    if (lbl.includes('website') || lbl.includes('url')) {
+      return {
+        name: 'Website / URL Collector',
+        tagline: 'Web Link Verification',
+        badge: 'URL Input',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Prompts customer to provide a company website or social profile URL for lead qualification and business onboarding.',
+        useCase: 'Best for: B2B partner applications, vendor registrations, portfolio links.',
+        tip: 'Automatically normalizes links with https://.'
+      };
+    }
+    if (lbl.includes('date')) {
+      return {
+        name: 'Date Picker Input',
+        tagline: 'Appointment & Delivery Date',
+        badge: 'Scheduling',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Collects the customer’s preferred date for appointments, technician visits, or delivery with smart natural language support.',
+        useCase: 'Best for: booking visits, event RSVP, scheduled maintenance.',
+        tip: 'Integrates with Google Calendar and technician shift rosters.'
+      };
+    }
+    if (lbl.includes('time')) {
+      return {
+        name: 'Time Window Selector',
+        tagline: 'Service Time Slot Picker',
+        badge: 'Scheduling',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Captures the customer’s preferred hour or arrival window (e.g. 10:00 AM - 12:00 PM) to assign available field specialists.',
+        useCase: 'Best for: home service arrival windows, doctor consultations, calls.',
+        tip: 'Prevents specialist double-booking by locking time slots.'
+      };
+    }
+    if (lbl.includes('phone')) {
+      return {
+        name: 'Phone Number Collector',
+        tagline: 'Alternative Contact Number',
+        badge: 'Contact Info',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Captures an alternate mobile or WhatsApp number with international country-code validation.',
+        useCase: 'Best for: secondary contact on site, emergency contact, supervisor phone.',
+        tip: 'Validated numbers can receive automated SMS/WhatsApp alerts.'
+      };
+    }
+    if (lbl.includes('file')) {
+      return {
+        name: 'Document / Photo Request',
+        tagline: 'Customer Media Upload Request',
+        badge: 'Attachment',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Prompts the customer to upload a document, invoice copy, government ID, or photo of equipment damage.',
+        useCase: 'Best for: KYC verification, repair inspection photos, warranty claims.',
+        tip: 'Attachments are stored in media storage and linked to conversation.'
+      };
+    }
+    return {
+      name: 'Text Input Collector',
+      tagline: 'Customer Text Response Capture',
+      badge: 'User Input',
+      badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+      description: 'Prompts the customer to type a text response (e.g., custom address, service notes, feedback) and saves it into a contact variable.',
+      useCase: 'Best for: capturing special delivery instructions, problem descriptions, and custom remarks.',
+      tip: 'Variables can be reused in subsequent cards using {variable_name}.'
+    };
+  }
+
+  // CHOICES category
+  if (cat === 'CHOICES') {
+    if (lbl.includes('list')) {
+      return {
+        name: 'Interactive List Menu',
+        tagline: 'WhatsApp Bottom-Sheet Drawer (up to 10 Rows)',
+        badge: 'Interactive List',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+        description: 'Opens an elegant slide-up list menu in WhatsApp with section titles, row descriptions, and up to 10 selectable items.',
+        useCase: 'Best for: large product catalogs, multiple branch locations, full service menus.',
+        tip: 'Great when you have more than 3 options to avoid chat clutter.'
+      };
+    }
+    return {
+      name: 'Quick-Reply Choice Buttons',
+      tagline: 'Interactive WhatsApp Quick Replies (1-3 Options)',
+      badge: 'Interactive Buttons',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+      description: 'Displays tap-to-select buttons directly in WhatsApp. Customers click a button to immediately trigger the designated next group card.',
+      useCase: 'Best for: Yes/No confirmation, service categories, slot choices.',
+      tip: 'Click any option in the Inspector to choose which group card it routes to!'
+    };
+  }
+
+  // PAYMENTS category
+  if (cat === 'PAYMENTS' || lbl.includes('stripe') || lbl.includes('payment') || lbl.includes('checkout')) {
+    return {
+      name: 'Stripe & UPI Payment Gateway',
+      tagline: 'Secure Online Payment Collection',
+      badge: 'Payment Gateway',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Generates instant, authenticated checkout links for UPI (Google Pay, PhonePe, Paytm), credit/debit cards, and Stripe with real-time webhooks.',
+      useCase: 'Best for: slot booking token advances (₹99-₹499), AMC renewals, product purchases.',
+      tip: 'Routes automatically to Success Card or Failure Card based on payment outcome.'
+    };
+  }
+
+  // LOGIC category
+  if (cat === 'LOGIC') {
+    if (lbl.includes('condition')) {
+      return {
+        name: 'Condition & Smart Branching',
+        tagline: 'Dynamic Rules-Based Routing',
+        badge: 'Flow Logic',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+        description: 'Branches conversation flow based on customer variables, location, VIP tier, previous answers, or current business hours.',
+        useCase: 'Best for: routing VIP customers, service availability check by pincode.',
+        tip: 'Create If/Else logic without writing any programming code.'
+      };
+    }
+    return {
+      name: 'AI Copilot Handover',
+      tagline: 'Gemini AI Assistant Integration',
+      badge: 'AI Smart Agent',
+      badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+      description: 'Transfers unscripted or complex customer questions to the AI Copilot grounded on your company knowledge base.',
+      useCase: 'Best for: free-form FAQ answering, intelligent customer assistance.',
+      tip: 'AI uses your company workspace knowledge articles for 100% accurate responses.'
+    };
+  }
+
+  // INTEGRATIONS category
+  if (cat === 'INTEGRATIONS') {
+    if (lbl.includes('sheets')) {
+      return {
+        name: 'Google Sheets Integration',
+        tagline: 'Instant Spreadsheet Row Appender',
+        badge: 'Google Sheets',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Appends customer responses, contact details, and booking times as new rows in your live Google Spreadsheet in real-time.',
+        useCase: 'Best for: team lead tracking, attendance logs, shared booking sheets.',
+        tip: 'Requires zero API code—syncs in milliseconds.'
+      };
+    }
+    if (lbl.includes('webhook')) {
+      return {
+        name: 'Custom Webhook Dispatcher',
+        tagline: 'External API REST Integration',
+        badge: 'REST Webhook',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Sends a secure HTTP POST JSON payload to your custom backend, internal CRM, or billing server when customer reaches this step.',
+        useCase: 'Best for: custom ERP integration, inventory reservation, order creation.',
+        tip: 'Includes full conversation payload and contact variable map.'
+      };
+    }
+    if (lbl.includes('email')) {
+      return {
+        name: 'Email Notification Dispatcher',
+        tagline: 'Automated Team Alert Email',
+        badge: 'SMTP Email',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Sends automated HTML email notifications to managers, store staff, or technicians when high-priority bookings occur.',
+        useCase: 'Best for: instant manager alerts, emergency service requests.',
+        tip: 'Configure recipients and custom email templates in settings.'
+      };
+    }
+    if (lbl.includes('zapier')) {
+      return {
+        name: 'Zapier Automation Trigger',
+        tagline: 'Connect to 5,000+ Business Apps',
+        badge: 'Zapier',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+        description: 'Triggers a Zapier Zap with live conversation data to automate Salesforce, HubSpot, Slack, Trello, and more.',
+        useCase: 'Best for: enterprise CRM updates, team Slack alerts, task creation.',
+        tip: 'Paste your Zapier Webhook URL in the inspector to activate.'
+      };
+    }
+    if (lbl.includes('make')) {
+      return {
+        name: 'Make.com Scenario Trigger',
+        tagline: 'Visual Multi-Step Webhook Processing',
+        badge: 'Make.com',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+        description: 'Dispatches structured payloads to Make.com (Integromat) scenarios for complex multi-app data processing.',
+        useCase: 'Best for: multi-database syncing, complex invoice generation, Airtable.',
+        tip: 'Ideal for visual workflow builders who use Make.'
+      };
+    }
+    if (lbl.includes('pabbly')) {
+      return {
+        name: 'Pabbly Connect Webhook',
+        tagline: 'Indian & Global App Automation',
+        badge: 'Pabbly',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Triggers Pabbly Connect webhooks to connect WhatsApp leads with Indian payment gateways, local ERPs, and SMS services.',
+        useCase: 'Best for: Razorpay/Instamojo sync, local CRM updates, SMS alerts.',
+        tip: 'Affordable, reliable webhook automation for Indian businesses.'
+      };
+    }
+  }
+
+  // MESSAGES category (default)
+  if (lbl.includes('image')) {
+    return {
+      name: 'Image / Photo Card',
+      tagline: 'High-Resolution Visual Media',
+      badge: 'Media (JPG/PNG)',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Displays promotional banners, product photos, service checklists, and before/after pictures directly in the chat with optional captions.',
+      useCase: 'Best for: marketing banners, product catalogs, service proof photos.',
+      tip: 'Supports JPG, PNG, and WebP up to 5MB.'
+    };
+  }
+  if (lbl.includes('video') || lbl.includes('youtube')) {
+    return {
+      name: 'Video Presentation Block',
+      tagline: 'Engaging MP4 Video Showcase',
+      badge: 'Media (MP4)',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Sends MP4 product demo videos, video tutorials, or facility walkthroughs that customers can stream or play inside WhatsApp.',
+      useCase: 'Best for: onboarding videos, product demonstrations, customer testimonials.',
+      tip: 'Recommended under 16MB for instant streaming on mobile networks.'
+    };
+  }
+  if (lbl.includes('media')) {
+    return {
+      name: 'Rich Media Card',
+      tagline: 'Multi-Format Visual Attachment',
+      badge: 'Rich Media',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Combines an image or video banner with formatted text, headline, and contextual call-to-action buttons in a single bubble.',
+      useCase: 'Best for: featured offers, event invites, service packages.',
+      tip: 'Delivers higher click-through rates than plain text messages.'
+    };
+  }
+  if (lbl.includes('file')) {
+    return {
+      name: 'Document & PDF Delivery',
+      tagline: 'Downloadable File & Invoice Attachment',
+      badge: 'Document (PDF)',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Delivers official PDF rate cards, brochures, contracts, and GST invoices for easy one-tap viewing and offline download.',
+      useCase: 'Best for: quotation summaries, PDF rate cards, terms of service.',
+      tip: 'Customers can preview PDFs immediately on both iOS and Android.'
+    };
+  }
+  if (lbl.includes('audio') || lbl.includes('music')) {
+    return {
+      name: 'Voice Note & Audio Message',
+      tagline: 'Authentic Human Voice Recording',
+      badge: 'Voice Note',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Sends voice recordings and push-to-talk audio clips that look and play like real voice notes recorded on a phone.',
+      useCase: 'Best for: VIP CEO welcome notes, personal follow-ups, accessibility.',
+      tip: 'Voice notes build 3x higher trust compared to plain robotic text.'
+    };
+  }
+  if (lbl.includes('location')) {
+    return {
+      name: 'Interactive GPS Location Pin',
+      tagline: 'Store Address & One-Tap Navigation',
+      badge: 'Google Maps Pin',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      description: 'Shares an interactive Google Maps location pin with coordinates, branch name, address, and instant turn-by-turn driving directions.',
+      useCase: 'Best for: clinic address, retail store branches, workshop drop-off points.',
+      tip: 'Tapping opens Google Maps / Apple Maps navigation instantly.'
+    };
+  }
+
+  return {
+    name: 'Text Message Block',
+    tagline: 'Standard WhatsApp Formatted Message',
+    badge: 'Native Message',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    description: 'Sends WhatsApp text with support for bold (*text*), italics (_text_), emojis, and personalized dynamic tags like {STAT_NAME}.',
+    useCase: 'Best for: greetings, explanations, terms of service, and direct responses.',
+    tip: 'Keep messages concise and split longer content into multiple cards.'
+  };
+};
 
 export const WorkflowBuilderView: React.FC = () => {
   const {
@@ -386,6 +700,333 @@ export const WorkflowBuilderView: React.FC = () => {
   const handleAutoAlignGaps = () => {
     setGroups((prev) => autoAdjustFlowGroupGaps(prev));
     addToast('Group layout & vertical gaps organized automatically!', 'success');
+  };
+
+  // Create New Workflow Modal State
+  const [isCreateWorkflowModalOpen, setIsCreateWorkflowModalOpen] = useState(false);
+  const [newWorkflowNameInput, setNewWorkflowNameInput] = useState('');
+  const [newWorkflowTemplateChoice, setNewWorkflowTemplateChoice] = useState<
+    'blank' | 'service_booking' | 'ecommerce' | 'university' | 'support_faq'
+  >('blank');
+
+  // Beginner Masterclass / Tutorial Guide Modal State
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
+  const [tutorialActiveTab, setTutorialActiveTab] = useState<'concepts' | 'steps' | 'tips'>('concepts');
+
+  // Hover Tooltip Popover State for Block Library
+  const [hoveredBlock, setHoveredBlock] = useState<{
+    label: string;
+    category: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Open Create New Workflow Modal
+  const handleOpenCreateNewWorkflowModal = () => {
+    const nextIndex = (workflows?.length || 0) + 1;
+    setNewWorkflowNameInput(`Custom Chatbot Journey #${nextIndex}`);
+    setNewWorkflowTemplateChoice('blank');
+    setIsCreateWorkflowModalOpen(true);
+  };
+
+  // Confirm and initialize new workflow
+  const handleConfirmCreateNewWorkflow = async () => {
+    const finalTitle = newWorkflowNameInput.trim() || `Custom WhatsApp Flow #${(workflows?.length || 0) + 1}`;
+
+    // Safely auto-save the previous active workflow to database so work is never lost
+    try {
+      if (groups.length > 0 && botTitle) {
+        await saveWorkflow({
+          id: activeWorkflowId || undefined,
+          name: botTitle,
+          description: `Interactive WhatsApp bot flow with ${groups.length} node groups and configured elements.`,
+          trigger_type: 'New WhatsApp Message',
+          nodes: groups,
+        });
+      }
+    } catch (err) {
+      console.warn('Auto-save prior workflow notice:', err);
+    }
+
+    // Set new workflow identity
+    setActiveWorkflowId(null);
+    setActiveWorkflowTitle(finalTitle);
+    setBotTitle(finalTitle);
+
+    let starterGroups: FlowGroup[] = [];
+    if (newWorkflowTemplateChoice === 'service_booking') {
+      starterGroups = autoAdjustFlowGroupGaps(SERVICE_BOOKING_FLOW_GROUPS);
+    } else if (newWorkflowTemplateChoice === 'ecommerce') {
+      starterGroups = autoAdjustFlowGroupGaps([
+        {
+          id: 'group-1',
+          title: 'Group #1 - Festival Catalog & Welcome',
+          x: 40,
+          y: 40,
+          items: [
+            {
+              id: 'item-1-1',
+              type: 'message',
+              content: '🛍️ *Welcome to our WhatsApp Store!*\nHello {STAT_NAME}! What would you like to explore today?'
+            },
+            {
+              id: 'item-1-2',
+              type: 'choice',
+              question: 'Choose an option:',
+              options: [
+                { label: '🔥 Best Sellers (50% Off)', targetGroup: 'group-2' },
+                { label: '📦 Track My Order', targetGroup: 'group-3' },
+                { label: '💬 Talk to Sales Team', targetGroup: 'group-4' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'group-2',
+          title: 'Group #2 - Best Sellers & Advance Token',
+          x: 440,
+          y: 40,
+          items: [
+            {
+              id: 'item-2-1',
+              type: 'message',
+              content: 'Trending festive items on sale! Pay a small ₹99 advance token to lock your deal.'
+            },
+            {
+              id: 'item-2-2',
+              type: 'payment',
+              content: 'Deal Lock Token',
+              provider: 'UPI',
+              currency: 'INR',
+              amount: 99,
+              quantity: 1,
+              varName: 'order_token',
+              successTarget: 'group-5'
+            }
+          ]
+        },
+        {
+          id: 'group-3',
+          title: 'Group #3 - Order Tracking',
+          x: 440,
+          y: 380,
+          items: [
+            {
+              id: 'item-3-1',
+              type: 'message',
+              content: '📦 Send your 6-digit Order ID to get live dispatch status and courier tracking.'
+            }
+          ]
+        },
+        {
+          id: 'group-4',
+          title: 'Group #4 - Support Handover',
+          x: 440,
+          y: 560,
+          items: [
+            {
+              id: 'item-4-1',
+              type: 'message',
+              content: 'Connecting you with our retail team now. An agent will reply momentarily.'
+            }
+          ]
+        },
+        {
+          id: 'group-5',
+          title: 'Group #5 - Order Confirmed',
+          x: 840,
+          y: 40,
+          items: [
+            {
+              id: 'item-5-1',
+              type: 'message',
+              content: '✅ Payment Received! Your order token is locked. Official receipt sent to your WhatsApp.'
+            }
+          ]
+        }
+      ]);
+    } else if (newWorkflowTemplateChoice === 'university') {
+      starterGroups = autoAdjustFlowGroupGaps([
+        {
+          id: 'group-1',
+          title: 'Group #1 - Admissions Welcome',
+          x: 40,
+          y: 40,
+          items: [
+            {
+              id: 'item-1-1',
+              type: 'message',
+              content: '🎓 Welcome to *University Admissions*! Please select your program level:'
+            },
+            {
+              id: 'item-1-2',
+              type: 'choice',
+              question: 'Select Level:',
+              options: [
+                { label: '📘 Undergraduate (B.Tech / BBA)', targetGroup: 'group-2' },
+                { label: '📗 Postgraduate (M.Tech / MBA)', targetGroup: 'group-2' },
+                { label: '📞 Request Counselor Callback', targetGroup: 'group-3' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'group-2',
+          title: 'Group #2 - Application Fee Payment',
+          x: 440,
+          y: 40,
+          items: [
+            {
+              id: 'item-2-1',
+              type: 'payment',
+              content: 'Application Form Fee',
+              provider: 'STRIPE',
+              currency: 'INR',
+              amount: 500,
+              quantity: 1,
+              varName: 'application_fee',
+              buttonLabel: 'Pay Application Fee (₹500)',
+              successTarget: 'group-4'
+            }
+          ]
+        },
+        {
+          id: 'group-3',
+          title: 'Group #3 - Counselor Callback',
+          x: 440,
+          y: 380,
+          items: [
+            {
+              id: 'item-3-1',
+              type: 'message',
+              content: 'Our admissions counselor will call you within 30 minutes.'
+            }
+          ]
+        },
+        {
+          id: 'group-4',
+          title: 'Group #4 - Application Submitted',
+          x: 840,
+          y: 40,
+          items: [
+            {
+              id: 'item-4-1',
+              type: 'message',
+              content: '🎉 Application Fee Paid! Your application number has been generated.'
+            }
+          ]
+        }
+      ]);
+    } else if (newWorkflowTemplateChoice === 'support_faq') {
+      starterGroups = autoAdjustFlowGroupGaps([
+        {
+          id: 'group-1',
+          title: 'Group #1 - 24/7 Support Menu',
+          x: 40,
+          y: 40,
+          items: [
+            {
+              id: 'item-1-1',
+              type: 'message',
+              content: '👋 Welcome to Customer Support. How can we help you right now?'
+            },
+            {
+              id: 'item-1-2',
+              type: 'choice',
+              question: 'Choose assistance:',
+              options: [
+                { label: '❓ Instant Answers / FAQs', targetGroup: 'group-2' },
+                { label: '🛠️ Report a Problem', targetGroup: 'group-3' },
+                { label: '👨‍💼 Speak to Live Human Agent', targetGroup: 'group-4' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'group-2',
+          title: 'Group #2 - Common FAQs',
+          x: 440,
+          y: 40,
+          items: [
+            {
+              id: 'item-2-1',
+              type: 'message',
+              content: '📖 *Frequently Asked Questions:*\n1. Business Hours: 9 AM - 8 PM\n2. Service warranty: 30 days\n3. 100% money back guarantee.'
+            }
+          ]
+        },
+        {
+          id: 'group-3',
+          title: 'Group #3 - Ticket Created',
+          x: 440,
+          y: 320,
+          items: [
+            {
+              id: 'item-3-1',
+              type: 'message',
+              content: 'Ticket #TK-9102 logged. A technician will review and reply within 15 minutes.'
+            }
+          ]
+        },
+        {
+          id: 'group-4',
+          title: 'Group #4 - Agent Handover',
+          x: 440,
+          y: 520,
+          items: [
+            {
+              id: 'item-4-1',
+              type: 'message',
+              content: '🔔 Notification sent to live agent team. An agent is joining the chat.'
+            }
+          ]
+        }
+      ]);
+    } else {
+      // Clean Blank Initial Group
+      starterGroups = [
+        {
+          id: 'group-1',
+          title: 'Group #1 - Welcome & Trigger',
+          x: 50,
+          y: 50,
+          items: [
+            {
+              id: 'item-1-1',
+              type: 'message',
+              content: `👋 *Welcome to our WhatsApp Service!*\nHello {STAT_NAME}! How can we assist you today?`
+            },
+            {
+              id: 'item-1-2',
+              type: 'choice',
+              question: 'Please choose an option:',
+              options: [
+                { label: '1️⃣ Learn More', targetGroup: 'group-2' },
+                { label: '2️⃣ Contact Support' }
+              ]
+            }
+          ]
+        }
+      ];
+    }
+
+    setGroups(starterGroups);
+    setSelectedGroupId(starterGroups[0]?.id || 'group-1');
+    setActiveWorkflowGroups(starterGroups);
+    setIsCreateWorkflowModalOpen(false);
+
+    // Save initial version of the new workflow so it appears in Workflows list
+    await saveWorkflow({
+      name: finalTitle,
+      description: `Interactive WhatsApp bot flow with ${starterGroups.length} node groups and configured elements.`,
+      trigger_type: 'New WhatsApp Message',
+      nodes: starterGroups,
+    });
+
+    addToast(`🎉 Initialized new workflow "${finalTitle}"!`, 'success');
+
+    // Automatically open the friendly beginner masterclass guide
+    setIsTutorialModalOpen(true);
   };
 
   // Active Selected Node & Drag-and-Drop state
@@ -802,7 +1443,7 @@ export const WorkflowBuilderView: React.FC = () => {
 
     return (
       <button
-        key={label}
+        key={`${category}-${label}`}
         type="button"
         draggable={true}
         onDragStart={(e) => {
@@ -815,7 +1456,17 @@ export const WorkflowBuilderView: React.FC = () => {
           setDragOverGroupId(null);
         }}
         onClick={() => handleAddBlockToGroup(label, category)}
-        className={`${fullWidth ? 'w-full p-2.5' : 'p-2'} rounded-xl border border-slate-200 bg-white ${colorStyles} flex items-center gap-1.5 transition text-[11px] font-medium shadow-2xs cursor-grab active:cursor-grabbing select-none hover:shadow-md hover:scale-[1.02] active:scale-95 group/btn`}
+        onMouseEnter={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setHoveredBlock({
+            label,
+            category,
+            x: rect.left,
+            y: rect.top + rect.height / 2,
+          });
+        }}
+        onMouseLeave={() => setHoveredBlock(null)}
+        className={`${fullWidth ? 'w-full p-2.5' : 'p-2'} rounded-xl border border-slate-200 bg-white ${colorStyles} flex items-center gap-1.5 transition text-[11px] font-medium shadow-2xs cursor-grab active:cursor-grabbing select-none hover:shadow-md hover:scale-[1.02] active:scale-95 group/btn relative`}
         title={`Click to add to "${selectedGroup?.title || 'selected node'}", or Drag & Drop directly onto any node card`}
       >
         <Icon className="w-3.5 h-3.5 text-slate-500 group-hover/btn:text-emerald-600 shrink-0 transition-colors" />
@@ -1775,8 +2426,8 @@ export const WorkflowBuilderView: React.FC = () => {
         <Header
           title="Workflow Builder"
           subtitle="Design interactive WhatsApp chatbot flows, visual group canvas, and keyword trigger rules."
-          primaryActionLabel={activeMode === 'canvas' ? '+ Add Group' : '+ Create Rule'}
-          onPrimaryAction={activeMode === 'canvas' ? handleAddGroup : () => setIsNewRuleModalOpen(true)}
+          primaryActionLabel={activeMode === 'canvas' ? 'Create New Workflow' : 'Create Rule'}
+          onPrimaryAction={activeMode === 'canvas' ? handleOpenCreateNewWorkflowModal : () => setIsNewRuleModalOpen(true)}
         />
       )}
 
@@ -1820,6 +2471,17 @@ export const WorkflowBuilderView: React.FC = () => {
 
         {/* Action Buttons: Full Screen, Templates & Go To Workflows */}
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 justify-end">
+          {/* Beginner Guide Masterclass Button */}
+          <button
+            type="button"
+            onClick={() => setIsTutorialModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+            title="Interactive Beginner Guide & Workflow Masterclass"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>Beginner Guide</span>
+          </button>
+
           {/* Full Screen Mode Toggle Button */}
           <button
             type="button"
@@ -1849,7 +2511,7 @@ export const WorkflowBuilderView: React.FC = () => {
           <button
             onClick={() => setActiveTab('automation-workflows')}
             className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-            title="View all saved workflows"
+            title="View all saved workflows in workspace"
           >
             <Layers className="w-4 h-4 text-emerald-600" />
             <span>Workflows List</span>
@@ -1888,11 +2550,12 @@ export const WorkflowBuilderView: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={handleAddGroup}
+              onClick={handleOpenCreateNewWorkflowModal}
               className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
+              title="Create a new workflow journey"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Add Group</span>
+              <span>Create New Workflow</span>
             </button>
           )}
         </div>
@@ -5028,6 +5691,476 @@ export const WorkflowBuilderView: React.FC = () => {
                   <span>{isDeletingWorkflow ? 'Deleting...' : 'Delete Workflow'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FLOATING HOVER TOOLTIP POPOVER (Block Library Info) */}
+      {/* ========================================================================= */}
+      {hoveredBlock && (() => {
+        const knowledge = getBlockKnowledge(hoveredBlock.label, hoveredBlock.category);
+        return (
+          <div
+            style={{
+              top: Math.max(16, Math.min(window.innerHeight - 260, hoveredBlock.y - 90)),
+              left: Math.max(16, hoveredBlock.x - 330),
+            }}
+            className="fixed z-[9999] w-80 pointer-events-none transition-all duration-150 animate-in fade-in zoom-in-95"
+          >
+            <div className="bg-slate-900/95 text-white backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-slate-700/80 space-y-2.5">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-sm text-white">{knowledge.name}</span>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${knowledge.badgeColor}`}>
+                  {knowledge.badge}
+                </span>
+              </div>
+              <p className="text-[11px] font-semibold text-emerald-400">
+                {knowledge.tagline}
+              </p>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                {knowledge.description}
+              </p>
+              <div className="pt-2 border-t border-slate-800/80 space-y-1.5 text-[10px]">
+                <div className="text-amber-300 font-medium flex items-start gap-1.5 leading-snug">
+                  <span className="shrink-0 font-bold">🎯</span>
+                  <span>{knowledge.useCase}</span>
+                </div>
+                {knowledge.tip && (
+                  <div className="text-slate-400 italic flex items-start gap-1.5 leading-snug">
+                    <span className="shrink-0">💡</span>
+                    <span>{knowledge.tip}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ========================================================================= */}
+      {/* CREATE NEW WORKFLOW MODAL */}
+      {/* ========================================================================= */}
+      {isCreateWorkflowModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white relative">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">Create New WhatsApp Flow</h3>
+                    <p className="text-xs text-white/80">Launch a fresh automated conversational journey or start from a tested blueprint</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateWorkflowModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 text-slate-700">
+              {/* Safety Preservation Alert Banner */}
+              <div className="p-4 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl flex items-start gap-3.5 shadow-xs">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-300">
+                  <ShieldCheck className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div className="flex-1 text-xs">
+                  <div className="font-bold text-emerald-950 flex items-center gap-2">
+                    <span>Work Safely Preserved</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800 text-[10px] font-semibold">Auto-Saved</span>
+                  </div>
+                  <p className="text-emerald-800 mt-1 leading-relaxed">
+                    Your current workflow <strong className="font-bold text-emerald-950">"{botTitle}"</strong> with <strong className="font-bold text-emerald-950">{groups.length} node groups</strong> has been safely saved to your workspace database.
+                  </p>
+                  <div className="mt-2.5 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreateWorkflowModalOpen(false);
+                        setActiveTab('automation-workflows');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-white hover:bg-emerald-100/60 px-3 py-1.5 rounded-lg border border-emerald-300/70 shadow-2xs transition-all cursor-pointer"
+                    >
+                      <span>View in Workflows List</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                    <span className="text-[11px] text-emerald-600">You can return to it anytime!</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Title Input */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  New Workflow Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newWorkflowNameInput}
+                  onChange={(e) => setNewWorkflowNameInput(e.target.value)}
+                  placeholder="e.g., Festival Discount & Product Inquiries"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 font-medium text-slate-800 transition"
+                />
+                <p className="text-[11px] text-slate-500">
+                  This title will be displayed in your Workflows dashboard, analytics reports, and keyword trigger links.
+                </p>
+              </div>
+
+              {/* Blueprint Choices */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Select Starting Blueprint
+                  </label>
+                  <span className="text-[11px] font-medium text-slate-400">Click to select template</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Blank */}
+                  <div
+                    onClick={() => setNewWorkflowTemplateChoice('blank')}
+                    className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      newWorkflowTemplateChoice === 'blank'
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-base">✨</span>
+                        {newWorkflowTemplateChoice === 'blank' && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900">Blank Canvas</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        Start with a clean welcome message node and build your custom flow from scratch.
+                      </p>
+                    </div>
+                    <span className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Zero Bloat</span>
+                  </div>
+
+                  {/* Service Booking */}
+                  <div
+                    onClick={() => setNewWorkflowTemplateChoice('service_booking')}
+                    className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      newWorkflowTemplateChoice === 'service_booking'
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-base">❄️</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700">Recommended</span>
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900">AC & Home Service Booking</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        8 interactive groups with service catalog, date & time slot picker, and auto-reply.
+                      </p>
+                    </div>
+                    <span className="mt-3 text-[10px] font-bold text-purple-600 uppercase tracking-wider">8 Groups • Ready</span>
+                  </div>
+
+                  {/* E-Commerce */}
+                  <div
+                    onClick={() => setNewWorkflowTemplateChoice('ecommerce')}
+                    className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      newWorkflowTemplateChoice === 'ecommerce'
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-base">🛍️</span>
+                        {newWorkflowTemplateChoice === 'ecommerce' && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900">E-Commerce & Flash Deals</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        Product catalog showcase, UPI advance deal-locking token, and live order tracking.
+                      </p>
+                    </div>
+                    <span className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payments Included</span>
+                  </div>
+
+                  {/* University */}
+                  <div
+                    onClick={() => setNewWorkflowTemplateChoice('university')}
+                    className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      newWorkflowTemplateChoice === 'university'
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-base">🎓</span>
+                        {newWorkflowTemplateChoice === 'university' && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900">School & College Admissions</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        Degree course picker, prospectus PDF download, and counselor consultation booking.
+                      </p>
+                    </div>
+                    <span className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lead Qualification</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateWorkflowModalOpen(false);
+                  setIsTutorialModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4 text-indigo-600" />
+                <span>Beginner Masterclass Guide</span>
+              </button>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateWorkflowModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCreateNewWorkflow}
+                  className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-98 rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Create & Open Flow</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* BEGINNER MASTERCLASS & TUTORIAL MODAL */}
+      {/* ========================================================================= */}
+      {isTutorialModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white relative">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 backdrop-blur-md flex items-center justify-center border border-indigo-400/30 shadow-inner">
+                    <GraduationCap className="w-5 h-5 text-indigo-300" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold">WhatsApp Flow Builder Masterclass</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold">Zero Experience Needed</span>
+                    </div>
+                    <p className="text-xs text-slate-300">Master WhatsApp conversational design in 3 easy minutes</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTutorialModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Navigation Tabs */}
+              <div className="flex items-center gap-2 mt-5 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setTutorialActiveTab('concepts')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    tutorialActiveTab === 'concepts'
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>1. Core Concepts</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTutorialActiveTab('steps')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    tutorialActiveTab === 'steps'
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>2. 3-Minute Quickstart</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTutorialActiveTab('tips')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    tutorialActiveTab === 'tips'
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>3. Pro WhatsApp Tips</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 text-slate-700 text-xs leading-relaxed">
+              {tutorialActiveTab === 'concepts' && (
+                <div className="space-y-4">
+                  <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl text-blue-900">
+                    <p className="font-semibold text-xs text-blue-950 mb-1">
+                      💡 Think of your chatbot as a conversation boardgame:
+                    </p>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      Every box on your canvas is a <strong>Node Group</strong> (a stage in the conversation). Inside each group are <strong>Blocks</strong> (messages sent to the customer or questions asked). When customers click buttons, WhatsApp jumps to the connected node!
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div className="flex items-center gap-2 text-slate-900 font-bold">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">1</div>
+                        <span>Node Groups (Cards)</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Groups organize your chat steps. You can drag them around the canvas, and use the <strong>Auto-Align Gaps</strong> button anytime to give them neat, uncluttered spacing.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div className="flex items-center gap-2 text-slate-900 font-bold">
+                        <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs">2</div>
+                        <span>Blocks (Elements)</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Choose from 6 block categories on the right: <strong>Messages</strong> (Text, Image, PDF, Video), <strong>Choices</strong> (Quick Reply, List Menu), <strong>Inputs</strong> (Date, Time, Phone), and <strong>Payments</strong>.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div className="flex items-center gap-2 text-slate-900 font-bold">
+                        <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs">3</div>
+                        <span>Connecting Paths</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Under each button or choice option, select the <strong>Target Node Group</strong>. When clicked in WhatsApp, the customer automatically moves forward along that path.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div className="flex items-center gap-2 text-slate-900 font-bold">
+                        <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs">4</div>
+                        <span>Dynamic Variables</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Personalize responses automatically by writing <code className="text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-mono">&#123;STAT_NAME&#125;</code> or <code className="text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-mono">&#123;STAT_PHONE&#125;</code> inside your messages!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {tutorialActiveTab === 'steps' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 space-y-1.5">
+                    <span className="font-bold text-emerald-950 text-xs">Step 1: The Welcome Node (Group #1)</span>
+                    <p className="text-[11px] text-emerald-800">
+                      Add a Text Message with a friendly greeting and your brand name. Add a Quick Reply or List Menu choice block below it offering 2 to 3 clear options (e.g., "1️⃣ Book Service", "2️⃣ Track Specialist", "3️⃣ Quotation").
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/60 space-y-1.5">
+                    <span className="font-bold text-blue-950 text-xs">Step 2: Collect User Details</span>
+                    <p className="text-[11px] text-blue-800">
+                      When the customer picks "Book Service", direct them to Group #2. Use the <strong>Date Picker</strong> and <strong>Time Slot</strong> blocks to capture their preferred appointment. WhatsApp will automatically save these to their session profile!
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-indigo-200 bg-indigo-50/60 space-y-1.5">
+                    <span className="font-bold text-indigo-950 text-xs">Step 3: Test and Connect Keyword Trigger</span>
+                    <p className="text-[11px] text-indigo-800">
+                      Click the green <strong>Test Bot</strong> button at the top right to simulate your WhatsApp chatbot directly on screen! Once satisfied, switch to the <strong>Keyword Triggers</strong> tab to trigger this workflow when customers text keywords like "Hi", "Book", or "AC".
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {tutorialActiveTab === 'tips' && (
+                <div className="space-y-3.5">
+                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
+                    <div className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                      <span className="text-emerald-600">⚡</span>
+                      <span>Meta's 3-Button Native Quick Reply Rule</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      WhatsApp Quick Reply buttons look great, but Meta allows a maximum of <strong>3 interactive buttons</strong> per single message. If you have 4 or more options, use the <strong>List Menu</strong> block instead (which supports up to 10 items!).
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
+                    <div className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                      <span className="text-emerald-600">⚡</span>
+                      <span>The 24-Hour Customer Window</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      When a customer sends you a WhatsApp message, a 24-hour free service conversation window opens. Your chatbot can exchange unlimited text messages, images, PDFs, and flows for free during this session!
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
+                    <div className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                      <span className="text-emerald-600">⚡</span>
+                      <span>Auto-Align Gaps for Clean Layout</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Whenever you add many blocks to a group, simply click the <strong>Auto-Align Gaps</strong> button in the bottom-left canvas toolbar. It dynamically calculates card heights and spaces groups cleanly with zero overlapping!
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                You can reopen this guide anytime using the <span className="font-semibold text-slate-700">Beginner Guide</span> button.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTutorialModalOpen(false)}
+                className="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              >
+                Got It, Let's Build!
+              </button>
             </div>
           </div>
         </div>
