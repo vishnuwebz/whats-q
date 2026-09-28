@@ -50,13 +50,16 @@ echo -e "\n${YELLOW}[2/5] Pulling latest updates from Git...${NC}"
 
 # Auto-configure authenticated Git remote if token file or env exists
 if [ -f "/etc/whatsq.token" ]; then
-    TOKEN=$(cat /etc/whatsq.token | tr -d '\r\n ')
+    TOKEN=$($SUDO_CMD cat /etc/whatsq.token 2>/dev/null | tr -d '\r\n ') || true
     if [ -n "$TOKEN" ]; then
         git remote set-url origin "https://qbscalicut:${TOKEN}@github.com/qbscalicut/whats-q.git"
     fi
 elif [ -n "$GITHUB_TOKEN" ]; then
     git remote set-url origin "https://qbscalicut:${GITHUB_TOKEN}@github.com/qbscalicut/whats-q.git"
 fi
+
+# Clean up untracked dist permissions before reset so git never faces EACCES
+$SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
 
 git fetch origin main
 git reset --hard origin/main
@@ -208,9 +211,13 @@ cd "$APP_DIR/frontend"
 $SUDO_CMD chmod -R 755 "$APP_DIR/frontend/dist" 2>/dev/null || true
 $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
-# If dist/index.html is already present and valid (from git repo), keep it as instant zero-downtime serving
-if [ -f "$APP_DIR/frontend/dist/index.html" ]; then
-    echo -e "${GREEN}[SUCCESS] Valid pre-compiled frontend bundle detected in repository.${NC}"
+# If build_output/index.html is present, copy it cleanly to dist
+if [ -d "$APP_DIR/frontend/build_output" ] && [ -f "$APP_DIR/frontend/build_output/index.html" ]; then
+    echo -e "${GREEN}[SUCCESS] Valid pre-compiled frontend bundle detected in build_output. Deploying...${NC}"
+    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
+    $SUDO_CMD cp -r "$APP_DIR/frontend/build_output" "$APP_DIR/frontend/dist" 2>/dev/null || true
+elif [ -f "$APP_DIR/frontend/dist/index.html" ]; then
+    echo -e "${GREEN}[SUCCESS] Valid frontend bundle already present in dist.${NC}"
 else
     echo -e "${YELLOW}[INFO] Pre-compiled bundle missing, initiating standalone build...${NC}"
     NODE_BIN=$(command -v node || which node || echo "/usr/bin/node")
