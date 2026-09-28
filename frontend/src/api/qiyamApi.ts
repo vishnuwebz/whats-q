@@ -261,6 +261,10 @@ export const qiyamApi = {
     return list<Workflow>('/automation/workflows/');
   },
 
+  async deleteWorkflow(id: string | number): Promise<boolean> {
+    return apiClient.delete(`/automation/workflows/${id}/`);
+  },
+
   async fetchKeywordRules(): Promise<KeywordRule[]> {
     return list<KeywordRule>('/automation/keyword-rules/');
   },

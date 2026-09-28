@@ -49,6 +49,15 @@ class WorkflowViewSet(viewsets.ModelViewSet):
     queryset = Workflow.objects.all().order_by('-id')
     serializer_class = WorkflowSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            wf_name = instance.name
+            instance.delete()
+            return Response({'success': True, 'message': f'Workflow "{wf_name}" deleted successfully.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 class WorkflowTemplateViewSet(viewsets.ModelViewSet):
     queryset = WorkflowTemplate.objects.all().order_by('id')
     serializer_class = WorkflowTemplateSerializer

@@ -822,6 +822,7 @@ interface QiyamState {
   activeWorkflowGroups: any[] | null;
   setActiveWorkflowGroups: (groups: any[] | null) => void;
   saveWorkflow: (wf: { id?: string | number; name: string; description?: string; trigger_type?: string; nodes: any[]; edges?: any[] }) => Promise<Workflow>;
+  deleteWorkflow: (id: string | number) => Promise<void>;
 
   keywordRules: KeywordRule[];
   workingHours: DaySchedule[];
@@ -2175,6 +2176,28 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       get().addToast(`Workflow "${fallbackWf.name}" saved! Showing in Workflows list.`, 'success');
       return fallbackWf;
     }
+  },
+
+  deleteWorkflow: async (id) => {
+    const targetWf = get().workflows.find((w) => String(w.id) === String(id));
+    set((state) => {
+      const next = state.workflows.filter((w) => String(w.id) !== String(id));
+      persistCache('workflows', next);
+      const isCurrentActive = String(state.activeWorkflowId) === String(id);
+      return {
+        workflows: next,
+        ...(isCurrentActive ? { activeWorkflowId: null, activeWorkflowTitle: null, activeWorkflowGroups: null } : {})
+      };
+    });
+
+    try {
+      if (typeof id === 'number' || (typeof id === 'string' && !isNaN(Number(id)))) {
+        await qiyamApi.deleteWorkflow(id);
+      }
+    } catch (e) {
+      console.warn('Failed to delete workflow on server:', e);
+    }
+    get().addToast(`Workflow "${targetWf?.name || 'Workflow'}" deleted successfully`, 'info');
   },
 
   setKeywordRules: (rules) => {
