@@ -264,6 +264,26 @@ class SystemUpdateView(APIView):
     """
     def get(self, request):
         status = SystemUpdateService.get_update_status()
+        if request.GET.get('log'):
+            import os
+            from django.conf import settings
+            log_path = os.path.join(settings.BASE_DIR, 'deploy.log')
+            content = ''
+            if os.path.exists(log_path):
+                with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+                    content = f.read()[-5000:]
+            status['deploy_log'] = content
+            frontend_dist = os.path.join(settings.BASE_DIR.parent, 'frontend', 'dist')
+            index_path = os.path.join(frontend_dist, 'index.html')
+            status['dist_exists'] = os.path.exists(frontend_dist)
+            status['index_exists'] = os.path.exists(index_path)
+            if os.path.exists(frontend_dist):
+                status['dist_files'] = os.listdir(frontend_dist)
+                try:
+                    st = os.stat(frontend_dist)
+                    status['dist_permissions'] = oct(st.st_mode)
+                except Exception:
+                    pass
         return Response(status)
 
     def post(self, request):
