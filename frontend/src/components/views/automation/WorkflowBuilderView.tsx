@@ -2476,16 +2476,16 @@ export const WorkflowBuilderView: React.FC = () => {
       {/* ========================================================================= */}
       {/* CAPSULE SWITCHER (FLOW BUILDER vs KEYWORD RULES)                          */}
       {/* ========================================================================= */}
-      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-col md:flex-row gap-2.5 md:gap-0 items-stretch md:items-center justify-between shrink-0 shadow-xs z-20">
+      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between shrink-0 shadow-xs z-20">
         {/* Two-Tab Segmented Capsule & Fullscreen Indicator */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {isFullscreen && (
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-xs">
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-xs shrink-0">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>STUDIO FULL SCREEN</span>
             </div>
           )}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
             <button
               onClick={() => setActiveMode('canvas')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
@@ -2512,7 +2512,7 @@ export const WorkflowBuilderView: React.FC = () => {
         </div>
 
         {/* Action Buttons: Full Screen, Templates & Go To Workflows */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 justify-end">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 min-w-0 xl:ml-auto">
           {/* Beginner Guide Masterclass Button */}
           <button
             type="button"
@@ -2520,7 +2520,7 @@ export const WorkflowBuilderView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
             title="Interactive Beginner Guide & Workflow Masterclass"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <span>Beginner Guide</span>
           </button>
 
