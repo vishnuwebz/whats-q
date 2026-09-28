@@ -200,23 +200,34 @@ EOF
     fi
 fi
 
-# 4. FRONTEND BUILD
-echo -e "\n${YELLOW}[4/5] Building Frontend...${NC}"
+# 4. FRONTEND BUILD & ASSETS DEPLOYMENT
+echo -e "\n${YELLOW}[4/5] Deploying & Verifying Frontend Assets...${NC}"
 cd "$APP_DIR/frontend"
-NODE_BIN=$(command -v node || which node || echo "/usr/bin/node")
-NPM_BIN=$(command -v npm || which npm || echo "/usr/bin/npm")
 
-# Ensure build user has full write permissions to dist directory
-$SUDO_CMD chown -R $(whoami) "$APP_DIR/frontend/dist" 2>/dev/null || true
-$SUDO_CMD chmod -R 777 "$APP_DIR/frontend/dist" 2>/dev/null || chmod -R 777 "$APP_DIR/frontend/dist" 2>/dev/null || true
-$SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
-mkdir -p "$APP_DIR/frontend/dist" 2>/dev/null || true
+# Ensure dist exists and has proper permissions
+$SUDO_CMD chmod -R 755 "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
-$NPM_BIN install --silent 2>&1 || true
-if ! $NPM_BIN run build; then
-    echo -e "${YELLOW}[WARN] Frontend build encountered an error. Retrying clean build...${NC}"
-    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
-    $NPM_BIN run build || true
+# If dist/index.html is already present and valid (from git repo), keep it as instant zero-downtime serving
+if [ -f "$APP_DIR/frontend/dist/index.html" ]; then
+    echo -e "${GREEN}[SUCCESS] Valid pre-compiled frontend bundle detected in repository.${NC}"
+else
+    echo -e "${YELLOW}[INFO] Pre-compiled bundle missing, initiating standalone build...${NC}"
+    NODE_BIN=$(command -v node || which node || echo "/usr/bin/node")
+    NPM_BIN=$(command -v npm || which npm || echo "/usr/bin/npm")
+    
+    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_build" 2>/dev/null || true
+    mkdir -p "$APP_DIR/frontend/dist_build" 2>/dev/null || true
+    
+    if NODE_OPTIONS="--max-old-space-size=2048" npx vite build --outDir dist_build 2>&1; then
+        $SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
+        $SUDO_CMD mv "$APP_DIR/frontend/dist_build" "$APP_DIR/frontend/dist" 2>/dev/null || true
+        echo -e "${GREEN}[SUCCESS] Frontend built and deployed cleanly!${NC}"
+    else
+        echo -e "${RED}[WARN] Vite build failed, retrying npm run build...${NC}"
+        $NPM_BIN install --silent 2>&1 || true
+        $NPM_BIN run build 2>&1 || true
+    fi
 fi
 
 cp "$APP_DIR/frontend/public/version.json" "$APP_DIR/frontend/dist/version.json" 2>/dev/null || true

@@ -256,20 +256,21 @@ class SystemUpdateService:
             else:
                 proc = cls._current_update_proc
                 cls._current_update_proc = None
-                stdout = ''
-                stderr = ''
+                log_content = ''
                 try:
-                    out, err = proc.communicate(timeout=1)
-                    stdout = out or ''
-                    stderr = err or ''
+                    from django.conf import settings
+                    log_file_path = os.path.join(settings.BASE_DIR, 'deploy.log')
+                    if os.path.exists(log_file_path):
+                        with open(log_file_path, 'r', encoding='utf-8', errors='replace') as lf:
+                            log_content = lf.read()[-3000:]
                 except Exception:
                     pass
                 return {
                     'in_progress': False,
                     'success': (poll == 0),
                     'returncode': poll,
-                    'stdout': stdout[-1500:],
-                    'stderr': stderr[-1500:],
+                    'stdout': log_content,
+                    'stderr': '',
                     'status': 'completed' if poll == 0 else 'failed'
                 }
         return {'in_progress': False, 'success': True, 'status': 'idle'}
@@ -301,11 +302,12 @@ class SystemUpdateService:
                 env = os.environ.copy()
                 env['PATH'] = f"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:{env.get('PATH', '')}"
 
+                log_file_path = os.path.join(settings.BASE_DIR, 'deploy.log')
+                log_file = open(log_file_path, 'w', encoding='utf-8', errors='replace')
                 proc = subprocess.Popen(
                     cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
                     env=env
                 )
                 cls._current_update_proc = proc
