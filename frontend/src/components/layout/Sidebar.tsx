@@ -44,7 +44,8 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'conversations', title: 'Conversations', category: 'Messenger', icon: MessageSquare, keywords: 'chats messages inbox whatsapp live customer' },
   { tab: 'bulk-overview', title: 'Bulk Message Overview', category: 'Messenger', icon: BarChart3, keywords: 'broadcast dashboard stats metrics analytics reach' },
   { tab: 'bulk-send', title: 'Send Bulk Message', category: 'Messenger', icon: Send, keywords: 'broadcast mass marketing campaigns blast dispatch' },
-  { tab: 'bulk-templates', title: 'Message Templates', category: 'Messenger', icon: BookOpen, keywords: 'meta templates approved quick replies' },
+  { tab: 'template-hub', title: 'Template Hub', category: 'Messenger', icon: Layers, keywords: 'meta templates approved quick replies template hub' },
+  { tab: 'template-create', title: 'Create Template', category: 'Messenger', icon: Plus, keywords: 'create template meta whatsapp submit new' },
   { tab: 'bulk-campaigns', title: 'Campaign History', category: 'Messenger', icon: Layers, keywords: 'broadcast analytics sent delivered open rates' },
   { tab: 'bulk-recipients', title: 'Recipient Lists', category: 'Messenger', icon: Users, keywords: 'contacts audience segments groups tags' },
   { tab: 'bulk-suppression', title: 'Blocked Contacts & Opt-outs', category: 'Messenger', icon: Ban, keywords: 'blocked contacts opt-out stop unsubscribe dnd suppression compliance blacklisted hub' },
@@ -92,7 +93,6 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'ai-overview', title: 'AI Copilot Overview', category: 'AI Assistant', icon: Bot, keywords: 'smart bot copilot suggestions intelligence' },
   { tab: 'ai-knowledgebase', title: 'Knowledge Base', category: 'AI Assistant', icon: BookOpen, keywords: 'rag articles documentation training articles' },
   { tab: 'ai-templates', title: 'AI Prompt Templates', category: 'AI Assistant', icon: Layers, keywords: 'prompts system message tuning instructions' },
-  { tab: 'template-hub', title: 'Template Hub', category: 'AI Assistant', icon: Sparkles, keywords: 'marketplace pre-built community templates' },
   { tab: 'ai-settings', title: 'AI Engine Settings', category: 'AI Assistant', icon: SettingsIcon, keywords: 'model temperature tokens provider config' },
   { tab: 'analytics', title: 'Analytics', category: 'Intelligence', icon: BarChart3, keywords: 'reports bi performance trends kpi metrics' },
   { tab: 'integrations', title: 'Integrations', category: 'Ecosystem', icon: Puzzle, keywords: 'webhooks crm zapier apps rest api meta' },
@@ -110,6 +110,8 @@ export const getTabAccordionSection = (tab: string): AccordionSection => {
     'bulk-overview',
     'bulk-send',
     'bulk-templates',
+    'template-hub',
+    'template-create',
     'bulk-campaigns',
     'bulk-recipients',
     'bulk-suppression',
@@ -167,8 +169,6 @@ export const getTabAccordionSection = (tab: string): AccordionSection => {
     'ai-branches',
     'ai-knowledgebase',
     'ai-templates',
-    'template-hub',
-    'template-create',
     'ai-settings',
   ].includes(tab)) {
     return 'ai';
@@ -750,6 +750,8 @@ export const Sidebar: React.FC = () => {
     'bulk-overview',
     'bulk-send',
     'bulk-templates',
+    'template-hub',
+    'template-create',
     'bulk-campaigns',
     'bulk-recipients',
     'bulk-suppression',
@@ -759,7 +761,7 @@ export const Sidebar: React.FC = () => {
   const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab);
   const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-quotations', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget', 'finance-payroll'].includes(activeTab);
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
-  const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'template-hub', 'template-create', 'ai-settings'].includes(activeTab);
+  const isAiActive = ['ai-overview', 'ai-branches', 'ai-knowledgebase', 'ai-templates', 'ai-settings'].includes(activeTab);
 
   const initialMountRef = React.useRef(true);
 
@@ -1134,18 +1136,35 @@ export const Sidebar: React.FC = () => {
                       <span>Send Bulk Message</span>
                     </button>
 
-                    {/* Message Templates */}
+                    {/* Template Hub */}
                     <button
-                      data-tab="bulk-templates"
-                      onClick={() => handleTabClick('bulk-templates')}
+                      data-tab="template-hub"
+                      onClick={() => handleTabClick('template-hub')}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-templates')
+                        isActive('template-hub') || isActive('bulk-templates')
                           ? 'bg-emerald-600 text-white font-semibold shadow-sm'
                           : 'hover:bg-[#16233B] text-slate-300'
                       }`}
                     >
-                      <FileText className={`w-4 h-4 shrink-0 ${isActive('bulk-templates') ? 'text-white' : 'text-slate-400'}`} />
-                      <span>Message Templates</span>
+                      <Layers className={`w-4 h-4 shrink-0 ${isActive('template-hub') || isActive('bulk-templates') ? 'text-white' : 'text-slate-400'}`} />
+                      <span>Template Hub</span>
+                    </button>
+
+                    {/* Create Template */}
+                    <button
+                      data-tab="template-create"
+                      onClick={() => {
+                        setEditingTemplate(null);
+                        handleTabClick('template-create');
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('template-create')
+                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                          : 'hover:bg-[#16233B] text-slate-300'
+                      }`}
+                    >
+                      <Plus className={`w-4 h-4 shrink-0 ${isActive('template-create') ? 'text-white' : 'text-slate-400'}`} />
+                      <span>Create Template</span>
                     </button>
 
                     {/* Campaign History */}
@@ -1787,29 +1806,6 @@ export const Sidebar: React.FC = () => {
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     <span>Knowledge Base</span>
-                  </button>
-                  <button
-                    data-tab="template-hub"
-                    onClick={() => handleTabClick('template-hub')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('template-hub') || isActive('ai-templates') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Template Hub</span>
-                  </button>
-                  <button
-                    data-tab="template-create"
-                    onClick={() => {
-                      setEditingTemplate(null);
-                      handleTabClick('template-create');
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('template-create') ? 'bg-purple-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Create Template</span>
                   </button>
                   <button
                     data-tab="ai-settings"

@@ -204,8 +204,11 @@ export const App: React.FC = () => {
         return <BulkOverviewView />;
       case 'bulk-send':
         return <BulkSendMessageView />;
+      case 'template-hub':
       case 'bulk-templates':
-        return <BulkTemplatesView />;
+        return <TemplateHubView />;
+      case 'template-create':
+        return <CreateTemplateView />;
       case 'bulk-campaigns':
         return <BulkCampaignHistoryView />;
       case 'bulk-recipients':
@@ -311,10 +314,6 @@ export const App: React.FC = () => {
         return <KnowledgeBaseView />;
       case 'ai-templates':
         return <AITemplatesView />;
-      case 'template-hub':
-        return <TemplateHubView />;
-      case 'template-create':
-        return <CreateTemplateView />;
       case 'ai-settings':
         return <AISettingsView />;
 

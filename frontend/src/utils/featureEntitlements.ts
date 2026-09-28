@@ -169,13 +169,13 @@ export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
   if (tab === 'dashboard' || tab === 'super-admin' || tab === 'landing') return 'dashboard';
   if (tab === 'conversations') return 'conversations';
 
-  if (tab.startsWith('bulk-')) return 'messenger';
+  if (tab.startsWith('bulk-') || tab === 'template-hub' || tab === 'template-create') return 'messenger';
   if (tab.startsWith('crm-')) return 'crm';
   if (tab === 'branches' || tab.startsWith('branches-') || tab === 'automation-branches') return 'branches';
   if (tab.startsWith('ops-') || tab === 'automation-approvals') return 'ops';
   if (tab.startsWith('finance-')) return 'finance';
   if (tab.startsWith('automation-')) return 'automation';
-  if (tab.startsWith('ai-') || tab === 'template-hub' || tab === 'template-create') return 'ai';
+  if (tab.startsWith('ai-')) return 'ai';
   if (tab === 'analytics') return 'analytics';
   if (tab === 'integrations') return 'integrations';
   if (tab === 'roles') return 'roles';
