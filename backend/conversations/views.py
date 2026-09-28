@@ -2258,6 +2258,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                         logger.warning(f"Error fetching existing template on Meta: {e}")
 
                 template.meta_status = 'REJECTED'
+                template.status = 'Rejected'
                 template.rejection_reason = err
                 template.save()
                 return Response({
@@ -2358,7 +2359,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     name=name,
                     category='Sales & Marketing' if category == 'MARKETING' else 'Customer Updates',
                     meta_category=category,
-                    status='Active' if status_val == 'APPROVED' else 'Pending',
+                    status='Active' if status_val == 'APPROVED' else ('Rejected' if status_val == 'REJECTED' else 'Pending'),
                     meta_status=status_val,
                     language=lang,
                     body=body_text or 'Synced from Meta',
@@ -2375,7 +2376,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                 tmpl.meta_status = status_val
                 tmpl.meta_category = category
                 tmpl.language = lang
-                tmpl.status = 'Active' if status_val == 'APPROVED' else 'Pending'
+                tmpl.status = 'Active' if status_val == 'APPROVED' else ('Rejected' if status_val == 'REJECTED' else 'Pending')
                 tmpl.meta_template_id = m.get('id', tmpl.meta_template_id)
                 if body_text:
                     tmpl.body = body_text
@@ -2499,6 +2500,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
                     logger.warning(f"Error fetching existing template on Meta: {e}")
 
             template.meta_status = 'REJECTED'
+            template.status = 'Rejected'
             template.rejection_reason = err
             template.save()
             return Response({

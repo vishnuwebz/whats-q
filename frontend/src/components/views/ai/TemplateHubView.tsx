@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
@@ -6,7 +6,8 @@ import {
   RefreshCw, CheckCircle2, Clock, AlertTriangle, Send,
   Globe, ExternalLink, Settings, Smartphone, Trash2, Edit3,
   ArrowRight, Phone, Check, CheckCheck, FileText, Share2, Layers,
-  Image as ImageIcon, Video, AlertCircle, GitBranch, Zap, ShieldCheck, Loader2, X
+  Image as ImageIcon, Video, AlertCircle, GitBranch, Zap, ShieldCheck, Loader2, X,
+  Eye
 } from 'lucide-react';
 import { WhatsAppTemplateItem } from '@/types';
 import { MetaConfigModal } from './MetaConfigModal';
@@ -78,11 +79,101 @@ export const TemplateHubView: React.FC = () => {
     }
   };
 
+  // Accurate status helpers preventing ambiguity
+  const isTemplateRejected = useCallback((t: WhatsAppTemplateItem) =>
+    t.meta_status === 'REJECTED' || t.status === 'Rejected' || t.status === 'REJECTED', []);
+
+  const isTemplatePending = useCallback((t: WhatsAppTemplateItem) =>
+    !isTemplateRejected(t) && (t.meta_status === 'PENDING' || t.status === 'Pending' || t.status === 'PENDING'), [isTemplateRejected]);
+
+  const isTemplateDraft = useCallback((t: WhatsAppTemplateItem) =>
+    !isTemplateRejected(t) && !isTemplatePending(t) && (t.meta_status === 'DRAFT' || t.status === 'Draft' || t.status === 'LOCAL_DRAFT'), [isTemplateRejected, isTemplatePending]);
+
+  const isTemplateApproved = useCallback((t: WhatsAppTemplateItem) =>
+    !isTemplateRejected(t) && !isTemplatePending(t) && !isTemplateDraft(t) &&
+    ((t.meta_status || t.status) === 'APPROVED' || t.status === 'Active'), [isTemplateRejected, isTemplatePending, isTemplateDraft]);
+
+  // Helper to find exact respective conflicting template when "Content already exists" occurs
+  const getConflictingTemplate = useCallback((current: WhatsAppTemplateItem) => {
+    if (!current) return null;
+    const currentName = (current.name || '').trim().toLowerCase();
+    if (!currentName) return null;
+
+    // Look for candidates with same name but different ID
+    const candidates = templates.filter(t => 
+      String(t.id) !== String(current.id) && 
+      (t.name || '').trim().toLowerCase() === currentName
+    );
+    if (candidates.length === 0) return null;
+
+    // 1. Prefer approved template with meta_template_id and same language
+    const bestMatch = candidates.find(t => 
+      isTemplateApproved(t) && 
+      t.meta_template_id && 
+      (!current.language || !t.language || t.language === current.language)
+    );
+    if (bestMatch) return bestMatch;
+
+    // 2. Any approved template with same name
+    const anyApproved = candidates.find(t => isTemplateApproved(t));
+    if (anyApproved) return anyApproved;
+
+    // 3. Fallback to candidate with meta_template_id or first candidate
+    return candidates.find(t => t.meta_template_id) || candidates[0];
+  }, [templates, isTemplateApproved]);
+
+  // Navigate directly to respective template with scroll & highlight
+  const handleNavigateToTemplate = useCallback((target: WhatsAppTemplateItem) => {
+    if (!target) return;
+
+    setStatusFilter('ALL');
+    setCategoryFilter('ALL');
+    setMediaFilterType('all');
+    setSearch(target.name);
+    setSelectedTemplateId(target.id);
+
+    addToast(
+      `Viewing respective template: "${target.name}" (Meta #${target.meta_template_id || target.id})`,
+      'success'
+    );
+
+    setTimeout(() => {
+      const el = document.getElementById(`template-card-${target.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-emerald-500', 'shadow-2xl');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-emerald-500', 'shadow-2xl');
+        }, 3000);
+      }
+    }, 150);
+  }, [addToast, setSelectedTemplateId]);
+
+  const handleDeleteDuplicate = useCallback((target: WhatsAppTemplateItem) => {
+    requestGeneralConfirmation({
+      title: 'Delete Duplicate Template?',
+      message: `Are you sure you want to delete rejected duplicate "${target.name}"? This will remove the failed draft from your workspace.`,
+      variant: 'danger',
+      icon: 'trash',
+      confirmLabel: 'Delete Duplicate',
+      cancelLabel: 'Cancel',
+      itemBadge: {
+        label: target.name,
+        sublabel: target.category || 'Duplicate Template',
+        badgeText: 'Rejected',
+      },
+      onConfirm: async () => {
+        await deleteMetaTemplate(target.id);
+        addToast(`Duplicate template "${target.name}" deleted`, 'info');
+      },
+    });
+  }, [deleteMetaTemplate, requestGeneralConfirmation, addToast]);
+
   // Counts for Status Tabs
-  const approvedCount = templates.filter(t => (t.meta_status || t.status) === 'APPROVED' || t.status === 'Active').length;
-  const pendingCount = templates.filter(t => t.meta_status === 'PENDING').length;
-  const rejectedCount = templates.filter(t => t.meta_status === 'REJECTED').length;
-  const draftCount = templates.filter(t => t.meta_status === 'DRAFT' || t.status === 'Draft').length;
+  const approvedCount = templates.filter(isTemplateApproved).length;
+  const pendingCount = templates.filter(isTemplatePending).length;
+  const rejectedCount = templates.filter(isTemplateRejected).length;
+  const draftCount = templates.filter(isTemplateDraft).length;
 
   // Media Header & Buttons counts (Docs, Image, Video, Text Only, With Buttons)
   const mediaFilterCounts = useMemo(() => {
@@ -95,10 +186,10 @@ export const TemplateHubView: React.FC = () => {
 
     templates.forEach((t) => {
       // Respect status and category filters for counts
-      if (statusFilter === 'APPROVED' && (t.meta_status !== 'APPROVED' && t.status !== 'Active')) return;
-      if (statusFilter === 'PENDING' && t.meta_status !== 'PENDING') return;
-      if (statusFilter === 'REJECTED' && t.meta_status !== 'REJECTED') return;
-      if (statusFilter === 'DRAFT' && t.meta_status !== 'DRAFT' && t.status !== 'Draft') return;
+      if (statusFilter === 'APPROVED' && !isTemplateApproved(t)) return;
+      if (statusFilter === 'PENDING' && !isTemplatePending(t)) return;
+      if (statusFilter === 'REJECTED' && !isTemplateRejected(t)) return;
+      if (statusFilter === 'DRAFT' && !isTemplateDraft(t)) return;
       if (categoryFilter !== 'ALL' && t.meta_category !== categoryFilter) return;
 
       all++;
@@ -112,21 +203,16 @@ export const TemplateHubView: React.FC = () => {
     });
 
     return { all, docs, images, videos, textOnly, withButtons };
-  }, [templates, statusFilter, categoryFilter]);
+  }, [templates, statusFilter, categoryFilter, isTemplateApproved, isTemplatePending, isTemplateRejected, isTemplateDraft]);
 
   // Filtered Templates List based on Status, Category, Media Type, and Live Search
   const filtered = useMemo(() => {
     return templates.filter((t) => {
       // 1. Status Filter
-      if (statusFilter === 'APPROVED') {
-        if (t.meta_status !== 'APPROVED' && t.status !== 'Active') return false;
-      } else if (statusFilter === 'PENDING') {
-        if (t.meta_status !== 'PENDING') return false;
-      } else if (statusFilter === 'REJECTED') {
-        if (t.meta_status !== 'REJECTED') return false;
-      } else if (statusFilter === 'DRAFT') {
-        if (t.meta_status !== 'DRAFT' && t.status !== 'Draft') return false;
-      }
+      if (statusFilter === 'APPROVED' && !isTemplateApproved(t)) return false;
+      if (statusFilter === 'PENDING' && !isTemplatePending(t)) return false;
+      if (statusFilter === 'REJECTED' && !isTemplateRejected(t)) return false;
+      if (statusFilter === 'DRAFT' && !isTemplateDraft(t)) return false;
 
       // 2. Category Filter
       if (categoryFilter !== 'ALL') {
@@ -156,6 +242,15 @@ export const TemplateHubView: React.FC = () => {
 
   // Selected Template for Live Phone Preview
   const activeTemplate = filtered.find(t => String(t.id) === String(selectedTemplateId)) || filtered[0] || templates[0];
+
+  // Respective conflicting template if activeTemplate has a language conflict
+  const activeConflictingTemplate = useMemo(() => {
+    if (!activeTemplate || !isTemplateRejected(activeTemplate)) return null;
+    const isLanguageConflict = (activeTemplate.rejection_reason || '').toLowerCase().includes('already exists') ||
+      (activeTemplate.rejection_reason || '').toLowerCase().includes('content in this language');
+    if (!isLanguageConflict) return null;
+    return getConflictingTemplate(activeTemplate);
+  }, [activeTemplate, isTemplateRejected, getConflictingTemplate]);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -520,13 +615,14 @@ export const TemplateHubView: React.FC = () => {
             ) : (
               filtered.map((tmpl) => {
               const isSelected = String(tmpl.id) === String(activeTemplate?.id);
-              const isApproved = (tmpl.meta_status || tmpl.status) === 'APPROVED' || tmpl.status === 'Active';
-              const isPending = tmpl.meta_status === 'PENDING';
-              const isRejected = tmpl.meta_status === 'REJECTED';
+              const isApproved = isTemplateApproved(tmpl);
+              const isPending = isTemplatePending(tmpl);
+              const isRejected = isTemplateRejected(tmpl);
 
               return (
                 <div
                   key={tmpl.id}
+                  id={`template-card-${tmpl.id}`}
                   onClick={() => setSelectedTemplateId(tmpl.id)}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
                     isSelected
@@ -584,7 +680,7 @@ export const TemplateHubView: React.FC = () => {
                             ? 'bg-red-50 text-red-700 border-red-200'
                             : 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}>
-                          {isApproved ? 'Active (Approved)' : (tmpl.meta_status || tmpl.status)}
+                          {isApproved ? 'Active (Approved)' : isPending ? 'In Review (Pending)' : isRejected ? 'Rejected (Meta)' : (tmpl.meta_status || tmpl.status)}
                         </span>
                       </div>
                     </div>
@@ -618,13 +714,132 @@ export const TemplateHubView: React.FC = () => {
                       {tmpl.body_text || tmpl.body}
                     </div>
 
-                    {/* Rejection alert */}
-                    {tmpl.rejection_reason && tmpl.meta_status === 'REJECTED' && (
-                      <div className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-xl text-[10px] text-red-700 flex items-start gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0 mt-0.5" />
-                        <span className="break-words font-medium">{tmpl.rejection_reason}</span>
-                      </div>
-                    )}
+                    {/* Rejection / Conflict Resolution Card */}
+                    {tmpl.rejection_reason && (isRejected || tmpl.rejection_reason !== 'NONE') && (() => {
+                      const isLanguageConflict =
+                        tmpl.rejection_reason.toLowerCase().includes('already exists') ||
+                        tmpl.rejection_reason.toLowerCase().includes('content in this language');
+                      const conflictingTmpl = getConflictingTemplate(tmpl);
+
+                      return (
+                        <div className="mt-3 p-3 bg-red-50/90 border-2 border-red-200 rounded-2xl text-xs space-y-2.5 shadow-2xs">
+                          {/* Alert Header */}
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-[11px] text-red-900 uppercase tracking-wide">
+                                  {isLanguageConflict ? 'Meta Error: Language Content Already Exists' : 'Meta Submission Rejection'}
+                                </span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-200/80 text-red-900 font-mono font-semibold">
+                                  Lang: {tmpl.language || 'en_US'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-red-800 font-medium mt-0.5 leading-snug">
+                                {tmpl.rejection_reason}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Respective Conflicting Template Details & One-Click Navigation */}
+                          {isLanguageConflict && conflictingTmpl ? (
+                            <div className="bg-white rounded-xl p-3 border border-red-200/80 shadow-xs space-y-2">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Respective Existing Template:
+                                  </span>
+                                  <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                    {conflictingTmpl.name}
+                                  </span>
+                                </div>
+                                {conflictingTmpl.meta_template_id && (
+                                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                    Meta #{conflictingTmpl.meta_template_id}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Body excerpt of respective existing template */}
+                              <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-mono text-slate-600 line-clamp-2 leading-relaxed">
+                                {conflictingTmpl.body_text || conflictingTmpl.body}
+                              </div>
+
+                              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                  <span className="font-bold text-emerald-700 uppercase">
+                                    ● {conflictingTmpl.meta_status || conflictingTmpl.status || 'APPROVED'}
+                                  </span>
+                                  <span>•</span>
+                                  <span>Lang: {conflictingTmpl.language || 'en_US'}</span>
+                                  <span>•</span>
+                                  <span>Used {conflictingTmpl.usage_count || 0} times</span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleNavigateToTemplate(conflictingTmpl);
+                                    }}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                                    title={`Open and view existing approved template "${conflictingTmpl.name}"`}
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>Click to View Respective Template</span>
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteDuplicate(tmpl);
+                                    }}
+                                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                                    title="Delete this rejected duplicate template"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-rose-600" />
+                                    <span>Delete Duplicate</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : isLanguageConflict ? (
+                            <div className="bg-white rounded-xl p-2.5 border border-red-200/80 shadow-xs flex items-center justify-between gap-2 flex-wrap">
+                              <div className="text-[11px] text-slate-700">
+                                A template named <strong className="font-mono">{tmpl.name}</strong> ({tmpl.language || 'en_US'}) already exists on your official Meta WhatsApp account.
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSync();
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                  <span>Sync from Meta</span>
+                                </button>
+                                <a
+                                  href={getMetaManagerUrl(tmpl.name)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-[#1877F2] font-bold text-xs rounded-lg flex items-center gap-1 transition"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>Find in Meta Manager</span>
+                                </a>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
 
                     {/* Buttons tags */}
                     {tmpl.buttons && tmpl.buttons.length > 0 && (
@@ -819,20 +1034,23 @@ export const TemplateHubView: React.FC = () => {
 
                 <span
                   className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold flex items-center gap-1 border ${
-                    (activeTemplate.meta_status || activeTemplate.status) === 'APPROVED' || activeTemplate.status === 'Active'
+                    isTemplateApproved(activeTemplate)
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : activeTemplate.meta_status === 'PENDING'
+                      : isTemplatePending(activeTemplate)
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                       : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                   }`}
                 >
-                  {((activeTemplate.meta_status || activeTemplate.status) === 'APPROVED' || activeTemplate.status === 'Active') && (
+                  {isTemplateApproved(activeTemplate) && (
                     <CheckCircle2 className="w-2.5 h-2.5" />
                   )}
-                  {activeTemplate.meta_status === 'PENDING' && (
+                  {isTemplatePending(activeTemplate) && (
                     <Clock className="w-2.5 h-2.5 animate-spin" />
                   )}
-                  {(activeTemplate.meta_status || activeTemplate.status) === 'APPROVED' || activeTemplate.status === 'Active' ? 'APPROVED' : (activeTemplate.meta_status || activeTemplate.status)}
+                  {isTemplateRejected(activeTemplate) && (
+                    <AlertCircle className="w-2.5 h-2.5" />
+                  )}
+                  {isTemplateApproved(activeTemplate) ? 'APPROVED' : isTemplatePending(activeTemplate) ? 'PENDING' : 'REJECTED'}
                 </span>
               </div>
 
@@ -877,6 +1095,35 @@ export const TemplateHubView: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Active Template Conflict Resolution Alert */}
+              {activeConflictingTemplate && (
+                <div className="bg-rose-950/70 border border-rose-500/50 rounded-xl p-2.5 text-xs text-rose-100 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[10px] text-rose-300 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                      Duplicate Conflict on Meta
+                    </span>
+                    {activeConflictingTemplate.meta_template_id && (
+                      <span className="text-[9px] font-mono bg-rose-900/80 px-1.5 py-0.2 rounded text-rose-200">
+                        Meta #{activeConflictingTemplate.meta_template_id}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-rose-200/90 leading-tight">
+                    An approved version of &quot;{activeConflictingTemplate.name}&quot; already exists on Meta.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleNavigateToTemplate(activeConflictingTemplate)}
+                    className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Switch Preview to Approved Template</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
