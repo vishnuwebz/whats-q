@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import {
@@ -6,7 +6,7 @@ import {
   RefreshCw, CheckCircle2, Clock, AlertTriangle, Send,
   Globe, ExternalLink, Settings, Smartphone, Trash2, Edit3,
   ArrowRight, Phone, Check, CheckCheck, FileText, Share2, Layers,
-  Image, AlertCircle, GitBranch, Zap, ShieldCheck, Loader2
+  Image as ImageIcon, Video, AlertCircle, GitBranch, Zap, ShieldCheck, Loader2, X
 } from 'lucide-react';
 import { WhatsAppTemplateItem } from '@/types';
 import { MetaConfigModal } from './MetaConfigModal';
@@ -34,6 +34,9 @@ export const TemplateHubView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED' | 'DRAFT'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'>('ALL');
+  const [mediaFilterType, setMediaFilterType] = useState<
+    'all' | 'document' | 'image' | 'video' | 'text' | 'buttons'
+  >('all');
   const [previewMode, setPreviewMode] = useState<'sample' | 'raw'>('sample');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -75,38 +78,84 @@ export const TemplateHubView: React.FC = () => {
     }
   };
 
-  // Counts
+  // Counts for Status Tabs
   const approvedCount = templates.filter(t => (t.meta_status || t.status) === 'APPROVED' || t.status === 'Active').length;
   const pendingCount = templates.filter(t => t.meta_status === 'PENDING').length;
   const rejectedCount = templates.filter(t => t.meta_status === 'REJECTED').length;
   const draftCount = templates.filter(t => t.meta_status === 'DRAFT' || t.status === 'Draft').length;
 
-  const filtered = templates.filter((t) => {
-    if (statusFilter === 'APPROVED') {
-      if (t.meta_status !== 'APPROVED' && t.status !== 'Active') return false;
-    } else if (statusFilter === 'PENDING') {
-      if (t.meta_status !== 'PENDING') return false;
-    } else if (statusFilter === 'REJECTED') {
-      if (t.meta_status !== 'REJECTED') return false;
-    } else if (statusFilter === 'DRAFT') {
-      if (t.meta_status !== 'DRAFT' && t.status !== 'Draft') return false;
-    }
+  // Media Header & Buttons counts (Docs, Image, Video, Text Only, With Buttons)
+  const mediaFilterCounts = useMemo(() => {
+    let all = 0;
+    let docs = 0;
+    let images = 0;
+    let videos = 0;
+    let textOnly = 0;
+    let withButtons = 0;
 
-    if (categoryFilter !== 'ALL') {
-      if (t.meta_category !== categoryFilter) return false;
-    }
+    templates.forEach((t) => {
+      // Respect status and category filters for counts
+      if (statusFilter === 'APPROVED' && (t.meta_status !== 'APPROVED' && t.status !== 'Active')) return;
+      if (statusFilter === 'PENDING' && t.meta_status !== 'PENDING') return;
+      if (statusFilter === 'REJECTED' && t.meta_status !== 'REJECTED') return;
+      if (statusFilter === 'DRAFT' && t.meta_status !== 'DRAFT' && t.status !== 'Draft') return;
+      if (categoryFilter !== 'ALL' && t.meta_category !== categoryFilter) return;
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const nameMatch = t.name.toLowerCase().includes(q);
-      const bodyMatch = (t.body_text || t.body || '').toLowerCase().includes(q);
-      return nameMatch || bodyMatch;
-    }
-    return true;
-  });
+      all++;
+      const ht = (t.header_type || '').toUpperCase();
+      if (ht === 'DOCUMENT') docs++;
+      else if (ht === 'IMAGE') images++;
+      else if (ht === 'VIDEO') videos++;
+      else textOnly++;
+
+      if (t.buttons && t.buttons.length > 0) withButtons++;
+    });
+
+    return { all, docs, images, videos, textOnly, withButtons };
+  }, [templates, statusFilter, categoryFilter]);
+
+  // Filtered Templates List based on Status, Category, Media Type, and Live Search
+  const filtered = useMemo(() => {
+    return templates.filter((t) => {
+      // 1. Status Filter
+      if (statusFilter === 'APPROVED') {
+        if (t.meta_status !== 'APPROVED' && t.status !== 'Active') return false;
+      } else if (statusFilter === 'PENDING') {
+        if (t.meta_status !== 'PENDING') return false;
+      } else if (statusFilter === 'REJECTED') {
+        if (t.meta_status !== 'REJECTED') return false;
+      } else if (statusFilter === 'DRAFT') {
+        if (t.meta_status !== 'DRAFT' && t.status !== 'Draft') return false;
+      }
+
+      // 2. Category Filter
+      if (categoryFilter !== 'ALL') {
+        if (t.meta_category !== categoryFilter) return false;
+      }
+
+      // 3. Media & Features Filter
+      const ht = (t.header_type || '').toUpperCase();
+      if (mediaFilterType === 'document' && ht !== 'DOCUMENT') return false;
+      if (mediaFilterType === 'image' && ht !== 'IMAGE') return false;
+      if (mediaFilterType === 'video' && ht !== 'VIDEO') return false;
+      if (mediaFilterType === 'text' && ht !== '' && ht !== 'TEXT' && ht !== 'NONE') return false;
+      if (mediaFilterType === 'buttons' && (!t.buttons || t.buttons.length === 0)) return false;
+
+      // 4. Live Search Filter (name, body text, category, or button labels)
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const nameMatch = (t.name || '').toLowerCase().includes(q);
+        const bodyMatch = (t.body_text || t.body || '').toLowerCase().includes(q);
+        const catMatch = (t.category || t.meta_category || '').toLowerCase().includes(q);
+        const btnMatch = t.buttons?.some((b) => (b.text || '').toLowerCase().includes(q));
+        if (!nameMatch && !bodyMatch && !catMatch && !btnMatch) return false;
+      }
+      return true;
+    });
+  }, [templates, statusFilter, categoryFilter, mediaFilterType, search]);
 
   // Selected Template for Live Phone Preview
-  const activeTemplate = templates.find(t => String(t.id) === String(selectedTemplateId)) || filtered[0] || templates[0];
+  const activeTemplate = filtered.find(t => String(t.id) === String(selectedTemplateId)) || filtered[0] || templates[0];
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -262,8 +311,18 @@ export const TemplateHubView: React.FC = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by template name or message text..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-emerald-500"
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-emerald-500 focus:bg-white transition"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -271,7 +330,7 @@ export const TemplateHubView: React.FC = () => {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value as any)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition"
               >
                 <option value="ALL">All Categories</option>
                 <option value="MARKETING">Marketing</option>
@@ -281,9 +340,185 @@ export const TemplateHubView: React.FC = () => {
             </div>
           </div>
 
+          {/* Media & Interactive Features Filter Bar (Docs, Images, Videos, Text Only, With Buttons) */}
+          <div className="px-5 py-2.5 border-b border-slate-200 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
+              <Filter className="w-3 h-3 text-slate-400" /> Filter:
+            </span>
+
+            {/* All */}
+            <button
+              type="button"
+              onClick={() => setMediaFilterType('all')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                mediaFilterType === 'all'
+                  ? 'bg-slate-900 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <span>All</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  mediaFilterType === 'all'
+                    ? 'bg-slate-800 text-slate-200'
+                    : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {mediaFilterCounts.all}
+              </span>
+            </button>
+
+            {/* Docs Attached */}
+            <button
+              type="button"
+              onClick={() => setMediaFilterType('document')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                mediaFilterType === 'document'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'
+              }`}
+            >
+              <FileText className="w-3 h-3 text-rose-600" />
+              <span>Docs Attached</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  mediaFilterType === 'document'
+                    ? 'bg-rose-700 text-rose-100'
+                    : 'bg-rose-200 text-rose-800'
+                }`}
+              >
+                {mediaFilterCounts.docs}
+              </span>
+            </button>
+
+            {/* Images */}
+            <button
+              type="button"
+              onClick={() => setMediaFilterType('image')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                mediaFilterType === 'image'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60'
+              }`}
+            >
+              <ImageIcon className="w-3 h-3 text-indigo-600" />
+              <span>Images</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  mediaFilterType === 'image'
+                    ? 'bg-indigo-700 text-indigo-100'
+                    : 'bg-indigo-200 text-indigo-800'
+                }`}
+              >
+                {mediaFilterCounts.images}
+              </span>
+            </button>
+
+            {/* Videos */}
+            <button
+              type="button"
+              onClick={() => setMediaFilterType('video')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                mediaFilterType === 'video'
+                  ? 'bg-purple-600 text-white shadow-2xs'
+                  : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60'
+              }`}
+            >
+              <Video className="w-3 h-3 text-purple-600" />
+              <span>Videos</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  mediaFilterType === 'video'
+                    ? 'bg-purple-700 text-purple-100'
+                    : 'bg-purple-200 text-purple-800'
+                }`}
+              >
+                {mediaFilterCounts.videos}
+              </span>
+            </button>
+
+            {/* Text Only */}
+            <button
+              type="button"
+              onClick={() => setMediaFilterType('text')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                mediaFilterType === 'text'
+                  ? 'bg-slate-700 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <MessageSquare className="w-3 h-3 text-slate-500" />
+              <span>Text Only</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  mediaFilterType === 'text'
+                    ? 'bg-slate-600 text-slate-200'
+                    : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {mediaFilterCounts.textOnly}
+              </span>
+            </button>
+
+            {/* With Buttons */}
+            <button
+              type="button"
+              onClick={() => setMediaFilterType('buttons')}
+              className={`px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                mediaFilterType === 'buttons'
+                  ? 'bg-amber-600 text-white shadow-2xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60'
+              }`}
+            >
+              <span>🔘 With Buttons</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                  mediaFilterType === 'buttons'
+                    ? 'bg-amber-700 text-amber-100'
+                    : 'bg-amber-200 text-amber-900'
+                }`}
+              >
+                {mediaFilterCounts.withButtons}
+              </span>
+            </button>
+
+            {mediaFilterType !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setMediaFilterType('all')}
+                className="ml-auto text-[10px] text-slate-400 hover:text-slate-600 font-semibold underline px-1 shrink-0 cursor-pointer"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+
           {/* Templates Cards Grid (Independently Scrollable) */}
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5">
-            {filtered.map((tmpl) => {
+            {filtered.length === 0 ? (
+              <div className="h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                  <Filter className="w-5 h-5 text-slate-400" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800 mb-1">No templates found</h4>
+                <p className="text-xs text-slate-500 max-w-sm mb-4">
+                  No templates match your active filters or search query. Try clearing filters or search to view your templates.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setStatusFilter('ALL');
+                    setCategoryFilter('ALL');
+                    setMediaFilterType('all');
+                  }}
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            ) : (
+              filtered.map((tmpl) => {
               const isSelected = String(tmpl.id) === String(activeTemplate?.id);
               const isApproved = (tmpl.meta_status || tmpl.status) === 'APPROVED' || tmpl.status === 'Active';
               const isPending = tmpl.meta_status === 'PENDING';
@@ -519,7 +754,8 @@ export const TemplateHubView: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
         </div>
 
