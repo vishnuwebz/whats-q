@@ -13,6 +13,7 @@ from .views import (
     LinkedEmployeeDeviceViewSet,
     BulkCampaignViewSet,
     SuppressionViewSet,
+    CampaignMediaUploadView,
 )
 from .grabber_views import GroupGrabberSessionView
 
@@ -28,6 +29,7 @@ router.register(r'suppression', SuppressionViewSet, basename='suppression')
 urlpatterns = [
     path('webhook/', WhatsAppWebhookView.as_view(), name='whatsapp_webhook'),
     path('media/<str:media_id>/', WhatsAppMediaProxyView.as_view(), name='whatsapp_media_proxy'),
+    path('upload-campaign-media/', CampaignMediaUploadView.as_view(), name='upload_campaign_media'),
     path('simulate/', SimulateWhatsAppMessageView.as_view(), name='whatsapp_simulate'),
     path('start-chat/', StartWhatsAppChatView.as_view(), name='whatsapp_start_chat'),
     path('grabber-session/', GroupGrabberSessionView.as_view(), name='whatsapp_grabber_session'),

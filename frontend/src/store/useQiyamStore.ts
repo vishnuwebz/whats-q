@@ -619,6 +619,7 @@ interface QiyamState {
   isPhoneSuppressed: (phone: string) => boolean;
 
   sendBulkMessage: (params: any) => Promise<{ success: boolean; campaignId?: string | number; error?: string }> | any;
+  uploadCampaignMedia: (file: File) => Promise<{ success: boolean; url?: string; filename?: string; size?: number; error?: string }>;
   updateMetaWallet: (updates: Partial<MetaWalletInfo>) => void;
   addWalletFunds: (amount: number, note?: string) => void;
   createRecipientList: (params: any) => void;
@@ -3874,6 +3875,24 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     } catch (err) {
       // Silently fail — no fake data, just empty list
       console.warn('[fetchBulkCampaigns] failed:', err);
+    }
+  },
+
+  uploadCampaignMedia: async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiClient.postFormData('/conversations/upload-campaign-media/', formData);
+      if (!res || !res.success || !res.url) {
+        const err = res?.error || 'Failed to upload campaign media file';
+        get().addToast(err, 'error');
+        return { success: false, error: err };
+      }
+      return { success: true, url: res.url, filename: res.filename, size: res.size };
+    } catch (err: any) {
+      const errStr = err?.message || 'Network error during media upload';
+      get().addToast(errStr, 'error');
+      return { success: false, error: errStr };
     }
   },
 

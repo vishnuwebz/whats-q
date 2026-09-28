@@ -266,8 +266,13 @@ else
     $SUDO_CMD systemctl restart whatsq-backend 2>/dev/null || true
     echo -e "${GREEN}[SUCCESS] WhatsQ Backend started!${NC}"
 fi
-
-$SUDO_CMD systemctl reload nginx 2>/dev/null || true
+# Configure Nginx client_max_body_size (50M) to permanently eliminate HTTP 413
+if [ -d "/etc/nginx/conf.d" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
+    echo "client_max_body_size 50M;" | $SUDO_CMD tee /etc/nginx/conf.d/whatsq_upload_size.conf > /dev/null 2>&1 || true
+    $SUDO_CMD nginx -t >/dev/null 2>&1 && $SUDO_CMD systemctl reload nginx 2>/dev/null || true
+else
+    $SUDO_CMD systemctl reload nginx 2>/dev/null || true
+fi
 
 # Instant broadcast of OTA update event to active browser SSE streams
 echo -e "\n${YELLOW}[OTA] Broadcasting deployment event to active browser sessions...${NC}"

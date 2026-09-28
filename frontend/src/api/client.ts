@@ -1,13 +1,39 @@
 const customBase = ((import.meta as any).env?.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '');
 export const API_BASE = customBase ? (customBase.endsWith('/api') ? customBase : `${customBase}/api`) : '/api';
 
+const formatHttpErrorMessage = (res: Response, dataJson: any, endpoint: string): string => {
+  if (dataJson?.error) return String(dataJson.error);
+  if (dataJson?.detail) return String(dataJson.detail);
+  if (dataJson?.message && typeof dataJson.message === 'string') return dataJson.message;
+
+  if (res.status === 413) {
+    return 'Image or message payload is too large (HTTP 413). Meta Cloud API requires header images under 5MB. Please select a smaller or compressed image.';
+  }
+  if (res.status === 400) {
+    return `Invalid request data (HTTP 400). Please verify your campaign and template parameters.`;
+  }
+  if (res.status === 401 || res.status === 403) {
+    return `Authentication expired or permission denied (HTTP ${res.status}). Please log in again.`;
+  }
+  if (res.status === 404) {
+    return `Resource not found on server (HTTP 404: ${endpoint}).`;
+  }
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    return `The server is temporarily updating or unavailable (HTTP ${res.status}). Please retry in a few moments.`;
+  }
+  if (res.status >= 500) {
+    return `Internal server error (HTTP ${res.status}). Please check server logs or retry.`;
+  }
+  return `Server request failed with status code ${res.status}.`;
+};
+
 export const apiClient = {
   async get(endpoint: string) {
     try {
       const res = await fetch(`${API_BASE}${endpoint}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) throw new Error(formatHttpErrorMessage(res, null, endpoint));
       return await res.json();
-    } catch (e) {
+    } catch (e: any) {
       console.warn(`API GET ${endpoint} failed, using store state:`, e);
       return null;
     }
@@ -22,7 +48,7 @@ export const apiClient = {
       });
       const dataJson = await res.json().catch(() => null);
       if (!res.ok) {
-        const errorMsg = dataJson?.error || dataJson?.detail || `HTTP error! status: ${res.status}`;
+        const errorMsg = formatHttpErrorMessage(res, dataJson, endpoint);
         console.warn(`API POST ${endpoint} failed:`, errorMsg);
         return { success: false, error: errorMsg, ...dataJson };
       }
@@ -41,7 +67,7 @@ export const apiClient = {
       });
       const dataJson = await res.json().catch(() => null);
       if (!res.ok) {
-        const errorMsg = dataJson?.error || dataJson?.detail || `HTTP error! status: ${res.status}`;
+        const errorMsg = formatHttpErrorMessage(res, dataJson, endpoint);
         console.warn(`API POST FormData ${endpoint} failed:`, errorMsg);
         return { success: false, error: errorMsg, ...dataJson };
       }

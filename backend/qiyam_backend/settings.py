@@ -121,6 +121,11 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# File & Payload Upload Limits (Up to 50MB to permanently prevent HTTP 413)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 _cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')

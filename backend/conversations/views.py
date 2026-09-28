@@ -5494,3 +5494,102 @@ class SuppressionViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response(instance.to_dict(), status=status.HTTP_200_OK)
 
+
+class CampaignMediaUploadView(APIView):
+    """
+    Accepts image/document/video uploads for WhatsApp campaign headers,
+    saves them to MEDIA_ROOT/campaign_headers/, and returns a permanent public HTTPS URL.
+    This avoids large payloads inside JSON dispatch requests, permanently preventing HTTP 413.
+    """
+    def post(self, request):
+        import uuid
+        import os
+        from django.conf import settings
+
+        uploaded_file = request.FILES.get('file') or request.FILES.get('image') or request.FILES.get('media')
+        base64_data = request.data.get('image_data') or request.data.get('data')
+
+        target_dir = os.path.join(settings.MEDIA_ROOT, 'campaign_headers')
+        os.makedirs(target_dir, exist_ok=True)
+        base_domain = "https://whatsq.qiyambusinesssolutions.com"
+
+        # Case 1: Standard multipart file upload
+        if uploaded_file:
+            if uploaded_file.size > 10 * 1024 * 1024:
+                return Response({
+                    'success': False,
+                    'error': 'File exceeds 10MB limit. Meta Cloud API requires campaign header media under 5MB.',
+                    'detail': f'Uploaded file size: {round(uploaded_file.size / (1024 * 1024), 2)}MB.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            ext = os.path.splitext(uploaded_file.name)[1].lower()
+            if not ext:
+                ext = '.jpg'
+            elif ext not in ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.mp4']:
+                return Response({
+                    'success': False,
+                    'error': f'Unsupported file format "{ext}". Please upload a JPG, PNG, WebP image, PDF document, or MP4 video.',
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            filename = f"campaign_header_{uuid.uuid4().hex[:12]}{ext}"
+            target_path = os.path.join(target_dir, filename)
+
+            try:
+                with open(target_path, 'wb+') as dest:
+                    for chunk in uploaded_file.chunks():
+                        dest.write(chunk)
+
+                public_url = f"{base_domain}/media/campaign_headers/{filename}"
+                return Response({
+                    'success': True,
+                    'url': public_url,
+                    'filename': filename,
+                    'size': uploaded_file.size,
+                    'message': 'Campaign header media uploaded and hosted successfully!'
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"[CampaignMediaUploadView] Error saving uploaded file: {e}")
+                return Response({
+                    'success': False,
+                    'error': f'Failed to save uploaded file on server: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Case 2: Base64 string upload
+        elif base64_data and str(base64_data).startswith('data:'):
+            try:
+                header_data, b64_bytes = str(base64_data).split(';base64,', 1)
+                ext = '.png' if 'png' in header_data else '.webp' if 'webp' in header_data else '.jpeg' if 'jpeg' in header_data else '.jpg'
+                filename = f"campaign_header_{uuid.uuid4().hex[:12]}{ext}"
+                target_path = os.path.join(target_dir, filename)
+
+                decoded_data = base64.b64decode(b64_bytes)
+                if len(decoded_data) > 10 * 1024 * 1024:
+                    return Response({
+                        'success': False,
+                        'error': 'Image payload exceeds 10MB limit. Please compress the image before uploading.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                with open(target_path, 'wb') as f:
+                    f.write(decoded_data)
+
+                public_url = f"{base_domain}/media/campaign_headers/{filename}"
+                return Response({
+                    'success': True,
+                    'url': public_url,
+                    'filename': filename,
+                    'size': len(decoded_data),
+                    'message': 'Base64 image converted to hosted media successfully!'
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"[CampaignMediaUploadView] Error processing base64 data: {e}")
+                return Response({
+                    'success': False,
+                    'error': f'Failed to process image data: {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'success': False,
+            'error': 'No file or image data provided in upload request. Please select a valid file.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
