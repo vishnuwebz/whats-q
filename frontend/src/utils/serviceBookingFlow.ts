@@ -1,4 +1,4 @@
-import { FlowGroup } from '@/types';
+import { FlowGroup, GroupItem } from '@/types';
 
 export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
   {
@@ -54,7 +54,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
     id: 'group-3',
     title: 'Group #3 - Live Specialist Status & ETA',
     x: 420,
-    y: 400,
+    y: 690,
     items: [
       {
         id: 'item-3-1',
@@ -100,7 +100,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
     id: 'group-5',
     title: 'Group #5 - Human Agent Handover',
     x: 800,
-    y: 400,
+    y: 720,
     items: [
       {
         id: 'item-5-1',
@@ -131,7 +131,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
     id: 'group-7',
     title: 'Group #7 - Token Advance Payment',
     x: 1180,
-    y: 400,
+    y: 460,
     items: [
       {
         id: 'item-7-1',
@@ -149,6 +149,125 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
   }
 ];
 
+/**
+ * Accurately estimates the rendered height (in pixels) of a FlowGroup card on the canvas
+ * based on its header, keyword trigger banner, messages, choices, options count, etc.
+ */
+export const estimateGroupHeight = (grp: FlowGroup): number => {
+  if (!grp) return 260;
+
+  // Base card shell: header (~52px) + top/bottom padding & borders (~32px)
+  let h = 84;
+
+  const titleLower = (grp.title || '').toLowerCase();
+  const isInitial = grp.id === 'group-1' || titleLower.includes('welcome') || titleLower.includes('menu trigger');
+  
+  if (isInitial) {
+    // Initial group has large trigger keywords banner with tags & webhooks
+    h += 140;
+  } else if (
+    titleLower.includes('booking') ||
+    titleLower.includes('reschedule') ||
+    titleLower.includes('specialist') ||
+    titleLower.includes('eta') ||
+    titleLower.includes('price') ||
+    titleLower.includes('quotation') ||
+    titleLower.includes('agent') ||
+    titleLower.includes('support')
+  ) {
+    // Inbound keyword tag preview banner
+    h += 68;
+  }
+
+  for (const item of (grp.items || [])) {
+    if (item.type === 'message') {
+      const text = item.content || '';
+      const lines = text.split('\n').length;
+      // ~32 chars per line inside 300px card width
+      const wrappedLines = Math.max(lines, Math.ceil(text.length / 32));
+      const textHeight = Math.max(26, wrappedLines * 19);
+      h += 34 + textHeight + 18;
+    } else if (item.type === 'choice') {
+      const q = item.question || '';
+      const qLines = Math.max(1, Math.ceil(q.length / 28));
+      const qHeight = qLines * 18;
+      const optCount = Array.isArray(item.options) ? item.options.length : 0;
+      // Each option button is ~42px height + 8px gap = 50px
+      h += 34 + qHeight + (optCount * 50) + 18;
+    } else if (item.type === 'payment') {
+      h += 145;
+    } else if (item.type === 'collect') {
+      h += 80;
+    } else if (item.type === 'jump') {
+      h += 65;
+    } else {
+      h += 85;
+    }
+  }
+
+  // "+ Add Step" action button at bottom + card footer margin
+  h += 52;
+  return Math.max(240, Math.round(h));
+};
+
+/**
+ * Dynamically and automatically calculates collision-free vertical gaps between groups.
+ * Clusters groups into columns by X position and pushes any overlapping or tightly-spaced
+ * lower group down with a clean minimum gap of 80px so all options remain 100% visible.
+ */
+export const autoAdjustFlowGroupGaps = (
+  groups: FlowGroup[],
+  minGapY: number = 80
+): FlowGroup[] => {
+  if (!groups || !Array.isArray(groups) || groups.length === 0) return [];
+
+  // Deep clone groups to avoid mutating source objects
+  const result: FlowGroup[] = groups.map((g) => ({
+    ...g,
+    items: Array.isArray(g.items) ? [...g.items] : []
+  }));
+
+  // Cluster groups into columns by horizontal proximity (card width is 300px, so within 220px is same column)
+  const columns: FlowGroup[][] = [];
+  const sortedByX = [...result].sort((a, b) => a.x - b.x);
+
+  for (const grp of sortedByX) {
+    let targetCol: FlowGroup[] | null = null;
+    for (const col of columns) {
+      const avgColX = col.reduce((sum, g) => sum + g.x, 0) / col.length;
+      if (Math.abs(grp.x - avgColX) < 220) {
+        targetCol = col;
+        break;
+      }
+    }
+    if (targetCol) {
+      targetCol.push(grp);
+    } else {
+      columns.push([grp]);
+    }
+  }
+
+  // In each column, sort vertically by Y and dynamically enforce generous gap
+  for (const col of columns) {
+    col.sort((a, b) => a.y - b.y);
+
+    for (let i = 1; i < col.length; i++) {
+      const prevGrp = col[i - 1];
+      const currentGrp = col[i];
+
+      const prevHeight = estimateGroupHeight(prevGrp);
+      const requiredMinY = prevGrp.y + prevHeight + minGapY;
+
+      // If current group starts before requiredMinY, push it down dynamically!
+      if (currentGrp.y < requiredMinY) {
+        currentGrp.y = requiredMinY;
+      }
+    }
+  }
+
+  return result;
+};
+
 export const normalizeToFlowGroups = (
   rawNodes: any[] | null | undefined,
   workflowTitle?: string
@@ -159,7 +278,7 @@ export const normalizeToFlowGroups = (
       (n) => n && typeof n === 'object' && Array.isArray(n.items)
     );
     if (isFlowGroupFormat) {
-      return rawNodes.map((g, idx) => ({
+      const groups = rawNodes.map((g, idx) => ({
         id: g.id || `group-${idx + 1}`,
         title: g.title || `Group #${idx + 1}`,
         x: typeof g.x === 'number' ? g.x : 40 + idx * 360,
@@ -184,6 +303,7 @@ export const normalizeToFlowGroups = (
             }))
           : [],
       }));
+      return autoAdjustFlowGroupGaps(groups);
     }
   }
 
@@ -197,7 +317,7 @@ export const normalizeToFlowGroups = (
   );
 
   if (isServiceBooking || !rawNodes || !Array.isArray(rawNodes) || rawNodes.length === 0) {
-    return SERVICE_BOOKING_FLOW_GROUPS;
+    return autoAdjustFlowGroupGaps(SERVICE_BOOKING_FLOW_GROUPS);
   }
 
   // Check if rawNodes is already in FlowGroup[] format (each has .items array)
@@ -206,7 +326,7 @@ export const normalizeToFlowGroups = (
   );
 
   if (isFlowGroupFormat) {
-    return rawNodes.map((g, idx) => ({
+    const groups = rawNodes.map((g, idx) => ({
       id: g.id || `group-${idx + 1}`,
       title: g.title || `Group #${idx + 1}`,
       x: typeof g.x === 'number' ? g.x : 40 + idx * 360,
@@ -231,10 +351,11 @@ export const normalizeToFlowGroups = (
           }))
         : [],
     }));
+    return autoAdjustFlowGroupGaps(groups);
   }
 
   // Convert legacy node list (like { id, type, title, subtitle, position }) to visual FlowGroup[]
-  return rawNodes.map((node, idx) => ({
+  const groups: FlowGroup[] = rawNodes.map((node, idx) => ({
     id: `group-${node.id || idx + 1}`,
     title: node.title || `Step #${idx + 1}`,
     x: node.position?.x ?? 40 + idx * 360,
@@ -242,7 +363,7 @@ export const normalizeToFlowGroups = (
     items: [
       {
         id: `item-${node.id || idx + 1}-1`,
-        type: node.type === 'payment' ? 'payment' : node.type === 'condition' ? 'choice' : 'message',
+        type: (node.type === 'payment' ? 'payment' : node.type === 'condition' ? 'choice' : 'message') as GroupItem['type'],
         content: node.subtitle || node.title || `Action step for ${node.category || 'Workflow'}`,
         question: node.type === 'condition' ? node.title || 'Choose option:' : undefined,
         options:
@@ -255,4 +376,5 @@ export const normalizeToFlowGroups = (
       },
     ],
   }));
+  return autoAdjustFlowGroupGaps(groups);
 };

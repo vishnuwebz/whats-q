@@ -13,7 +13,7 @@ import {
   Upload, Link2, Search
 } from 'lucide-react';
 import { generateWorkflowFromTemplate } from '@/utils/templateWorkflowGenerator';
-import { SERVICE_BOOKING_FLOW_GROUPS, normalizeToFlowGroups } from '@/utils/serviceBookingFlow';
+import { SERVICE_BOOKING_FLOW_GROUPS, normalizeToFlowGroups, autoAdjustFlowGroupGaps } from '@/utils/serviceBookingFlow';
 import { KeywordRule, DaySchedule } from '@/types';
 export type { KeywordRule, DaySchedule };
 import { KeywordTriggerRulesView } from './KeywordTriggerRulesView';
@@ -379,8 +379,14 @@ export const WorkflowBuilderView: React.FC = () => {
   const [activeKeywordInputRuleId, setActiveKeywordInputRuleId] = useState<string | null>(null);
   const [inlineKeywordText, setInlineKeywordText] = useState('');
 
-  // Initial Flow Groups (Defaults to the dynamic Service Booking / Welcome Flow)
-  const [groups, setGroups] = useState<FlowGroup[]>(SERVICE_BOOKING_FLOW_GROUPS);
+  // Initial Flow Groups (Defaults to the dynamic Service Booking / Welcome Flow with clean spacing)
+  const [groups, setGroups] = useState<FlowGroup[]>(() => autoAdjustFlowGroupGaps(SERVICE_BOOKING_FLOW_GROUPS));
+
+  // Automatically organize vertical gaps dynamically so cards and options never overlap
+  const handleAutoAlignGaps = () => {
+    setGroups((prev) => autoAdjustFlowGroupGaps(prev));
+    addToast('Group layout & vertical gaps organized automatically!', 'success');
+  };
 
   // Active Selected Node & Drag-and-Drop state
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>('group-1');
@@ -774,7 +780,7 @@ export const WorkflowBuilderView: React.FC = () => {
     const updated = groups.map((g) =>
       g.id === targetGroup.id ? { ...g, items: [...(g.items || []), newItem] } : g
     );
-    setGroups(updated);
+    setGroups(autoAdjustFlowGroupGaps(updated));
     setSelectedGroupId(targetGroup.id);
     addToast(`Added "${blockTitle}" block to ${targetGroup.title}`, 'success');
   };
@@ -913,13 +919,15 @@ export const WorkflowBuilderView: React.FC = () => {
     }
 
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id !== groupId) return g;
-        return {
-          ...g,
-          items: (g.items || []).map((it) => (it.id === itemId ? finalItem : it)),
-        };
-      })
+      autoAdjustFlowGroupGaps(
+        prev.map((g) => {
+          if (g.id !== groupId) return g;
+          return {
+            ...g,
+            items: (g.items || []).map((it) => (it.id === itemId ? finalItem : it)),
+          };
+        })
+      )
     );
 
     setConfigModal(null);
@@ -1037,16 +1045,17 @@ export const WorkflowBuilderView: React.FC = () => {
       ];
     }
 
+    const adjustedGroups = autoAdjustFlowGroupGaps(targetGroups);
     setBotTitle(wfName);
-    setGroups(targetGroups);
-    if (targetGroups.length > 0) {
-      setSelectedGroupId(targetGroups[0].id);
+    setGroups(adjustedGroups);
+    if (adjustedGroups.length > 0) {
+      setSelectedGroupId(adjustedGroups[0].id);
     }
     setActiveWorkflowTitle(wfName);
     if (matchedWf) {
       setActiveWorkflowId(matchedWf.id);
     }
-    setActiveWorkflowGroups(targetGroups);
+    setActiveWorkflowGroups(adjustedGroups);
     setActiveMode('canvas');
     addToast(`⚡ Flow "${wfName}" opened in Interactive Canvas!`, 'success');
   };
@@ -1156,7 +1165,7 @@ export const WorkflowBuilderView: React.FC = () => {
   // Apply Pre-built Template Flow
   const handleLoadTemplate = (templateType: 'university' | 'ac_service' | 'ecommerce' | 'blank' | 'service_booking') => {
     if (templateType === 'service_booking') {
-      setGroups(SERVICE_BOOKING_FLOW_GROUPS);
+      setGroups(autoAdjustFlowGroupGaps(SERVICE_BOOKING_FLOW_GROUPS));
       setBotTitle('Service Booking Flow');
       addToast('Official Service Booking flow loaded with 7 interactive node groups!', 'success');
     } else if (templateType === 'blank') {
@@ -2039,6 +2048,17 @@ export const WorkflowBuilderView: React.FC = () => {
                 )}
               </button>
 
+              {/* Dynamic Auto Spacing Button */}
+              <button
+                type="button"
+                onClick={handleAutoAlignGaps}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 rounded-xl font-semibold text-xs shadow-xs transition cursor-pointer active:scale-95 shrink-0"
+                title="Dynamically calculate vertical gaps between groups so options and buttons never overlap"
+              >
+                <Sliders className="w-3.5 h-3.5 text-emerald-700" />
+                <span className="hidden sm:inline">Auto Spacing</span>
+              </button>
+
               {/* Delete Active Workflow Button */}
               {activeWorkflowId && (
                 <button
@@ -2147,6 +2167,15 @@ export const WorkflowBuilderView: React.FC = () => {
                 title="Fit All Nodes in View"
               >
                 <Compass className="w-4 h-4" />
+              </button>
+              {/* Dynamic Auto Spacing Button */}
+              <button
+                type="button"
+                onClick={handleAutoAlignGaps}
+                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-center transition cursor-pointer"
+                title="Auto Spacing & Layout Alignment (Prevents Card Overlapping)"
+              >
+                <Sliders className="w-4 h-4 text-emerald-600" />
               </button>
               {/* Full Screen Mode Button */}
               <button
@@ -2447,10 +2476,12 @@ export const WorkflowBuilderView: React.FC = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setGroups((prev) =>
-                                    prev.map((g) =>
-                                      g.id === grp.id
-                                        ? { ...g, items: (g.items || []).filter((it) => it.id !== item.id) }
-                                        : g
+                                    autoAdjustFlowGroupGaps(
+                                      prev.map((g) =>
+                                        g.id === grp.id
+                                          ? { ...g, items: (g.items || []).filter((it) => it.id !== item.id) }
+                                          : g
+                                      )
                                     )
                                   );
                                   addToast('Removed block from node', 'info');
@@ -4801,7 +4832,7 @@ export const WorkflowBuilderView: React.FC = () => {
                             onClick={() => {
                               const result = generateWorkflowFromTemplate(tmpl);
                               setBotTitle(result.title);
-                              setGroups(result.groups);
+                              setGroups(autoAdjustFlowGroupGaps(result.groups));
                               setIsTemplatesModalOpen(false);
                               addToast(
                                 `⚡ Auto-generated workflow from "${tmpl.name}" with ${result.groups.length} node groups!`,

@@ -1,5 +1,6 @@
 import { WhatsAppTemplateItem, WhatsAppTemplateButton, KeywordRule } from '@/types';
 import { FlowGroup, GroupItem } from '../components/views/automation/WorkflowBuilderView';
+import { autoAdjustFlowGroupGaps } from './serviceBookingFlow';
 
 export interface TemplateAnalysis {
   detectedCategory: string;
@@ -489,7 +490,7 @@ export function generateWorkflowFromTemplate(
   return {
     title,
     description: `Automated interactive WhatsApp flowchart synthesized from template "${template.name}". Includes ${groups.length} node groups with ${(analysis?.intentLabel || 'general').toLowerCase()} logic.`,
-    groups,
+    groups: autoAdjustFlowGroupGaps(groups),
     keywordRules,
     analysis
   };
