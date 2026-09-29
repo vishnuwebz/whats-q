@@ -7766,7 +7766,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Modern Template Search & Live WhatsApp Template Confirmation Preview v2.4.26',
+        latest_message: 'Fix Notifications Popover Stacking Context on CRM Leads v2.4.27',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

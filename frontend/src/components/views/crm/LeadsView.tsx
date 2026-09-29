@@ -429,7 +429,7 @@ export const LeadsView: React.FC = () => {
                             {/* Backdrop for instant click-outside dismiss */}
                             {isPopoverOpen && (
                               <div
-                                className="fixed inset-0 z-40"
+                                className="fixed inset-0 z-20"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveStagePopoverId(null);
@@ -444,7 +444,7 @@ export const LeadsView: React.FC = () => {
                                 e.stopPropagation();
                                 handleToggleStagePopover(lead.id);
                               }}
-                              className={`group/badge relative z-40 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer shadow-2xs ${currentStageCfg.badgeClass} ${
+                              className={`group/badge relative ${isPopoverOpen ? 'z-20' : 'z-0'} inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer shadow-2xs ${currentStageCfg.badgeClass} ${
                                 isPopoverOpen
                                   ? 'ring-2 ring-emerald-500/25 border-emerald-400 bg-white shadow-xs'
                                   : 'hover:shadow-xs hover:border-slate-300'
@@ -465,7 +465,7 @@ export const LeadsView: React.FC = () => {
                               <div
                                 className={`absolute left-0 ${
                                   shouldOpenUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-                                } z-50 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-200/90 ring-1 ring-black/5 p-1.5 animate-in fade-in zoom-in-95 duration-100`}
+                                } z-30 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-200/90 ring-1 ring-black/5 p-1.5 animate-in fade-in zoom-in-95 duration-100`}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {/* Popover Header */}
