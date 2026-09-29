@@ -4,7 +4,7 @@ import { Header } from '@/components/layout/Header';
 import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
   Smile, Mic, CheckCheck, Clock, UserCheck,
-  ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, ChevronDown, Tag,
+  ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
@@ -114,6 +114,28 @@ export const ConversationsView: React.FC = () => {
       const next = !prev;
       try {
         localStorage.setItem('whatsq_chat_header_actions_minimized', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  // Active Chat Line banner collapsed state (collapsed by default to save space)
+  const [isChatLineBannerCollapsed, setIsChatLineBannerCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('whatsq_chat_line_banner_collapsed');
+      return stored !== null ? stored === 'true' : true; // Default: true (COLLAPSED)
+    } catch {
+      return true; // Default: true (COLLAPSED)
+    }
+  });
+
+  const toggleChatLineBanner = () => {
+    setIsChatLineBannerCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('whatsq_chat_line_banner_collapsed', String(next));
       } catch {
         // ignore
       }
@@ -2551,71 +2573,156 @@ export const ConversationsView: React.FC = () => {
                 </div>
               )}
 
-              {/* Active WhatsApp Line Channel Banner */}
+              {/* Active WhatsApp Line Channel Banner (Collapsed by default to save space) */}
               {conversationActiveLine && (
-                <div className={`px-4 py-2 border-b flex items-center justify-between gap-3 text-xs transition-colors shrink-0 ${
-                  conversationActiveLine.type === 'employee'
-                    ? 'bg-gradient-to-r from-teal-50/95 via-emerald-50/80 to-teal-50/90 border-teal-200/90 text-teal-950'
-                    : 'bg-slate-50/90 border-slate-200 text-slate-700'
-                }`}>
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs font-bold ${
-                      conversationActiveLine.type === 'employee'
-                        ? 'bg-teal-600 text-white'
-                        : 'bg-emerald-600 text-white'
-                    }`}>
-                      <Smartphone className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">
-                          {conversationActiveLine.type === 'employee'
-                            ? `Active Chat Line: ${conversationActiveLine.employeeName}`
-                            : 'Active Chat Line: Meta Cloud API'}
-                        </span>
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          conversationActiveLine.type === 'employee'
-                            ? 'bg-teal-100 text-teal-800 border border-teal-300'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                <div
+                  className={`border-b transition-all duration-200 shrink-0 ${
+                    conversationActiveLine.type === 'employee'
+                      ? 'bg-gradient-to-r from-teal-50/95 via-emerald-50/80 to-teal-50/90 border-teal-200/80 text-teal-950'
+                      : 'bg-slate-50/90 border-slate-200 text-slate-700'
+                  } ${isChatLineBannerCollapsed ? 'px-3.5 py-1 text-[11px]' : 'px-4 py-2 text-xs'}`}
+                >
+                  {isChatLineBannerCollapsed ? (
+                    /* Collapsed Compact Single-Line Strip */
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <button
+                        type="button"
+                        onClick={toggleChatLineBanner}
+                        className="flex items-center gap-2 min-w-0 hover:opacity-85 transition cursor-pointer text-left py-0.5 group/line"
+                        title="Click to expand WhatsApp line details"
+                      >
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
+                          conversationActiveLine.type === 'employee' ? 'bg-teal-600 text-white' : 'bg-emerald-600 text-white'
                         }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${conversationActiveLine.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                          {conversationActiveLine.type === 'employee' ? 'Employee Linked Number' : 'Official Verified Business Line'}
-                        </span>
-                        {conversationActiveLine.deviceLabel && (
-                          <span className="text-[10px] text-slate-600 bg-white/90 px-1.5 py-0.5 rounded border border-slate-200/80 font-medium">
-                            {conversationActiveLine.deviceLabel}
+                          <Smartphone className="w-3 h-3" />
+                        </div>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-slate-900 text-[11px] truncate group-hover/line:text-teal-700">
+                            {conversationActiveLine.type === 'employee'
+                              ? `Line: ${conversationActiveLine.employeeName}`
+                              : 'Line: Meta Cloud API'}
                           </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5 truncate">
-                        <span className="font-bold text-slate-800">{conversationActiveLine.phone}</span>
-                        <span>•</span>
-                        <span className="font-sans text-[10.5px] text-slate-600 truncate">
-                          {conversationActiveLine.type === 'employee'
-                            ? 'Replies directly to this employee phone appear here live. Broadcasts & templates remain sent via Meta Cloud API (+91 94963 00233).'
-                            : 'Customer messages and official template broadcasts routed via Meta Cloud API.'}
-                        </span>
+                          <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+                            ({conversationActiveLine.phone})
+                          </span>
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              conversationActiveLine.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                            }`}
+                            title={conversationActiveLine.isConnected ? 'Connected' : 'Offline'}
+                          />
+                          {conversationActiveLine.deviceLabel && (
+                            <span className="text-[9px] text-slate-600 bg-white/90 px-1.5 py-0.2 rounded border border-slate-200/80 font-medium hidden md:inline truncate">
+                              {conversationActiveLine.deviceLabel}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400 font-medium hidden lg:inline">
+                            • Click to expand
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Right controls: Outbound switcher + expand toggle */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsLineSelectorOpen(true)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-[10.5px] font-semibold transition shadow-2xs cursor-pointer"
+                          title="Select which WhatsApp line to send outgoing replies from"
+                        >
+                          <span className="text-slate-500 hidden sm:inline">Outbound:</span>
+                          <span className="text-teal-700 font-bold truncate max-w-[120px]">
+                            {activeSenderDeviceId === 'meta_cloud'
+                              ? 'Meta Cloud API'
+                              : (linkedDevices.find(d => String(d.id) === String(activeSenderDeviceId))?.device_label || 'Employee Line')}
+                          </span>
+                          <ChevronDown className="w-3 h-3 text-slate-400" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={toggleChatLineBanner}
+                          className="p-1 rounded-md hover:bg-slate-200/60 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                          title="Expand active line details"
+                          aria-label="Expand active line details"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Expanded Full Line Channel Banner */
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs font-bold ${
+                          conversationActiveLine.type === 'employee'
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-emerald-600 text-white'
+                        }`}>
+                          <Smartphone className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                              {conversationActiveLine.type === 'employee'
+                                ? `Active Chat Line: ${conversationActiveLine.employeeName}`
+                                : 'Active Chat Line: Meta Cloud API'}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              conversationActiveLine.type === 'employee'
+                                ? 'bg-teal-100 text-teal-800 border border-teal-300'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${conversationActiveLine.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                              {conversationActiveLine.type === 'employee' ? 'Employee Linked Number' : 'Official Verified Business Line'}
+                            </span>
+                            {conversationActiveLine.deviceLabel && (
+                              <span className="text-[10px] text-slate-600 bg-white/90 px-1.5 py-0.5 rounded border border-slate-200/80 font-medium">
+                                {conversationActiveLine.deviceLabel}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                            <span className="font-bold text-slate-800">{conversationActiveLine.phone}</span>
+                            <span>•</span>
+                            <span className="font-sans text-[10.5px] text-slate-600 truncate">
+                              {conversationActiveLine.type === 'employee'
+                                ? 'Replies directly to this employee phone appear here live. Broadcasts & templates remain sent via Meta Cloud API (+91 94963 00233).'
+                                : 'Customer messages and official template broadcasts routed via Meta Cloud API.'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Outbound Line Switcher Quick Button */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsLineSelectorOpen(true)}
-                      className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-[11px] font-semibold transition shadow-2xs cursor-pointer"
-                      title="Select which WhatsApp line to send outgoing replies from"
-                    >
-                      <span className="text-slate-500">Outbound:</span>
-                      <span className="text-teal-700 font-bold truncate max-w-[120px]">
-                        {activeSenderDeviceId === 'meta_cloud'
-                          ? 'Meta Cloud API'
-                          : (linkedDevices.find(d => String(d.id) === String(activeSenderDeviceId))?.device_label || 'Employee Line')}
-                      </span>
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
-                    </button>
-                  </div>
+                      {/* Outbound Line Switcher Quick Button & Collapse Button */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsLineSelectorOpen(true)}
+                          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-[11px] font-semibold transition shadow-2xs cursor-pointer"
+                          title="Select which WhatsApp line to send outgoing replies from"
+                        >
+                          <span className="text-slate-500">Outbound:</span>
+                          <span className="text-teal-700 font-bold truncate max-w-[120px]">
+                            {activeSenderDeviceId === 'meta_cloud'
+                              ? 'Meta Cloud API'
+                              : (linkedDevices.find(d => String(d.id) === String(activeSenderDeviceId))?.device_label || 'Employee Line')}
+                          </span>
+                          <ChevronDown className="w-3 h-3 text-slate-400" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={toggleChatLineBanner}
+                          className="p-1 rounded-md hover:bg-slate-200/60 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                          title="Collapse active line banner to save space"
+                          aria-label="Collapse active line banner"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
