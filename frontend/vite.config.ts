@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 
-const APP_VERSION = '2.4.25';
+const APP_VERSION = '2.4.26';
 
 function getGitCommit(): string {
   try {

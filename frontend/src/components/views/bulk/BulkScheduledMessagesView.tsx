@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Loader2,
   Smartphone,
+  Eye,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkScheduledMessage, BulkContact } from '../../../types';
@@ -84,6 +85,21 @@ export const BulkScheduledMessagesView: React.FC = () => {
     templateId?: string;
     message?: BulkScheduledMessage;
   } | null>(null);
+
+  // Selected templates for confirmation preview
+  const quickSelectedTemplate = useMemo(() => {
+    return (
+      bulkTemplates.find((t) => t.id === quickTemplateId || t.name === quickTemplateId) ||
+      bulkTemplates[0]
+    );
+  }, [bulkTemplates, quickTemplateId]);
+
+  const editSelectedTemplate = useMemo(() => {
+    return (
+      bulkTemplates.find((t) => t.id === editTemplateId || t.name === editTemplateId) ||
+      bulkTemplates[0]
+    );
+  }, [bulkTemplates, editTemplateId]);
 
   // Real-time 1-second ticker for accurate countdown with seconds
   const [nowTick, setNowTick] = useState(Date.now());
@@ -896,7 +912,25 @@ export const BulkScheduledMessagesView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">WhatsApp Template</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">WhatsApp Template</label>
+                    {editSelectedTemplate && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewTemplateTarget({
+                            templateName: editSelectedTemplate.name,
+                            templateId: editSelectedTemplate.id,
+                          })
+                        }
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                        title="Preview this WhatsApp template before scheduling"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Preview Template</span>
+                      </button>
+                    )}
+                  </div>
                   <ModernTemplateSelect
                     value={editTemplateId}
                     onChange={(id, template) => {
@@ -907,6 +941,12 @@ export const BulkScheduledMessagesView: React.FC = () => {
                         else if (cat.includes('auth')) setEditCategory('authentication');
                         else setEditCategory('utility');
                       }
+                    }}
+                    onPreview={(template) => {
+                      setPreviewTemplateTarget({
+                        templateName: template.name,
+                        templateId: template.id,
+                      });
                     }}
                     templates={bulkTemplates}
                     required
@@ -937,6 +977,43 @@ export const BulkScheduledMessagesView: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Selected Template Live Confirmation & Preview Card */}
+              {editSelectedTemplate && (
+                <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-start justify-between gap-3 text-xs">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-xs truncate">
+                        Template Preview: {editSelectedTemplate.name}
+                      </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {editSelectedTemplate.category || 'Utility'}
+                      </span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">
+                        ✓ Approved
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded-xl border border-emerald-100 text-slate-700 text-[11px] leading-relaxed max-h-16 overflow-y-auto font-sans">
+                      &ldquo;{editSelectedTemplate.bodyText || editSelectedTemplate.body || 'Pre-approved WhatsApp template message'}&rdquo;
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewTemplateTarget({
+                        templateName: editSelectedTemplate.name,
+                        templateId: editSelectedTemplate.id,
+                      })
+                    }
+                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold shadow-2xs flex items-center gap-1.5 shrink-0 transition cursor-pointer"
+                    title="Open live smartphone WhatsApp preview"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Live Preview</span>
+                  </button>
+                </div>
+              )}
 
               {/* Quick Preset Buttons */}
               <div className="space-y-1.5">
@@ -1103,7 +1180,25 @@ export const BulkScheduledMessagesView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">WhatsApp Template</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">WhatsApp Template</label>
+                    {quickSelectedTemplate && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewTemplateTarget({
+                            templateName: quickSelectedTemplate.name,
+                            templateId: quickSelectedTemplate.id,
+                          })
+                        }
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                        title="Click to preview this WhatsApp template in live smartphone view"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Preview Template</span>
+                      </button>
+                    )}
+                  </div>
                   <ModernTemplateSelect
                     value={quickTemplateId}
                     onChange={(id, template) => {
@@ -1114,6 +1209,12 @@ export const BulkScheduledMessagesView: React.FC = () => {
                         else if (cat.includes('auth')) setQuickCategory('authentication');
                         else setQuickCategory('utility');
                       }
+                    }}
+                    onPreview={(template) => {
+                      setPreviewTemplateTarget({
+                        templateName: template.name,
+                        templateId: template.id,
+                      });
                     }}
                     templates={bulkTemplates}
                     required
@@ -1144,6 +1245,43 @@ export const BulkScheduledMessagesView: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Selected Template Live Confirmation & Preview Card */}
+              {quickSelectedTemplate && (
+                <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-start justify-between gap-3 text-xs">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-xs truncate">
+                        Template Preview: {quickSelectedTemplate.name}
+                      </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {quickSelectedTemplate.category || 'Utility'}
+                      </span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">
+                        ✓ Approved
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded-xl border border-emerald-100 text-slate-700 text-[11px] leading-relaxed max-h-16 overflow-y-auto font-sans">
+                      &ldquo;{quickSelectedTemplate.bodyText || quickSelectedTemplate.body || 'Pre-approved WhatsApp template message'}&rdquo;
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewTemplateTarget({
+                        templateName: quickSelectedTemplate.name,
+                        templateId: quickSelectedTemplate.id,
+                      })
+                    }
+                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold shadow-2xs flex items-center gap-1.5 shrink-0 transition cursor-pointer"
+                    title="Open live smartphone WhatsApp preview"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Live Preview</span>
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
