@@ -8,7 +8,6 @@ import {
   Clock,
   Check,
   X,
-  Zap,
 } from 'lucide-react';
 
 export interface ModernDateTimePickerProps {
@@ -32,7 +31,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   // Helper to parse input value
   const parseValue = (valStr: string) => {
@@ -71,7 +70,12 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   const [second, setSecond] = useState(initial.second);
   const [meridiem, setMeridiem] = useState<'AM' | 'PM'>(initial.meridiem);
 
-  // Sync internal state if external value changes while closed
+  // Input text states for typing smoothly with two-digit formatting
+  const [hourInput, setHourInput] = useState(String(initial.hour).padStart(2, '0'));
+  const [minInput, setMinInput] = useState(String(initial.minute).padStart(2, '0'));
+  const [secInput, setSecInput] = useState(String(initial.second).padStart(2, '0'));
+
+  // Sync internal state when external value changes while closed
   useEffect(() => {
     if (!isOpen && value) {
       const parsed = parseValue(value);
@@ -82,22 +86,11 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       setMinute(parsed.minute);
       setSecond(parsed.second);
       setMeridiem(parsed.meridiem);
+      setHourInput(String(parsed.hour).padStart(2, '0'));
+      setMinInput(String(parsed.minute).padStart(2, '0'));
+      setSecInput(String(parsed.second).padStart(2, '0'));
     }
   }, [value, isOpen]);
-
-  // Check positioning relative to viewport when opened
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      // If less than 440px below, flip upward
-      if (spaceBelow < 440 && rect.top > 440) {
-        setOpenUpward(true);
-      } else {
-        setOpenUpward(false);
-      }
-    }
-  }, [isOpen]);
 
   // Construct ISO-like string: YYYY-MM-DDTHH:mm:ss
   const buildCurrentDateTimeString = (
@@ -123,7 +116,55 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     meridiem
   );
 
-  // Calendar generation logic (identical to ModernDateRangePicker)
+  // Fixed viewport positioning calculation with strict clamping
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const compute = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const popoverWidth = Math.min(340, window.innerWidth - 24);
+      const popoverHeight = 510;
+
+      // Preferred position: below the trigger
+      let idealTop = rect.bottom + 8;
+      const spaceBelow = window.innerHeight - rect.bottom - 16;
+      const spaceAbove = rect.top - 16;
+
+      if (spaceBelow < popoverHeight) {
+        if (spaceAbove >= popoverHeight) {
+          // Fits cleanly above
+          idealTop = rect.top - popoverHeight - 8;
+        } else {
+          // In between: center vertically in the viewport with safe margins
+          idealTop = Math.max(16, (window.innerHeight - popoverHeight) / 2);
+        }
+      }
+
+      // CRITICAL CLAMP: top is NEVER less than 16px! (Prevents top clipping completely)
+      const maxAllowedTop = Math.max(16, window.innerHeight - popoverHeight - 16);
+      const clampedTop = Math.max(16, Math.min(idealTop, maxAllowedTop));
+
+      // Horizontal clamp:
+      let idealLeft = rect.right - popoverWidth;
+      if (idealLeft < 12) idealLeft = 12;
+      if (idealLeft + popoverWidth > window.innerWidth - 12) {
+        idealLeft = window.innerWidth - popoverWidth - 12;
+      }
+
+      setCoords({ top: clampedTop, left: idealLeft });
+    };
+
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, [isOpen]);
+
+  // Calendar generation logic (identical to Screenshot 2 & ModernDateRangePicker)
   const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long' });
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -147,6 +188,18 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     }
   };
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   const handleSelectDay = (dayDateStr: string) => {
     setSelectedDate(dayDateStr);
     const updated = buildCurrentDateTimeString(dayDateStr, hour, minute, second, meridiem);
@@ -157,12 +210,19 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     newHour: number,
     newMinute: number,
     newSecond: number,
-    newMeridiem: 'AM' | 'PM'
+    newMeridiem: 'AM' | 'PM',
+    syncInputs: boolean = true
   ) => {
     setHour(newHour);
     setMinute(newMinute);
     setSecond(newSecond);
     setMeridiem(newMeridiem);
+    if (syncInputs) {
+      setHourInput(String(newHour).padStart(2, '0'));
+      setMinInput(String(newMinute).padStart(2, '0'));
+      setSecInput(String(newSecond).padStart(2, '0'));
+    }
+
     const updated = buildCurrentDateTimeString(
       selectedDate,
       newHour,
@@ -171,6 +231,28 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       newMeridiem
     );
     onChange(updated);
+  };
+
+  // Steppers for hour, minute, second
+  const handleHourStep = (delta: number) => {
+    let next = hour + delta;
+    if (next > 12) next = 1;
+    if (next < 1) next = 12;
+    handleTimeChange(next, minute, second, meridiem, true);
+  };
+
+  const handleMinuteStep = (delta: number) => {
+    let next = minute + delta;
+    if (next > 59) next = 0;
+    if (next < 0) next = 59;
+    handleTimeChange(hour, next, second, meridiem, true);
+  };
+
+  const handleSecondStep = (delta: number) => {
+    let next = second + delta;
+    if (next > 59) next = 0;
+    if (next < 0) next = 59;
+    handleTimeChange(hour, minute, next, meridiem, true);
   };
 
   // Quick preset helpers
@@ -209,27 +291,6 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
 
   const handleSetPresetTime = (h12: number, m: number, s: number, mer: 'AM' | 'PM') => {
     handleTimeChange(h12, m, s, mer);
-  };
-
-  const handleHourStep = (delta: number) => {
-    let next = hour + delta;
-    if (next > 12) next = 1;
-    if (next < 1) next = 12;
-    handleTimeChange(next, minute, second, meridiem);
-  };
-
-  const handleMinuteStep = (delta: number) => {
-    let next = minute + delta;
-    if (next > 59) next = 0;
-    if (next < 0) next = 59;
-    handleTimeChange(hour, next, second, meridiem);
-  };
-
-  const handleSecondStep = (delta: number) => {
-    let next = second + delta;
-    if (next > 59) next = 0;
-    if (next < 0) next = 59;
-    handleTimeChange(hour, minute, next, meridiem);
   };
 
   const handleResetToToday = () => {
@@ -338,20 +399,36 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
         />
       )}
 
-      {/* Popover Dropdown */}
+      {/* Floating Popover Container */}
       {isOpen && (
         <>
           {/* Backdrop for click outside */}
           <div
-            className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
+            className="fixed inset-0 z-[998] bg-black/15 backdrop-blur-[1px]"
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Floating Modern Calendar + Time Container */}
+          {/* Fixed Floating Container clamped safely in viewport */}
           <div
-            className={`absolute right-0 z-50 w-[330px] max-w-[calc(100vw-32px)] max-sm:fixed max-sm:inset-x-4 max-sm:top-1/2 max-sm:-translate-y-1/2 max-sm:w-auto max-sm:z-[60] bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150 ${
-              openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
-            }`}
+            style={
+              coords
+                ? {
+                    position: 'fixed',
+                    top: `${coords.top}px`,
+                    left: `${coords.left}px`,
+                    width: '340px',
+                    maxHeight: 'calc(100vh - 32px)',
+                  }
+                : {
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '340px',
+                    maxHeight: 'calc(100vh - 32px)',
+                  }
+            }
+            className="z-[999] bg-white rounded-3xl shadow-2xl border border-slate-200 p-4 space-y-3 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
           >
             {/* Visual Interactive Month Calendar matching Screenshot 2 */}
             <div className="space-y-2">
@@ -365,7 +442,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="font-bold text-slate-900 text-sm">
+                <span className="font-bold text-slate-800 text-sm">
                   {monthName} {viewYear}
                 </span>
                 <button
@@ -378,26 +455,26 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                 </button>
               </div>
 
-              {/* Days of week header */}
+              {/* Days of week header matching Screenshot 2 */}
               <div className="grid grid-cols-7 text-center font-bold text-[10px] text-slate-400 uppercase tracking-wider py-1 border-b border-slate-100">
-                <span>Su</span>
-                <span>Mo</span>
-                <span>Tu</span>
-                <span>We</span>
-                <span>Th</span>
-                <span>Fr</span>
-                <span>Sa</span>
+                <span>SU</span>
+                <span>MO</span>
+                <span>TU</span>
+                <span>WE</span>
+                <span>TH</span>
+                <span>FR</span>
+                <span>SA</span>
               </div>
 
               {/* Day Cells Grid (matching Screenshot 2 design) */}
-              <div className="grid grid-cols-7 gap-1 text-center">
+              <div className="grid grid-cols-7 gap-1 text-center pt-1">
                 {/* Previous month leading days */}
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => {
                   const dayNum = daysInPrevMonth - firstDayOfWeek + i + 1;
                   return (
                     <div
                       key={`prev-${i}`}
-                      className="h-8 flex items-center justify-center text-slate-300 select-none text-[11px]"
+                      className="h-8 flex items-center justify-center text-slate-300 select-none text-[11px] font-normal"
                     >
                       {dayNum}
                     </div>
@@ -444,7 +521,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                 <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
                   <button
                     type="button"
-                    onClick={() => handleTimeChange(hour, minute, second, 'AM')}
+                    onClick={() => handleTimeChange(hour, minute, second, 'AM', true)}
                     className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
                       meridiem === 'AM'
                         ? 'bg-emerald-600 text-white shadow-2xs font-bold'
@@ -455,7 +532,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleTimeChange(hour, minute, second, 'PM')}
+                    onClick={() => handleTimeChange(hour, minute, second, 'PM', true)}
                     className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
                       meridiem === 'PM'
                         ? 'bg-emerald-600 text-white shadow-2xs font-bold'
@@ -467,7 +544,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                 </div>
               </div>
 
-              {/* Time Digits Inputs with Up/Down buttons */}
+              {/* Time Digits Inputs with Steppers and 2-digit values */}
               <div className="flex items-center justify-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200/80">
                 {/* Hours */}
                 <div className="flex flex-col items-center">
@@ -481,16 +558,33 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
                   <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={hour}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    value={hourInput}
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        handleHourStep(1);
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        handleHourStep(-1);
+                      }
+                    }}
                     onChange={(e) => {
-                      let val = parseInt(e.target.value, 10);
-                      if (isNaN(val)) val = 12;
-                      if (val < 1) val = 1;
-                      if (val > 12) val = 12;
-                      handleTimeChange(val, minute, second, meridiem);
+                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                      setHourInput(val);
+                      const num = parseInt(val, 10);
+                      if (!isNaN(num) && num >= 1 && num <= 12) {
+                        handleTimeChange(num, minute, second, meridiem, false);
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseInt(hourInput, 10);
+                      const valid = isNaN(num) || num < 1 ? 12 : Math.min(12, num);
+                      setHourInput(String(valid).padStart(2, '0'));
+                      handleTimeChange(valid, minute, second, meridiem, true);
                     }}
                     className="w-12 text-center font-mono font-bold text-xs bg-white border border-slate-200 rounded-lg py-1 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                   />
@@ -517,16 +611,33 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
                   <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={minute}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    value={minInput}
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        handleMinuteStep(1);
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        handleMinuteStep(-1);
+                      }
+                    }}
                     onChange={(e) => {
-                      let val = parseInt(e.target.value, 10);
-                      if (isNaN(val)) val = 0;
-                      if (val < 0) val = 0;
-                      if (val > 59) val = 59;
-                      handleTimeChange(hour, val, second, meridiem);
+                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                      setMinInput(val);
+                      const num = parseInt(val, 10);
+                      if (!isNaN(num) && num >= 0 && num <= 59) {
+                        handleTimeChange(hour, num, second, meridiem, false);
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseInt(minInput, 10);
+                      const valid = isNaN(num) || num < 0 ? 0 : Math.min(59, num);
+                      setMinInput(String(valid).padStart(2, '0'));
+                      handleTimeChange(hour, valid, second, meridiem, true);
                     }}
                     className="w-12 text-center font-mono font-bold text-xs bg-white border border-slate-200 rounded-lg py-1 text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                   />
@@ -553,16 +664,33 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
                   <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={second}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    value={secInput}
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        handleSecondStep(1);
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        handleSecondStep(-1);
+                      }
+                    }}
                     onChange={(e) => {
-                      let val = parseInt(e.target.value, 10);
-                      if (isNaN(val)) val = 0;
-                      if (val < 0) val = 0;
-                      if (val > 59) val = 59;
-                      handleTimeChange(hour, minute, val, meridiem);
+                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                      setSecInput(val);
+                      const num = parseInt(val, 10);
+                      if (!isNaN(num) && num >= 0 && num <= 59) {
+                        handleTimeChange(hour, minute, num, meridiem, false);
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseInt(secInput, 10);
+                      const valid = isNaN(num) || num < 0 ? 0 : Math.min(59, num);
+                      setSecInput(String(valid).padStart(2, '0'));
+                      handleTimeChange(hour, minute, valid, meridiem, true);
                     }}
                     className="w-12 text-center font-mono font-bold text-xs bg-white border border-emerald-300 rounded-lg py-1 text-emerald-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                   />
@@ -618,7 +746,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
             </div>
 
             {/* Active Date & Time Summary (matching Screenshot 2) */}
-            <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between text-[11px]">
+            <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5 text-slate-600 truncate">
                 <CalendarIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span className="font-semibold text-slate-800">
@@ -629,7 +757,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                   {formatHumanTime()}
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
                 {getRelativeCountdown()}
               </span>
             </div>

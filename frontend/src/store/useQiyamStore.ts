@@ -7766,7 +7766,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Interactive Scheduled Template Live WhatsApp Preview v2.4.23',
+        latest_message: 'Modern Calendar & Time Picker UI v2.4.24',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,
