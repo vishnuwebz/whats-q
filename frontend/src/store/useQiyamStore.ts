@@ -5089,7 +5089,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       persistScheduledMessages(updated);
       return { bulkScheduledMessages: updated };
     });
-    get().addToast(`Message "${newScheduled.campaignName}" scheduled successfully for ${new Date(newScheduled.scheduledFor).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}!`, 'success');
+    get().addToast(`Message "${newScheduled.campaignName}" scheduled successfully for ${new Date(newScheduled.scheduledFor).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' })}!`, 'success');
   },
 
   updateScheduledMessage: (id, updates) => {
@@ -7766,7 +7766,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Instant OTA Hard-Refresh & Real-Time Sync v2.4.20',
+        latest_message: 'Bulk Scheduled Precision & Real-Time Sync v2.4.21',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

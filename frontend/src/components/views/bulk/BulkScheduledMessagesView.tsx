@@ -74,12 +74,19 @@ export const BulkScheduledMessagesView: React.FC = () => {
   const [quickDateTime, setQuickDateTime] = useState('');
   const [quickCategory, setQuickCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
 
-  // Periodic automatic queue check (every 30 seconds)
+  // Real-time 1-second ticker for accurate countdown with seconds
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Periodic automatic queue check (every 5 seconds for second-level accuracy)
   useEffect(() => {
     checkAndDispatchDueScheduledMessages();
     const interval = setInterval(() => {
       checkAndDispatchDueScheduledMessages();
-    }, 30000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [checkAndDispatchDueScheduledMessages]);
 
@@ -115,14 +122,21 @@ export const BulkScheduledMessagesView: React.FC = () => {
 
   const getRelativeTime = (dateStr: string) => {
     const target = new Date(dateStr).getTime();
-    const now = Date.now();
-    const diffMs = target - now;
+    const diffMs = target - nowTick;
     if (diffMs <= 0) return 'Past due (Dispatches immediately)';
-    const diffMins = Math.round(diffMs / 60000);
-    if (diffMins < 60) return `In ${diffMins} min${diffMins > 1 ? 's' : ''}`;
-    const diffHours = Math.round(diffMins / 60);
-    if (diffHours < 24) return `In ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
-    const diffDays = Math.round(diffHours / 24);
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return `In ${diffSecs}s`;
+    const diffMins = Math.floor(diffSecs / 60);
+    const remSecs = diffSecs % 60;
+    if (diffMins < 60) {
+      return remSecs > 0 ? `In ${diffMins}m ${remSecs}s` : `In ${diffMins} min${diffMins > 1 ? 's' : ''}`;
+    }
+    const diffHours = Math.floor(diffMins / 60);
+    const remMins = diffMins % 60;
+    if (diffHours < 24) {
+      return remMins > 0 ? `In ${diffHours}h ${remMins}m` : `In ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+    }
+    const diffDays = Math.floor(diffHours / 24);
     return `In ${diffDays} day${diffDays > 1 ? 's' : ''}`;
   };
 
@@ -159,9 +173,17 @@ export const BulkScheduledMessagesView: React.FC = () => {
       const day = String(d.getDate()).padStart(2, '0');
       const hours = String(d.getHours()).padStart(2, '0');
       const minutes = String(d.getMinutes()).padStart(2, '0');
-      defaultTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      defaultTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
     } else {
-      defaultTime = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
+      const fallback = new Date(Date.now() + 86400000);
+      const year = fallback.getFullYear();
+      const month = String(fallback.getMonth() + 1).padStart(2, '0');
+      const day = String(fallback.getDate()).padStart(2, '0');
+      const hours = String(fallback.getHours()).padStart(2, '0');
+      const minutes = String(fallback.getMinutes()).padStart(2, '0');
+      const seconds = String(fallback.getSeconds()).padStart(2, '0');
+      defaultTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
     }
     setNewScheduledDateTime(defaultTime);
     setIsRescheduleOpen(true);
@@ -238,7 +260,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
     const year = tomorrow.getFullYear();
     const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
     const day = String(tomorrow.getDate()).padStart(2, '0');
-    setQuickDateTime(`${year}-${month}-${day}T10:00`);
+    setQuickDateTime(`${year}-${month}-${day}T10:00:00`);
     setIsQuickScheduleOpen(true);
   };
 
@@ -345,7 +367,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
               {nextScheduled
                 ? new Date(nextScheduled.scheduledFor).toLocaleString('en-IN', {
                     dateStyle: 'medium',
-                    timeStyle: 'short',
+                    timeStyle: 'medium',
                   })
                 : 'No pending queue'}
             </div>
@@ -459,7 +481,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                           <div className="font-semibold text-slate-800">
                             {new Date(msg.scheduledFor).toLocaleString('en-IN', {
                               dateStyle: 'medium',
-                              timeStyle: 'short',
+                              timeStyle: 'medium',
                             })}
                           </div>
                           {isQueued && (
@@ -603,7 +625,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                   <div className="font-bold text-slate-900 text-sm mt-0.5">
                     {new Date(selectedMessage.scheduledFor).toLocaleString('en-IN', {
                       dateStyle: 'full',
-                      timeStyle: 'short',
+                      timeStyle: 'medium',
                     })}
                   </div>
                 </div>
@@ -850,6 +872,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                   <label className="block font-bold text-slate-700 mb-1">Scheduled Date & Time</label>
                   <input
                     type="datetime-local"
+                    step="1"
                     value={newScheduledDateTime}
                     onChange={(e) => setNewScheduledDateTime(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-xs bg-white"
@@ -866,7 +889,13 @@ export const BulkScheduledMessagesView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       const d = new Date(Date.now() + 3600000);
-                      setNewScheduledDateTime(d.toISOString().slice(0, 16));
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const hours = String(d.getHours()).padStart(2, '0');
+                      const minutes = String(d.getMinutes()).padStart(2, '0');
+                      const seconds = String(d.getSeconds()).padStart(2, '0');
+                      setNewScheduledDateTime(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}`);
                     }}
                     className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-medium text-[11px] text-center cursor-pointer"
                   >
@@ -880,7 +909,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                       const year = d.getFullYear();
                       const month = String(d.getMonth() + 1).padStart(2, '0');
                       const day = String(d.getDate()).padStart(2, '0');
-                      setNewScheduledDateTime(`${year}-${month}-${day}T10:00`);
+                      setNewScheduledDateTime(`${year}-${month}-${day}T10:00:00`);
                     }}
                     className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-medium text-[11px] text-center cursor-pointer"
                   >
@@ -894,7 +923,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                       const year = d.getFullYear();
                       const month = String(d.getMonth() + 1).padStart(2, '0');
                       const day = String(d.getDate()).padStart(2, '0');
-                      setNewScheduledDateTime(`${year}-${month}-${day}T18:00`);
+                      setNewScheduledDateTime(`${year}-${month}-${day}T18:00:00`);
                     }}
                     className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-medium text-[11px] text-center cursor-pointer"
                   >
@@ -1050,6 +1079,7 @@ export const BulkScheduledMessagesView: React.FC = () => {
                   <label className="block font-bold text-slate-700 mb-1">Dispatch Date &amp; Time</label>
                   <input
                     type="datetime-local"
+                    step="1"
                     value={quickDateTime}
                     onChange={(e) => setQuickDateTime(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"

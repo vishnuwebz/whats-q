@@ -538,7 +538,12 @@ export const BulkOverviewView: React.FC = () => {
                           {item.campaignName || item.name || 'Upcoming Broadcast'}
                         </span>
                         <span className="text-[10px] font-mono text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
-                          {item.scheduledFor || item.scheduledTime || 'Tomorrow 10:00 AM'}
+                          {item.scheduledFor
+                            ? new Date(item.scheduledFor).toLocaleString('en-IN', {
+                                dateStyle: 'medium',
+                                timeStyle: 'medium',
+                              })
+                            : item.scheduledTime || 'Tomorrow 10:00:00 AM'}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-500 flex items-center gap-2">

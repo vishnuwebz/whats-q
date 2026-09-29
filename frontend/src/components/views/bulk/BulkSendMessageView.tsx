@@ -275,7 +275,16 @@ export const BulkSendMessageView: React.FC = () => {
   const [campaignName, setCampaignName] = useState('');
   const [category, setCategory] = useState<'marketing' | 'utility' | 'authentication'>('marketing');
   const [sendType, setSendType] = useState<'now' | 'schedule'>('now');
-  const [scheduledDateTime, setScheduledDateTime] = useState('2026-09-25T10:00');
+  const [scheduledDateTime, setScheduledDateTime] = useState(() => {
+    const d = new Date(Date.now() + 3600000);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  });
   const [selectedListId, setSelectedListId] = useState<string>(
     bulkRecipientLists[0]?.id || ''
   );
@@ -1311,6 +1320,7 @@ export const BulkSendMessageView: React.FC = () => {
                     </label>
                     <input
                       type="datetime-local"
+                      step="1"
                       value={scheduledDateTime}
                       onChange={(e) => setScheduledDateTime(e.target.value)}
                       className="w-full px-3 py-2 border border-blue-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-hidden"
