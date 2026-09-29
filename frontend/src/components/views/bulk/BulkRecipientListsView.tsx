@@ -45,6 +45,7 @@ import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { WhatsAppGroupExtractorModal } from './WhatsAppGroupExtractorModal';
 import { SuppressionDetailsModal } from './SuppressionDetailsModal';
+import { CountryPhoneInput } from '../../common/CountryPhoneInput';
 
 interface BulkRecipientListsViewProps {
   initialViewMode?: 'lists' | 'suppression';
@@ -1224,7 +1225,13 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
 
               <button
                 type="button"
-                onClick={() => setIsAddManualSuppressionOpen(true)}
+                onClick={() => {
+                  setManualName('');
+                  setManualPhone('');
+                  setManualReason('');
+                  setManualType('opted_out');
+                  setIsAddManualSuppressionOpen(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1901,7 +1908,12 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsAddContactModalOpen(true)}
+                      onClick={() => {
+                        setAddContactName('');
+                        setAddContactPhone('');
+                        setAddContactTag('Member');
+                        setIsAddContactModalOpen(true);
+                      }}
                       className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-[10px] font-bold transition cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-3 h-3" />
@@ -2560,8 +2572,8 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
       {/* Add Manual Suppression Modal */}
       {isAddManualSuppressionOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-rose-50/50">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-visible flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-rose-50/50 rounded-t-2xl">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-rose-100 text-rose-700">
                   <Ban className="w-5 h-5" />
@@ -2602,16 +2614,16 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                 <label className="block font-bold text-slate-700 text-xs mb-1">
                   WhatsApp Phone Number <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  required
+                <CountryPhoneInput
                   value={manualPhone}
-                  onChange={(e) => setManualPhone(e.target.value)}
-                  placeholder="+91 98765 43210 or +971 50 123 4567"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden text-xs font-mono"
+                  onChange={(val) => setManualPhone(val)}
+                  defaultCountry="IN"
+                  placeholder="98765 43210"
+                  alignDropdown="left"
+                  required
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Must include country code. Matches any campaign broadcast.
+                  Select country code and enter digits. Matches any campaign broadcast.
                 </span>
               </div>
 
@@ -2947,8 +2959,8 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
       {/* ADD SINGLE CONTACT MODAL */}
       {isAddContactModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-visible">
+            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between rounded-t-2xl">
               <div className="flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-300" />
                 <h3 className="font-bold text-sm">Add Contact to {selectedList?.name || 'List'}</h3>
@@ -2977,13 +2989,13 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
 
               <div>
                 <label className="block font-semibold text-slate-800 mb-1">WhatsApp Phone *</label>
-                <input
-                  type="text"
-                  required
+                <CountryPhoneInput
                   value={addContactPhone}
-                  onChange={(e) => setAddContactPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                  onChange={(val) => setAddContactPhone(val)}
+                  defaultCountry="IN"
+                  placeholder="98765 43210"
+                  alignDropdown="left"
+                  required
                 />
               </div>
 
