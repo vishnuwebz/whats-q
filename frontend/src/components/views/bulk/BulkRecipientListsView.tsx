@@ -38,6 +38,7 @@ import {
   MessageSquare,
   AlertTriangle,
   ArrowRight,
+  UserPlus,
 } from 'lucide-react';
 import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkRecipientList, BulkContact } from '../../../types';
@@ -582,57 +583,11 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
   const [editSuppressionReason, setEditSuppressionReason] = useState('');
   const [editSuppressionNotes, setEditSuppressionNotes] = useState('');
 
-  const handleOpenEditList = (list: BulkRecipientList) => {
-    setEditingList(list);
-    setEditListName(list.name);
-    setEditListDesc(list.description || '');
-    setEditListTags(list.tags ? list.tags.join(', ') : '');
-    setEditContacts(list.contactItems ? [...list.contactItems] : []);
-    setEditContactSearch('');
-    setEditUploadedFileName(null);
-    setIsEditListOpen(true);
-  };
-
-  const handleSaveEditList = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingList) return;
-    if (!editListName.trim()) {
-      addToast('Please enter a list name', 'error');
-      return;
-    }
-
-    const tags = editListTags
-      .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-
-    const count = editContacts.length > 0 ? editContacts.length : editingList.contactCount;
-    const validCount = editContacts.length > 0
-      ? editContacts.filter((c) => c.validWhatsApp && !c.optedOut).length
-      : Math.round(count * 0.98);
-
-    const updates: Partial<BulkRecipientList> = {
-      name: editListName.trim(),
-      description: editListDesc.trim(),
-      tags,
-      contactCount: count,
-      validWhatsAppCount: validCount,
-      contactItems: editContacts,
-    };
-
-    updateRecipientList(editingList.id, updates);
-
-    if (selectedList && selectedList.id === editingList.id) {
-      setSelectedList({
-        ...selectedList,
-        ...updates,
-      });
-    }
-
-    setIsEditListOpen(false);
-    setEditingList(null);
-    addToast(`Recipient list "${editListName}" updated successfully!`, 'success');
-  };
+  // Manual Add Contact inside Edit List Modal State
+  const [isEditAddContactOpen, setIsEditAddContactOpen] = useState(false);
+  const [editNewContactName, setEditNewContactName] = useState('');
+  const [editNewContactPhone, setEditNewContactPhone] = useState('');
+  const [editNewContactTag, setEditNewContactTag] = useState('Member');
 
   // Helper to extract contacts from a list with dynamic CRM fallback
   const getContactsForList = (list: BulkRecipientList): BulkContact[] => {
@@ -679,6 +634,94 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
       }));
     }
     return [];
+  };
+
+  const handleOpenEditList = (list: BulkRecipientList) => {
+    setEditingList(list);
+    setEditListName(list.name);
+    setEditListDesc(list.description || '');
+    setEditListTags(list.tags ? list.tags.join(', ') : '');
+    const contacts = list.contactItems && list.contactItems.length > 0
+      ? [...list.contactItems]
+      : getContactsForList(list);
+    setEditContacts(contacts);
+    setEditContactSearch('');
+    setEditUploadedFileName(null);
+    setIsEditAddContactOpen(false);
+    setEditNewContactName('');
+    setEditNewContactPhone('');
+    setEditNewContactTag('Member');
+    setIsEditListOpen(true);
+  };
+
+  const handleAddContactToEditList = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editNewContactName.trim()) {
+      addToast('Please enter a contact name', 'warning');
+      return;
+    }
+    if (!editNewContactPhone.trim()) {
+      addToast('Please enter a valid WhatsApp phone number', 'warning');
+      return;
+    }
+
+    const newContact: BulkContact = {
+      id: `contact-manual-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: editNewContactName.trim(),
+      phone: editNewContactPhone.trim(),
+      tag: editNewContactTag.trim() || 'Member',
+      validWhatsApp: true,
+      optedOut: false,
+      source: 'Manual Addition',
+      lastActive: 'Just now',
+    };
+
+    setEditContacts((prev) => [newContact, ...prev]);
+    setEditNewContactName('');
+    setEditNewContactPhone('');
+    setEditNewContactTag('Member');
+    addToast(`Added "${newContact.name}" to list! Click "Save Changes" to apply.`, 'success');
+  };
+
+  const handleSaveEditList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingList) return;
+    if (!editListName.trim()) {
+      addToast('Please enter a list name', 'error');
+      return;
+    }
+
+    const tags = editListTags
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    const count = editContacts.length > 0 ? editContacts.length : editingList.contactCount;
+    const validCount = editContacts.length > 0
+      ? editContacts.filter((c) => c.validWhatsApp && !c.optedOut).length
+      : Math.round(count * 0.98);
+
+    const updates: Partial<BulkRecipientList> = {
+      name: editListName.trim(),
+      description: editListDesc.trim(),
+      tags,
+      contactCount: count,
+      validWhatsAppCount: validCount,
+      contactItems: editContacts,
+    };
+
+    updateRecipientList(editingList.id, updates);
+
+    if (selectedList && selectedList.id === editingList.id) {
+      setSelectedList({
+        ...selectedList,
+        ...updates,
+      });
+    }
+
+    setIsEditListOpen(false);
+    setEditingList(null);
+    addToast(`Recipient list "${editListName}" updated successfully!`, 'success');
   };
 
   // Export a single recipient list as a CSV backup file
@@ -2793,16 +2836,133 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => editModalFileInputRef.current?.click()}
-                      disabled={isEditParsingFile}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-emerald-500 text-xs font-bold text-slate-700 hover:text-emerald-700 bg-white transition cursor-pointer shadow-2xs"
-                    >
-                      <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{isEditParsingFile ? 'Parsing...' : '+ Append from CSV'}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditAddContactOpen((prev) => !prev)}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer shadow-2xs ${
+                          isEditAddContactOpen
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
+                            : 'border-emerald-300 hover:border-emerald-500 text-emerald-700 hover:bg-emerald-50/60 bg-white'
+                        }`}
+                      >
+                        <Plus className={`w-3.5 h-3.5 transition-transform duration-200 ${isEditAddContactOpen ? 'rotate-45 text-rose-500' : 'text-emerald-600'}`} />
+                        <span>{isEditAddContactOpen ? 'Close Add Form' : '+ Add Contact'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => editModalFileInputRef.current?.click()}
+                        disabled={isEditParsingFile}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-emerald-500 text-xs font-bold text-slate-700 hover:text-emerald-700 bg-white transition cursor-pointer shadow-2xs"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{isEditParsingFile ? 'Parsing...' : '+ Append from CSV'}</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Manual Contact Addition Card */}
+                  {isEditAddContactOpen && (
+                    <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-md bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                            <UserPlus className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-xs">Add Single Contact to List</h4>
+                            <p className="text-[10px] text-slate-500">Enter name, phone with country code, and optional tag</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditAddContactOpen(false)}
+                          className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-white/60 cursor-pointer"
+                          title="Close form"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                        <div className="sm:col-span-4">
+                          <label className="block font-semibold text-slate-700 text-[11px] mb-1">
+                            Contact Name <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editNewContactName}
+                            onChange={(e) => setEditNewContactName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddContactToEditList();
+                              }
+                            }}
+                            placeholder="e.g. Rahul Sharma"
+                            className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-5">
+                          <label className="block font-semibold text-slate-700 text-[11px] mb-1">
+                            WhatsApp Phone Number <span className="text-rose-500">*</span>
+                          </label>
+                          <CountryPhoneInput
+                            value={editNewContactPhone}
+                            onChange={(val) => setEditNewContactPhone(val)}
+                            defaultCountry="IN"
+                            placeholder="98765 43210"
+                            size="sm"
+                            alignDropdown="left"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3">
+                          <label className="block font-semibold text-slate-700 text-[11px] mb-1">
+                            Tag / Group
+                          </label>
+                          <input
+                            type="text"
+                            value={editNewContactTag}
+                            onChange={(e) => setEditNewContactTag(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddContactToEditList();
+                              }
+                            }}
+                            placeholder="e.g. VIP, Customer"
+                            className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-emerald-200/60">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditNewContactName('');
+                            setEditNewContactPhone('');
+                            setEditNewContactTag('Member');
+                            setIsEditAddContactOpen(false);
+                          }}
+                          className="px-3 py-1.5 text-slate-600 hover:bg-slate-200/50 rounded-lg font-medium text-xs cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddContactToEditList}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add to List</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Contacts Table in Edit Modal */}
                   {editContacts.length > 0 ? (
@@ -2856,7 +3016,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                     </div>
                   ) : (
                     <div className="p-6 text-center border border-dashed border-slate-300 rounded-xl text-slate-400 text-xs">
-                      No contacts currently in this list. Click "Append from CSV" to import contacts.
+                      No contacts currently in this list. Click "+ Add Contact" or "Append from CSV" to add contacts.
                     </div>
                   )}
                 </div>
