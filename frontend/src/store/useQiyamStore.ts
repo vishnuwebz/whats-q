@@ -19,6 +19,7 @@ import {
   RCSCardItem,
   RCSSuggestionAction,
   RCSCampaign,
+  RCSTemplateItem,
 } from '../types';
 import {
   getStoredRcsConfig,
@@ -27,6 +28,8 @@ import {
   persistRcsConversations,
   getStoredRcsCampaigns,
   persistRcsCampaigns,
+  getStoredRcsTemplates,
+  persistRcsTemplates,
 } from './rcsData';
 import { getStoredTenants } from '../utils/featureEntitlements';
 import { apiClient } from '../api/client';
@@ -532,6 +535,9 @@ interface QiyamState {
     carrier?: string;
   }) => RCSConversationItem;
   createRcsCampaign: (campaign: Omit<RCSCampaign, 'id' | 'createdAt' | 'deliveredCount' | 'readCount' | 'clickCount' | 'failedCount' | 'fallbackSmsCount'>) => RCSCampaign;
+  rcsTemplates: RCSTemplateItem[];
+  saveRcsTemplate: (template: RCSTemplateItem) => void;
+  deleteRcsTemplate: (id: string) => void;
 
 
   sendConfirmation: SendConfirmationConfig | null;
@@ -1790,6 +1796,7 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   rcsConversations: getStoredRcsConversations(),
   activeRcsConversationId: 'rcs-conv-1',
   rcsCampaigns: getStoredRcsCampaigns(),
+  rcsTemplates: getStoredRcsTemplates(),
   isRcsTesting: false,
   isRcsSending: false,
 
@@ -2072,6 +2079,27 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     set({ rcsCampaigns: updated });
     get().addToast(`RCS Campaign "${newCamp.name}" launched to ${newCamp.recipientCount} verified recipients!`, 'success');
     return newCamp;
+  },
+
+  saveRcsTemplate: (template: RCSTemplateItem) => {
+    const existing = get().rcsTemplates;
+    const exists = existing.some((t) => t.id === template.id);
+    let updated: RCSTemplateItem[];
+    if (exists) {
+      updated = existing.map((t) => (t.id === template.id ? template : t));
+    } else {
+      updated = [template, ...existing];
+    }
+    persistRcsTemplates(updated);
+    set({ rcsTemplates: updated });
+    get().addToast(`RCS Template "${template.name}" saved to library!`, 'success');
+  },
+
+  deleteRcsTemplate: (id: string) => {
+    const updated = get().rcsTemplates.filter((t) => t.id !== id);
+    persistRcsTemplates(updated);
+    set({ rcsTemplates: updated });
+    get().addToast('RCS Template deleted from library', 'info');
   },
 
 

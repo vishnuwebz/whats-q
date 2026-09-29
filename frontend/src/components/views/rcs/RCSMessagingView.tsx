@@ -34,6 +34,9 @@ import {
   X,
   ArrowRight,
   TrendingUp,
+  Globe,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import {
   RCSConfig,
@@ -43,6 +46,7 @@ import {
   RCSSuggestionAction,
   RCSProvider,
 } from '@/types';
+import { RCSCardStudio } from './RCSCardStudio';
 
 export const RCSMessagingView: React.FC = () => {
   const {
@@ -64,7 +68,8 @@ export const RCSMessagingView: React.FC = () => {
   } = useQiyamStore();
 
   // Active top-level subtab
-  const [activeTab, setActiveTab] = useState<'chat' | 'campaigns' | 'bot' | 'config'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'builder' | 'campaigns' | 'bot' | 'config'>('chat');
+  const [phoneSimulatorTheme, setPhoneSimulatorTheme] = useState<'dark' | 'light'>('dark');
 
   // Search & filter for conversation list
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,7 +92,7 @@ export const RCSMessagingView: React.FC = () => {
   const [cardMedia, setCardMedia] = useState('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&auto=format&fit=crop&q=80');
   const [cardActionLabel, setCardActionLabel] = useState('Track Technician Live');
   const [cardActionUrl, setCardActionUrl] = useState('https://maps.google.com/?q=11.2588,75.7804');
-  const [cardActionType, setCardActionType] = useState<'url' | 'dial' | 'reply'>('url');
+  const [cardActionType, setCardActionType] = useState<'url' | 'dial' | 'reply' | 'copy' | 'location' | 'calendar'>('url');
 
   // New Campaign Modal state
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
@@ -148,7 +153,7 @@ export const RCSMessagingView: React.FC = () => {
         mediaHeight: 'MEDIUM',
         actions: [
           {
-            type: cardActionType,
+            type: cardActionType as any,
             label: cardActionLabel,
             value: cardActionUrl,
           },
@@ -170,7 +175,18 @@ export const RCSMessagingView: React.FC = () => {
       window.open(action.value || 'https://qiyam.in', '_blank');
       addToast(`Opened link: ${action.value}`, 'info');
     } else if (action.type === 'dial') {
-      addToast(`Dialing verified line: ${action.value}`, 'info');
+      navigator.clipboard?.writeText(action.value || '+919496300233');
+      addToast(`Dialing verified line: ${action.value} (Copied to clipboard)`, 'info');
+    } else if (action.type === 'copy') {
+      navigator.clipboard?.writeText(action.value || 'PROMO');
+      addToast(`Copied code "${action.value}" to clipboard!`, 'success');
+    } else if (action.type === 'location') {
+      window.open(`https://maps.google.com/?q=${encodeURIComponent(action.value || '11.2588,75.7804')}`, '_blank');
+      addToast(`Opened Maps: ${action.value}`, 'info');
+    } else if (action.type === 'calendar') {
+      addToast(`Added event to Calendar: ${action.value}`, 'success');
+    } else if (action.type === 'unsubscribe') {
+      addToast('Opt-out confirmed: Customer unsubscribed from RCS marketing updates', 'warning');
     }
   };
 
@@ -219,6 +235,21 @@ export const RCSMessagingView: React.FC = () => {
             <span>RCS Live Chat Console</span>
             <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold">
               {rcsConversations.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('builder')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'builder'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>Visual Card &amp; Button Studio</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 text-purple-800 font-bold">
+              Studio
             </span>
           </button>
 
@@ -556,9 +587,13 @@ export const RCSMessagingView: React.FC = () => {
                                       onClick={() => handleSuggestionClick(act)}
                                       className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-200"
                                     >
-                                      {act.type === 'url' && <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />}
+                                      {act.type === 'url' && <Globe className="w-3.5 h-3.5 text-blue-600" />}
                                       {act.type === 'dial' && <Phone className="w-3.5 h-3.5 text-emerald-600" />}
+                                      {act.type === 'copy' && <Copy className="w-3.5 h-3.5 text-purple-600" />}
+                                      {act.type === 'location' && <MapPin className="w-3.5 h-3.5 text-rose-600" />}
+                                      {act.type === 'calendar' && <Calendar className="w-3.5 h-3.5 text-amber-600" />}
                                       {act.type === 'reply' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                      {act.type === 'unsubscribe' && <X className="w-3.5 h-3.5 text-slate-500" />}
                                       <span>{act.label}</span>
                                     </button>
                                   ))}
@@ -698,22 +733,53 @@ export const RCSMessagingView: React.FC = () => {
             </div>
 
             {/* 3C. RIGHT PANEL: LIVE GOOGLE MESSAGES PHONE SIMULATOR (3 cols) */}
-            <div className="hidden lg:flex lg:col-span-3 bg-slate-50 flex-col h-full overflow-hidden p-4 border-l border-slate-200">
+            <div className="hidden lg:flex lg:col-span-3 bg-slate-50 flex-col h-full overflow-hidden p-3 border-l border-slate-200">
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <Smartphone className="w-4 h-4 text-emerald-600" />
                   Live Android Preview
                 </h4>
-                <span className="text-[10px] text-slate-500 font-medium">Google Messages (Light)</span>
+                <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-2xs">
+                  <button
+                    onClick={() => setPhoneSimulatorTheme('dark')}
+                    className={`p-1 rounded text-[10px] font-bold cursor-pointer transition ${
+                      phoneSimulatorTheme === 'dark' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                    title="Dark Mode"
+                  >
+                    <Moon className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => setPhoneSimulatorTheme('light')}
+                    className={`p-1 rounded text-[10px] font-bold cursor-pointer transition ${
+                      phoneSimulatorTheme === 'light' ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                    title="Light Mode"
+                  >
+                    <Sun className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
 
-              {/* Android Phone Frame (Clean Realistic Mockup) */}
-              <div className="flex-1 bg-white border-4 border-slate-800 rounded-[32px] p-2.5 shadow-xl flex flex-col overflow-hidden relative ring-1 ring-slate-300">
+              {/* Android Phone Frame */}
+              <div
+                className={`flex-1 rounded-[32px] p-2.5 shadow-xl flex flex-col overflow-hidden relative ring-1 border-4 transition-colors ${
+                  phoneSimulatorTheme === 'dark'
+                    ? 'bg-[#1E1F22] border-slate-900 text-white ring-slate-800'
+                    : 'bg-white border-slate-800 text-slate-900 ring-slate-300'
+                }`}
+              >
                 {/* Phone Speaker Notch */}
-                <div className="w-16 h-2.5 bg-slate-800 rounded-full mx-auto mb-2 shrink-0" />
+                <div className="w-16 h-2 bg-slate-800 rounded-full mx-auto mb-1.5 shrink-0" />
 
-                {/* Google Messages App Header (White Theme) */}
-                <div className="p-2 bg-slate-50 rounded-xl flex items-center justify-between mb-2 border border-slate-200 shrink-0">
+                {/* Google Messages App Header */}
+                <div
+                  className={`p-2 rounded-xl flex items-center justify-between mb-1.5 border shrink-0 ${
+                    phoneSimulatorTheme === 'dark'
+                      ? 'bg-[#1E1F22] border-slate-800 text-white'
+                      : 'bg-slate-50 border-slate-200 text-slate-900'
+                  }`}
+                >
                   <div className="flex items-center gap-2 min-w-0">
                     <img
                       src={rcsConfig.brandLogoUrl}
@@ -722,12 +788,12 @@ export const RCSMessagingView: React.FC = () => {
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="text-[11px] font-bold text-slate-900 truncate">
+                        <span className="text-[11px] font-bold truncate">
                           {rcsConfig.brandDisplayName}
                         </span>
-                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                       </div>
-                      <span className="text-[9px] text-emerald-700 font-semibold block truncate">
+                      <span className="text-[9px] text-emerald-400 font-semibold block truncate">
                         Verified Business • RCS
                       </span>
                     </div>
@@ -735,9 +801,15 @@ export const RCSMessagingView: React.FC = () => {
                 </div>
 
                 {/* Live Message Feed on Phone Screen */}
-                <div className="flex-1 overflow-y-auto space-y-2 p-1 bg-[#F9FAFB] rounded-xl border border-slate-100 scrollbar-none">
-                  <div className="text-center text-[9px] text-slate-400 my-1">
-                    Today • Chatting with {rcsConfig.brandDisplayName}
+                <div
+                  className={`flex-1 overflow-y-auto space-y-2 p-1.5 rounded-xl border scrollbar-none ${
+                    phoneSimulatorTheme === 'dark'
+                      ? 'bg-[#141518] border-slate-800/80 text-white'
+                      : 'bg-[#F9FAFB] border-slate-100 text-slate-800'
+                  }`}
+                >
+                  <div className="text-center text-[9px] text-slate-400 my-0.5">
+                    Today • Verified RCS Session
                   </div>
 
                   {activeConversation?.messages.map((m) => {
@@ -748,29 +820,66 @@ export const RCSMessagingView: React.FC = () => {
                         className={`flex flex-col ${isOutbound ? 'items-start' : 'items-end'}`}
                       >
                         <div
-                          className={`max-w-[90%] rounded-xl p-2 text-[10px] leading-tight ${
+                          className={`max-w-[92%] rounded-xl p-2 text-[10px] leading-tight ${
                             isOutbound
-                              ? 'bg-white text-slate-800 rounded-tl-none border border-slate-200 shadow-2xs'
-                              : 'bg-blue-600 text-white rounded-tr-none shadow-2xs'
+                              ? phoneSimulatorTheme === 'dark'
+                                ? 'bg-[#2B2D31] text-white border border-slate-700/80 shadow-2xs'
+                                : 'bg-white text-slate-800 border border-slate-200 shadow-2xs'
+                              : 'bg-blue-600 text-white shadow-2xs'
                           }`}
                         >
-                          {m.text && <p>{m.text}</p>}
+                          {m.text && <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>}
                           {m.card && (
-                            <div className="mt-1 bg-white rounded-lg overflow-hidden border border-slate-200">
+                            <div
+                              className={`mt-1.5 rounded-lg overflow-hidden border ${
+                                phoneSimulatorTheme === 'dark'
+                                  ? 'bg-[#2B2D31] border-slate-700'
+                                  : 'bg-white border-slate-200'
+                              }`}
+                            >
                               {m.card.mediaUrl && (
                                 <img
                                   src={m.card.mediaUrl}
                                   alt=""
-                                  className="w-full h-18 object-cover"
+                                  className="w-full h-20 object-cover"
                                 />
                               )}
-                              <div className="p-1.5">
-                                <span className="font-bold text-slate-900 block text-[10px]">
+                              <div className="p-1.5 space-y-1">
+                                <span className="font-bold block text-[10px] leading-snug">
                                   {m.card.title}
                                 </span>
-                                <span className="text-[9px] text-slate-500 block line-clamp-2">
+                                <span
+                                  className={`text-[9px] block whitespace-pre-wrap ${
+                                    phoneSimulatorTheme === 'dark' ? 'text-slate-300' : 'text-slate-500'
+                                  }`}
+                                >
                                   {m.card.description}
                                 </span>
+
+                                {/* Action Buttons rendered as full-width pills */}
+                                {m.card.actions && m.card.actions.length > 0 && (
+                                  <div className="pt-1.5 space-y-1">
+                                    {m.card.actions.map((act, idx) => (
+                                      <button
+                                        key={idx}
+                                        onClick={() => handleSuggestionClick(act)}
+                                        className={`w-full py-1 px-2 rounded-full text-[9px] font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
+                                          phoneSimulatorTheme === 'dark'
+                                            ? 'bg-[#383A40] hover:bg-[#43464D] text-white'
+                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                                        }`}
+                                      >
+                                        {act.type === 'url' && <Globe className="w-2.5 h-2.5 text-blue-400" />}
+                                        {act.type === 'dial' && <Phone className="w-2.5 h-2.5 text-emerald-400" />}
+                                        {act.type === 'copy' && <Copy className="w-2.5 h-2.5 text-purple-400" />}
+                                        {act.type === 'location' && <MapPin className="w-2.5 h-2.5 text-rose-400" />}
+                                        {act.type === 'calendar' && <Calendar className="w-2.5 h-2.5 text-amber-400" />}
+                                        {act.type === 'reply' && <Check className="w-2.5 h-2.5 text-emerald-400" />}
+                                        <span>{act.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -780,12 +889,17 @@ export const RCSMessagingView: React.FC = () => {
                         {m.suggestions && (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {m.suggestions.map((s, idx) => (
-                              <span
+                              <button
                                 key={idx}
-                                className="px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-300 text-[8px] font-bold shadow-2xs"
+                                onClick={() => handleSuggestionClick(s)}
+                                className={`px-2 py-0.5 rounded-full text-[8px] font-bold shadow-2xs transition cursor-pointer ${
+                                  phoneSimulatorTheme === 'dark'
+                                    ? 'bg-[#252830] text-blue-300 border border-blue-500/40'
+                                    : 'bg-white text-emerald-700 border border-emerald-300'
+                                }`}
                               >
                                 {s.label}
-                              </span>
+                              </button>
                             ))}
                           </div>
                         )}
@@ -795,13 +909,19 @@ export const RCSMessagingView: React.FC = () => {
                 </div>
 
                 {/* Phone Bottom RCS Pill */}
-                <div className="mt-2 p-1.5 bg-slate-50 rounded-xl text-center text-[10px] text-slate-500 border border-slate-200 shrink-0">
-                  <span className="text-emerald-700 font-bold">RCS message</span> with {rcsConfig.brandDisplayName}
+                <div
+                  className={`mt-1.5 p-1.5 rounded-xl text-center text-[9px] border shrink-0 ${
+                    phoneSimulatorTheme === 'dark'
+                      ? 'bg-[#2B2D31] text-slate-300 border-slate-700'
+                      : 'bg-slate-50 text-slate-500 border border-slate-200'
+                  }`}
+                >
+                  <span className="text-emerald-500 font-bold">Jio • RCS message</span>
                 </div>
               </div>
 
               {/* Diagnostics Box */}
-              <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 text-[11px] space-y-1.5 shrink-0 shadow-xs">
+              <div className="mt-2.5 p-2.5 bg-white rounded-xl border border-slate-200 text-[10px] space-y-1 shrink-0 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Carrier Network:</span>
                   <span className="text-emerald-700 font-mono font-bold">Jio UP 2.4</span>
@@ -810,13 +930,31 @@ export const RCSMessagingView: React.FC = () => {
                   <span>Latency:</span>
                   <span className="text-slate-800 font-mono font-medium">28 ms</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-500">
-                  <span>Encryption:</span>
-                  <span className="text-emerald-700 font-medium">TLS 1.3 / E2EE</span>
-                </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* VIEW: VISUAL CARD & BUTTON STUDIO */}
+        {activeTab === 'builder' && (
+          <RCSCardStudio
+            onSendToChat={async (card, suggestions) => {
+              await sendRcsMessage({
+                conversationId: activeConversation?.id,
+                text: card.title,
+                card,
+                suggestions,
+                fallbackToSms: fallbackSms,
+              });
+              addToast(`RCS Rich Card sent to ${activeConversation?.contactName || 'customer'}!`, 'success');
+              setActiveTab('chat');
+            }}
+            onLaunchCampaign={(card) => {
+              setCampName(`Broadcast: ${card.title.slice(0, 30)}`);
+              setCampText(card.description.slice(0, 100));
+              setIsCampaignModalOpen(true);
+            }}
+          />
         )}
 
         {/* VIEW 2: RCS BROADCASTS & CAMPAIGNS */}
@@ -1489,20 +1627,33 @@ export const RCSMessagingView: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
               <button
-                onClick={() => setIsCardModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer hover:bg-slate-200"
+                onClick={() => {
+                  setIsCardModalOpen(false);
+                  setActiveTab('builder');
+                }}
+                className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
               >
-                Cancel
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>Open in Visual Studio</span>
               </button>
-              <button
-                onClick={handleSendRichCard}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Send Rich Card</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsCardModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendRichCard}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Rich Card</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

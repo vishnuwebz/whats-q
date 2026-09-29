@@ -807,7 +807,7 @@ export const Sidebar: React.FC = () => {
         className={`
           fixed inset-y-0 left-0 z-50 md:relative md:z-auto
           ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl ring-1 ring-white/10' : '-translate-x-full md:translate-x-0'}
-          ${isCollapsed ? 'w-20' : 'w-72 md:w-64'} max-w-[85vw] md:max-w-none
+          ${isCollapsed ? 'w-20' : 'w-72'} max-w-[85vw] md:max-w-none
           bg-[#0B1528] text-slate-300 flex flex-col h-screen shrink-0 border-r border-[#1E293B] select-none font-sans overflow-hidden transition-transform duration-300 ease-in-out
         `}
       >
@@ -1240,18 +1240,18 @@ export const Sidebar: React.FC = () => {
                     <button
                       data-tab="bulk-suppression"
                       onClick={() => handleTabClick('bulk-suppression')}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                      className={`w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                         isActive('bulk-suppression')
                           ? 'bg-emerald-600 text-white font-semibold shadow-sm'
                           : 'hover:bg-[#16233B] text-slate-300'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <Ban className={`w-4 h-4 shrink-0 ${isActive('bulk-suppression') ? 'text-white' : 'text-slate-400'}`} />
-                        <span>Blocked Contacts &amp; Opt-outs</span>
+                        <span className="whitespace-nowrap text-xs">Blocked Contacts &amp; Opt-outs</span>
                       </div>
                       {suppressionList && suppressionList.length > 0 && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
                           isActive('bulk-suppression')
                             ? 'bg-white/20 text-white'
                             : 'bg-rose-950/80 text-rose-300 border border-rose-800/60'

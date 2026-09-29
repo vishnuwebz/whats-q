@@ -3,11 +3,9 @@ import {
   Crown,
   Building2,
   Users,
-  Shield,
+  ShieldCheck,
   Send,
   MessageSquare,
-  Bot,
-  CheckCircle2,
   Lock,
   Mail,
   Phone,
@@ -16,18 +14,17 @@ import {
   Sparkles,
   ArrowRight,
   AlertTriangle,
-  Zap,
-  Clock,
-  Briefcase,
-  HelpCircle,
   RefreshCw,
-  Layers,
-  MapPin,
+  CheckCircle2,
   Check,
   Smartphone,
   ChevronRight,
+  Info,
+  X,
+  Layers,
 } from 'lucide-react';
 import { useQiyamStore } from '@/store/useQiyamStore';
+import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import {
   getCurrentAuthUser,
   setCurrentAuthUser,
@@ -38,7 +35,7 @@ import {
   DEFAULT_USERS,
 } from '@/utils/authService';
 import { getStoredTenants } from '@/utils/featureEntitlements';
-import { TabType, PlatformTenant } from '@/types';
+import { PlatformTenant } from '@/types';
 
 interface AuthPortalViewProps {
   initialMode?: 'login' | 'signup' | 'forgot-password';
@@ -51,29 +48,30 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
 }) => {
   const { setActiveTab, addToast, reloadPlatformTenants, switchActiveTenant } = useQiyamStore();
 
-  // Mode: 'login' | 'signup' | 'employee_signup' | 'forgot_password'
-  const [activeMode, setActiveMode] = useState<'login' | 'signup' | 'employee_signup' | 'forgot_password'>(
+  // Mode: 'login' | 'signup' | 'forgot_password'
+  const [activeMode, setActiveMode] = useState<'login' | 'signup' | 'forgot_password'>(
     initialMode === 'signup' ? 'signup' : initialMode === 'forgot-password' ? 'forgot_password' : 'login'
   );
 
-  // In Login mode: sub-role tab ('super_admin' | 'company_admin' | 'employee')
+  // In Login mode: selected role tab ('super_admin' | 'company_admin' | 'employee')
   const [loginRole, setLoginRole] = useState<'super_admin' | 'company_admin' | 'employee'>('super_admin');
 
-  // Login form state
+  // Login form inputs
   const [loginIdentifier, setLoginIdentifier] = useState('admin');
   const [loginPassword, setLoginPassword] = useState('admin@123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // WhatsApp OTP login for employees
+  // WhatsApp OTP for Staff / Employee Login
   const [employeeLoginMethod, setEmployeeLoginMethod] = useState<'password' | 'otp'>('otp');
   const [empOtpPhone, setEmpOtpPhone] = useState('+91 98470 99881');
   const [empOtpCode, setEmpOtpCode] = useState('');
   const [empOtpSent, setEmpOtpSent] = useState(false);
   const [empOtpTimer, setEmpOtpTimer] = useState(0);
 
-  // Client Signup form state (e.g. Ambika Hotel)
+  // Modal dialog state for Register Business (Ambika Hotel)
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(initialMode === 'signup');
   const [signupStep, setSignupStep] = useState<1 | 2>(1);
   const [clientForm, setClientForm] = useState({
     businessName: 'Ambika Hotel & Luxury Suites',
@@ -93,42 +91,30 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
   const [generatedSignupOtp, setGeneratedSignupOtp] = useState('');
   const [signupOtpTimer, setSignupOtpTimer] = useState(0);
 
-  // Employee Signup form state
-  const [empSignupForm, setEmpSignupForm] = useState({
+  // Staff Registration Modal
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [staffForm, setStaffForm] = useState({
     companyId: 'TN-AMBIKA',
-    name: '',
-    phone: '',
-    email: '',
-    department: 'Front Desk & Guest Relations',
+    name: 'Ananya Sharma',
+    phone: '+91 98470 99881',
     roleTitle: 'Front Desk Executive',
+    department: 'Front Desk & Guest Relations',
+    otpCode: '',
+    otpSent: false,
   });
-  const [empSignupOtpCode, setEmpSignupOtpCode] = useState('');
-  const [empSignupOtpSent, setEmpSignupOtpSent] = useState(false);
 
-  // Tenants list for employee company selection
+  // Forgot Password Modal
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(initialMode === 'forgot-password');
+  const [forgotPhone, setForgotPhone] = useState('+91 94963 00233');
+
+  // Tenants list
   const [tenants, setTenants] = useState<PlatformTenant[]>(() => getStoredTenants());
 
   useEffect(() => {
     setTenants(getStoredTenants());
   }, []);
 
-  // Sync login inputs when changing sub-role
-  const handleSelectRole = (role: 'super_admin' | 'company_admin' | 'employee') => {
-    setLoginRole(role);
-    if (role === 'super_admin') {
-      setLoginIdentifier('admin');
-      setLoginPassword('admin@123');
-    } else if (role === 'company_admin') {
-      setLoginIdentifier('ramachandran@ambikahotel.com');
-      setLoginPassword('ambika@123');
-    } else {
-      setLoginIdentifier('reception@ambikahotel.com');
-      setLoginPassword('staff@123');
-      setEmpOtpPhone('+91 98470 99881');
-    }
-  };
-
-  // Timer countdown handler
+  // Timer handlers
   useEffect(() => {
     let interval: any;
     if (empOtpTimer > 0) {
@@ -145,7 +131,23 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
     return () => clearInterval(interval);
   }, [signupOtpTimer]);
 
-  // Handle standard Login
+  // Handle switching role in login
+  const handleSelectRole = (role: 'super_admin' | 'company_admin' | 'employee') => {
+    setLoginRole(role);
+    if (role === 'super_admin') {
+      setLoginIdentifier('admin');
+      setLoginPassword('admin@123');
+    } else if (role === 'company_admin') {
+      setLoginIdentifier('ramachandran@ambikahotel.com');
+      setLoginPassword('ambika@123');
+    } else {
+      setLoginIdentifier('reception@ambikahotel.com');
+      setLoginPassword('staff@123');
+      setEmpOtpPhone('+91 98470 99881');
+    }
+  };
+
+  // Submit Login
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -153,7 +155,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
     setTimeout(() => {
       setIsSubmitting(false);
 
-      // Check Super Admin: username admin, password admin@123
+      // Super Admin: admin / admin@123
       if (
         loginRole === 'super_admin' &&
         (loginIdentifier.trim() === 'admin' || loginIdentifier.trim().toLowerCase() === 'admin@qiyam.in') &&
@@ -164,21 +166,21 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
           username: 'admin',
           name: 'Platform Super Admin',
           email: 'admin@qiyam.in',
-          role: 'super_admin',
+          role: 'super_admin' as const,
           companyId: 'TN2345',
           companyName: 'Qiyam OS Headquarters',
           department: 'Platform Administration',
-          status: 'active',
+          status: 'active' as const,
         };
         setCurrentAuthUser(superUser as any);
         switchActiveTenant('TN2345');
-        addToast('👑 Welcome, Super Admin! Full platform controls unlocked.', 'success');
+        addToast('👑 Welcome, Super Admin! Master controls unlocked.', 'success');
         setActiveTab('super-admin');
         onAuthSuccess?.();
         return;
       }
 
-      // Check Company Admin (e.g. Ambika Hotel or registered tenant)
+      // Company Admin (e.g. Ambika Hotel)
       if (loginRole === 'company_admin') {
         const foundTenant = tenants.find(
           (t) =>
@@ -196,7 +198,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
           role: 'company_admin' as const,
           companyId: foundTenant.id,
           companyName: foundTenant.businessName,
-          department: 'Company Administration',
+          department: 'Executive Administration',
           avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
           status: 'active' as const,
         };
@@ -209,7 +211,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
         return;
       }
 
-      // Check Employee Login
+      // Employee / Staff
       if (loginRole === 'employee') {
         const empUser = DEFAULT_USERS.find((u) => u.role === 'employee')!;
         setCurrentAuthUser(empUser);
@@ -224,7 +226,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
     }, 400);
   };
 
-  // Send WhatsApp OTP for Employee Login
+  // Staff WhatsApp OTP handlers
   const handleSendEmployeeOtp = () => {
     if (!empOtpPhone.trim()) {
       addToast('Please enter your WhatsApp mobile number.', 'warning');
@@ -233,11 +235,10 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
     const res = generateWhatsAppOtp(empOtpPhone, 'employee_login');
     setEmpOtpSent(true);
     setEmpOtpTimer(60);
-    setEmpOtpCode(res.code); // Pre-fill in demo for convenience
+    setEmpOtpCode(res.code);
     addToast(`📲 WhatsApp OTP sent to ${empOtpPhone}! (Demo code: ${res.code})`, 'info');
   };
 
-  // Verify Employee OTP & Login
   const handleVerifyEmployeeOtp = () => {
     if (!empOtpCode.trim()) {
       addToast('Please enter the 6-digit WhatsApp OTP code.', 'warning');
@@ -265,25 +266,16 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
     };
     setCurrentAuthUser(empUser);
     switchActiveTenant(ambikaTenant.id);
-    addToast('✅ WhatsApp OTP Verified! Logged in to Employee Portal.', 'success');
+    addToast('✅ WhatsApp OTP Verified! Logged in to Staff Portal.', 'success');
     setActiveTab('employee-portal');
     onAuthSuccess?.();
   };
 
-  // Client Signup: Step 1 -> Step 2 (Trigger WhatsApp OTP)
+  // Client Signup: Step 1 -> Step 2
   const handleInitiateClientSignup = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!clientForm.businessName.trim()) {
-      addToast('Please enter your business or hotel name.', 'warning');
-      return;
-    }
-    if (!clientForm.ownerEmail.trim()) {
-      addToast('Please enter your official business email.', 'warning');
-      return;
-    }
-    if (!clientForm.wabaPhone.trim()) {
-      addToast('Please enter the phone number to be linked with WhatsApp API.', 'warning');
+    if (!clientForm.businessName.trim() || !clientForm.ownerEmail.trim() || !clientForm.wabaPhone.trim()) {
+      addToast('Please fill in all required business and WhatsApp fields.', 'warning');
       return;
     }
     if (!clientForm.hasDeletedFromConsumerApp) {
@@ -291,19 +283,18 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
       return;
     }
 
-    // Trigger WhatsApp OTP
     const otpRes = generateWhatsAppOtp(clientForm.wabaPhone, 'client_signup');
     setGeneratedSignupOtp(otpRes.code);
-    setSignupOtpCode(otpRes.code); // Pre-fill in demo for easy evaluation
+    setSignupOtpCode(otpRes.code);
     setSignupOtpTimer(60);
     setSignupStep(2);
     addToast(`📲 Verification code sent to WhatsApp ${clientForm.wabaPhone}! (Code: ${otpRes.code})`, 'info');
   };
 
-  // Client Signup: Step 2 Verify OTP & Create Company
+  // Client Signup: Step 2 Verify OTP
   const handleVerifyClientSignup = () => {
     if (!signupOtpCode.trim()) {
-      addToast('Please enter the 6-digit OTP code received on WhatsApp.', 'warning');
+      addToast('Please enter the 6-digit WhatsApp OTP.', 'warning');
       return;
     }
     const verified = verifyWhatsAppOtp(clientForm.wabaPhone, signupOtpCode);
@@ -327,963 +318,1096 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
     });
 
     if (result.success) {
+      setIsRegisterModalOpen(false);
       reloadPlatformTenants();
       switchActiveTenant(result.tenant.id);
-      addToast(`🎉 Registration Successful! Workspace for "${result.tenant.businessName}" is live.`, 'success');
+      addToast(`🎉 Workspace for "${result.tenant.businessName}" created successfully!`, 'success');
       setActiveTab('dashboard');
       onAuthSuccess?.();
     }
   };
 
-  // Employee Signup Submit
-  const handleEmployeeSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!empSignupForm.name.trim() || !empSignupForm.phone.trim()) {
-      addToast('Please fill in your name and WhatsApp phone number.', 'warning');
-      return;
-    }
-    if (!empSignupOtpSent) {
-      const res = generateWhatsAppOtp(empSignupForm.phone, 'employee_signup');
-      setEmpSignupOtpSent(true);
-      setEmpSignupOtpCode(res.code);
-      addToast(`📲 WhatsApp OTP sent to ${empSignupForm.phone}! (Demo code: ${res.code})`, 'info');
-      return;
-    }
-
-    const verified = verifyWhatsAppOtp(empSignupForm.phone, empSignupOtpCode);
-    if (!verified.success) {
-      addToast(verified.message, 'error');
-      return;
-    }
-
-    const res = registerEmployeeUser({
-      companyId: empSignupForm.companyId,
-      name: empSignupForm.name,
-      phone: empSignupForm.phone,
-      email: empSignupForm.email,
-      department: empSignupForm.department,
-      roleTitle: empSignupForm.roleTitle,
-    });
-
-    addToast(`✅ Welcome, ${empSignupForm.name}! You are registered under ${res.user.companyName}.`, 'success');
-    switchActiveTenant(res.user.companyId);
-    setActiveTab('employee-portal');
-    onAuthSuccess?.();
-  };
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-3 md:p-8 relative overflow-hidden bg-[#070D18]">
-      {/* Background glowing ambient orbs */}
-      <div className="absolute top-0 left-1/4 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 translate-x-1/2 w-[32rem] h-[32rem] bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 right-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-full flex flex-col justify-between bg-[#040914] relative overflow-x-hidden text-slate-100 selection:bg-emerald-500 selection:text-slate-950 font-sans">
+      {/* ── Ambient Radial Mesh Glows & Background Curves ── */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-emerald-600/15 via-teal-500/10 to-transparent rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-tl from-cyan-600/15 via-teal-600/10 to-transparent rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+      {/* Subtle Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(#10b98115_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
 
-      <div className="container max-w-[1240px] px-2 md:px-6 z-10 w-full my-auto">
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* ========================================================================= */}
-          {/* LEFT COLUMN: BRANDING & SAAS HIGHLIGHTS (BizyLead style)                  */}
-          {/* ========================================================================= */}
-          <div className="lg:col-span-6 space-y-7 text-white">
-            {/* Top Brand Logo */}
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span>Meta WhatsApp Cloud API Solution Provider</span>
-              </div>
+      {/* ========================================================================= */}
+      {/* 1. TOP HEADER BAR                                                         */}
+      {/* ========================================================================= */}
+      <header className="w-full flex items-center justify-between px-6 lg:px-12 py-5 max-w-7xl mx-auto z-20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-emerald-500/30">
+            Q
+          </div>
+          <div>
+            <div className="text-sm font-extrabold tracking-wider text-white uppercase flex items-center gap-1.5">
+              QIYAM BUSINESS OS
+            </div>
+            <div className="text-[11px] text-slate-400 font-medium">
+              Multi-Tenant WhatsApp Cloud API & Operations Platform
+            </div>
+          </div>
+        </div>
 
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center text-white font-extrabold text-2xl shadow-lg shadow-emerald-500/20">
-                  Q
-                </div>
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-                    QIYAM BUSINESS OS
-                  </h1>
-                  <p className="text-xs text-emerald-400 font-medium tracking-wide">
-                    Multi-Tenant WhatsApp Cloud API & Operations Platform
-                  </p>
-                </div>
-              </div>
+        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B1728]/80 border border-emerald-500/30 text-emerald-400 text-xs font-semibold backdrop-blur-md shadow-xs">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>Trusted by businesses worldwide</span>
+        </div>
+      </header>
+
+      {/* ========================================================================= */}
+      {/* 2. MAIN CENTER HERO & SPLIT SECTION                                       */}
+      {/* ========================================================================= */}
+      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-12 py-4 lg:py-6 z-10 flex-1 flex items-center">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center w-full">
+          {/* ─────────────────────────────────────────────────────────────────────── */}
+          {/* LEFT SIDE: HERO HEADLINE + FEATURE CARDS + 3D DASHBOARD GRAPHIC         */}
+          {/* ─────────────────────────────────────────────────────────────────────── */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Meta Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#081726] border border-emerald-500/40 text-emerald-300 text-xs font-semibold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Meta WhatsApp Cloud API Solution Provider</span>
             </div>
 
             {/* Headline */}
-            <div className="space-y-2">
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white leading-tight">
-                Scale Customer Engagement with Official WhatsApp Automation
-              </h2>
-              <p className="text-sm text-slate-400 leading-relaxed max-w-lg">
+            <div className="space-y-3">
+              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-[1.12]">
+                Scale Customer{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+                  Engagement
+                </span>{' '}
+                with Official WhatsApp Automation
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-xl">
                 The all-in-one suite for hotels, retail chains, healthcare, and enterprise field teams. Run verified bulk broadcasts, AI customer agents, live inbox, and employee management.
               </p>
             </div>
 
-            {/* Feature Cards (3 Key Value Props) */}
-            <div className="space-y-3.5 pt-1">
-              <div className="flex items-start gap-4 p-3.5 rounded-2xl bg-[#0F1A30]/60 border border-[#1E293B] hover:border-emerald-500/30 transition group">
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition shrink-0">
-                  <Send className="w-5 h-5" />
-                </div>
-                <div className="space-y-0.5">
-                  <h3 className="font-bold text-sm text-slate-100 group-hover:text-emerald-300 transition">
-                    Bulk Broadcasts & Approved Templates
+            {/* Middle Section: 4 Feature Cards (2x2) with 3D Mockup */}
+            <div className="relative pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-lg z-10 relative">
+                {/* Feature 1 */}
+                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-emerald-500/40 transition-all group backdrop-blur-md">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2.5 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all">
+                    <Send className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-xs text-white group-hover:text-emerald-300 transition">
+                    Bulk Broadcasts
                   </h3>
-                  <p className="text-xs text-slate-400 leading-normal">
-                    Deliver thousands of Meta-approved notifications, bills, and offers with 99.9% read rates and zero risk of mobile ban.
+                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
+                    Deliver thousands of approved messages with 99.9% read rates.
+                  </p>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-teal-500/40 transition-all group backdrop-blur-md">
+                  <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center mb-2.5 group-hover:bg-teal-500/20 group-hover:scale-105 transition-all">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-xs text-white group-hover:text-teal-300 transition">
+                    Custom Client Portals
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
+                    Dedicated modules for every client with branded dashboards.
+                  </p>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-cyan-500/40 transition-all group backdrop-blur-md">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mb-2.5 group-hover:bg-cyan-500/20 group-hover:scale-105 transition-all">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-xs text-white group-hover:text-cyan-300 transition">
+                    Employee Dashboards
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
+                    Staff login via WhatsApp OTP, track attendance & performance.
+                  </p>
+                </div>
+
+                {/* Feature 4 */}
+                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-emerald-500/40 transition-all group backdrop-blur-md">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2.5 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-xs text-white group-hover:text-emerald-300 transition">
+                    Enterprise Ready
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
+                    Secure, scalable, and built for multi-tenant operations.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4 p-3.5 rounded-2xl bg-[#0F1A30]/60 border border-[#1E293B] hover:border-teal-500/30 transition group">
-                <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20 group-hover:bg-teal-500/20 transition shrink-0">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div className="space-y-0.5">
-                  <h3 className="font-bold text-sm text-slate-100 group-hover:text-teal-300 transition">
-                    Custom Client Portals (e.g. Ambika Hotel)
-                  </h3>
-                  <p className="text-xs text-slate-400 leading-normal">
-                    Every client receives a dedicated, customized dashboard with only the specific modules they subscribed to.
-                  </p>
-                </div>
-              </div>
+              {/* ── 3D Isometric Tablet Mockup & Floating WhatsApp Icon ── */}
+              <div className="hidden xl:block absolute -right-6 -top-10 w-72 pointer-events-none select-none">
+                {/* Angled Glass Tablet Frame */}
+                <div className="relative w-full rounded-2xl bg-gradient-to-br from-[#0c1e36] to-[#071324] border border-emerald-500/30 p-3 shadow-2xl [transform:perspective(1000px)_rotateY(-12deg)_rotateX(6deg)] hover:[transform:perspective(1000px)_rotateY(-8deg)_rotateX(4deg)] transition-transform duration-500">
+                  {/* Tablet Header */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[10px]">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-emerald-500 text-[8px] font-bold text-white flex items-center justify-center">
+                        Q
+                      </div>
+                      <span className="font-bold text-slate-200 text-[9px]">Qiyam Business OS</span>
+                    </div>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  </div>
 
-              <div className="flex items-start gap-4 p-3.5 rounded-2xl bg-[#0F1A30]/60 border border-[#1E293B] hover:border-cyan-500/30 transition group">
-                <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition shrink-0">
-                  <Users className="w-5 h-5" />
+                  {/* Tablet KPIs */}
+                  <div className="grid grid-cols-2 gap-2 my-2.5">
+                    <div className="p-2 rounded-lg bg-[#06101E] border border-slate-800/80">
+                      <div className="text-[8px] text-slate-400">Messages Sent</div>
+                      <div className="text-xs font-bold text-white font-mono mt-0.5">128,450</div>
+                      <div className="text-[7px] text-emerald-400 font-semibold">↑ 23%</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-[#06101E] border border-slate-800/80">
+                      <div className="text-[8px] text-slate-400">Active Clients</div>
+                      <div className="text-xs font-bold text-white font-mono mt-0.5">24</div>
+                      <div className="text-[7px] text-emerald-400 font-semibold">↑ 3 new</div>
+                    </div>
+                  </div>
+
+                  {/* Spline Chart Line */}
+                  <div className="py-1">
+                    <svg className="w-full h-10 overflow-visible" viewBox="0 0 200 60" fill="none">
+                      <path
+                        d="M0 45 C 30 50, 50 20, 80 30 C 110 40, 140 10, 170 18 C 185 22, 195 5, 200 8"
+                        stroke="#10B981"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M0 45 C 30 50, 50 20, 80 30 C 110 40, 140 10, 170 18 C 185 22, 195 5, 200 8 L 200 60 L 0 60 Z"
+                        fill="url(#chart-gradient)"
+                        opacity="0.25"
+                      />
+                      <defs>
+                        <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10B981" />
+                          <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+
+                  {/* Chat User Rows */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center gap-2 p-1 rounded bg-[#06101E] text-[8px]">
+                      <div className="w-3.5 h-3.5 rounded-full bg-slate-700" />
+                      <div className="w-16 h-1.5 rounded bg-slate-700" />
+                    </div>
+                    <div className="flex items-center gap-2 p-1 rounded bg-[#06101E] text-[8px]">
+                      <div className="w-3.5 h-3.5 rounded-full bg-slate-700" />
+                      <div className="w-12 h-1.5 rounded bg-slate-700" />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="font-bold text-sm text-slate-100 group-hover:text-cyan-300 transition">
-                    Employee Dashboards & WhatsApp OTP
-                  </h3>
-                  <p className="text-xs text-slate-400 leading-normal">
-                    Staff members log in via WhatsApp OTP, manage guest chats, clock their attendance, and track daily performance seamlessly.
-                  </p>
+
+                {/* ── 3D WhatsApp Floating Cube with Glow ── */}
+                <div className="absolute -bottom-6 -left-8 pointer-events-auto">
+                  <div className="relative">
+                    {/* Pulsing Emerald Halo */}
+                    <div className="absolute -inset-2 rounded-2xl bg-emerald-400/40 blur-xl animate-pulse" />
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 p-0.5 shadow-[0_10px_30px_rgba(16,185,129,0.5)] transform -rotate-6 hover:rotate-0 transition-transform">
+                      <div className="w-full h-full rounded-[14px] bg-gradient-to-b from-emerald-500 to-teal-600 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute -top-6 -left-6 w-14 h-14 bg-white/30 rounded-full blur-xs" />
+                        {/* WhatsApp SVG Icon */}
+                        <svg className="w-8 h-8 text-white drop-shadow-md" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Demo Credentials Footer */}
-            <div className="p-3.5 rounded-2xl bg-[#081224]/80 border border-slate-800 text-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
-                <span className="flex items-center gap-1.5 text-amber-400">
-                  <Sparkles className="w-3.5 h-3.5" /> 1-Click Demo Login
+            {/* ── 1-CLICK DEMO LOGIN BAR ── */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-extrabold text-amber-400 flex items-center gap-1.5 text-[11px] tracking-wider uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  1-Click Demo Login
                 </span>
-                <span>Click to auto-fill</span>
+                <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
+                  Explore Demo →
+                </span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Super Admin Demo */}
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveMode('login');
                     handleSelectRole('super_admin');
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-emerald-500/50 transition text-left cursor-pointer"
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                    loginRole === 'super_admin'
+                      ? 'bg-[#0E2138] border-amber-500/60 shadow-xs'
+                      : 'bg-[#091527]/90 border-[#142944] hover:border-slate-600'
+                  }`}
                 >
-                  <div className="font-bold text-[11px] text-amber-300 flex items-center gap-1">
-                    <Crown className="w-3 h-3" /> Super Admin
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                    <Crown className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono">admin / admin@123</div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate">Super Admin</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">admin @ admin@123</div>
+                  </div>
                 </button>
 
+                {/* 2. Ambika Hotel Demo */}
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveMode('login');
                     handleSelectRole('company_admin');
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-teal-500/50 transition text-left cursor-pointer"
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                    loginRole === 'company_admin'
+                      ? 'bg-[#0E2138] border-teal-500/60 shadow-xs'
+                      : 'bg-[#091527]/90 border-[#142944] hover:border-slate-600'
+                  }`}
                 >
-                  <div className="font-bold text-[11px] text-teal-300 flex items-center gap-1">
-                    <Building2 className="w-3 h-3" /> Ambika Hotel
+                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate">ramachandran@...</div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate">Ambika Hotel</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">ramachandran@...</div>
+                  </div>
                 </button>
 
+                {/* 3. Staff Portal Demo */}
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveMode('login');
                     handleSelectRole('employee');
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-cyan-500/50 transition text-left cursor-pointer"
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                    loginRole === 'employee'
+                      ? 'bg-[#0E2138] border-cyan-500/60 shadow-xs'
+                      : 'bg-[#091527]/90 border-[#142944] hover:border-slate-600'
+                  }`}
                 >
-                  <div className="font-bold text-[11px] text-cyan-300 flex items-center gap-1">
-                    <Users className="w-3 h-3" /> Staff Portal
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono">WhatsApp OTP</div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate">Staff Portal</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">WhatsApp OTP</div>
+                  </div>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* ========================================================================= */}
-          {/* RIGHT COLUMN: AUTHENTICATION / REGISTRATION CARD                         */}
-          {/* ========================================================================= */}
-          <div className="lg:col-span-6 w-full max-w-xl mx-auto">
-            <div className="rounded-3xl backdrop-blur-xl bg-[#0C172E]/90 border border-[#1E293B] shadow-2xl p-6 md:p-8 text-white relative">
-              {/* Card Header Mode Switcher */}
-              <div className="flex items-center justify-between border-b border-[#1E293B] pb-4 mb-6">
-                <div className="flex items-center gap-2 bg-[#081224] p-1 rounded-2xl border border-[#1E293B]">
-                  <button
-                    type="button"
-                    onClick={() => setActiveMode('login')}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                      activeMode === 'login'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Sign In</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveMode('signup')}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                      activeMode === 'signup'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Building2 className="w-3.5 h-3.5" />
-                    <span>Register Business</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveMode('employee_signup')}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer hidden sm:flex items-center gap-1.5 ${
-                      activeMode === 'employee_signup'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Staff Join</span>
-                  </button>
+          {/* ─────────────────────────────────────────────────────────────────────── */}
+          {/* RIGHT SIDE: THE SIGNATURE GLOWING LOGIN CARD                            */}
+          {/* ─────────────────────────────────────────────────────────────────────── */}
+          <div className="lg:col-span-5 w-full max-w-md mx-auto">
+            <div className="relative rounded-[28px] bg-[#071324]/95 border border-emerald-500/40 p-6 sm:p-7 shadow-[0_0_60px_-12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500/20 backdrop-blur-2xl">
+              {/* Center Logo */}
+              <div className="flex flex-col items-center text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-emerald-500/30 mb-3">
+                  Q
                 </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Secure Access</span>
-                </div>
+                <h2 className="text-2xl font-black text-white tracking-tight">Welcome Back</h2>
+                <p className="text-xs text-slate-400 mt-1">Sign in to your Qiyam Business OS account</p>
               </div>
 
-              {/* ------------------------------------------------------------------- */}
-              {/* MODE 1: SIGN IN                                                     */}
-              {/* ------------------------------------------------------------------- */}
-              {activeMode === 'login' && (
-                <div className="space-y-5 animate-in fade-in duration-200">
-                  <div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Sign in to your account</h3>
-                    <p className="text-xs text-slate-400 mt-1">Choose your portal type and enter credentials to continue</p>
-                  </div>
-
-                  {/* Role Selector Tabs */}
-                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-[#081224] border border-[#1E293B]">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectRole('super_admin')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                        loginRole === 'super_admin'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                      }`}
-                    >
-                      <Crown className="w-3.5 h-3.5" />
-                      <span>Super Admin</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectRole('company_admin')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                        loginRole === 'company_admin'
-                          ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-xs'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                      }`}
-                    >
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>Company Admin</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectRole('employee')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                        loginRole === 'employee'
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                      }`}
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Staff Member</span>
-                    </button>
-                  </div>
-
-                  {/* Prompt for Super Admin */}
-                  {loginRole === 'super_admin' && (
-                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>Master Provider Console: <strong>admin</strong> / <strong>admin@123</strong></span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300">HQ Mode</span>
+              <div className="space-y-4">
+                {/* Segmented 3-Way Role Selector */}
+                <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-[#030914] border border-[#142944]">
+                  {/* Admin */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectRole('super_admin')}
+                    className={`py-2 px-2 rounded-xl text-center transition cursor-pointer ${
+                      loginRole === 'super_admin'
+                        ? 'bg-emerald-950/60 border border-emerald-500/80 text-emerald-300 shadow-sm'
+                        : 'text-slate-400 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-bold">
+                      <Crown className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Admin</span>
                     </div>
-                  )}
+                    <div className="text-[9px] text-slate-400 font-medium">Super Admin</div>
+                  </button>
 
-                  {/* Employee Login Method Switcher (Password vs WhatsApp OTP) */}
-                  {loginRole === 'employee' && (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-[#081224] border border-[#1E293B] text-xs">
-                      <span className="text-slate-400 font-medium">Login via:</span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setEmployeeLoginMethod('otp')}
-                          className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
-                            employeeLoginMethod === 'otp'
-                              ? 'bg-emerald-500 text-slate-950 font-extrabold'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          <Smartphone className="w-3 h-3" />
-                          <span>WhatsApp OTP</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEmployeeLoginMethod('password')}
-                          className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                            employeeLoginMethod === 'password'
-                              ? 'bg-emerald-500 text-slate-950 font-extrabold'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          Password
-                        </button>
+                  {/* Business */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectRole('company_admin')}
+                    className={`py-2 px-2 rounded-xl text-center transition cursor-pointer ${
+                      loginRole === 'company_admin'
+                        ? 'bg-emerald-950/60 border border-emerald-500/80 text-emerald-300 shadow-sm'
+                        : 'text-slate-400 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-bold">
+                      <Building2 className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Business</span>
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-medium">Company Admin</div>
+                  </button>
+
+                  {/* Staff */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectRole('employee')}
+                    className={`py-2 px-2 rounded-xl text-center transition cursor-pointer ${
+                      loginRole === 'employee'
+                        ? 'bg-emerald-950/60 border border-emerald-500/80 text-emerald-300 shadow-sm'
+                        : 'text-slate-400 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-bold">
+                      <Users className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Staff</span>
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-medium">Staff Member</div>
+                  </button>
+                </div>
+
+                {/* Role Notice Banner */}
+                {loginRole === 'super_admin' && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5">
+                    <Crown className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs flex-1">
+                      <div className="font-bold text-amber-300">Master Provider Console Access</div>
+                      <div className="text-[10px] text-amber-200/80 mt-0.5">
+                        Sign in with your admin credentials to access the complete platform.
                       </div>
                     </div>
-                  )}
+                    <Info className="w-3.5 h-3.5 text-amber-400/60 shrink-0" />
+                  </div>
+                )}
 
-                  {/* FORM BODY */}
-                  {loginRole === 'employee' && employeeLoginMethod === 'otp' ? (
-                    /* Employee WhatsApp OTP Form */
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                          <span>Staff WhatsApp Phone Number</span>
-                          <span className="text-[11px] text-emerald-400">Official Mobile</span>
-                        </label>
-                        <div className="relative">
-                          <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="text"
-                            value={empOtpPhone}
-                            onChange={(e) => setEmpOtpPhone(e.target.value)}
-                            placeholder="+91 98470 99881"
-                            className="w-full pl-10 pr-24 py-2.5 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSendEmployeeOtp}
-                            disabled={empOtpTimer > 0}
-                            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs transition cursor-pointer"
-                          >
-                            {empOtpTimer > 0 ? `${empOtpTimer}s` : empOtpSent ? 'Resend' : 'Send OTP'}
-                          </button>
-                        </div>
+                {loginRole === 'company_admin' && (
+                  <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-start gap-2.5">
+                    <Building2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                    <div className="text-xs flex-1">
+                      <div className="font-bold text-teal-300">Client Workspace Access (Ambika Hotel)</div>
+                      <div className="text-[10px] text-teal-200/80 mt-0.5">
+                        Manage your guests, employees, and pre-approved WhatsApp templates.
                       </div>
+                    </div>
+                  </div>
+                )}
 
-                      {empOtpSent && (
-                        <div className="space-y-1.5 animate-in fade-in duration-200">
-                          <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                            <span>6-Digit Verification Code</span>
-                            <span className="text-[10px] text-amber-400">Sent to your WhatsApp</span>
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={6}
-                            value={empOtpCode}
-                            onChange={(e) => setEmpOtpCode(e.target.value)}
-                            placeholder="Enter 6-digit OTP (e.g. 482910)"
-                            className="w-full text-center tracking-[0.5em] py-2.5 bg-[#081224] border border-emerald-500/50 rounded-xl text-lg font-bold font-mono text-emerald-300 outline-none transition"
-                          />
-                          <p className="text-[11px] text-slate-400">
-                            Check WhatsApp on your phone or use test code <strong>{empOtpCode || '123456'}</strong>.
-                          </p>
-                        </div>
-                      )}
-
+                {loginRole === 'employee' && (
+                  <div className="p-2 rounded-xl bg-[#030914] border border-[#142944] flex items-center justify-between text-xs">
+                    <span className="text-slate-400 text-[11px] font-semibold">Login Method:</span>
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={empOtpSent ? handleVerifyEmployeeOtp : handleSendEmployeeOtp}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2"
+                        onClick={() => setEmployeeLoginMethod('otp')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                          employeeLoginMethod === 'otp'
+                            ? 'bg-emerald-500 text-slate-950 font-black'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
                       >
-                        <Smartphone className="w-4 h-4" />
-                        <span>{empOtpSent ? 'Verify OTP & Enter Employee Portal' : 'Send WhatsApp OTP'}</span>
+                        <Smartphone className="w-3 h-3" />
+                        <span>WhatsApp OTP</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEmployeeLoginMethod('password')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          employeeLoginMethod === 'password'
+                            ? 'bg-emerald-500 text-slate-950 font-black'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Password
                       </button>
                     </div>
-                  ) : (
-                    /* Standard Password Form (Super Admin, Company Admin, or Staff Password) */
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-300">
-                          {loginRole === 'super_admin'
-                            ? 'Username or Email'
-                            : loginRole === 'company_admin'
-                            ? 'Company Email / WhatsApp Phone'
-                            : 'Staff Email / Phone'}
-                        </label>
-                        <div className="relative">
-                          <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="text"
-                            value={loginIdentifier}
-                            onChange={(e) => setLoginIdentifier(e.target.value)}
-                            required
-                            placeholder={loginRole === 'super_admin' ? 'admin' : 'owner@ambikahotel.com'}
-                            className="w-full pl-10 pr-4 py-2.5 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition font-sans"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-semibold text-slate-300">Password</label>
-                          <button
-                            type="button"
-                            onClick={() => setActiveMode('forgot_password')}
-                            className="text-xs text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
-                          >
-                            Forgot password?
-                          </button>
-                        </div>
-                        <div className="relative">
-                          <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            required
-                            placeholder="Enter password"
-                            className="w-full pl-10 pr-10 py-2.5 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-sm text-white placeholder-slate-500 outline-none transition"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-400">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                            className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900"
-                          />
-                          <span>Remember this device</span>
-                        </label>
-                        <span className="text-[11px] text-slate-500">256-bit SSL Encrypted</span>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>Authenticating...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Sign In to {loginRole === 'super_admin' ? 'Master Admin' : loginRole === 'company_admin' ? 'Client Workspace' : 'Staff Portal'}</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-                    </form>
-                  )}
-
-                  {/* Switch to Register */}
-                  <div className="pt-2 text-center text-xs text-slate-400 border-t border-[#1E293B]">
-                    <span>Are you a new hotel or business? </span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMode('signup')}
-                      className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
-                    >
-                      Register New Client (Ambika Hotel)
-                    </button>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* ------------------------------------------------------------------- */}
-              {/* MODE 2: CLIENT REGISTRATION (Ambika Hotel Onboarding Flow)          */}
-              {/* ------------------------------------------------------------------- */}
-              {activeMode === 'signup' && (
-                <div className="space-y-5 animate-in fade-in duration-200">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                        Client Onboarding • Step {signupStep} of 2
-                      </span>
-                      <span className="text-xs text-slate-400">Commercial Tenant</span>
+                {/* Form Inputs */}
+                {loginRole === 'employee' && employeeLoginMethod === 'otp' ? (
+                  /* WhatsApp OTP form for staff using our CountryPhoneInput */
+                  <div className="space-y-3.5">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-300">Staff WhatsApp Phone *</label>
+                      <div className="relative">
+                        <CountryPhoneInput
+                          value={empOtpPhone}
+                          onChange={(val) => setEmpOtpPhone(val)}
+                          placeholder="Staff WhatsApp number"
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          onClick={handleSendEmployeeOtp}
+                          disabled={empOtpTimer > 0}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                        >
+                          {empOtpTimer > 0 ? `Resend code in ${empOtpTimer}s` : empOtpSent ? 'Resend Code' : 'Send WhatsApp OTP'}
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="text-xl font-bold text-white tracking-tight mt-1">
-                      Register Your Business on WhatsApp Cloud API
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Provision dedicated WhatsApp WABA lines, customize required software modules, and verify via OTP.
-                    </p>
-                  </div>
 
-                  {signupStep === 1 ? (
-                    <form onSubmit={handleInitiateClientSignup} className="space-y-4 text-xs">
-                      {/* Business Name & Category */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="font-semibold text-slate-300">Company / Business Name *</label>
-                          <input
-                            type="text"
-                            required
-                            value={clientForm.businessName}
-                            onChange={(e) => setClientForm({ ...clientForm, businessName: e.target.value })}
-                            placeholder="e.g. Ambika Hotel & Luxury Suites"
-                            className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="font-semibold text-slate-300">Industry / Category *</label>
-                          <select
-                            value={clientForm.category}
-                            onChange={(e) => setClientForm({ ...clientForm, category: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                          >
-                            <option value="Hospitality & Tourism">Hospitality & Tourism (Hotels, Resorts)</option>
-                            <option value="Retail & eCommerce">Retail & Supermarket</option>
-                            <option value="Healthcare & Clinics">Healthcare, Labs & Hospitals</option>
-                            <option value="Field Service & MEP">Field Service, MEP & Contracting</option>
-                            <option value="Real Estate & Property">Real Estate & Developers</option>
-                            <option value="Education & Academies">Education & Coaching</option>
-                            <option value="Other">Other Enterprise</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Owner Contact */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="space-y-1">
-                          <label className="font-semibold text-slate-300">Contact Person *</label>
-                          <input
-                            type="text"
-                            required
-                            value={clientForm.ownerName}
-                            onChange={(e) => setClientForm({ ...clientForm, ownerName: e.target.value })}
-                            placeholder="e.g. K. Ramachandran"
-                            className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="font-semibold text-slate-300">Official Email *</label>
-                          <input
-                            type="email"
-                            required
-                            value={clientForm.ownerEmail}
-                            onChange={(e) => setClientForm({ ...clientForm, ownerEmail: e.target.value })}
-                            placeholder="ramachandran@ambikahotel.com"
-                            className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="font-semibold text-slate-300">City / Location</label>
-                          <input
-                            type="text"
-                            value={clientForm.branchLocation}
-                            onChange={(e) => setClientForm({ ...clientForm, branchLocation: e.target.value })}
-                            placeholder="Beach Road • Kozhikode"
-                            className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      {/* WhatsApp Cloud API Number & Rule Explanation */}
-                      <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-                        <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>Important Meta WhatsApp Rule: Number Requirements</span>
-                        </div>
-                        <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                          To connect with WhatsApp Cloud API, this number <strong>must not be active on regular WhatsApp or WhatsApp Business mobile app</strong>. If it is currently installed, open WhatsApp &gt; <em>Settings &gt; Account &gt; Delete My Account</em> first, or use a dedicated SIM / virtual number.
-                        </p>
-
-                        <div className="space-y-1 pt-1">
-                          <label className="font-semibold text-white flex items-center justify-between">
-                            <span>Phone Number to Connect with WhatsApp Cloud API *</span>
-                            <span className="text-[10px] text-emerald-400 font-mono">OTP will be sent here</span>
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={clientForm.wabaPhone}
-                            onChange={(e) =>
-                              setClientForm({ ...clientForm, wabaPhone: e.target.value, ownerPhone: e.target.value })
-                            }
-                            placeholder="+91 98470 12345"
-                            className="w-full px-3 py-2 bg-[#081224] border border-amber-500/50 rounded-xl text-white font-mono text-sm outline-none"
-                          />
-                        </div>
-
-                        <label className="flex items-start gap-2 pt-1 text-[11px] text-slate-300 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={clientForm.hasDeletedFromConsumerApp}
-                            onChange={(e) =>
-                              setClientForm({ ...clientForm, hasDeletedFromConsumerApp: e.target.checked })
-                            }
-                            className="mt-0.5 rounded border-amber-500 text-amber-500 bg-slate-900"
-                          />
-                          <span>
-                            I confirm this number is ready for Meta Cloud API (not registered on consumer WhatsApp app).
-                          </span>
-                        </label>
-                      </div>
-
-                      {/* Plan Selection */}
-                      <div className="space-y-1.5">
-                        <label className="font-semibold text-slate-300">Choose Subscription Tier</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div
-                            onClick={() => setClientForm({ ...clientForm, planTier: 'starter' })}
-                            className={`p-2.5 rounded-xl border text-center cursor-pointer transition ${
-                              clientForm.planTier === 'starter'
-                                ? 'bg-emerald-500/20 border-emerald-500 text-white'
-                                : 'bg-[#081224] border-[#1E293B] text-slate-400'
-                            }`}
-                          >
-                            <div className="font-bold text-xs">Starter</div>
-                            <div className="text-[11px] text-emerald-400 font-mono">₹2,499/mo</div>
-                            <div className="text-[9px] text-slate-400 mt-0.5">5 Staff Seats</div>
-                          </div>
-
-                          <div
-                            onClick={() => setClientForm({ ...clientForm, planTier: 'growth' })}
-                            className={`p-2.5 rounded-xl border text-center cursor-pointer transition relative ${
-                              clientForm.planTier === 'growth'
-                                ? 'bg-emerald-500/20 border-emerald-500 text-white'
-                                : 'bg-[#081224] border-[#1E293B] text-slate-400'
-                            }`}
-                          >
-                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.2 rounded-full text-[8px] font-bold bg-amber-500 text-slate-950 uppercase">
-                              Popular
-                            </span>
-                            <div className="font-bold text-xs">Growth</div>
-                            <div className="text-[11px] text-emerald-400 font-mono">₹5,999/mo</div>
-                            <div className="text-[9px] text-slate-400 mt-0.5">15 Staff Seats</div>
-                          </div>
-
-                          <div
-                            onClick={() => setClientForm({ ...clientForm, planTier: 'enterprise' })}
-                            className={`p-2.5 rounded-xl border text-center cursor-pointer transition ${
-                              clientForm.planTier === 'enterprise'
-                                ? 'bg-emerald-500/20 border-emerald-500 text-white'
-                                : 'bg-[#081224] border-[#1E293B] text-slate-400'
-                            }`}
-                          >
-                            <div className="font-bold text-xs">Enterprise</div>
-                            <div className="text-[11px] text-emerald-400 font-mono">₹14,999/mo</div>
-                            <div className="text-[9px] text-slate-400 mt-0.5">30 Staff Seats</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Desired Features Checklist */}
-                      <div className="space-y-1.5">
-                        <label className="font-semibold text-slate-300">Software Options Needed (Configured by Super Admin)</label>
-                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                          {[
-                            { id: 'conversations', label: 'WhatsApp Inbox & Staff Assignment' },
-                            { id: 'messenger', label: 'Bulk Broadcasts & Scheduler' },
-                            { id: 'crm', label: 'CRM & Lead Management' },
-                            { id: 'ops', label: 'Operations & Staff Attendance' },
-                            { id: 'automation', label: 'Visual Bot Flow Automation' },
-                            { id: 'ai', label: 'AI Copilot & Knowledge Bot' },
-                          ].map((mod) => (
-                            <label
-                              key={mod.id}
-                              className="flex items-center gap-2 p-2 rounded-xl bg-[#081224] border border-[#1E293B] hover:border-slate-700 cursor-pointer select-none"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={clientForm.selectedModules.includes(mod.id)}
-                                onChange={(e) => {
-                                  const updated = e.target.checked
-                                    ? [...clientForm.selectedModules, mod.id]
-                                    : clientForm.selectedModules.filter((m) => m !== mod.id);
-                                  setClientForm({ ...clientForm, selectedModules: updated });
-                                }}
-                                className="rounded border-slate-700 text-emerald-500 bg-slate-900"
-                              />
-                              <span className="text-slate-300 truncate">{mod.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <span>Continue to WhatsApp OTP Verification</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </form>
-                  ) : (
-                    /* Step 2: OTP Verification */
-                    <div className="space-y-5 text-xs">
-                      <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
-                        <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/40">
-                          <Smartphone className="w-6 h-6" />
-                        </div>
-                        <h4 className="font-bold text-base text-white">Enter WhatsApp OTP</h4>
-                        <p className="text-xs text-slate-300 max-w-sm mx-auto">
-                          We sent a 6-digit security verification code to your WhatsApp line at{' '}
-                          <span className="text-emerald-300 font-mono font-bold">{clientForm.wabaPhone}</span>
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="font-semibold text-slate-300 block text-center">6-Digit Code</label>
+                    {empOtpSent && (
+                      <div className="space-y-1.5 animate-in fade-in">
+                        <label className="text-xs font-semibold text-slate-300">6-Digit Verification Code</label>
                         <input
                           type="text"
                           maxLength={6}
-                          value={signupOtpCode}
-                          onChange={(e) => setSignupOtpCode(e.target.value)}
-                          placeholder="482910"
-                          className="w-full max-w-xs mx-auto block text-center tracking-[0.5em] py-3 bg-[#081224] border border-emerald-500 rounded-xl text-2xl font-bold font-mono text-emerald-300 outline-none"
-                        />
-                        <div className="text-center text-[11px] text-slate-400">
-                          <span>Auto-filled for demo: <strong>{generatedSignupOtp || '123456'}</strong></span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setSignupStep(1)}
-                          className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
-                        >
-                          ← Edit Business Info
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={signupOtpTimer > 0}
-                          onClick={() => {
-                            const res = generateWhatsAppOtp(clientForm.wabaPhone, 'client_signup');
-                            setGeneratedSignupOtp(res.code);
-                            setSignupOtpCode(res.code);
-                            setSignupOtpTimer(60);
-                            addToast(`New code sent! (${res.code})`, 'info');
-                          }}
-                          className="text-xs text-emerald-400 hover:text-emerald-300 disabled:text-slate-500 cursor-pointer"
-                        >
-                          {signupOtpTimer > 0 ? `Resend code in ${signupOtpTimer}s` : 'Resend WhatsApp Code'}
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleVerifyClientSignup}
-                        className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm shadow-xl shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Verify & Launch {clientForm.businessName}</span>
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="pt-2 text-center text-xs text-slate-400 border-t border-[#1E293B]">
-                    <span>Already registered? </span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMode('login')}
-                      className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
-                    >
-                      Sign In here
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ------------------------------------------------------------------- */}
-              {/* MODE 3: EMPLOYEE REGISTRATION (Staff Join with WhatsApp OTP)        */}
-              {/* ------------------------------------------------------------------- */}
-              {activeMode === 'employee_signup' && (
-                <div className="space-y-5 animate-in fade-in duration-200">
-                  <div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Staff / Employee Onboarding</h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Join your company's WhatsApp workspace and verify with mobile OTP
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleEmployeeSignup} className="space-y-4 text-xs">
-                    <div className="space-y-1">
-                      <label className="font-semibold text-slate-300">Select Employer / Company *</label>
-                      <select
-                        value={empSignupForm.companyId}
-                        onChange={(e) => setEmpSignupForm({ ...empSignupForm, companyId: e.target.value })}
-                        className="w-full px-3 py-2.5 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                      >
-                        {tenants.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.businessName} ({t.branch || 'Main Branch'})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="font-semibold text-slate-300">Full Name *</label>
-                        <input
-                          type="text"
-                          required
-                          value={empSignupForm.name}
-                          onChange={(e) => setEmpSignupForm({ ...empSignupForm, name: e.target.value })}
-                          placeholder="e.g. Rahul Sharma"
-                          className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-semibold text-slate-300">Department / Role *</label>
-                        <input
-                          type="text"
-                          required
-                          value={empSignupForm.roleTitle}
-                          onChange={(e) => setEmpSignupForm({ ...empSignupForm, roleTitle: e.target.value })}
-                          placeholder="Front Desk Executive / Agent"
-                          className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-semibold text-slate-300">Staff WhatsApp Phone Number *</label>
-                      <input
-                        type="text"
-                        required
-                        value={empSignupForm.phone}
-                        onChange={(e) => setEmpSignupForm({ ...empSignupForm, phone: e.target.value })}
-                        placeholder="+91 98470 99881"
-                        className="w-full px-3 py-2 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white font-mono outline-none"
-                      />
-                    </div>
-
-                    {empSignupOtpSent && (
-                      <div className="space-y-1 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 animate-in fade-in">
-                        <label className="font-semibold text-emerald-300">Enter WhatsApp OTP</label>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={empSignupOtpCode}
-                          onChange={(e) => setEmpSignupOtpCode(e.target.value)}
-                          placeholder="Enter 6-digit OTP"
-                          className="w-full text-center tracking-[0.5em] py-2 bg-[#081224] border border-emerald-500 rounded-xl text-lg font-bold font-mono text-emerald-300 outline-none"
+                          value={empOtpCode}
+                          onChange={(e) => setEmpOtpCode(e.target.value)}
+                          placeholder="e.g. 482910"
+                          className="w-full text-center tracking-[0.4em] py-2.5 bg-[#050E1C] border border-emerald-500 rounded-xl text-lg font-bold font-mono text-emerald-300 outline-none"
                         />
                       </div>
                     )}
 
                     <button
-                      type="submit"
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2"
+                      type="button"
+                      onClick={empOtpSent ? handleVerifyEmployeeOtp : handleSendEmployeeOtp}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99]"
                     >
                       <Smartphone className="w-4 h-4" />
-                      <span>{empSignupOtpSent ? 'Verify OTP & Complete Staff Registration' : 'Send WhatsApp OTP'}</span>
+                      <span>{empOtpSent ? 'Verify OTP & Enter Staff Portal →' : 'Send WhatsApp OTP →'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* Standard Login Form */
+                  <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-300">Username or Email *</label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          required
+                          value={loginIdentifier}
+                          onChange={(e) => setLoginIdentifier(e.target.value)}
+                          placeholder="admin or email"
+                          className="w-full pl-10 pr-3 py-2.5 bg-[#050E1C] border border-[#162C4A] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-slate-300">Password *</label>
+                        <button
+                          type="button"
+                          onClick={() => setIsForgotModalOpen(true)}
+                          className="text-[11px] text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-10 pr-10 py-2.5 bg-[#050E1C] border border-[#162C4A] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition font-mono tracking-wider"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Remember & SSL Encrypted Row */}
+                    <div className="flex items-center justify-between text-xs text-slate-400 pt-0.5">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="rounded border-[#162C4A] bg-[#050E1C] text-emerald-500 focus:ring-0 focus:ring-offset-0"
+                        />
+                        <span className="text-[11px] text-slate-300">Remember this device</span>
+                      </label>
+                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        256-bit SSL Encrypted
+                      </span>
+                    </div>
+
+                    {/* Sign In Button */}
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-50 mt-1"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Signing In...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            Sign In to{' '}
+                            {loginRole === 'super_admin'
+                              ? 'Master Admin'
+                              : loginRole === 'company_admin'
+                              ? 'Ambika Hotel'
+                              : 'Staff Portal'}
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
                     </button>
                   </form>
+                )}
 
-                  <div className="pt-2 text-center text-xs text-slate-400 border-t border-[#1E293B]">
-                    <span>Already a staff member? </span>
+                {/* OR Separator */}
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-[#142944]" />
+                  <span className="flex-shrink mx-3 text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                    OR
+                  </span>
+                  <div className="flex-grow border-t border-[#142944]" />
+                </div>
+
+                {/* Continue with Google */}
+                <button
+                  type="button"
+                  onClick={() => addToast('Google OAuth 2.0 Enterprise Single Sign-On Active', 'info')}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#06101E] hover:bg-[#0A1A2E] border border-[#162C4A] text-slate-200 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+
+                {/* Footer Link to Open Client Registration Modal */}
+                <div className="pt-2 text-center text-xs text-slate-400 flex flex-col gap-1.5">
+                  <div>
+                    <span>Are you a new hotel or business? </span>
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveMode('login');
-                        handleSelectRole('employee');
+                        setIsRegisterModalOpen(true);
+                        setSignupStep(1);
                       }}
-                      className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
+                      className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
                     >
-                      Login here
+                      Register New Client (Ambika Hotel) →
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* ------------------------------------------------------------------- */}
-              {/* MODE 4: FORGOT PASSWORD                                             */}
-              {/* ------------------------------------------------------------------- */}
-              {activeMode === 'forgot_password' && (
-                <div className="space-y-5 animate-in fade-in duration-200">
                   <div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Reset Password</h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Enter your registered email or WhatsApp number to receive a secure recovery code
-                    </p>
-                  </div>
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      addToast('Reset link and OTP sent to your WhatsApp and email!', 'success');
-                      setActiveMode('login');
-                    }}
-                    className="space-y-4 text-xs"
-                  >
-                    <div className="space-y-1">
-                      <label className="font-semibold text-slate-300">Email or WhatsApp Phone</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="you@example.com or +91 94963 00233"
-                        className="w-full px-3 py-2.5 bg-[#081224] border border-[#1E293B] focus:border-emerald-500 rounded-xl text-white outline-none"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer"
-                    >
-                      Send Password Reset OTP
-                    </button>
-                  </form>
-
-                  <div className="pt-2 text-center text-xs text-slate-400 border-t border-[#1E293B]">
+                    <span>Employee of a client? </span>
                     <button
                       type="button"
-                      onClick={() => setActiveMode('login')}
-                      className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
+                      onClick={() => setIsStaffModalOpen(true)}
+                      className="text-cyan-400 hover:text-cyan-300 font-semibold transition cursor-pointer text-[11px]"
                     >
-                      ← Back to Sign In
+                      Staff Member Registration →
                     </button>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* ========================================================================= */}
+      {/* 3. CLEAN BOTTOM FOOTER BAR                                                */}
+      {/* ========================================================================= */}
+      <footer className="w-full px-6 lg:px-12 py-4 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 z-10 border-t border-slate-900/60">
+        <div>
+          © 2026 Qiyam Business OS • Official Meta Cloud API Solution Provider
+        </div>
+        <div className="flex items-center gap-4 mt-2 sm:mt-0">
+          <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
+          <span>•</span>
+          <span className="hover:text-slate-400 cursor-pointer">Terms of Service</span>
+          <span>•</span>
+          <span className="text-emerald-400 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> All Systems Operational
+          </span>
+        </div>
+      </footer>
+
+      {/* ========================================================================= */}
+      {/* 4. MODAL 1: REGISTER NEW CLIENT (OUR ESTABLISHED FORM PATTERN)            */}
+      {/* ========================================================================= */}
+      {isRegisterModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Provision New Client Workspace (Ambika Hotel)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Step {signupStep} of 2 • Client Onboarding & WhatsApp API Verification
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRegisterModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/50 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            {signupStep === 1 ? (
+              <form onSubmit={handleInitiateClientSignup} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+                {/* Section 1: Business Details */}
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Client / Business Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ambika Hotel & Luxury Suites"
+                    value={clientForm.businessName}
+                    onChange={(e) => setClientForm({ ...clientForm, businessName: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-600 bg-white text-slate-900 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Category / Industry</label>
+                    <select
+                      value={clientForm.category}
+                      onChange={(e) => setClientForm({ ...clientForm, category: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800 outline-none"
+                    >
+                      <option value="Hospitality & Tourism">🏨 Hospitality & Tourism</option>
+                      <option value="Retail & eCommerce">🛍️ Retail & Supermarket</option>
+                      <option value="Healthcare & Clinics">🏥 Healthcare & Clinics</option>
+                      <option value="Field Service & MEP">🛠️ Field Service & MEP</option>
+                      <option value="Other">🏢 Other Commercial Business</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Subscription Tier</label>
+                    <select
+                      value={clientForm.planTier}
+                      onChange={(e: any) => setClientForm({ ...clientForm, planTier: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800 outline-none"
+                    >
+                      <option value="starter">Starter (₹2,499/mo) • 5 Staff Seats</option>
+                      <option value="growth">Growth (₹5,999/mo) • 15 Staff Seats</option>
+                      <option value="enterprise">Enterprise PRO (₹14,999/mo) • 30 Seats</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Owner Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. K. Ramachandran"
+                      value={clientForm.ownerName}
+                      onChange={(e) => setClientForm({ ...clientForm, ownerName: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Official Business Email *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="ramachandran@ambikahotel.com"
+                      value={clientForm.ownerEmail}
+                      onChange={(e) => setClientForm({ ...clientForm, ownerEmail: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Owner Phone with CountryPhoneInput */}
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Owner Contact Mobile *</label>
+                  <CountryPhoneInput
+                    value={clientForm.ownerPhone}
+                    onChange={(val) => setClientForm({ ...clientForm, ownerPhone: val })}
+                    required
+                  />
+                </div>
+
+                {/* WhatsApp Cloud API Section & Rule Box */}
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                  <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Meta WhatsApp Cloud API Phone Number</span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 leading-relaxed">
+                    Under Meta rules, this number <strong>must not be active on regular WhatsApp app</strong>. If currently on mobile, delete the WhatsApp account in app (Settings &gt; Account &gt; Delete Account) first, or use a new SIM/virtual line.
+                  </p>
+
+                  <div className="space-y-1 pt-1">
+                    <label className="block font-bold text-slate-800">Phone Number for WhatsApp Cloud API *</label>
+                    <CountryPhoneInput
+                      value={clientForm.wabaPhone}
+                      onChange={(val) => setClientForm({ ...clientForm, wabaPhone: val })}
+                      required
+                    />
+                  </div>
+
+                  <label className="flex items-start gap-2 pt-1 text-[11px] text-slate-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={clientForm.hasDeletedFromConsumerApp}
+                      onChange={(e) => setClientForm({ ...clientForm, hasDeletedFromConsumerApp: e.target.checked })}
+                      className="mt-0.5 rounded border-slate-300 text-emerald-600"
+                    />
+                    <span>I confirm this phone line is ready for Meta WhatsApp Cloud API.</span>
+                  </label>
+                </div>
+
+                {/* Desired Modules Checklist */}
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Requested Features & Modules</label>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    {[
+                      { id: 'conversations', label: 'WhatsApp Inbox & Live Chat' },
+                      { id: 'messenger', label: 'Bulk Broadcasts & Scheduler' },
+                      { id: 'crm', label: 'CRM & Guest Profiles' },
+                      { id: 'ops', label: 'Staff Management & Attendance' },
+                      { id: 'automation', label: 'Visual Bot Automation' },
+                      { id: 'ai', label: 'AI Copilot & Knowledge Bot' },
+                    ].map((mod) => (
+                      <label key={mod.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={clientForm.selectedModules.includes(mod.id)}
+                          onChange={(e) => {
+                            const updated = e.target.checked
+                              ? [...clientForm.selectedModules, mod.id]
+                              : clientForm.selectedModules.filter((m) => m !== mod.id);
+                            setClientForm({ ...clientForm, selectedModules: updated });
+                          }}
+                          className="rounded border-slate-300 text-emerald-600"
+                        />
+                        <span className="text-slate-800 truncate">{mod.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsRegisterModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span>Proceed to WhatsApp OTP</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Step 2: OTP Verification */
+              <div className="p-6 space-y-4 text-xs">
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-1">
+                  <Smartphone className="w-8 h-8 text-emerald-600 mx-auto" />
+                  <h4 className="font-bold text-sm text-slate-900">Enter WhatsApp Verification OTP</h4>
+                  <p className="text-[11px] text-slate-600">
+                    A 6-digit security code was sent to <span className="font-mono font-bold text-slate-900">{clientForm.wabaPhone}</span>
+                  </p>
+                </div>
+
+                <div className="space-y-1 text-center">
+                  <label className="block font-bold text-slate-700">6-Digit OTP Code</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={signupOtpCode}
+                    onChange={(e) => setSignupOtpCode(e.target.value)}
+                    placeholder="482910"
+                    className="w-48 mx-auto block text-center tracking-[0.4em] py-2.5 bg-slate-50 border border-emerald-500 rounded-xl text-xl font-bold font-mono text-emerald-700 outline-none"
+                  />
+                  <div className="text-[10px] text-slate-400 pt-1">
+                    Demo OTP: <strong>{generatedSignupOtp || '123456'}</strong>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSignupStep(1)}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                  >
+                    ← Edit Details
+                  </button>
+                  <button
+                    type="button"
+                    disabled={signupOtpTimer > 0}
+                    onClick={() => {
+                      const res = generateWhatsAppOtp(clientForm.wabaPhone, 'client_signup');
+                      setGeneratedSignupOtp(res.code);
+                      setSignupOtpCode(res.code);
+                      setSignupOtpTimer(60);
+                      addToast(`New code sent: ${res.code}`, 'info');
+                    }}
+                    className="text-xs text-emerald-700 font-bold hover:underline cursor-pointer disabled:text-slate-400"
+                  >
+                    {signupOtpTimer > 0 ? `Resend (${signupOtpTimer}s)` : 'Resend WhatsApp Code'}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsRegisterModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyClientSignup}
+                    className="px-5 py-2.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Confirm & Launch {clientForm.businessName}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. MODAL 2: STAFF MEMBER REGISTRATION (OUR ESTABLISHED FORM PATTERN)       */}
+      {/* ========================================================================= */}
+      {isStaffModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-800 flex items-center justify-center font-bold">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Staff Member Registration</h3>
+                  <p className="text-[11px] text-slate-500">Join your employer's workspace via WhatsApp OTP</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStaffModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/50 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!staffForm.otpSent) {
+                  const res = generateWhatsAppOtp(staffForm.phone, 'employee_signup');
+                  setStaffForm({ ...staffForm, otpSent: true, otpCode: res.code });
+                  addToast(`📲 WhatsApp OTP sent to ${staffForm.phone}! (${res.code})`, 'info');
+                  return;
+                }
+                const res = registerEmployeeUser({
+                  companyId: staffForm.companyId,
+                  name: staffForm.name,
+                  phone: staffForm.phone,
+                  department: staffForm.department,
+                  roleTitle: staffForm.roleTitle,
+                });
+                setIsStaffModalOpen(false);
+                switchActiveTenant(res.user.companyId);
+                setActiveTab('employee-portal');
+                addToast(`Welcome ${staffForm.name}! Registered to ${res.user.companyName}.`, 'success');
+              }}
+              className="p-5 space-y-3.5 text-xs"
+            >
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Select Employer / Company *</label>
+                <select
+                  value={staffForm.companyId}
+                  onChange={(e) => setStaffForm({ ...staffForm, companyId: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800 outline-none"
+                >
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.businessName} ({t.branch || 'Main Branch'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={staffForm.name}
+                  onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+                  placeholder="e.g. Ananya Sharma"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Staff WhatsApp Mobile *</label>
+                <CountryPhoneInput
+                  value={staffForm.phone}
+                  onChange={(val) => setStaffForm({ ...staffForm, phone: val })}
+                  required
+                />
+              </div>
+
+              {staffForm.otpSent && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
+                  <label className="block font-bold text-emerald-800">Enter 6-Digit WhatsApp OTP</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={staffForm.otpCode}
+                    onChange={(e) => setStaffForm({ ...staffForm, otpCode: e.target.value })}
+                    placeholder="482910"
+                    className="w-full text-center tracking-[0.4em] py-2 bg-white border border-emerald-500 rounded-xl text-lg font-bold font-mono text-emerald-800 outline-none"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsStaffModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <span>{staffForm.otpSent ? 'Verify OTP & Complete Join' : 'Send WhatsApp OTP'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. MODAL 3: FORGOT PASSWORD (OUR ESTABLISHED FORM PATTERN)                */}
+      {/* ========================================================================= */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Reset Account Password</h3>
+                  <p className="text-[11px] text-slate-500">Receive instant WhatsApp OTP or email recovery</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsForgotModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/50 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addToast('Password reset link and OTP sent to your WhatsApp number!', 'success');
+                setIsForgotModalOpen(false);
+              }}
+              className="p-5 space-y-4 text-xs"
+            >
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Registered WhatsApp Mobile Number *</label>
+                <CountryPhoneInput
+                  value={forgotPhone}
+                  onChange={(val) => setForgotPhone(val)}
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <span>Send Recovery OTP</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

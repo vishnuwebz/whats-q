@@ -1,4 +1,4 @@
-import { RCSConfig, RCSConversationItem, RCSCampaign } from '../types';
+import { RCSConfig, RCSConversationItem, RCSCampaign, RCSTemplateItem } from '../types';
 
 export const DEFAULT_RCS_CONFIG: RCSConfig = {
   provider: 'qiyam_cloud',
@@ -278,9 +278,208 @@ export const INITIAL_RCS_CAMPAIGNS: RCSCampaign[] = [
   },
 ];
 
+export const INITIAL_RCS_TEMPLATES: RCSTemplateItem[] = [
+  {
+    id: 'tmpl-icici-gold',
+    name: 'ICICI Bank Gold Loan (Rich Card + Bullets)',
+    category: 'Banking & Finance',
+    type: 'Rich Card',
+    brandSender: {
+      name: 'ICICI Bank Gold Loans',
+      logoUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=150&auto=format&fit=crop&q=80',
+      badgeColor: '#B91C1C',
+    },
+    card: {
+      id: 'card-icici-gold-1',
+      title: 'Big plans for your business? Let our Gold Loan help! 😎',
+      description: '🤝Funds for business? Sorted\n🔐Gold ownership? Untouched\n🔄Disbursal? Quick\n✅Backed by? ICICI Bank\n\nApply now to fuel your dreams!',
+      mediaUrl: 'https://images.unsplash.com/photo-1579621970795-87facc2f976d?w=800&auto=format&fit=crop&q=80',
+      mediaHeight: 'MEDIUM',
+      actions: [
+        {
+          type: 'url',
+          label: '👉 Explore now!',
+          value: 'https://www.icicibank.com/personal-banking/loans/gold-loan?source=rcs_direct',
+        },
+        {
+          type: 'dial',
+          label: 'Call Branch Manager',
+          value: '18001080',
+        },
+      ],
+    },
+    suggestions: [
+      { type: 'reply', label: '💰 Check Loan Eligibility' },
+      { type: 'reply', label: '📍 Nearest Branch' },
+      { type: 'dial', label: '📞 Helpdesk 1800-1080', value: '18001080' },
+    ],
+    includeOptOut: true,
+  },
+  {
+    id: 'tmpl-kotak-811',
+    name: 'Kotak811 Super Account (5% Cashback Card)',
+    category: 'Banking & Finance',
+    type: 'Rich Card',
+    brandSender: {
+      name: 'Kotak811',
+      logoUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=150&auto=format&fit=crop&q=80',
+      badgeColor: '#DC2626',
+    },
+    card: {
+      id: 'card-kotak-811-1',
+      title: 'Open 811 Super A/c',
+      description: 'Get up to 5% cashback on Debit Card spends and high interest on your savings account with zero maintenance hassle.\n\n⚡ Zero balance maintenance\n⚡ Instant virtual card generation\n⚡ 100% paperless video KYC',
+      mediaUrl: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&auto=format&fit=crop&q=80',
+      mediaHeight: 'MEDIUM',
+      actions: [
+        {
+          type: 'url',
+          label: 'Open 811 Super A/c',
+          value: 'https://www.kotak811.com/open-account?utm_source=rcs_cashback',
+        },
+      ],
+    },
+    suggestions: [
+      { type: 'reply', label: 'Check Eligibility' },
+      { type: 'reply', label: 'Compare Accounts' },
+    ],
+    includeOptOut: true,
+  },
+  {
+    id: 'tmpl-ecom-flash',
+    name: 'Retail Flash Sale (1-Tap Copy Code)',
+    category: 'E-Commerce & Retail',
+    type: 'Rich Card',
+    brandSender: {
+      name: 'Qiyam Lifestyle & Store',
+      logoUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=150&auto=format&fit=crop&q=80',
+      badgeColor: '#7C3AED',
+    },
+    card: {
+      id: 'card-ecom-flash-1',
+      title: 'Midnight Mega Sale — Flat 40% Off! 🔥',
+      description: '🎉 Exclusive VIP customer treat!\nUse our instant 1-tap coupon code below at checkout to unlock flat 40% discount on all air conditioners, appliances, and accessories.',
+      mediaUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&auto=format&fit=crop&q=80',
+      mediaHeight: 'MEDIUM',
+      actions: [
+        {
+          type: 'copy',
+          label: '📋 Copy Code: FESTIVE40',
+          value: 'FESTIVE40',
+        },
+        {
+          type: 'url',
+          label: '🛍️ Shop Now',
+          value: 'https://qiyam.in/shop',
+        },
+      ],
+    },
+    suggestions: [
+      { type: 'reply', label: '🏷️ View Sale Catalog' },
+      { type: 'reply', label: '🚚 Delivery Pincode' },
+    ],
+    includeOptOut: true,
+  },
+  {
+    id: 'tmpl-clinic-appt',
+    name: 'Clinic Appointment (Calendar & GPS Map)',
+    category: 'Healthcare',
+    type: 'Rich Card',
+    brandSender: {
+      name: 'Qiyam Health Suites',
+      logoUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=150&auto=format&fit=crop&q=80',
+      badgeColor: '#0284C7',
+    },
+    card: {
+      id: 'card-clinic-appt-1',
+      title: 'Appointment Confirmed: Dr. Fathima Zahra 🩺',
+      description: '📅 Date: Oct 2, 2026 at 10:30 AM\n📍 Location: Qiyam Health Suites, Kozhikode Bypass\n👨‍⚕️ Department: Pulmonology & Allergy Care\n\nTap below to add to your Google Calendar or get GPS driving directions.',
+      mediaUrl: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&auto=format&fit=crop&q=80',
+      mediaHeight: 'SHORT',
+      actions: [
+        {
+          type: 'calendar',
+          label: '📅 Add to Calendar',
+          value: '2026-10-02T10:30:00',
+        },
+        {
+          type: 'location',
+          label: '📍 Driving Directions',
+          value: '11.2588,75.7804',
+        },
+        {
+          type: 'dial',
+          label: '📞 Clinic Front Desk',
+          value: '+919496300233',
+        },
+      ],
+    },
+    suggestions: [
+      { type: 'reply', label: '✅ I will be on time' },
+      { type: 'reply', label: '⏰ Reschedule Visit' },
+    ],
+    includeOptOut: false,
+  },
+  {
+    id: 'tmpl-hvac-carousel',
+    name: 'HVAC Maintenance AMC (3-Card Carousel)',
+    category: 'Field Service & Booking',
+    type: 'Carousel',
+    brandSender: {
+      name: 'Qiyam Business Solutions',
+      logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+      badgeColor: '#059669',
+    },
+    card: {
+      id: 'card-car-primary',
+      title: 'Certified HVAC AMC Care Plans',
+      description: 'Select your custom maintenance tier for optimal cooling, pure indoor air, and energy savings.',
+      actions: [],
+    },
+    carousel: [
+      {
+        id: 'car-c1',
+        title: 'Silver AMC (₹2,499/yr)',
+        description: '2 Deep Jet Wash services + filter replacement + standard 4-hr response SLA.',
+        mediaUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=80',
+        actions: [
+          { type: 'reply', label: 'Select Silver Plan', value: 'SELECT_SILVER' },
+          { type: 'url', label: 'View Details', value: 'https://qiyam.in/amc/silver' },
+        ],
+      },
+      {
+        id: 'car-c2',
+        title: 'Gold AMC (₹4,499/yr)',
+        description: '4 Jet Washes + refrigerant gas top-up + priority 2-hr breakdown emergency dispatch.',
+        mediaUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=500&auto=format&fit=crop&q=80',
+        actions: [
+          { type: 'reply', label: 'Select Gold Plan', value: 'SELECT_GOLD' },
+          { type: 'url', label: 'View Details', value: 'https://qiyam.in/amc/gold' },
+        ],
+      },
+      {
+        id: 'car-c3',
+        title: 'Platinum Care (₹7,999/yr)',
+        description: 'Full parts warranty, anti-bacterial coil fogging, unlimited breakdown callouts.',
+        mediaUrl: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=500&auto=format&fit=crop&q=80',
+        actions: [
+          { type: 'reply', label: 'Select Platinum', value: 'SELECT_PLATINUM' },
+          { type: 'dial', label: '📞 Speak with Engineer', value: '+919496300233' },
+        ],
+      },
+    ],
+    suggestions: [
+      { type: 'reply', label: '💬 Need Advice' },
+      { type: 'dial', label: '📞 Call Advisor', value: '+919496300233' },
+    ],
+    includeOptOut: true,
+  },
+];
+
 const RCS_CONFIG_STORAGE_KEY = 'whatsq_rcs_config_v2';
 const RCS_CONVERSATIONS_STORAGE_KEY = 'whatsq_rcs_conversations_v2';
 const RCS_CAMPAIGNS_STORAGE_KEY = 'whatsq_rcs_campaigns_v2';
+const RCS_TEMPLATES_STORAGE_KEY = 'whatsq_rcs_templates_v2';
 
 export const getStoredRcsConfig = (): RCSConfig => {
   try {
@@ -341,3 +540,24 @@ export const persistRcsCampaigns = (campaigns: RCSCampaign[]) => {
     console.warn('Failed to persist RCS campaigns:', err);
   }
 };
+
+export const getStoredRcsTemplates = (): RCSTemplateItem[] => {
+  try {
+    const raw = localStorage.getItem(RCS_TEMPLATES_STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.warn('Failed to parse stored RCS templates:', err);
+  }
+  return INITIAL_RCS_TEMPLATES;
+};
+
+export const persistRcsTemplates = (templates: RCSTemplateItem[]) => {
+  try {
+    localStorage.setItem(RCS_TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+  } catch (err) {
+    console.warn('Failed to persist RCS templates:', err);
+  }
+};
+

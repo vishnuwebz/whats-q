@@ -1370,8 +1370,10 @@ export interface UserProfile {
 
 export type RCSProvider = 'qiyam_cloud' | 'google_rbm' | 'twilio' | 'sinch' | 'infobip';
 
+export type RCSSuggestionType = 'url' | 'dial' | 'location' | 'calendar' | 'reply' | 'copy' | 'unsubscribe';
+
 export interface RCSSuggestionAction {
-  type: 'reply' | 'url' | 'dial' | 'location' | 'calendar';
+  type: RCSSuggestionType;
   label: string;
   value?: string;
   description?: string;
@@ -1384,6 +1386,22 @@ export interface RCSCardItem {
   mediaUrl?: string;
   mediaHeight?: 'SHORT' | 'MEDIUM' | 'TALL';
   actions: RCSSuggestionAction[];
+}
+
+export interface RCSTemplateItem {
+  id: string;
+  name: string;
+  category: 'Banking & Finance' | 'E-Commerce & Retail' | 'Healthcare' | 'Field Service & Booking' | 'Utility & Alert';
+  type: 'Rich Card' | 'Carousel';
+  card: RCSCardItem;
+  carousel?: RCSCardItem[];
+  suggestions: RCSSuggestionAction[];
+  includeOptOut: boolean;
+  brandSender: {
+    name: string;
+    logoUrl: string;
+    badgeColor?: string;
+  };
 }
 
 export interface RCSMessageItem {
