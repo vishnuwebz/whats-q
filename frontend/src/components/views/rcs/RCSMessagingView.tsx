@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
+import { Header } from '@/components/layout/Header';
 import {
   Sparkles,
   MessageSquare,
@@ -193,43 +194,101 @@ export const RCSMessagingView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#0F172A] text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-full w-full bg-[#F8FAFC] text-slate-800 overflow-hidden font-sans">
       {/* 1. TOP HEADER BANNER */}
-      <header className="px-6 py-4 bg-[#1E293B] border-b border-slate-700/60 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-400/30">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                RCS Business Messaging
-              </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Google Verified Sender
-              </span>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                Universal Profile 2.4
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Carrier-direct rich cards, carousels, action buttons &amp; verified branded messaging.
-            </p>
-          </div>
+      <Header
+        title="RCS Business Messaging"
+        subtitle="Carrier-direct Universal Profile 2.4 messaging with rich cards, carousels, verified brand badge & action buttons."
+        primaryActionLabel="Start New RCS Chat"
+        onPrimaryAction={() => setIsNewChatModalOpen(true)}
+      />
+
+      {/* 2. SUB NAVIGATION STRIP & STATUS BAR */}
+      <div className="bg-white border-b border-slate-200/80 px-6 py-2 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        {/* Left Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'chat'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+            <span>RCS Live Chat Console</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold">
+              {rcsConversations.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('campaigns')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'campaigns'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+            <span>RCS Broadcasts &amp; Campaigns</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold">
+              {rcsCampaigns.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('bot')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'bot'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 text-slate-500" />
+            <span>RCS Bot &amp; Auto-Responders</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'config'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5 text-slate-500" />
+            <span>Simple Configuration</span>
+            {rcsConfig.status === 'connected' ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+            )}
+          </button>
         </div>
 
-        {/* Header Right Actions */}
-        <div className="flex items-center gap-2.5">
+        {/* Right Status Badges & Quick Action */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              Verified Brand Sender
+            </span>
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Jio • Airtel • Vi (UP 2.4)
+            </span>
+          </div>
+
           <button
             onClick={() => {
               setActiveTab('config');
               setConfigStep(1);
             }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-900/30 transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
           >
-            <Sliders className="w-4 h-4" />
-            <span>Simple Setup Wizard</span>
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Setup Wizard</span>
           </button>
 
           <button
@@ -239,104 +298,21 @@ export const RCSMessagingView: React.FC = () => {
                 text: 'Can I book an AC maintenance slot for tomorrow morning?',
               })
             }
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium border border-slate-200 transition cursor-pointer"
             title="Simulate inbound message from customer"
           >
-            <Bot className="w-4 h-4 text-emerald-400" />
-            <span className="hidden md:inline">Simulate Inbound</span>
+            <Bot className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden lg:inline">Simulate Customer</span>
           </button>
 
           <button
             onClick={handleRunTestConnection}
             disabled={isTestingPing || isRcsTesting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition cursor-pointer disabled:opacity-50"
-            title="Test Carrier Latency & Connectivity"
+            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition cursor-pointer disabled:opacity-50"
+            title="Test Carrier Ping"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isTestingPing || isRcsTesting ? 'animate-spin text-emerald-400' : ''}`} />
-            <span className="hidden lg:inline">Test Ping</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isTestingPing || isRcsTesting ? 'animate-spin text-emerald-600' : ''}`} />
           </button>
-        </div>
-      </header>
-
-      {/* 2. SUB NAVIGATION TABS */}
-      <div className="px-6 py-2 bg-[#162032] border-b border-slate-800 flex items-center justify-between text-xs shrink-0">
-        <div className="flex items-center gap-1 overflow-x-auto py-1">
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'chat'
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>RCS Live Chat Console</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">
-              {rcsConversations.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('campaigns')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'campaigns'
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>RCS Broadcasts &amp; Campaigns</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-slate-300 font-bold">
-              {rcsCampaigns.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('bot')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'bot'
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <Bot className="w-4 h-4" />
-            <span>RCS Bot &amp; Auto-Responders</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('config')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === 'config'
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>Simple Configuration</span>
-            {rcsConfig.status === 'connected' ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-            )}
-          </button>
-        </div>
-
-        {/* Carrier Status Summary */}
-        <div className="hidden xl:flex items-center gap-3 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            Jio RCS (UP 2.4)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            Airtel Jibe
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            Vi Enterprise
-          </span>
-          <span className="text-slate-500">|</span>
-          <span className="text-emerald-400 font-medium">Gateway Active (28ms)</span>
         </div>
       </div>
 
@@ -344,11 +320,11 @@ export const RCSMessagingView: React.FC = () => {
       <div className="flex-1 overflow-hidden relative">
         {/* VIEW 1: LIVE CHAT CONSOLE */}
         {activeTab === 'chat' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 h-full w-full overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-12 h-full w-full overflow-hidden bg-white">
             {/* 3A. LEFT THREADS PANEL (4 cols) */}
-            <div className="md:col-span-4 lg:col-span-3 border-r border-slate-800 bg-[#111C2E] flex flex-col h-full overflow-hidden">
-              {/* Search & New Chat */}
-              <div className="p-3 border-b border-slate-800 space-y-2.5">
+            <div className="md:col-span-4 lg:col-span-3 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden">
+              {/* Search & Filter Header */}
+              <div className="p-3 border-b border-slate-100 space-y-2 bg-slate-50/50">
                 <div className="flex items-center justify-between gap-2">
                   <div className="relative flex-1">
                     <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -357,12 +333,12 @@ export const RCSMessagingView: React.FC = () => {
                       placeholder="Search RCS contacts..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#1A263D] border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
                     />
                   </div>
                   <button
                     onClick={() => setIsNewChatModalOpen(true)}
-                    className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition cursor-pointer shadow"
+                    className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer shadow-xs"
                     title="Start New RCS Chat"
                   >
                     <Plus className="w-4 h-4" />
@@ -375,8 +351,8 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setCategoryFilter('all')}
                     className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                       categoryFilter === 'all'
-                        ? 'bg-slate-700 text-white font-semibold'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-200'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     All
@@ -385,8 +361,8 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setCategoryFilter('leads')}
                     className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                       categoryFilter === 'leads'
-                        ? 'bg-slate-700 text-white font-semibold'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-200'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Leads
@@ -395,8 +371,8 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setCategoryFilter('customers')}
                     className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
                       categoryFilter === 'customers'
-                        ? 'bg-slate-700 text-white font-semibold'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-200'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Customers
@@ -405,7 +381,7 @@ export const RCSMessagingView: React.FC = () => {
               </div>
 
               {/* Conversation List */}
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
                 {filteredConversations.map((conv) => {
                   const isSelected = conv.id === activeConversation?.id;
                   const lastMessage = conv.messages[conv.messages.length - 1];
@@ -416,33 +392,33 @@ export const RCSMessagingView: React.FC = () => {
                       onClick={() => setActiveRcsConversationId(conv.id)}
                       className={`p-3 transition-colors cursor-pointer flex items-start gap-3 ${
                         isSelected
-                          ? 'bg-[#1E2E4A] border-l-4 border-emerald-500'
-                          : 'hover:bg-[#16233B]'
+                          ? 'bg-emerald-50/70 border-l-4 border-emerald-600'
+                          : 'hover:bg-slate-50'
                       }`}
                     >
                       <div className="relative shrink-0">
                         <img
                           src={conv.avatar}
                           alt={conv.contactName}
-                          className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-700"
+                          className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-200 shadow-2xs"
                         />
                         {conv.isOnline && (
-                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#111C2E]" />
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
                         )}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
+                          <h4 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
                             {conv.contactName}
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" title="RCS Capable" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title="RCS Capable" />
                           </h4>
                           <span className="text-[10px] text-slate-400 shrink-0">
                             {lastMessage?.timestamp || conv.lastSeen}
                           </span>
                         </div>
 
-                        <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
                           {lastMessage ? (
                             <span>
                               {lastMessage.direction === 'outbound' && 'You: '}
@@ -454,11 +430,11 @@ export const RCSMessagingView: React.FC = () => {
                         </p>
 
                         <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-medium">
                             {conv.carrier.split(' ')[0]}
                           </span>
                           {conv.tags.slice(0, 1).map((t, idx) => (
-                            <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+                            <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
                               {t}
                             </span>
                           ))}
@@ -470,30 +446,30 @@ export const RCSMessagingView: React.FC = () => {
               </div>
             </div>
 
-            {/* 3B. CENTER CHAT STREAM (5 cols) */}
-            <div className="md:col-span-8 lg:col-span-6 bg-[#0E1626] flex flex-col h-full overflow-hidden border-r border-slate-800">
+            {/* 3B. CENTER CHAT STREAM (5-6 cols) */}
+            <div className="md:col-span-8 lg:col-span-6 bg-[#F8FAFC] flex flex-col h-full overflow-hidden border-r border-slate-200">
               {/* Chat Header */}
               {activeConversation ? (
-                <div className="p-3.5 bg-[#172338] border-b border-slate-800 flex items-center justify-between shrink-0">
+                <div className="p-3.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                   <div className="flex items-center gap-3">
                     <img
                       src={activeConversation.avatar}
                       alt={activeConversation.contactName}
-                      className="w-9 h-9 rounded-full object-cover ring-1 ring-emerald-500/40"
+                      className="w-9 h-9 rounded-full object-cover ring-1 ring-emerald-500/30"
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-white">
+                        <h3 className="text-xs font-bold text-slate-900">
                           {activeConversation.contactName}
                         </h3>
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                        <span className="px-1.5 py-0.2 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-200">
                           RCS Active
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 flex items-center gap-2">
+                      <p className="text-[11px] text-slate-500 flex items-center gap-2">
                         <span>{activeConversation.phoneNumber}</span>
                         <span>•</span>
-                        <span className="text-emerald-400">{activeConversation.carrier}</span>
+                        <span className="text-emerald-700 font-medium">{activeConversation.carrier}</span>
                       </p>
                     </div>
                   </div>
@@ -501,9 +477,9 @@ export const RCSMessagingView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setIsCardModalOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 text-xs font-medium transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold transition cursor-pointer shadow-2xs"
                     >
-                      <ImageIcon className="w-3.5 h-3.5" />
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Insert Rich Card</span>
                     </button>
                   </div>
@@ -511,14 +487,14 @@ export const RCSMessagingView: React.FC = () => {
               ) : null}
 
               {/* Verified Brand Identity Banner */}
-              <div className="px-4 py-2 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border-b border-emerald-500/20 text-xs flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2 text-emerald-300">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="font-semibold">{rcsConfig.brandDisplayName}</span>
-                  <span className="text-slate-400 text-[11px] hidden sm:inline">• Verified RCS Business Agent</span>
+              <div className="px-4 py-2 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/80 border-b border-emerald-100 text-xs flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 text-emerald-800">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span className="font-bold">{rcsConfig.brandDisplayName}</span>
+                  <span className="text-slate-500 text-[11px] hidden sm:inline">• Verified RCS Business Account</span>
                 </div>
-                <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>Google Jibe Connected</span>
                 </div>
               </div>
@@ -534,16 +510,16 @@ export const RCSMessagingView: React.FC = () => {
                       className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}
                     >
                       {/* Sender label */}
-                      <span className="text-[10px] text-slate-400 mb-1 px-1">
+                      <span className="text-[10px] text-slate-400 mb-1 px-1 font-medium">
                         {isOutbound ? msg.senderName || 'Qiyam RCS' : msg.senderName || activeConversation.contactName}
                       </span>
 
                       {/* Bubble Container */}
                       <div
-                        className={`max-w-[85%] rounded-2xl p-3 shadow-md ${
+                        className={`max-w-[85%] rounded-2xl p-3 shadow-xs ${
                           isOutbound
-                            ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-xs'
-                            : 'bg-[#1E293B] text-slate-100 rounded-tl-xs border border-slate-700/60'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-xs shadow-md'
+                            : 'bg-white text-slate-800 rounded-tl-xs border border-slate-200/90 shadow-xs'
                         }`}
                       >
                         {/* 1. TEXT */}
@@ -555,7 +531,7 @@ export const RCSMessagingView: React.FC = () => {
 
                         {/* 2. RICH CARD */}
                         {msg.card && (
-                          <div className="mt-2 bg-[#0F172A] rounded-xl overflow-hidden border border-slate-700/80 shadow-lg text-slate-100">
+                          <div className="mt-2 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm text-slate-800">
                             {msg.card.mediaUrl && (
                               <img
                                 src={msg.card.mediaUrl}
@@ -564,25 +540,25 @@ export const RCSMessagingView: React.FC = () => {
                               />
                             )}
                             <div className="p-3">
-                              <h5 className="text-xs font-bold text-white">
+                              <h5 className="text-xs font-bold text-slate-900">
                                 {msg.card.title}
                               </h5>
-                              <p className="text-[11px] text-slate-300 mt-1 leading-snug">
+                              <p className="text-[11px] text-slate-600 mt-1 leading-snug">
                                 {msg.card.description}
                               </p>
 
                               {/* Card Actions */}
                               {msg.card.actions && msg.card.actions.length > 0 && (
-                                <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-1.5">
+                                <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
                                   {msg.card.actions.map((act, idx) => (
                                     <button
                                       key={idx}
                                       onClick={() => handleSuggestionClick(act)}
-                                      className="w-full py-1.5 px-3 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-500/30"
+                                      className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-200"
                                     >
-                                      {act.type === 'url' && <ExternalLink className="w-3.5 h-3.5" />}
-                                      {act.type === 'dial' && <Phone className="w-3.5 h-3.5" />}
-                                      {act.type === 'reply' && <Check className="w-3.5 h-3.5" />}
+                                      {act.type === 'url' && <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />}
+                                      {act.type === 'dial' && <Phone className="w-3.5 h-3.5 text-emerald-600" />}
+                                      {act.type === 'reply' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                                       <span>{act.label}</span>
                                     </button>
                                   ))}
@@ -598,7 +574,7 @@ export const RCSMessagingView: React.FC = () => {
                             {msg.carousel.map((card) => (
                               <div
                                 key={card.id}
-                                className="w-56 shrink-0 bg-[#0F172A] rounded-xl overflow-hidden border border-slate-700/80 shadow-lg text-slate-100"
+                                className="w-56 shrink-0 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm text-slate-800"
                               >
                                 {card.mediaUrl && (
                                   <img
@@ -608,17 +584,17 @@ export const RCSMessagingView: React.FC = () => {
                                   />
                                 )}
                                 <div className="p-2.5">
-                                  <h6 className="text-xs font-bold text-white truncate">
+                                  <h6 className="text-xs font-bold text-slate-900 truncate">
                                     {card.title}
                                   </h6>
-                                  <p className="text-[10px] text-slate-300 mt-1 line-clamp-2">
+                                  <p className="text-[10px] text-slate-600 mt-1 line-clamp-2">
                                     {card.description}
                                   </p>
                                   {card.actions && card.actions.length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-slate-800">
+                                    <div className="mt-2 pt-2 border-t border-slate-100">
                                       <button
                                         onClick={() => handleSuggestionClick(card.actions[0])}
-                                        className="w-full py-1 px-2 rounded bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white text-[11px] font-medium transition cursor-pointer"
+                                        className="w-full py-1 px-2 rounded bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 text-[11px] font-bold transition cursor-pointer border border-emerald-200"
                                       >
                                         {card.actions[0].label}
                                       </button>
@@ -631,16 +607,16 @@ export const RCSMessagingView: React.FC = () => {
                         )}
 
                         {/* Timestamp & Status Icon */}
-                        <div className="flex items-center justify-end gap-1.5 mt-1 text-[10px] opacity-75">
+                        <div className="flex items-center justify-end gap-1.5 mt-1 text-[10px] opacity-80">
                           <span>{msg.timestamp}</span>
                           {isOutbound && (
                             <span>
                               {msg.status === 'read' ? (
-                                <span title="Read by customer"><CheckCheck className="w-3.5 h-3.5 text-blue-300" /></span>
+                                <span title="Read by customer"><CheckCheck className="w-3.5 h-3.5 text-blue-200" /></span>
                               ) : msg.status === 'delivered' ? (
-                                <span title="Delivered to carrier"><CheckCheck className="w-3.5 h-3.5 text-slate-200" /></span>
+                                <span title="Delivered to carrier"><CheckCheck className="w-3.5 h-3.5 text-emerald-100" /></span>
                               ) : (
-                                <span title="Sent"><Check className="w-3.5 h-3.5 text-slate-300" /></span>
+                                <span title="Sent"><Check className="w-3.5 h-3.5 text-emerald-100" /></span>
                               )}
                             </span>
                           )}
@@ -654,12 +630,12 @@ export const RCSMessagingView: React.FC = () => {
                             <button
                               key={idx}
                               onClick={() => handleSuggestionClick(sug)}
-                              className="px-3 py-1 rounded-full bg-slate-800 hover:bg-emerald-600/30 text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+                              className="px-3 py-1 rounded-full bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 hover:border-emerald-300 text-[11px] font-semibold transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs"
                             >
                               {sug.type === 'dial' ? (
-                                <Phone className="w-3 h-3 text-emerald-400" />
+                                <Phone className="w-3 h-3 text-emerald-600" />
                               ) : sug.type === 'url' ? (
-                                <ExternalLink className="w-3 h-3 text-emerald-400" />
+                                <ExternalLink className="w-3 h-3 text-emerald-600" />
                               ) : null}
                               <span>{sug.label}</span>
                             </button>
@@ -672,33 +648,33 @@ export const RCSMessagingView: React.FC = () => {
               </div>
 
               {/* Quick Actions Bar */}
-              <div className="px-4 py-1.5 bg-[#141F32] border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px]">Quick Prompts:</span>
+              <div className="px-4 py-2 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  <span className="text-[11px] font-semibold text-slate-400">Quick:</span>
                   {rcsConfig.defaultQuickReplies.map((q, idx) => (
                     <button
                       key={idx}
                       onClick={() => setInputText(q)}
-                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] transition cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-medium transition cursor-pointer shrink-0"
                     >
                       {q}
                     </button>
                   ))}
                 </div>
 
-                <label className="flex items-center gap-1.5 cursor-pointer text-[11px] select-none text-slate-300">
+                <label className="flex items-center gap-1.5 cursor-pointer text-[11px] select-none text-slate-600 font-medium shrink-0 ml-2">
                   <input
                     type="checkbox"
                     checked={fallbackSms}
                     onChange={(e) => setFallbackSms(e.target.checked)}
-                    className="rounded text-emerald-600 focus:ring-0 bg-slate-800 border-slate-700 cursor-pointer"
+                    className="rounded text-emerald-600 focus:ring-0 bg-white border-slate-300 cursor-pointer"
                   />
                   <span>SMS Fallback</span>
                 </label>
               </div>
 
               {/* Compose Box */}
-              <div className="p-3 bg-[#172338] border-t border-slate-800 flex items-center gap-2 shrink-0">
+              <div className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0">
                 <input
                   type="text"
                   placeholder="Type an RCS message (supports Rich Text &amp; Action Chips)..."
@@ -707,60 +683,60 @@ export const RCSMessagingView: React.FC = () => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSendMessage();
                   }}
-                  className="flex-1 bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition"
                 />
 
                 <button
                   onClick={handleSendMessage}
                   disabled={isRcsSending || !inputText.trim()}
-                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                   <span>Send</span>
                 </button>
               </div>
             </div>
 
             {/* 3C. RIGHT PANEL: LIVE GOOGLE MESSAGES PHONE SIMULATOR (3 cols) */}
-            <div className="hidden lg:flex lg:col-span-3 bg-[#111C2E] flex-col h-full overflow-hidden p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Smartphone className="w-4 h-4 text-emerald-400" />
-                  Live Android RCS Preview
+            <div className="hidden lg:flex lg:col-span-3 bg-slate-50 flex-col h-full overflow-hidden p-4 border-l border-slate-200">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  Live Android Preview
                 </h4>
-                <span className="text-[10px] text-slate-400">Google Messages</span>
+                <span className="text-[10px] text-slate-500 font-medium">Google Messages (Light)</span>
               </div>
 
-              {/* Android Phone Device Frame */}
-              <div className="flex-1 bg-[#0B1320] border-4 border-slate-700 rounded-3xl p-3 shadow-2xl flex flex-col overflow-hidden relative">
-                {/* Phone Notch / Speaker */}
-                <div className="w-20 h-3 bg-slate-800 rounded-full mx-auto mb-2 shrink-0" />
+              {/* Android Phone Frame (Clean Realistic Mockup) */}
+              <div className="flex-1 bg-white border-4 border-slate-800 rounded-[32px] p-2.5 shadow-xl flex flex-col overflow-hidden relative ring-1 ring-slate-300">
+                {/* Phone Speaker Notch */}
+                <div className="w-16 h-2.5 bg-slate-800 rounded-full mx-auto mb-2 shrink-0" />
 
-                {/* Google Messages App Header */}
-                <div className="p-2 bg-[#1B273A] rounded-xl flex items-center justify-between mb-3 border border-slate-700/60 shrink-0">
+                {/* Google Messages App Header (White Theme) */}
+                <div className="p-2 bg-slate-50 rounded-xl flex items-center justify-between mb-2 border border-slate-200 shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <img
                       src={rcsConfig.brandLogoUrl}
                       alt={rcsConfig.brandDisplayName}
-                      className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-400"
+                      className="w-7 h-7 rounded-full object-cover ring-1 ring-emerald-500"
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="text-[11px] font-bold text-white truncate">
+                        <span className="text-[11px] font-bold text-slate-900 truncate">
                           {rcsConfig.brandDisplayName}
                         </span>
-                        <ShieldCheck className="w-3 h-3 text-blue-400 shrink-0" />
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                       </div>
-                      <span className="text-[9px] text-emerald-400 block truncate">
+                      <span className="text-[9px] text-emerald-700 font-semibold block truncate">
                         Verified Business • RCS
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Live Message Feed on Phone */}
-                <div className="flex-1 overflow-y-auto space-y-2.5 p-1 scrollbar-none">
-                  <div className="text-center text-[9px] text-slate-500 my-1">
+                {/* Live Message Feed on Phone Screen */}
+                <div className="flex-1 overflow-y-auto space-y-2 p-1 bg-[#F9FAFB] rounded-xl border border-slate-100 scrollbar-none">
+                  <div className="text-center text-[9px] text-slate-400 my-1">
                     Today • Chatting with {rcsConfig.brandDisplayName}
                   </div>
 
@@ -774,25 +750,25 @@ export const RCSMessagingView: React.FC = () => {
                         <div
                           className={`max-w-[90%] rounded-xl p-2 text-[10px] leading-tight ${
                             isOutbound
-                              ? 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700'
-                              : 'bg-blue-600 text-white rounded-tr-none'
+                              ? 'bg-white text-slate-800 rounded-tl-none border border-slate-200 shadow-2xs'
+                              : 'bg-blue-600 text-white rounded-tr-none shadow-2xs'
                           }`}
                         >
                           {m.text && <p>{m.text}</p>}
                           {m.card && (
-                            <div className="mt-1 bg-slate-900 rounded-lg overflow-hidden border border-slate-700">
+                            <div className="mt-1 bg-white rounded-lg overflow-hidden border border-slate-200">
                               {m.card.mediaUrl && (
                                 <img
                                   src={m.card.mediaUrl}
                                   alt=""
-                                  className="w-full h-20 object-cover"
+                                  className="w-full h-18 object-cover"
                                 />
                               )}
                               <div className="p-1.5">
-                                <span className="font-bold text-white block text-[10px]">
+                                <span className="font-bold text-slate-900 block text-[10px]">
                                   {m.card.title}
                                 </span>
-                                <span className="text-[9px] text-slate-400 block line-clamp-2">
+                                <span className="text-[9px] text-slate-500 block line-clamp-2">
                                   {m.card.description}
                                 </span>
                               </div>
@@ -806,7 +782,7 @@ export const RCSMessagingView: React.FC = () => {
                             {m.suggestions.map((s, idx) => (
                               <span
                                 key={idx}
-                                className="px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/30 text-[8px] font-semibold"
+                                className="px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-300 text-[8px] font-bold shadow-2xs"
                               >
                                 {s.label}
                               </span>
@@ -819,24 +795,24 @@ export const RCSMessagingView: React.FC = () => {
                 </div>
 
                 {/* Phone Bottom RCS Pill */}
-                <div className="mt-2 p-2 bg-[#1B273A] rounded-xl text-center text-[10px] text-slate-400 border border-slate-700/60 shrink-0">
-                  <span className="text-emerald-400 font-semibold">RCS message</span> with {rcsConfig.brandDisplayName}
+                <div className="mt-2 p-1.5 bg-slate-50 rounded-xl text-center text-[10px] text-slate-500 border border-slate-200 shrink-0">
+                  <span className="text-emerald-700 font-bold">RCS message</span> with {rcsConfig.brandDisplayName}
                 </div>
               </div>
 
               {/* Diagnostics Box */}
-              <div className="mt-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-[11px] space-y-1.5 shrink-0">
-                <div className="flex items-center justify-between text-slate-400">
+              <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 text-[11px] space-y-1.5 shrink-0 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500">
                   <span>Carrier Network:</span>
-                  <span className="text-emerald-400 font-mono font-medium">Jio UP 2.4</span>
+                  <span className="text-emerald-700 font-mono font-bold">Jio UP 2.4</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-400">
+                <div className="flex items-center justify-between text-slate-500">
                   <span>Latency:</span>
-                  <span className="text-slate-200 font-mono">28 ms</span>
+                  <span className="text-slate-800 font-mono font-medium">28 ms</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-400">
+                <div className="flex items-center justify-between text-slate-500">
                   <span>Encryption:</span>
-                  <span className="text-emerald-400">TLS 1.3 / E2EE</span>
+                  <span className="text-emerald-700 font-medium">TLS 1.3 / E2EE</span>
                 </div>
               </div>
             </div>
@@ -845,17 +821,17 @@ export const RCSMessagingView: React.FC = () => {
 
         {/* VIEW 2: RCS BROADCASTS & CAMPAIGNS */}
         {activeTab === 'campaigns' && (
-          <div className="p-6 h-full overflow-y-auto space-y-6">
+          <div className="p-6 h-full overflow-y-auto space-y-6 bg-[#F8FAFC]">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white">RCS Broadcasts &amp; Rich Campaigns</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-base font-bold text-slate-900">RCS Broadcasts &amp; Rich Campaigns</h2>
+                <p className="text-xs text-slate-500">
                   Send high-impact Rich Cards and interactive Carousels directly to customer phone inboxes.
                 </p>
               </div>
               <button
                 onClick={() => setIsCampaignModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>New RCS Campaign</span>
@@ -864,43 +840,43 @@ export const RCSMessagingView: React.FC = () => {
 
             {/* Metrics cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-[#1E293B] border border-slate-700/60 rounded-xl shadow-sm">
-                <span className="text-xs text-slate-400">Total RCS Broadcasts</span>
-                <div className="text-2xl font-bold text-white mt-1">1,770</div>
-                <span className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
+              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+                <span className="text-xs text-slate-500 font-medium">Total RCS Broadcasts</span>
+                <div className="text-2xl font-bold text-slate-900 mt-1">1,770</div>
+                <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3" /> +24% vs last month
                 </span>
               </div>
 
-              <div className="p-4 bg-[#1E293B] border border-slate-700/60 rounded-xl shadow-sm">
-                <span className="text-xs text-slate-400">Delivery Rate</span>
-                <div className="text-2xl font-bold text-emerald-400 mt-1">98.8%</div>
-                <span className="text-[11px] text-slate-400 mt-1">Direct Carrier Handshake</span>
+              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+                <span className="text-xs text-slate-500 font-medium">Delivery Rate</span>
+                <div className="text-2xl font-bold text-emerald-600 mt-1">98.8%</div>
+                <span className="text-[11px] text-slate-500 mt-1">Direct Carrier Handshake</span>
               </div>
 
-              <div className="p-4 bg-[#1E293B] border border-slate-700/60 rounded-xl shadow-sm">
-                <span className="text-xs text-slate-400">Open / Read Rate</span>
-                <div className="text-2xl font-bold text-blue-400 mt-1">79.4%</div>
-                <span className="text-[11px] text-slate-400 mt-1">Read receipts verified</span>
+              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+                <span className="text-xs text-slate-500 font-medium">Open / Read Rate</span>
+                <div className="text-2xl font-bold text-blue-600 mt-1">79.4%</div>
+                <span className="text-[11px] text-slate-500 mt-1">Read receipts verified</span>
               </div>
 
-              <div className="p-4 bg-[#1E293B] border border-slate-700/60 rounded-xl shadow-sm">
-                <span className="text-xs text-slate-400">Interactive Action CTR</span>
-                <div className="text-2xl font-bold text-purple-400 mt-1">32.6%</div>
-                <span className="text-[11px] text-slate-400 mt-1">Buttons &amp; Quick Replies</span>
+              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+                <span className="text-xs text-slate-500 font-medium">Interactive Action CTR</span>
+                <div className="text-2xl font-bold text-purple-600 mt-1">32.6%</div>
+                <span className="text-[11px] text-slate-500 mt-1">Buttons &amp; Quick Replies</span>
               </div>
             </div>
 
             {/* Campaign Table */}
-            <div className="bg-[#1E293B] border border-slate-700/60 rounded-xl overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">Broadcast History</h3>
-                <span className="text-xs text-slate-400">Showing {rcsCampaigns.length} campaigns</span>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Broadcast History</h3>
+                <span className="text-xs text-slate-500 font-medium">Showing {rcsCampaigns.length} campaigns</span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#162032] text-slate-400 font-semibold border-b border-slate-700">
+                  <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                     <tr>
                       <th className="p-3.5">Campaign Name</th>
                       <th className="p-3.5">Type</th>
@@ -912,28 +888,28 @@ export const RCSMessagingView: React.FC = () => {
                       <th className="p-3.5">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-200">
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
                     {rcsCampaigns.map((camp) => (
-                      <tr key={camp.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-3.5 font-semibold text-white flex items-center gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <tr key={camp.id} className="hover:bg-slate-50 transition">
+                        <td className="p-3.5 font-bold text-slate-900 flex items-center gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                           <span>{camp.name}</span>
                         </td>
                         <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700 font-mono font-medium">
                             {camp.type}
                           </span>
                         </td>
                         <td className="p-3.5">{camp.recipientCount.toLocaleString()}</td>
-                        <td className="p-3.5 text-emerald-400 font-semibold">{camp.deliveredCount.toLocaleString()} (98.5%)</td>
-                        <td className="p-3.5 text-blue-400">{camp.readCount.toLocaleString()} (79.2%)</td>
-                        <td className="p-3.5 text-purple-400">{camp.clickCount.toLocaleString()}</td>
+                        <td className="p-3.5 text-emerald-700 font-bold">{camp.deliveredCount.toLocaleString()} (98.5%)</td>
+                        <td className="p-3.5 text-blue-700 font-bold">{camp.readCount.toLocaleString()} (79.2%)</td>
+                        <td className="p-3.5 text-purple-700 font-bold">{camp.clickCount.toLocaleString()}</td>
                         <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             {camp.status}
                           </span>
                         </td>
-                        <td className="p-3.5 text-slate-400">{camp.createdAt}</td>
+                        <td className="p-3.5 text-slate-500">{camp.createdAt}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -945,11 +921,11 @@ export const RCSMessagingView: React.FC = () => {
 
         {/* VIEW 3: RCS BOT & AUTO-RESPONDERS */}
         {activeTab === 'bot' && (
-          <div className="p-6 h-full overflow-y-auto space-y-6">
+          <div className="p-6 h-full overflow-y-auto space-y-6 bg-[#F8FAFC]">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white">RCS Bot &amp; Automated Action Flows</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-base font-bold text-slate-900">RCS Bot &amp; Automated Action Flows</h2>
+                <p className="text-xs text-slate-500">
                   Configure keyword triggers and auto-reply recipes with rich cards and carousels.
                 </p>
               </div>
@@ -957,35 +933,35 @@ export const RCSMessagingView: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Recipe 1 */}
-              <div className="p-4 bg-[#1E293B] border border-slate-700/60 rounded-xl space-y-3">
+              <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
                     Trigger: "AC" or "REPAIR" or "SERVICE"
                   </span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 </div>
-                <h4 className="text-sm font-bold text-white">Express AC Diagnosis &amp; Dispatch Flow</h4>
-                <p className="text-xs text-slate-300">
+                <h4 className="text-sm font-bold text-slate-900">Express AC Diagnosis &amp; Dispatch Flow</h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Sends Rich Card with nearest technician arrival window, live tracking map URL, and 1-tap slot confirmation.
                 </p>
-                <div className="p-2.5 bg-slate-900/80 rounded-lg text-xs font-mono text-slate-400 border border-slate-800">
+                <div className="p-2.5 bg-slate-50 rounded-xl text-xs font-mono text-slate-600 border border-slate-200">
                   Response Format: Rich Card • Actions: [Track Live, Call Desk, Confirm]
                 </div>
               </div>
 
               {/* Recipe 2 */}
-              <div className="p-4 bg-[#1E293B] border border-slate-700/60 rounded-xl space-y-3">
+              <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 text-xs font-semibold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
                     Trigger: "PRICING" or "PLANS" or "AMC"
                   </span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 </div>
-                <h4 className="text-sm font-bold text-white">Interactive Annual Care Carousel Flow</h4>
-                <p className="text-xs text-slate-300">
+                <h4 className="text-sm font-bold text-slate-900">Interactive Annual Care Carousel Flow</h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Sends a multi-card horizontal carousel showcasing Gold Care AMC &amp; Platinum AMC with brochure download links.
                 </p>
-                <div className="p-2.5 bg-slate-900/80 rounded-lg text-xs font-mono text-slate-400 border border-slate-800">
+                <div className="p-2.5 bg-slate-50 rounded-xl text-xs font-mono text-slate-600 border border-slate-200">
                   Response Format: Multi-Card Carousel • Actions: [Select Plan, View PDF]
                 </div>
               </div>
@@ -995,75 +971,83 @@ export const RCSMessagingView: React.FC = () => {
 
         {/* VIEW 4: SIMPLE CONFIGURATION SETTINGS (3-STEP WIZARD) */}
         {activeTab === 'config' && (
-          <div className="p-6 h-full overflow-y-auto max-w-4xl mx-auto space-y-6">
+          <div className="p-6 h-full overflow-y-auto max-w-4xl mx-auto space-y-6 bg-[#F8FAFC]">
             <div className="text-center max-w-xl mx-auto">
-              <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
-                <Sliders className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-lg font-bold text-slate-900 flex items-center justify-center gap-2">
+                <Sliders className="w-5 h-5 text-emerald-600" />
                 Simple RCS Configuration Settings
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Configure your RCS Business Messaging channel in 3 simple steps to enable rich verified messaging.
               </p>
             </div>
 
             {/* Stepper Header */}
-            <div className="grid grid-cols-3 gap-2 border-b border-slate-700/80 pb-4">
+            <div className="grid grid-cols-3 gap-2 border-b border-slate-200 pb-4">
               <button
                 onClick={() => setConfigStep(1)}
-                className={`flex items-center gap-2 p-3 rounded-xl transition cursor-pointer text-left ${
+                className={`flex items-center gap-2.5 p-3 rounded-xl transition cursor-pointer text-left ${
                   configStep === 1
-                    ? 'bg-emerald-600/20 border border-emerald-500/40 text-emerald-400'
-                    : 'text-slate-400 hover:bg-slate-800'
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold shrink-0">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  configStep === 1 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
                   1
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">1. Choose Provider</div>
-                  <div className="text-[10px] text-slate-400 truncate">Carrier Gateway Mode</div>
+                  <div className="text-xs font-bold text-slate-900 truncate">1. Choose Provider</div>
+                  <div className="text-[10px] text-slate-500 truncate">Carrier Gateway Mode</div>
                 </div>
               </button>
 
               <button
                 onClick={() => setConfigStep(2)}
-                className={`flex items-center gap-2 p-3 rounded-xl transition cursor-pointer text-left ${
+                className={`flex items-center gap-2.5 p-3 rounded-xl transition cursor-pointer text-left ${
                   configStep === 2
-                    ? 'bg-emerald-600/20 border border-emerald-500/40 text-emerald-400'
-                    : 'text-slate-400 hover:bg-slate-800'
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold shrink-0">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  configStep === 2 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
                   2
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">2. Brand &amp; Details</div>
-                  <div className="text-[10px] text-slate-400 truncate">Agent Name &amp; Accent</div>
+                  <div className="text-xs font-bold text-slate-900 truncate">2. Brand &amp; Details</div>
+                  <div className="text-[10px] text-slate-500 truncate">Agent Name &amp; Accent</div>
                 </div>
               </button>
 
               <button
                 onClick={() => setConfigStep(3)}
-                className={`flex items-center gap-2 p-3 rounded-xl transition cursor-pointer text-left ${
+                className={`flex items-center gap-2.5 p-3 rounded-xl transition cursor-pointer text-left ${
                   configStep === 3
-                    ? 'bg-emerald-600/20 border border-emerald-500/40 text-emerald-400'
-                    : 'text-slate-400 hover:bg-slate-800'
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold shrink-0">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  configStep === 3 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
                   3
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">3. Test &amp; Activate</div>
-                  <div className="text-[10px] text-slate-400 truncate">Carrier Handshake</div>
+                  <div className="text-xs font-bold text-slate-900 truncate">3. Test &amp; Activate</div>
+                  <div className="text-[10px] text-slate-500 truncate">Carrier Handshake</div>
                 </div>
               </button>
             </div>
 
             {/* STEP 1: PROVIDER SELECTION */}
             {configStep === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-white">Select Your RCS Business Messaging Gateway:</h3>
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Select Your RCS Business Messaging Gateway:
+                </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Option A: Built-in Qiyam Cloud */}
@@ -1071,20 +1055,20 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setTempConfig({ ...tempConfig, provider: 'qiyam_cloud' })}
                     className={`p-4 rounded-xl border-2 transition cursor-pointer relative ${
                       tempConfig.provider === 'qiyam_cloud'
-                        ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-900/20'
-                        : 'border-slate-700 bg-slate-800/40 hover:bg-slate-800'
+                        ? 'border-emerald-600 bg-emerald-50/40 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-slate-900">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
                         RECOMMENDED • ZERO-CONFIG
                       </span>
                       {tempConfig.provider === 'qiyam_cloud' && (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       )}
                     </div>
-                    <h4 className="text-sm font-bold text-white">Built-in Qiyam RCS Cloud Gateway</h4>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <h4 className="text-xs font-bold text-slate-900">Built-in Qiyam RCS Cloud Gateway</h4>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                       Instant 1-Click setup. Pre-connected to Google Jibe Hub and Indian telecom carriers (Jio, Airtel, Vi). No third-party account required.
                     </p>
                   </div>
@@ -1094,20 +1078,20 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setTempConfig({ ...tempConfig, provider: 'google_rbm' })}
                     className={`p-4 rounded-xl border-2 transition cursor-pointer relative ${
                       tempConfig.provider === 'google_rbm'
-                        ? 'border-emerald-500 bg-emerald-950/20'
-                        : 'border-slate-700 bg-slate-800/40 hover:bg-slate-800'
+                        ? 'border-emerald-600 bg-emerald-50/40'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                         DIRECT ENTERPRISE
                       </span>
                       {tempConfig.provider === 'google_rbm' && (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       )}
                     </div>
-                    <h4 className="text-sm font-bold text-white">Google RCS Business Messaging (RBM)</h4>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <h4 className="text-xs font-bold text-slate-900">Google RCS Business Messaging (RBM)</h4>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                       Direct Google Cloud Service Account integration with official partner verification.
                     </p>
                   </div>
@@ -1117,20 +1101,20 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setTempConfig({ ...tempConfig, provider: 'twilio' })}
                     className={`p-4 rounded-xl border-2 transition cursor-pointer relative ${
                       tempConfig.provider === 'twilio'
-                        ? 'border-emerald-500 bg-emerald-950/20'
-                        : 'border-slate-700 bg-slate-800/40 hover:bg-slate-800'
+                        ? 'border-emerald-600 bg-emerald-50/40'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                         CPaaS PARTNER
                       </span>
                       {tempConfig.provider === 'twilio' && (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       )}
                     </div>
-                    <h4 className="text-sm font-bold text-white">Twilio RCS Messaging</h4>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <h4 className="text-xs font-bold text-slate-900">Twilio RCS Messaging</h4>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                       Connect via existing Twilio Account SID and Auth Token with automatic SMS fallback.
                     </p>
                   </div>
@@ -1140,20 +1124,20 @@ export const RCSMessagingView: React.FC = () => {
                     onClick={() => setTempConfig({ ...tempConfig, provider: 'sinch' })}
                     className={`p-4 rounded-xl border-2 transition cursor-pointer relative ${
                       tempConfig.provider === 'sinch'
-                        ? 'border-emerald-500 bg-emerald-950/20'
-                        : 'border-slate-700 bg-slate-800/40 hover:bg-slate-800'
+                        ? 'border-emerald-600 bg-emerald-50/40'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                         GLOBAL CARRIER
                       </span>
                       {tempConfig.provider === 'sinch' && (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       )}
                     </div>
-                    <h4 className="text-sm font-bold text-white">Sinch / Infobip Enterprise RCS</h4>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <h4 className="text-xs font-bold text-slate-900">Sinch / Infobip Enterprise RCS</h4>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                       High-throughput enterprise pipeline with international delivery routing.
                     </p>
                   </div>
@@ -1162,7 +1146,7 @@ export const RCSMessagingView: React.FC = () => {
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={() => setConfigStep(2)}
-                    className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow cursor-pointer"
+                    className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                   >
                     <span>Continue to Brand Details</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1173,34 +1157,36 @@ export const RCSMessagingView: React.FC = () => {
 
             {/* STEP 2: BRAND & CONNECTION DETAILS */}
             {configStep === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-white">Enter Your Brand Display &amp; Credentials:</h3>
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Enter Your Brand Display &amp; Credentials:
+                </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Brand Display Name (Verified Sender)</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Brand Display Name (Verified Sender)</label>
                     <input
                       type="text"
                       value={tempConfig.brandDisplayName}
                       onChange={(e) => setTempConfig({ ...tempConfig, brandDisplayName: e.target.value })}
                       placeholder="e.g. Qiyam Ventures"
-                      className="w-full bg-[#111C2E] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">RCS Agent / Bot ID</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">RCS Agent / Bot ID</label>
                     <input
                       type="text"
                       value={tempConfig.agentId}
                       onChange={(e) => setTempConfig({ ...tempConfig, agentId: e.target.value })}
                       placeholder="e.g. qiyam-rbm-prod-agent"
-                      className="w-full bg-[#111C2E] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-emerald-500 focus:bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Brand Accent Color</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Brand Accent Color</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
@@ -1212,30 +1198,30 @@ export const RCSMessagingView: React.FC = () => {
                         type="text"
                         value={tempConfig.brandHeroColor}
                         onChange={(e) => setTempConfig({ ...tempConfig, brandHeroColor: e.target.value })}
-                        className="flex-1 bg-[#111C2E] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono"
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Brand Logo URL (Square 1:1)</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Brand Logo URL (Square 1:1)</label>
                     <input
                       type="text"
                       value={tempConfig.brandLogoUrl}
                       onChange={(e) => setTempConfig({ ...tempConfig, brandLogoUrl: e.target.value })}
                       placeholder="https://..."
-                      className="w-full bg-[#111C2E] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="text-xs text-slate-300 block mb-1">API Key / Token</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">API Key / Token</label>
                     <input
                       type="password"
                       value={tempConfig.apiKey}
                       onChange={(e) => setTempConfig({ ...tempConfig, apiKey: e.target.value })}
                       placeholder="rcs_live_key_..."
-                      className="w-full bg-[#111C2E] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-emerald-500 focus:bg-white"
                     />
                   </div>
                 </div>
@@ -1243,13 +1229,13 @@ export const RCSMessagingView: React.FC = () => {
                 <div className="flex justify-between pt-4">
                   <button
                     onClick={() => setConfigStep(1)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
                   >
                     Back
                   </button>
                   <button
                     onClick={handleSaveConfig}
-                    className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow cursor-pointer"
+                    className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                   >
                     <span>Save &amp; Continue to Verification</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1261,14 +1247,14 @@ export const RCSMessagingView: React.FC = () => {
             {/* STEP 3: TEST & ACTIVATE */}
             {configStep === 3 && (
               <div className="space-y-4">
-                <div className="p-6 bg-[#162032] border border-slate-700 rounded-2xl text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 mx-auto flex items-center justify-center ring-4 ring-emerald-500/20">
+                <div className="p-6 bg-white border border-slate-200 rounded-2xl text-center space-y-4 shadow-sm">
+                  <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center ring-4 ring-emerald-100">
                     <ShieldCheck className="w-7 h-7" />
                   </div>
 
                   <div>
-                    <h3 className="text-base font-bold text-white">RCS Gateway Ready for Carrier Handshake</h3>
-                    <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
+                    <h3 className="text-sm font-bold text-slate-900">RCS Gateway Ready for Carrier Handshake</h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
                       Verify your connection against Google Jibe, Reliance Jio, Bharti Airtel, and Vodafone Idea.
                     </p>
                   </div>
@@ -1277,7 +1263,7 @@ export const RCSMessagingView: React.FC = () => {
                     <button
                       onClick={handleRunTestConnection}
                       disabled={isTestingPing}
-                      className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-900/30 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw className={`w-4 h-4 ${isTestingPing ? 'animate-spin' : ''}`} />
                       <span>{isTestingPing ? 'Pinging Carrier Endpoints...' : 'Test Connection & Verify RCS Capability'}</span>
@@ -1285,27 +1271,27 @@ export const RCSMessagingView: React.FC = () => {
                   </div>
 
                   {carrierTestResult && (
-                    <div className="mt-4 p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-left text-xs space-y-2 animate-in fade-in duration-300">
-                      <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                        <CheckCircle2 className="w-4 h-4" />
+                    <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-left text-xs space-y-2 animate-in fade-in duration-300">
+                      <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>RCS Carrier Handshake Confirmed (Universal Profile 2.4 Active)</span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px] text-slate-300">
-                        <div className="p-2 bg-slate-900/60 rounded">
-                          <span className="text-slate-400 block">Jio RCS:</span>
-                          <span className="text-emerald-400 font-semibold">Active • 28ms</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px] text-slate-700">
+                        <div className="p-2 bg-white rounded border border-emerald-200">
+                          <span className="text-slate-500 block">Jio RCS:</span>
+                          <span className="text-emerald-700 font-bold">Active • 28ms</span>
                         </div>
-                        <div className="p-2 bg-slate-900/60 rounded">
-                          <span className="text-slate-400 block">Airtel Jibe:</span>
-                          <span className="text-emerald-400 font-semibold">Active • 32ms</span>
+                        <div className="p-2 bg-white rounded border border-emerald-200">
+                          <span className="text-slate-500 block">Airtel Jibe:</span>
+                          <span className="text-emerald-700 font-bold">Active • 32ms</span>
                         </div>
-                        <div className="p-2 bg-slate-900/60 rounded">
-                          <span className="text-slate-400 block">Vi RCS:</span>
-                          <span className="text-emerald-400 font-semibold">Active • 41ms</span>
+                        <div className="p-2 bg-white rounded border border-emerald-200">
+                          <span className="text-slate-500 block">Vi RCS:</span>
+                          <span className="text-emerald-700 font-bold">Active • 41ms</span>
                         </div>
-                        <div className="p-2 bg-slate-900/60 rounded">
-                          <span className="text-slate-400 block">Brand Badge:</span>
-                          <span className="text-blue-400 font-semibold">Verified</span>
+                        <div className="p-2 bg-white rounded border border-emerald-200">
+                          <span className="text-slate-500 block">Brand Badge:</span>
+                          <span className="text-blue-700 font-bold">Verified</span>
                         </div>
                       </div>
                     </div>
@@ -1315,7 +1301,7 @@ export const RCSMessagingView: React.FC = () => {
                 <div className="flex justify-between pt-2">
                   <button
                     onClick={() => setConfigStep(2)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
                   >
                     Back to Brand Details
                   </button>
@@ -1325,7 +1311,7 @@ export const RCSMessagingView: React.FC = () => {
                       setActiveTab('chat');
                       addToast('RCS Messaging is live! You can now send rich messages and campaigns.', 'success');
                     }}
-                    className="flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow cursor-pointer"
+                    className="flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
                     <span>Launch RCS Live Console</span>
@@ -1337,19 +1323,19 @@ export const RCSMessagingView: React.FC = () => {
         )}
       </div>
 
-      {/* 4. MODALS */}
+      {/* 4. MODALS (Clean White Theme) */}
       {/* 4A. NEW CHAT MODAL */}
       {isNewChatModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-[#1E293B] border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl text-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-400" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl text-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-600" />
                 Start New RCS Conversation
               </h3>
               <button
                 onClick={() => setIsNewChatModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1357,33 +1343,33 @@ export const RCSMessagingView: React.FC = () => {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-300 block mb-1">Customer / Contact Name</label>
+                <label className="text-slate-700 font-semibold block mb-1">Customer / Contact Name</label>
                 <input
                   type="text"
                   value={newChatName}
                   onChange={(e) => setNewChatName(e.target.value)}
                   placeholder="e.g. Ramesh Kumar"
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Phone Number (RCS Capable)</label>
+                <label className="text-slate-700 font-semibold block mb-1">Phone Number (RCS Capable)</label>
                 <input
                   type="text"
                   value={newChatPhone}
                   onChange={(e) => setNewChatPhone(e.target.value)}
                   placeholder="+91 94963 00233"
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Target Carrier Universal Profile</label>
+                <label className="text-slate-700 font-semibold block mb-1">Target Carrier Universal Profile</label>
                 <select
                   value={newChatCarrier}
                   onChange={(e) => setNewChatCarrier(e.target.value)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                 >
                   <option value="Jio RCS (UP 2.4)">Reliance Jio RCS (UP 2.4)</option>
                   <option value="Airtel RCS (Google Jibe)">Bharti Airtel RCS (Google Jibe)</option>
@@ -1393,10 +1379,10 @@ export const RCSMessagingView: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setIsNewChatModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer hover:bg-slate-200"
               >
                 Cancel
               </button>
@@ -1411,7 +1397,7 @@ export const RCSMessagingView: React.FC = () => {
                   setIsNewChatModalOpen(false);
                   setNewChatName('');
                 }}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer shadow"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs"
               >
                 Initiate RCS Session
               </button>
@@ -1422,16 +1408,16 @@ export const RCSMessagingView: React.FC = () => {
 
       {/* 4B. RICH CARD BUILDER MODAL */}
       {isCardModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-[#1E293B] border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl text-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-emerald-400" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-lg shadow-2xl text-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-emerald-600" />
                 Compose RCS Rich Card
               </h3>
               <button
                 onClick={() => setIsCardModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1439,42 +1425,42 @@ export const RCSMessagingView: React.FC = () => {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-300 block mb-1">Card Title</label>
+                <label className="text-slate-700 font-semibold block mb-1">Card Title</label>
                 <input
                   type="text"
                   value={cardTitle}
                   onChange={(e) => setCardTitle(e.target.value)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:bg-white focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Card Description</label>
+                <label className="text-slate-700 font-semibold block mb-1">Card Description</label>
                 <textarea
                   value={cardDesc}
                   onChange={(e) => setCardDesc(e.target.value)}
                   rows={2}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:bg-white focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Media / Image URL</label>
+                <label className="text-slate-700 font-semibold block mb-1">Media / Image URL</label>
                 <input
                   type="text"
                   value={cardMedia}
                   onChange={(e) => setCardMedia(e.target.value)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2 text-white font-mono text-[11px]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 font-mono text-[11px] focus:bg-white focus:border-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-300 block mb-1">Action Button Type</label>
+                  <label className="text-slate-700 font-semibold block mb-1">Action Button Type</label>
                   <select
                     value={cardActionType}
                     onChange={(e) => setCardActionType(e.target.value as any)}
-                    className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:bg-white focus:border-emerald-500"
                   >
                     <option value="url">Open Web Link</option>
                     <option value="dial">Click to Dial Phone</option>
@@ -1482,37 +1468,37 @@ export const RCSMessagingView: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-slate-300 block mb-1">Button Label</label>
+                  <label className="text-slate-700 font-semibold block mb-1">Button Label</label>
                   <input
                     type="text"
                     value={cardActionLabel}
                     onChange={(e) => setCardActionLabel(e.target.value)}
-                    className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:bg-white focus:border-emerald-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Button Target (URL or Phone Number)</label>
+                <label className="text-slate-700 font-semibold block mb-1">Button Target (URL or Phone Number)</label>
                 <input
                   type="text"
                   value={cardActionUrl}
                   onChange={(e) => setCardActionUrl(e.target.value)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2 text-white font-mono text-[11px]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 font-mono text-[11px] focus:bg-white focus:border-emerald-500"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setIsCardModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer hover:bg-slate-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSendRichCard}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer shadow flex items-center gap-1.5"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Send Rich Card</span>
@@ -1524,16 +1510,16 @@ export const RCSMessagingView: React.FC = () => {
 
       {/* 4C. NEW CAMPAIGN MODAL */}
       {isCampaignModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-[#1E293B] border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl text-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-400" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl text-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
                 Launch New RCS Broadcast
               </h3>
               <button
                 onClick={() => setIsCampaignModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1541,50 +1527,50 @@ export const RCSMessagingView: React.FC = () => {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-300 block mb-1">Campaign Title</label>
+                <label className="text-slate-700 font-semibold block mb-1">Campaign Title</label>
                 <input
                   type="text"
                   value={campName}
                   onChange={(e) => setCampName(e.target.value)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:bg-white focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Target Audience</label>
+                <label className="text-slate-700 font-semibold block mb-1">Target Audience</label>
                 <input
                   type="text"
                   value={campAudience}
                   onChange={(e) => setCampAudience(e.target.value)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:bg-white focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Total Recipients</label>
+                <label className="text-slate-700 font-semibold block mb-1">Total Recipients</label>
                 <input
                   type="number"
                   value={campCount}
                   onChange={(e) => setCampCount(parseInt(e.target.value) || 0)}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:bg-white focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1">Message Text</label>
+                <label className="text-slate-700 font-semibold block mb-1">Message Text</label>
                 <textarea
                   value={campText}
                   onChange={(e) => setCampText(e.target.value)}
                   rows={2}
-                  className="w-full bg-[#111C2E] border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:bg-white focus:border-emerald-500"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setIsCampaignModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer hover:bg-slate-200"
               >
                 Cancel
               </button>
@@ -1600,7 +1586,7 @@ export const RCSMessagingView: React.FC = () => {
                   });
                   setIsCampaignModalOpen(false);
                 }}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer shadow flex items-center gap-1.5"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Launch Broadcast</span>
