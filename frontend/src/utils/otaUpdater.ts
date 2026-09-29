@@ -157,6 +157,18 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
           return false;
         }
 
+        // ── Guard: Only show hard refresh AFTER complete successful deployment ──
+        if (
+          data.in_progress === true ||
+          data.deploy_status === 'deploying' ||
+          data.deployed === false ||
+          store.isUpdatingSystem ||
+          store.versionInfo?.in_progress
+        ) {
+          console.log('[OTA Update] Server deployment in progress. Hard Refresh will only appear after deployment completes successfully.');
+          return false;
+        }
+
         // ── Always compare against the module-level initialBuildCommit ──
         const currentRunningCommit = initialBuildCommit;
         const isNewCommit = !!(data.commit && currentRunningCommit && data.commit !== currentRunningCommit);
@@ -199,6 +211,9 @@ export async function checkForDeploymentUpdate(): Promise<boolean> {
       if (match && match[1]) {
         const remoteScriptSrc = match[1];
         if (initialScriptSrc && remoteScriptSrc !== initialScriptSrc && !updateAlreadyTriggered) {
+          if (store.isUpdatingSystem || store.versionInfo?.in_progress) {
+            return false;
+          }
           console.log(`[OTA Update] New deployment detected via index.html bundle hash! Current: ${initialScriptSrc} -> New: ${remoteScriptSrc}`);
           updateAlreadyTriggered = true;
           store.triggerOtaDeploymentUpdate({

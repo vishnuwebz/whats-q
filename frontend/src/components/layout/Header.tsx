@@ -252,8 +252,8 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>
 
-          {/* Update Available Badge */}
-          {versionInfo?.update_available && (
+          {/* Update Available Badge — Only visible AFTER deployment completes successfully */}
+          {versionInfo?.update_available && !versionInfo?.in_progress && !store.isUpdatingSystem && (
             <button
               onClick={() => triggerForceHardRefresh('Header badge clicked')}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-xs animate-pulse"

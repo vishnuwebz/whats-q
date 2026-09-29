@@ -23,6 +23,19 @@ echo -e "${CYAN}        WHATSQ AUTOMATED UPDATE & BACKUP SYSTEM       ${NC}"
 echo -e "${CYAN}======================================================${NC}"
 echo -e "${BLUE}[INFO] Update started at: ${DATE_FORMATTED}${NC}"
 
+# 0. INITIALIZE DEPLOYMENT LOCK
+echo -e "\n${YELLOW}[LOCK] Setting deployment in-progress lock...${NC}"
+$SUDO_CMD touch "$APP_DIR/deploy_in_progress" 2>/dev/null || true
+cat <<EOF | $SUDO_CMD tee "$APP_DIR/deploy_status.json" > /dev/null 2>&1 || true
+{
+  "in_progress": true,
+  "status": "deploying",
+  "deployed": false,
+  "started_at": "$DATE_FORMATTED"
+}
+EOF
+$SUDO_CMD cp "$APP_DIR/deploy_status.json" "$APP_DIR/frontend/dist/deploy_status.json" 2>/dev/null || true
+
 # 1. DATABASE AUTO-BACKUP
 echo -e "\n${YELLOW}[1/5] Creating PostgreSQL database backup...${NC}"
 $SUDO_CMD mkdir -p "$BACKUP_DIR"
@@ -58,8 +71,9 @@ elif [ -n "$GITHUB_TOKEN" ]; then
     git remote set-url origin "https://qbscalicut:${GITHUB_TOKEN}@github.com/qbscalicut/whats-q.git"
 fi
 
-# Clean up untracked dist permissions before reset so git never faces EACCES
-$SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
+# Ensure dist permissions without deleting it early
+$SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
+$SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
 git fetch origin main
 git reset --hard origin/main
@@ -211,11 +225,18 @@ cd "$APP_DIR/frontend"
 $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
 $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
-# If build_output/index.html is present, copy it cleanly to dist
+# If build_output/index.html is present, copy it cleanly to dist via atomic swap
 if [ -d "$APP_DIR/frontend/build_output" ] && [ -f "$APP_DIR/frontend/build_output/index.html" ]; then
     echo -e "${GREEN}[SUCCESS] Valid pre-compiled frontend bundle detected in build_output. Deploying...${NC}"
-    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist" 2>/dev/null || true
-    $SUDO_CMD cp -r "$APP_DIR/frontend/build_output" "$APP_DIR/frontend/dist" 2>/dev/null || true
+    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_new" 2>/dev/null || true
+    $SUDO_CMD cp -r "$APP_DIR/frontend/build_output" "$APP_DIR/frontend/dist_new" 2>/dev/null || true
+    $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist_new" 2>/dev/null || true
+    $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist_new" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist_new" 2>/dev/null || true
+    # Atomic swap: dist is never missing or unreadable
+    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_old" 2>/dev/null || true
+    $SUDO_CMD mv "$APP_DIR/frontend/dist" "$APP_DIR/frontend/dist_old" 2>/dev/null || true
+    $SUDO_CMD mv "$APP_DIR/frontend/dist_new" "$APP_DIR/frontend/dist"
+    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_old" 2>/dev/null || true
 elif [ -f "$APP_DIR/frontend/dist/index.html" ]; then
     echo -e "${GREEN}[SUCCESS] Valid frontend bundle already present in dist.${NC}"
 else
@@ -237,7 +258,6 @@ else
     fi
 fi
 
-cp "$APP_DIR/frontend/public/version.json" "$APP_DIR/frontend/dist/version.json" 2>/dev/null || true
 $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
 $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
@@ -274,8 +294,39 @@ else
     $SUDO_CMD systemctl reload nginx 2>/dev/null || true
 fi
 
+# 6. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
+echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
+cat <<EOF | $SUDO_CMD tee "$APP_DIR/frontend/dist/version.json" > /dev/null
+{
+  "commit": "$COMMIT_HASH",
+  "author": "$COMMIT_AUTHOR",
+  "date": "$COMMIT_DATE",
+  "message": "$COMMIT_MSG",
+  "timestamp": $(date +%s%3N 2>/dev/null || date +%s),
+  "version": "2.4.29",
+  "deploy_status": "completed",
+  "deployed": true,
+  "in_progress": false
+}
+EOF
+$SUDO_CMD cp "$APP_DIR/frontend/dist/version.json" "$APP_DIR/frontend/public/version.json" 2>/dev/null || true
+
+cat <<EOF | $SUDO_CMD tee "$APP_DIR/deploy_status.json" > /dev/null
+{
+  "in_progress": false,
+  "status": "completed",
+  "deployed": true,
+  "completed_at": "$DATE_FORMATTED",
+  "commit": "$COMMIT_HASH"
+}
+EOF
+$SUDO_CMD cp "$APP_DIR/deploy_status.json" "$APP_DIR/frontend/dist/deploy_status.json" 2>/dev/null || true
+
+# Release the lock
+$SUDO_CMD rm -f "$APP_DIR/deploy_in_progress" 2>/dev/null || true
+
 # Instant broadcast of OTA update event to active browser SSE streams
-echo -e "\n${YELLOW}[OTA] Broadcasting deployment event to active browser sessions...${NC}"
+echo -e "\n${YELLOW}[OTA] Broadcasting deployment completion to active browser sessions...${NC}"
 cd "$APP_DIR/backend"
 source venv/bin/activate 2>/dev/null || true
 python -c "
@@ -285,6 +336,10 @@ django.setup()
 from core.events import event_bus
 from core.update_service import SystemUpdateService
 info = SystemUpdateService.get_version_info(force=True)
+info['update_available'] = True
+info['deployed'] = True
+info['deploy_status'] = 'completed'
+info['in_progress'] = False
 event_bus.publish('system.update_available', info)
 event_bus.publish('system.deployed', info)
 print('[OTA] Broadcast complete: system.update_available & system.deployed sent.')

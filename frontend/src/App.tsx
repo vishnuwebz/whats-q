@@ -109,6 +109,7 @@ export const App: React.FC = () => {
     fetchVersionInfo,
     versionInfo,
     triggerForceHardRefresh,
+    isUpdatingSystem,
     isSidebarCollapsed,
     toggleSidebarCollapse,
     activeTenant,
@@ -444,8 +445,8 @@ export const App: React.FC = () => {
     <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden bg-[#F8FAFC]">
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden relative">
-        {/* Real-time System Update Banner — Only placed at the top when update available */}
-        {versionInfo && versionInfo.update_available && (
+        {/* Real-time System Update Banner — Only placed at the top when update completely finished deploying */}
+        {versionInfo && versionInfo.update_available && !versionInfo.in_progress && !isUpdatingSystem && (
           <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white px-4 py-2.5 text-xs flex items-center justify-between border-b border-emerald-500/30 shadow-md shrink-0 animate-in slide-in-from-top duration-300 z-30">
             <div className="flex items-center gap-2 overflow-hidden">
               <span className="relative flex h-2.5 w-2.5 shrink-0">

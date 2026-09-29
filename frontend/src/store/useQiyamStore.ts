@@ -451,6 +451,10 @@ export interface VersionInfo {
   is_git: boolean;
   last_updated?: string;
   last_checked?: string;
+  in_progress?: boolean;
+  deploy_status?: string;
+  deployed?: boolean;
+  version?: string;
 }
 
 export interface SendConfirmationConfig {
@@ -7631,8 +7635,8 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     try {
       const url = force ? '/core/system-version/?force=true' : '/core/system-version/';
       const res = await apiClient.get(url);
-      if (res && res.current_commit) {
-        const info = { ...(res as VersionInfo) };
+      if (res && (res as any).current_commit) {
+        const info: VersionInfo = { ...(res as any) };
         const acknowledgedCommit = typeof window !== 'undefined' ? localStorage.getItem('whatsq_acknowledged_commit') : null;
         const lastRefreshTime = typeof window !== 'undefined' ? Number(localStorage.getItem('whatsq_last_hard_refresh_time') || '0') : 0;
         const justRefreshedRecently = Date.now() - lastRefreshTime < 180000;
@@ -7654,7 +7658,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         }
 
         set({ versionInfo: info });
-        if (info.update_available) {
+        if (info.update_available && !info.in_progress && !get().isUpdatingSystem) {
           get().applyGlobalUpdateAvailable(info);
         }
       }
@@ -7695,7 +7699,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     }
 
     set({ versionInfo: info });
-    if (!info.update_available) {
+    if (!info.update_available || info.in_progress || get().isUpdatingSystem) {
       set({ isUpdateModalOpen: false });
       return;
     }
@@ -7766,7 +7770,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Sidebar Accordion Auto-Scroll & Viewport Anchoring v2.4.28',
+        latest_message: 'Verified Production Deployment Lock & Hard Refresh v2.4.29',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

@@ -68,7 +68,7 @@ export const SystemUpdateModal: React.FC = () => {
     await triggerSystemUpdate();
   };
 
-  const isUpToDate = !versionInfo.update_available;
+  const isUpToDate = !versionInfo.update_available || versionInfo.in_progress || isUpdatingSystem;
 
   return (
     <div
