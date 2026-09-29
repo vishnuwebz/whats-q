@@ -16,9 +16,6 @@ import {
   RotateCcw,
   FileDown,
   Check,
-  Code2,
-  ChevronDown,
-  ChevronUp,
   AlertTriangle,
   Zap,
   PhoneCall,
@@ -56,8 +53,6 @@ export const SuppressionDetailsModal: React.FC<SuppressionDetailsModalProps> = (
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
-  const [copiedPayload, setCopiedPayload] = useState(false);
-  const [isPayloadOpen, setIsPayloadOpen] = useState(true);
   const [resubscribeConfirmRecord, setResubscribeConfirmRecord] = useState<SuppressionRecord | null>(
     null
   );
@@ -110,51 +105,6 @@ export const SuppressionDetailsModal: React.FC<SuppressionDetailsModalProps> = (
     setTimeout(() => setCopiedPhone(null), 2000);
   };
 
-  const sampleMeta131051Payload = `{
-  "object": "whatsapp_business_account",
-  "entry": [
-    {
-      "id": "1029836994795053",
-      "changes": [
-        {
-          "field": "messages",
-          "value": {
-            "messaging_product": "whatsapp",
-            "metadata": {
-              "display_phone_number": "+91 94963 00233",
-              "phone_number_id": "4567067243541240"
-            },
-            "statuses": [
-              {
-                "id": "wamid.HBgLMzkxNTAxMTEyMjMzFQIAERgSQjE4MjI2NDNCNjExOTI4RTg4AA==",
-                "status": "failed",
-                "timestamp": "1789191000",
-                "recipient_id": "971501112233",
-                "errors": [
-                  {
-                    "code": 131051,
-                    "title": "Message failed to send",
-                    "message": "User has blocked the business phone number",
-                    "error_data": {
-                      "details": "The recipient has blocked this business from sending WhatsApp messages."
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ]
-    }
-  ]
-}`;
-
-  const handleCopyPayload = () => {
-    navigator.clipboard.writeText(sampleMeta131051Payload);
-    setCopiedPayload(true);
-    addToast('Meta Error 131051 webhook payload copied to clipboard!', 'success');
-    setTimeout(() => setCopiedPayload(false), 2000);
-  };
 
   const handleOpenChat = (phone: string) => {
     const matchingConv = (conversations || []).find(
@@ -620,53 +570,6 @@ export const SuppressionDetailsModal: React.FC<SuppressionDetailsModalProps> = (
                 </div>
               </div>
 
-              {/* Webhook Payload JSON Viewer */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 overflow-hidden shadow-lg">
-                <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Code2 className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-mono font-bold text-slate-300">
-                      Live Meta Webhook Telemetry Payload (Error 131051)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyPayload}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      {copiedPayload ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400 font-bold">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copy JSON</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsPayloadOpen(!isPayloadOpen)}
-                      className="p-1 text-slate-400 hover:text-white cursor-pointer"
-                    >
-                      {isPayloadOpen ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {isPayloadOpen && (
-                  <pre className="p-4 text-[11px] font-mono text-emerald-300/90 overflow-x-auto leading-relaxed max-h-56">
-                    {sampleMeta131051Payload}
-                  </pre>
-                )}
-              </div>
 
               {/* Blocked Contacts Detail Cards */}
               <div className="space-y-3">
