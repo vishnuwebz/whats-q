@@ -62,9 +62,52 @@ export type TabType =
   | 'settings'
   | 'settings-backup'
   | 'settings-whatsapp'
+  | 'settings-rcs'
   | 'settings-notifications'
   | 'roles'
-  | 'super-admin';
+  | 'rcs-messaging'
+  | 'super-admin'
+  | 'login'
+  | 'signup'
+  | 'forgot-password'
+  | 'employee-portal';
+
+export type AuthUserRole = 'super_admin' | 'company_admin' | 'employee';
+
+export interface AuthUser {
+  id: string;
+  username?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: AuthUserRole;
+  companyId: string;
+  companyName: string;
+  department?: string;
+  avatar?: string;
+  token?: string;
+  createdAt?: string;
+  permissions?: string[];
+  status: 'active' | 'pending' | 'suspended';
+}
+
+export interface ClientSignupRequest {
+  id: string;
+  businessName: string;
+  category: string;
+  branchLocation: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  wabaPhone: string;
+  hasDeletedFromConsumerApp: boolean;
+  planTier: 'starter' | 'growth' | 'enterprise';
+  requestedModules: string[];
+  status: 'pending_approval' | 'approved' | 'rejected';
+  submittedAt: string;
+  verifiedOtp: boolean;
+  notes?: string;
+}
 
 export interface TenantFeatureConfig {
   multiAccount: boolean;
@@ -390,6 +433,8 @@ export interface Employee {
   email: string;
   status: 'on_duty' | 'active' | 'on_leave' | 'inactive';
   location: string;
+  company_id?: string;
+  company_name?: string;
   branch?: string;
   joining_date?: string;
   shift?: string;
@@ -1318,5 +1363,103 @@ export interface UserProfile {
   location: string;
   phone: string;
 }
+
+// -------------------------------------------------------------
+// RCS Business Messaging (RBM / Universal Profile 2.4) Types
+// -------------------------------------------------------------
+
+export type RCSProvider = 'qiyam_cloud' | 'google_rbm' | 'twilio' | 'sinch' | 'infobip';
+
+export interface RCSSuggestionAction {
+  type: 'reply' | 'url' | 'dial' | 'location' | 'calendar';
+  label: string;
+  value?: string;
+  description?: string;
+}
+
+export interface RCSCardItem {
+  id: string;
+  title: string;
+  description: string;
+  mediaUrl?: string;
+  mediaHeight?: 'SHORT' | 'MEDIUM' | 'TALL';
+  actions: RCSSuggestionAction[];
+}
+
+export interface RCSMessageItem {
+  id: string;
+  conversationId: string;
+  sender: 'customer' | 'agent' | 'bot' | 'system';
+  senderName?: string;
+  text: string;
+  timestamp: string;
+  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  direction: 'inbound' | 'outbound';
+  card?: RCSCardItem;
+  carousel?: RCSCardItem[];
+  suggestions?: RCSSuggestionAction[];
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'audio' | 'file';
+  fallbackToSms?: boolean;
+  latencyMs?: number;
+}
+
+export interface RCSConversationItem {
+  id: string;
+  contactName: string;
+  phoneNumber: string;
+  avatar: string;
+  carrier: string;
+  rcsCapable: boolean;
+  unreadCount: number;
+  status: 'active' | 'archived' | 'lead' | 'customer';
+  lastSeen: string;
+  isOnline: boolean;
+  tags: string[];
+  messages: RCSMessageItem[];
+}
+
+export interface RCSConfig {
+  provider: RCSProvider;
+  agentName: string;
+  agentId: string;
+  brandDisplayName: string;
+  brandLogoUrl: string;
+  brandHeroColor: string;
+  apiKey: string;
+  apiSecret: string;
+  webhookUrl: string;
+  webhookVerifyToken: string;
+  smsFallbackEnabled: boolean;
+  status: 'connected' | 'disconnected' | 'testing' | 'error';
+  verifiedSender: boolean;
+  carrierStatus: {
+    jio: boolean;
+    airtel: boolean;
+    vi: boolean;
+    international: boolean;
+  };
+  lastTestedAt?: string;
+  autoReplyEnabled: boolean;
+  defaultQuickReplies: string[];
+}
+
+export interface RCSCampaign {
+  id: string;
+  name: string;
+  targetAudience: string;
+  recipientCount: number;
+  deliveredCount: number;
+  readCount: number;
+  clickCount: number;
+  failedCount: number;
+  status: 'DRAFT' | 'SENDING' | 'COMPLETED' | 'SCHEDULED';
+  type: 'Rich Card' | 'Carousel' | 'Action Text';
+  card?: RCSCardItem;
+  messageText: string;
+  createdAt: string;
+  fallbackSmsCount: number;
+}
+
 
 

@@ -16,6 +16,14 @@ from .views import (
     CampaignMediaUploadView,
 )
 from .grabber_views import GroupGrabberSessionView
+from .rcs_views import (
+    RCSConfigView,
+    RCSTestConnectionView,
+    RCSCapabilityCheckView,
+    RCSSendMessageView,
+    RCSSimulateInboundView,
+    RCSWebhookView,
+)
 
 router = DefaultRouter()
 router.register(r'threads', ConversationViewSet)
@@ -34,5 +42,12 @@ urlpatterns = [
     path('start-chat/', StartWhatsAppChatView.as_view(), name='whatsapp_start_chat'),
     path('grabber-session/', GroupGrabberSessionView.as_view(), name='whatsapp_grabber_session'),
     path('inspect-group-invite/', InspectGroupInviteView.as_view(), name='inspect_group_invite'),
+    # RCS Business Messaging (RBM) endpoints
+    path('rcs/config/', RCSConfigView.as_view(), name='rcs_config'),
+    path('rcs/test-connection/', RCSTestConnectionView.as_view(), name='rcs_test_connection'),
+    path('rcs/check-capability/', RCSCapabilityCheckView.as_view(), name='rcs_check_capability'),
+    path('rcs/send/', RCSSendMessageView.as_view(), name='rcs_send'),
+    path('rcs/simulate/', RCSSimulateInboundView.as_view(), name='rcs_simulate'),
+    path('rcs/webhook/', RCSWebhookView.as_view(), name='rcs_webhook'),
     path('', include(router.urls)),
 ]

@@ -71,12 +71,12 @@ const ALL_SYSTEM_PAGES: SystemPageItem[] = [
   // Bulk Messaging
   { tab: 'bulk-overview', title: 'Bulk Campaign Analytics', subtitle: 'Messenger • Broadcast delivery stats, open rates, click-through & engagement KPIs', category: 'Messenger', icon: BarChart3, keywords: 'broadcast dashboard stats metrics analytics reach bulk overview' },
   { tab: 'bulk-send', title: 'Send Bulk Message', subtitle: 'Messenger • Broadcast mass marketing campaigns, targeted blasts & audience dispatch', category: 'Messenger', icon: Send, keywords: 'broadcast mass marketing campaigns blast dispatch bulk send' },
+  { tab: 'bulk-scheduled', title: 'Scheduled Messages', subtitle: 'Messenger • Timed future automated broadcasts, recurring queues & dispatch calendar', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar bulk scheduled' },
   { tab: 'template-hub', title: 'Template Hub', subtitle: 'Messenger • Meta approved WhatsApp templates, media buttons & quick replies', category: 'Messenger', icon: Layers, keywords: 'meta templates approved quick replies bulk templates whatsapp template hub' },
   { tab: 'template-create', title: 'Create Template', subtitle: 'Messenger • Design, compose, test and submit new WhatsApp templates to Meta', category: 'Messenger', icon: Plus, keywords: 'create template new whatsapp meta template composer' },
   { tab: 'bulk-campaigns', title: 'Campaign History', subtitle: 'Messenger • Past broadcast campaigns, sent logs, delivery tracking & status', category: 'Messenger', icon: Layers, keywords: 'broadcast analytics sent delivered open rates bulk campaigns' },
   { tab: 'bulk-recipients', title: 'Recipient Lists', subtitle: 'Messenger • Audience segmentation, contact groups, custom tags & filters', category: 'Messenger', icon: Users, keywords: 'contacts audience segments groups tags bulk recipients' },
   { tab: 'bulk-suppression', title: 'Blocked Contacts & Opt-outs', subtitle: 'Messenger • DND lists, opt-out compliance, stop keyword suppression & blacklists', category: 'Messenger', icon: Ban, keywords: 'blocked contacts opt-out stop unsubscribe dnd suppression compliance blacklisted' },
-  { tab: 'bulk-scheduled', title: 'Scheduled Messages', subtitle: 'Messenger • Timed future automated broadcasts, recurring queues & dispatch calendar', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar bulk scheduled' },
 
   // Automation & Workflows
   { tab: 'automation-builder', title: 'Workflow Builder', subtitle: 'Automation • Visual drag-and-drop bot flow canvas, trigger nodes & action sequences', category: 'Automation', icon: Zap, keywords: 'no-code visual trigger node action flow automation builder' },

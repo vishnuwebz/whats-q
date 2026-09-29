@@ -76,9 +76,13 @@ import { AISettingsView } from './components/views/ai/AISettingsView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { IntegrationsView } from './components/views/IntegrationsView';
 import { SettingsView } from './components/views/SettingsView';
+import { RCSMessagingView } from './components/views/rcs/RCSMessagingView';
 import { LandingPageView } from './components/views/LandingPageView';
 import { RolesSecurityView } from './components/views/roles/RolesSecurityView';
 import { SuperAdminView } from './components/views/admin/SuperAdminView';
+import { AuthPortalView } from './components/views/auth/AuthPortalView';
+import { EmployeePortalView } from './components/views/employee/EmployeePortalView';
+import { getCurrentAuthUser } from './utils/authService';
 
 // Bulk Messaging Views
 import { BulkOverviewView } from './components/views/bulk/BulkOverviewView';
@@ -328,12 +332,18 @@ export const App: React.FC = () => {
         return <SettingsView initialTab="backup" />;
       case 'settings-whatsapp':
         return <SettingsView initialTab="whatsapp" />;
+      case 'settings-rcs':
+        return <SettingsView initialTab="rcs" />;
       case 'settings-notifications':
         return <SettingsView initialTab="notifications" />;
+      case 'rcs-messaging':
+        return <RCSMessagingView />;
       case 'roles':
         return <RolesSecurityView />;
       case 'super-admin':
         return <SuperAdminView />;
+      case 'employee-portal':
+        return <EmployeePortalView />;
 
       default:
         return <DashboardView />;
@@ -366,6 +376,56 @@ export const App: React.FC = () => {
         onExit={() => {
           setMobileGrabberToken(null);
           window.history.replaceState(null, '', '/');
+        }}
+      />
+    );
+  }
+
+  const [currentUser, setCurrentUser] = React.useState(() => getCurrentAuthUser());
+
+  React.useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(getCurrentAuthUser());
+    };
+    window.addEventListener('whatsq_auth_changed', handleAuthChange);
+    return () => window.removeEventListener('whatsq_auth_changed', handleAuthChange);
+  }, []);
+
+  // Standalone Full-screen Auth Pages (BizyLead style)
+  if (activeTab === 'login' || activeTab === 'signup' || activeTab === 'forgot-password') {
+    return (
+      <AuthPortalView
+        initialMode={activeTab === 'signup' ? 'signup' : activeTab === 'forgot-password' ? 'forgot-password' : 'login'}
+        onAuthSuccess={() => {
+          const user = getCurrentAuthUser();
+          setCurrentUser(user);
+          if (user?.role === 'super_admin') {
+            setActiveTab('super-admin');
+          } else if (user?.role === 'employee') {
+            setActiveTab('employee-portal');
+          } else {
+            setActiveTab('dashboard');
+          }
+        }}
+      />
+    );
+  }
+
+  // If not logged in and not on public landing page, prompt login
+  if (!currentUser && activeTab !== 'landing') {
+    return (
+      <AuthPortalView
+        initialMode="login"
+        onAuthSuccess={() => {
+          const user = getCurrentAuthUser();
+          setCurrentUser(user);
+          if (user?.role === 'super_admin') {
+            setActiveTab('super-admin');
+          } else if (user?.role === 'employee') {
+            setActiveTab('employee-portal');
+          } else {
+            setActiveTab('dashboard');
+          }
         }}
       />
     );

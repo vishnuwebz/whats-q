@@ -167,7 +167,7 @@ export const MODULE_PRICING_CATALOG: Record<TenantSidebarModule, ModulePricingIn
  */
 export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
   if (tab === 'dashboard' || tab === 'super-admin' || tab === 'landing') return 'dashboard';
-  if (tab === 'conversations') return 'conversations';
+  if (tab === 'conversations' || tab === 'rcs-messaging') return 'conversations';
 
   if (tab.startsWith('bulk-') || tab === 'template-hub' || tab === 'template-create') return 'messenger';
   if (tab.startsWith('crm-')) return 'crm';
@@ -180,7 +180,7 @@ export const getModuleForTab = (tab: TabType): TenantSidebarModule | null => {
   if (tab === 'integrations') return 'integrations';
   if (tab === 'roles') return 'roles';
   if (tab === 'settings-backup') return 'settings-backup';
-  if (tab === 'settings' || tab === 'settings-whatsapp' || tab === 'settings-notifications') return 'settings';
+  if (tab === 'settings' || tab === 'settings-whatsapp' || tab === 'settings-rcs' || tab === 'settings-notifications') return 'settings';
 
   return null;
 };
@@ -636,6 +636,53 @@ export const INITIAL_PLATFORM_TENANTS: PlatformTenant[] = [
     },
     sidebarModules: ['dashboard', 'conversations', 'crm', 'ops', 'settings'],
   },
+  {
+    id: 'TN-AMBIKA',
+    businessName: 'Ambika Hotel & Luxury Suites',
+    initials: 'AH',
+    branch: 'Beach Road • Kozhikode',
+    ownerName: 'K. Ramachandran',
+    ownerEmail: 'ramachandran@ambikahotel.com',
+    ownerPhone: '+91 98470 12345',
+    tier: 'growth',
+    amount: 5999,
+    billingCycle: 'monthly',
+    createdAt: '2026-09-01',
+    lastPaymentDate: '2026-09-01',
+    lastPaymentAmount: 5999,
+    lastPaymentMethod: 'HDFC Corporate NetBanking',
+    nextPaymentDueDate: '2026-10-01',
+    paymentStatus: 'paid',
+    metaWalletBalance: 3200,
+    metaWalletCurrency: '₹',
+    metaWalletStatus: 'healthy',
+    metaDailyLimit: 25000,
+    metaTier: 'Tier 2 (10k/day)',
+    activeLicenses: 10,
+    maxLicenses: 20,
+    onlineStaffCount: 5,
+    status: 'active',
+    wabaStatus: 'connected',
+    wabaPhone: '+91 98470 12345',
+    wabaId: '1098915959329777',
+    wabaQualityScore: 'HIGH',
+    wabaLatencyMs: 42,
+    lastWebhookPing: '22s ago',
+    messagesSentThisMonth: 12450,
+    monthlyMessageLimit: 50000,
+    color: 'from-amber-600 to-yellow-600',
+    features: {
+      multiAccount: true,
+      botBuilder: true,
+      interactiveButtons: true,
+      customBranding: true,
+      aiAssistant: true,
+      bulkCampaigns: true,
+      voiceNotes: true,
+      apiWebhooks: true,
+    },
+    sidebarModules: ['dashboard', 'conversations', 'messenger', 'crm', 'ops', 'automation', 'roles', 'settings'],
+  },
   DEMO_EXPIRED_TENANT,
 ];
 
@@ -757,6 +804,11 @@ export const getStoredTenants = (): PlatformTenant[] => {
               activeTrials: DEMO_EXPIRED_TENANT.activeTrials,
               addonPurchases: DEMO_EXPIRED_TENANT.addonPurchases,
             };
+          }
+          // Ensure Ambika Hotel is present in tenants
+          if (!parsed.some((t: any) => t.id === 'TN-AMBIKA')) {
+            const ambika = INITIAL_PLATFORM_TENANTS.find((t) => t.id === 'TN-AMBIKA');
+            if (ambika) parsed.push(ambika);
             try {
               localStorage.setItem('whatsq_platform_tenants', JSON.stringify(parsed));
             } catch {}

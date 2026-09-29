@@ -72,6 +72,8 @@ import {
   getStoredTenants,
   saveStoredTenants,
 } from '@/utils/featureEntitlements';
+import type { ClientSignupRequest } from '@/types';
+import { getSignupRequests, saveSignupRequests } from '@/utils/authService';
 
 export const ALL_SIDEBAR_MODULES: {
   id: TenantSidebarModule;
@@ -416,7 +418,20 @@ export const SuperAdminView: React.FC = () => {
   const { addToast, switchActiveTenant, reloadPlatformTenants } = useQiyamStore();
 
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'clients' | 'sidebar_config' | 'meta_wallets' | 'plans' | 'audit' | 'settings'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'signups' | 'sidebar_config' | 'meta_wallets' | 'plans' | 'audit' | 'settings'>('clients');
+
+  // Client signup requests from public onboarding
+  const [signupRequests, setSignupRequests] = useState<ClientSignupRequest[]>(() => getSignupRequests());
+  const [signupFilter, setSignupFilter] = useState<'all' | 'pending_approval' | 'approved' | 'rejected'>('all');
+  const [signupSearch, setSignupSearch] = useState('');
+
+  useEffect(() => {
+    const handleSignupsUpdate = () => {
+      setSignupRequests(getSignupRequests());
+    };
+    window.addEventListener('whatsq_signups_updated', handleSignupsUpdate);
+    return () => window.removeEventListener('whatsq_signups_updated', handleSignupsUpdate);
+  }, []);
 
   // Multi-tenant state (persisted to localStorage)
   const [tenants, setTenants] = useState<PlatformTenant[]>(() => getStoredTenants());
@@ -1444,6 +1459,21 @@ export const SuperAdminView: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('signups')}
+              className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
+                activeTab === 'signups'
+                  ? 'border-emerald-700 text-emerald-800 bg-emerald-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+              }`}
+            >
+              <Users className="w-4 h-4 text-emerald-700" />
+              <span>Client Signups & Onboarding</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-800 font-extrabold border border-amber-200">
+                {signupRequests.length}
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('sidebar_config')}
               className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
                 activeTab === 'sidebar_config'
@@ -1947,6 +1977,291 @@ export const SuperAdminView: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 1.5: CLIENT SIGNUPS & ONBOARDING APPROVALS                            */}
+        {/* ========================================================================= */}
+        {activeTab === 'signups' && (
+          <div className="space-y-6">
+            {/* Header & KPI Summary */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-slate-900 text-lg">Client Signups & Tenant Approvals</h3>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      Public Onboarding Queue
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                    Review inbound client registrations from your marketing/signup page (e.g. Ambika Hotel). Verify their Meta WhatsApp Cloud API numbers, approve workspaces, and customize their accessible features.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSignupRequests(getSignupRequests());
+                      addToast('Queue refreshed!', 'info');
+                    }}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Refresh Queue</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Counters */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Signups</div>
+                  <div className="text-2xl font-black text-slate-900 mt-1">{signupRequests.length}</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80">
+                  <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending Review</div>
+                  <div className="text-2xl font-black text-amber-800 mt-1">
+                    {signupRequests.filter((r) => r.status === 'pending_approval').length}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80">
+                  <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Approved Clients</div>
+                  <div className="text-2xl font-black text-emerald-800 mt-1">
+                    {signupRequests.filter((r) => r.status === 'approved').length}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/80">
+                  <div className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">WhatsApp Verified</div>
+                  <div className="text-2xl font-black text-blue-800 mt-1">
+                    {signupRequests.filter((r) => r.verifiedOtp).length}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter toolbar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by hotel/business name, owner, or WhatsApp line..."
+                  value={signupSearch}
+                  onChange={(e) => setSignupSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition text-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                {(['all', 'pending_approval', 'approved', 'rejected'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setSignupFilter(filter)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer capitalize ${
+                      signupFilter === filter
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {filter === 'pending_approval' ? 'Pending' : filter}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Signup Cards / Table */}
+            <div className="space-y-3">
+              {signupRequests
+                .filter((r) => {
+                  if (signupFilter !== 'all' && r.status !== signupFilter) return false;
+                  if (signupSearch.trim()) {
+                    const q = signupSearch.toLowerCase().trim();
+                    const matchName = r.businessName.toLowerCase().includes(q);
+                    const matchOwner = r.ownerName.toLowerCase().includes(q) || r.ownerEmail.toLowerCase().includes(q);
+                    const matchPhone = r.wabaPhone.includes(q) || r.ownerPhone.includes(q);
+                    if (!matchName && !matchOwner && !matchPhone) return false;
+                  }
+                  return true;
+                })
+                .map((req) => {
+                  const isApproved = req.status === 'approved';
+                  const isPending = req.status === 'pending_approval';
+
+                  return (
+                    <div
+                      key={req.id}
+                      className={`p-5 rounded-2xl border transition shadow-2xs bg-white ${
+                        isPending
+                          ? 'border-amber-300 ring-1 ring-amber-300/30'
+                          : isApproved
+                          ? 'border-emerald-200'
+                          : 'border-slate-200 opacity-75'
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                              {req.id}
+                            </span>
+                            <h4 className="font-extrabold text-slate-900 text-base">{req.businessName}</h4>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                              {req.category}
+                            </span>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                isApproved
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : isPending
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {isApproved ? '✅ Workspace Active' : isPending ? '⏳ Awaiting Super Admin Review' : '❌ Rejected'}
+                            </span>
+                          </div>
+
+                          {/* Details Row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 text-xs text-slate-600">
+                            <div>
+                              <span className="text-slate-400 font-medium">Owner: </span>
+                              <span className="font-semibold text-slate-800">{req.ownerName}</span> ({req.ownerEmail})
+                            </div>
+                            <div>
+                              <span className="text-slate-400 font-medium">Location: </span>
+                              <span className="font-semibold text-slate-800">{req.branchLocation}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 font-medium">Target Plan: </span>
+                              <span className="font-bold text-amber-700 uppercase font-mono">{req.planTier} Tier</span>
+                            </div>
+                          </div>
+
+                          {/* WhatsApp Cloud API & OTP details */}
+                          <div className="flex items-center gap-3 pt-1 flex-wrap text-xs">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-mono font-bold">
+                              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>WABA Line: {req.wabaPhone}</span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>OTP Mobile Verified</span>
+                            </span>
+                            {req.hasDeletedFromConsumerApp && (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span>Confirmed Not On Mobile WhatsApp</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {req.notes && (
+                            <p className="text-xs text-slate-500 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                              "{req.notes}"
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex lg:flex-col items-center gap-2 shrink-0">
+                          {isPending && (
+                            <button
+                              onClick={() => {
+                                const planAmounts = { starter: 2499, growth: 5999, enterprise: 14999 };
+                                const newTenant: PlatformTenant = {
+                                  id: req.id.replace('REQ', 'TN'),
+                                  businessName: req.businessName,
+                                  initials: req.businessName.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'TN',
+                                  branch: req.branchLocation || 'Main Hub',
+                                  ownerName: req.ownerName,
+                                  ownerEmail: req.ownerEmail,
+                                  ownerPhone: req.ownerPhone,
+                                  tier: req.planTier,
+                                  amount: planAmounts[req.planTier] || 5999,
+                                  billingCycle: 'monthly',
+                                  createdAt: new Date().toISOString().split('T')[0],
+                                  lastPaymentDate: new Date().toISOString().split('T')[0],
+                                  lastPaymentAmount: planAmounts[req.planTier] || 5999,
+                                  lastPaymentMethod: 'Direct Approval',
+                                  nextPaymentDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                                  paymentStatus: 'paid',
+                                  metaWalletBalance: 2000,
+                                  metaWalletCurrency: '₹',
+                                  metaWalletStatus: 'healthy',
+                                  metaDailyLimit: 25000,
+                                  metaTier: req.planTier === 'enterprise' ? 'Tier 3 (100k/day)' : 'Tier 2 (10k/day)',
+                                  activeLicenses: 5,
+                                  maxLicenses: req.planTier === 'enterprise' ? 30 : req.planTier === 'growth' ? 15 : 5,
+                                  onlineStaffCount: 1,
+                                  status: 'active',
+                                  wabaStatus: 'connected',
+                                  wabaPhone: req.wabaPhone,
+                                  wabaId: `WABA-${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`,
+                                  wabaQualityScore: 'HIGH',
+                                  wabaLatencyMs: 40,
+                                  lastWebhookPing: 'Just now',
+                                  messagesSentThisMonth: 0,
+                                  monthlyMessageLimit: req.planTier === 'enterprise' ? 100000 : 50000,
+                                  color: 'from-amber-600 to-yellow-600',
+                                  features: {
+                                    multiAccount: true,
+                                    botBuilder: true,
+                                    interactiveButtons: true,
+                                    customBranding: true,
+                                    aiAssistant: true,
+                                    bulkCampaigns: true,
+                                    voiceNotes: true,
+                                    apiWebhooks: true,
+                                  },
+                                  sidebarModules: (req.requestedModules && req.requestedModules.length > 0)
+                                    ? req.requestedModules as any
+                                    : ['dashboard', 'conversations', 'messenger', 'crm', 'ops', 'automation', 'roles', 'settings'],
+                                };
+
+                                saveTenants([newTenant, ...tenants.filter((t) => t.id !== newTenant.id)]);
+                                const updated = signupRequests.map((r) => (r.id === req.id ? { ...r, status: 'approved' as const } : r));
+                                setSignupRequests(updated);
+                                saveSignupRequests(updated);
+                                addToast(`✅ Workspace for "${req.businessName}" approved & provisioned!`, 'success');
+                              }}
+                              className="w-full px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Approve & Provision</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setActiveTab('sidebar_config');
+                              addToast(`Customizing features for ${req.businessName}...`, 'info');
+                            }}
+                            className="w-full px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Sliders className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Customize Modules</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              addToast(`📲 WhatsApp Welcome dispatched to ${req.wabaPhone} (${req.businessName})!`, 'success');
+                            }}
+                            className="w-full px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-bold transition cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <Send className="w-3 h-3 text-emerald-600" />
+                            <span>WhatsApp Welcome</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         )}
 

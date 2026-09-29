@@ -345,4 +345,34 @@ export const qiyamApi = {
   async aiChat(prompt: string) {
     return apiClient.post('/ai/chat/', { prompt });
   },
+
+  // RCS Business Messaging API
+  async fetchRcsConfig(): Promise<any> {
+    try {
+      return await apiClient.get('/conversations/rcs/config/');
+    } catch {
+      return null;
+    }
+  },
+
+  async saveRcsConfig(config: Record<string, any>): Promise<any> {
+    return apiClient.post('/conversations/rcs/config/', config);
+  },
+
+  async testRcsConnection(): Promise<any> {
+    return apiClient.post('/conversations/rcs/test-connection/', {});
+  },
+
+  async checkRcsCapability(phone: string): Promise<any> {
+    return apiClient.post('/conversations/rcs/check-capability/', { phone });
+  },
+
+  async sendRcsMessage(payload: Record<string, any>): Promise<any> {
+    return apiClient.post('/conversations/rcs/send/', payload);
+  },
+
+  async simulateRcsInbound(payload: Record<string, any>): Promise<any> {
+    return apiClient.post('/conversations/rcs/simulate/', payload);
+  },
 };
+

@@ -19,12 +19,13 @@ import {
 import { GeneralSettings } from './settings/GeneralSettings';
 import { BackupRestoreSettings } from './settings/BackupRestoreSettings';
 import { WhatsAppChannelSettings } from './settings/WhatsAppChannelSettings';
+import { RCSSettings } from './settings/RCSSettings';
 import { SubscriptionSettings } from './settings/SubscriptionSettings';
 import { SecuritySettings } from './settings/SecuritySettings';
 import { NotificationSettings } from './settings/NotificationSettings';
 import { exportBackupToFile } from '@/utils/backupManager';
 
-export type SettingsTab = 'general' | 'backup' | 'whatsapp' | 'subscription' | 'security' | 'notifications';
+export type SettingsTab = 'general' | 'backup' | 'whatsapp' | 'rcs' | 'subscription' | 'security' | 'notifications';
 
 interface SettingsViewProps {
   initialTab?: SettingsTab;
@@ -35,6 +36,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'genera
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>(() => {
     if (activeTab === 'settings-notifications') return 'notifications';
     if (activeTab === 'settings-whatsapp') return 'whatsapp';
+    if (activeTab === 'settings-rcs') return 'rcs';
     if (activeTab === 'settings-backup') return 'backup';
     return initialTab;
   });
@@ -45,6 +47,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'genera
       setActiveSettingsTab('notifications');
     } else if (activeTab === 'settings-whatsapp') {
       setActiveSettingsTab('whatsapp');
+    } else if (activeTab === 'settings-rcs') {
+      setActiveSettingsTab('rcs');
     } else if (activeTab === 'settings-backup') {
       setActiveSettingsTab('backup');
     } else if (initialTab) {
@@ -86,6 +90,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'genera
       icon: MessageSquare,
       description: 'Meta Cloud API credentials, webhook endpoints & SLA health',
       badge: 'Live',
+    },
+    {
+      id: 'rcs' as SettingsTab,
+      label: 'RCS Business Messaging',
+      shortLabel: 'RCS Gateway',
+      icon: Sparkles,
+      description: 'Carrier Universal Profile 2.4, Google Jibe, verified brand & action buttons',
+      badge: 'Universal UP 2.4',
+      highlight: true,
     },
     {
       id: 'subscription' as SettingsTab,
@@ -238,6 +251,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'genera
           {activeSettingsTab === 'general' && <GeneralSettings />}
           {activeSettingsTab === 'backup' && <BackupRestoreSettings />}
           {activeSettingsTab === 'whatsapp' && <WhatsAppChannelSettings />}
+          {activeSettingsTab === 'rcs' && <RCSSettings />}
           {activeSettingsTab === 'subscription' && <SubscriptionSettings />}
           {activeSettingsTab === 'security' && <SecuritySettings />}
           {activeSettingsTab === 'notifications' && <NotificationSettings />}

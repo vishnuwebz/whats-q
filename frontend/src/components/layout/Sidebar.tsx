@@ -14,6 +14,7 @@ import {
   Award, Lock
 } from 'lucide-react';
 import { isModuleUnlockedForTenant, DEMO_EXPIRED_TENANT } from '@/utils/featureEntitlements';
+import { getCurrentAuthUser, performLogout } from '@/utils/authService';
 
 interface SidebarMenuItem {
   tab: TabType;
@@ -41,15 +42,17 @@ export interface SidebarTenantItem {
 const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'landing', title: 'Landing Page Showcase', category: 'Main', icon: Globe, keywords: 'landing website marketing showcase public portal' },
   { tab: 'dashboard', title: 'Dashboard', category: 'Main', icon: LayoutDashboard, keywords: 'home overview analytics metrics' },
+  { tab: 'employee-portal', title: 'Staff Portal', category: 'Main', icon: Users, keywords: 'employee staff duty punch attendance chats portal' },
   { tab: 'conversations', title: 'Conversations', category: 'Messenger', icon: MessageSquare, keywords: 'chats messages inbox whatsapp live customer' },
+  { tab: 'rcs-messaging', title: 'RCS Messaging', category: 'Messenger', icon: Sparkles, keywords: 'rcs rich communication services google rbm carrier universal profile jibe rich cards buttons verified carrier' },
   { tab: 'bulk-overview', title: 'Bulk Message Overview', category: 'Messenger', icon: BarChart3, keywords: 'broadcast dashboard stats metrics analytics reach' },
   { tab: 'bulk-send', title: 'Send Bulk Message', category: 'Messenger', icon: Send, keywords: 'broadcast mass marketing campaigns blast dispatch' },
+  { tab: 'bulk-scheduled', title: 'Scheduled Messages', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar' },
   { tab: 'template-hub', title: 'Template Hub', category: 'Messenger', icon: Layers, keywords: 'meta templates approved quick replies template hub' },
   { tab: 'template-create', title: 'Create Template', category: 'Messenger', icon: Plus, keywords: 'create template meta whatsapp submit new' },
   { tab: 'bulk-campaigns', title: 'Campaign History', category: 'Messenger', icon: Layers, keywords: 'broadcast analytics sent delivered open rates' },
   { tab: 'bulk-recipients', title: 'Recipient Lists', category: 'Messenger', icon: Users, keywords: 'contacts audience segments groups tags' },
   { tab: 'bulk-suppression', title: 'Blocked Contacts & Opt-outs', category: 'Messenger', icon: Ban, keywords: 'blocked contacts opt-out stop unsubscribe dnd suppression compliance blacklisted hub' },
-  { tab: 'bulk-scheduled', title: 'Scheduled Messages', category: 'Messenger', icon: Clock, keywords: 'timed future automated queue calendar' },
   { tab: 'crm-leads', title: 'Leads', category: 'CRM', icon: Users, keywords: 'prospects pipeline inquiries conversion funnel' },
   { tab: 'crm-customers', title: 'Customers', category: 'CRM', icon: UserCheck, keywords: 'clients directory accounts profiles' },
   { tab: 'crm-deals', title: 'Pipeline Deals', category: 'CRM', icon: IndianRupee, keywords: 'stages revenue opportunities sales forecast' },
@@ -107,6 +110,7 @@ export type AccordionSection = 'messenger' | 'crm' | 'ops' | 'finance' | 'automa
 export const getTabAccordionSection = (tab: string): AccordionSection => {
   if ([
     'conversations',
+    'rcs-messaging',
     'bulk-overview',
     'bulk-send',
     'bulk-templates',
@@ -1105,6 +1109,29 @@ export const Sidebar: React.FC = () => {
                       </button>
                     )}
 
+                    {/* RCS Messaging (Dedicated RBM Gateway Console) */}
+                    <button
+                      data-tab="rcs-messaging"
+                      onClick={() => handleTabClick('rcs-messaging')}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('rcs-messaging')
+                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                          : 'hover:bg-[#16233B] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Sparkles className={`w-4 h-4 shrink-0 ${isActive('rcs-messaging') ? 'text-white' : 'text-emerald-400'}`} />
+                        <span>RCS Messaging</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                        isActive('rcs-messaging')
+                          ? 'bg-white/20 text-white'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      }`}>
+                        RCS
+                      </span>
+                    </button>
+
                     {/* Bulk Message Items */}
                     {isModuleEnabled('messenger') && (
                       <>
@@ -1134,6 +1161,20 @@ export const Sidebar: React.FC = () => {
                     >
                       <Send className={`w-4 h-4 shrink-0 ${isActive('bulk-send') ? 'text-white' : 'text-slate-400'}`} />
                       <span>Send Bulk Message</span>
+                    </button>
+
+                    {/* Scheduled Messages */}
+                    <button
+                      data-tab="bulk-scheduled"
+                      onClick={() => handleTabClick('bulk-scheduled')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
+                        isActive('bulk-scheduled')
+                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                          : 'hover:bg-[#16233B] text-slate-300'
+                      }`}
+                    >
+                      <Clock className={`w-4 h-4 shrink-0 ${isActive('bulk-scheduled') ? 'text-white' : 'text-slate-400'}`} />
+                      <span>Scheduled Messages</span>
                     </button>
 
                     {/* Template Hub */}
@@ -1219,20 +1260,6 @@ export const Sidebar: React.FC = () => {
                         </span>
                       )}
                     </button>
-
-                    {/* Scheduled Messages */}
-                    <button
-                      data-tab="bulk-scheduled"
-                      onClick={() => handleTabClick('bulk-scheduled')}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        isActive('bulk-scheduled')
-                          ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                          : 'hover:bg-[#16233B] text-slate-300'
-                      }`}
-                    >
-                        <Clock className={`w-4 h-4 shrink-0 ${isActive('bulk-scheduled') ? 'text-white' : 'text-slate-400'}`} />
-                        <span>Scheduled Messages</span>
-                      </button>
                     </>
                   )}
                   </div>
@@ -2063,6 +2090,17 @@ export const Sidebar: React.FC = () => {
               />
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#09101F] absolute -bottom-0.5 -right-0.5" />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                performLogout();
+                setActiveTab('login');
+              }}
+              title="Sign Out / Logout"
+              className="mt-1 p-1 rounded-md text-rose-400 hover:text-rose-200 hover:bg-rose-900/40 transition cursor-pointer flex justify-center"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </>
         ) : (
           <>
@@ -2106,14 +2144,27 @@ export const Sidebar: React.FC = () => {
                   <div className="text-[10px] text-slate-400 truncate">{userProfile?.role || 'Owner & Super Admin'}</div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsHelpOpen(true)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
-                title="Qiyam OS Help & Shortcuts"
-              >
-                <HelpCircle className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsHelpOpen(true)}
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+                  title="Qiyam OS Help & Shortcuts"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    performLogout();
+                    setActiveTab('login');
+                  }}
+                  className="p-1 rounded-md text-rose-400 hover:text-rose-200 hover:bg-rose-950/60 border border-rose-900/30 transition cursor-pointer"
+                  title="Sign Out / Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </>
         )}

@@ -340,3 +340,72 @@ class SuppressionRecord(models.Model):
             'notes': self.notes,
         }
 
+
+class RCSBusinessConfig(models.Model):
+    """
+    RCS Business Messaging (RBM / Universal Profile 2.4) Configuration & Credentials.
+    Supports Google RBM Cloud API, Twilio RCS, Sinch, Infobip, and Qiyam Cloud Gateway.
+    """
+    PROVIDER_CHOICES = [
+        ('qiyam_cloud', 'Built-in Qiyam RCS Gateway'),
+        ('google_rbm', 'Google RCS Business Messaging (RBM)'),
+        ('twilio', 'Twilio RCS Messaging'),
+        ('sinch', 'Sinch Enterprise RCS'),
+        ('infobip', 'Infobip RCS'),
+    ]
+
+    provider = models.CharField(max_length=50, choices=PROVIDER_CHOICES, default='qiyam_cloud')
+    agent_name = models.CharField(max_length=150, default='Qiyam Business Solutions')
+    agent_id = models.CharField(max_length=150, default='qiyam-rbm-prod-agent-778')
+    brand_display_name = models.CharField(max_length=150, default='Qiyam Ventures (Verified)')
+    brand_logo_url = models.TextField(blank=True, default='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80')
+    brand_hero_color = models.CharField(max_length=20, default='#059669')
+    api_key = models.TextField(blank=True, default='rcs_live_key_qiyam_2026_active')
+    api_secret = models.TextField(blank=True, default='sk_rcs_sec_99482716301_rbm')
+    webhook_url = models.CharField(max_length=255, default='https://your-domain.com/api/conversations/rcs/webhook/')
+    webhook_verify_token = models.CharField(max_length=100, default='qiyam_rcs_secret_webhook_verify_2026')
+    sms_fallback_enabled = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    connection_status = models.CharField(max_length=50, default='connected') # connected, disconnected, testing, error
+    verified_sender = models.BooleanField(default=True)
+    carrier_support_jio = models.BooleanField(default=True)
+    carrier_support_airtel = models.BooleanField(default=True)
+    carrier_support_vi = models.BooleanField(default=True)
+    carrier_support_international = models.BooleanField(default=True)
+    auto_reply_enabled = models.BooleanField(default=True)
+    last_tested_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"RCS Config: {self.brand_display_name} ({self.provider}) [{self.connection_status}]"
+
+    def to_dict(self):
+        return {
+            'provider': self.provider,
+            'agentName': self.agent_name,
+            'agentId': self.agent_id,
+            'brandDisplayName': self.brand_display_name,
+            'brandLogoUrl': self.brand_logo_url,
+            'brandHeroColor': self.brand_hero_color,
+            'apiKey': self.api_key,
+            'apiSecret': self.api_secret,
+            'webhookUrl': self.webhook_url,
+            'webhookVerifyToken': self.webhook_verify_token,
+            'smsFallbackEnabled': self.sms_fallback_enabled,
+            'status': self.connection_status,
+            'verifiedSender': self.verified_sender,
+            'carrierStatus': {
+                'jio': self.carrier_support_jio,
+                'airtel': self.carrier_support_airtel,
+                'vi': self.carrier_support_vi,
+                'international': self.carrier_support_international,
+            },
+            'lastTestedAt': self.last_tested_at.strftime('%b %d, %Y, %I:%M %p') if self.last_tested_at else 'Verified • UP 2.4 Ready',
+            'autoReplyEnabled': self.auto_reply_enabled,
+            'defaultQuickReplies': ['📅 Book Service', '📍 Our Locations', '💳 Pay Invoice', '👨‍💼 Speak to Human Agent'],
+        }
+
+
