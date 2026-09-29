@@ -54,7 +54,20 @@ class SystemUpdateService:
 
         # Check deployment lock — if deployment is executing, suppress update_available
         lock_file = base_dir / 'deploy_in_progress'
-        if lock_file.exists() or (cls._current_update_proc is not None and cls._current_update_proc.poll() is None):
+        if lock_file.exists():
+            try:
+                # If lock file is older than 120 seconds, it's stale from a previous run: auto-clean it
+                if (time.time() - lock_file.stat().st_mtime) > 120:
+                    lock_file.unlink(missing_ok=True)
+                else:
+                    info['in_progress'] = True
+                    info['update_available'] = False
+                    info['deploy_status'] = 'deploying'
+                    info['current_message'] = 'System deployment is currently running on host server'
+                    return info
+            except Exception:
+                pass
+        elif (cls._current_update_proc is not None and cls._current_update_proc.poll() is None):
             info['in_progress'] = True
             info['update_available'] = False
             info['deploy_status'] = 'deploying'
@@ -257,11 +270,17 @@ class SystemUpdateService:
         base_dir = Path(__file__).resolve().parent.parent.parent
         lock_file = base_dir / 'deploy_in_progress'
         if lock_file.exists():
-            return {
-                'in_progress': True,
-                'status': 'deploying',
-                'message': 'System update and deployment currently executing on host.'
-            }
+            try:
+                if (time.time() - lock_file.stat().st_mtime) > 120:
+                    lock_file.unlink(missing_ok=True)
+                else:
+                    return {
+                        'in_progress': True,
+                        'status': 'deploying',
+                        'message': 'System update and deployment currently executing on host.'
+                    }
+            except Exception:
+                pass
 
         if cls._current_update_proc is not None:
             poll = cls._current_update_proc.poll()

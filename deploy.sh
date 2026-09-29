@@ -26,6 +26,7 @@ echo -e "${BLUE}[INFO] Update started at: ${DATE_FORMATTED}${NC}"
 # 0. INITIALIZE DEPLOYMENT LOCK
 echo -e "\n${YELLOW}[LOCK] Setting deployment in-progress lock...${NC}"
 $SUDO_CMD touch "$APP_DIR/deploy_in_progress" 2>/dev/null || true
+trap '$SUDO_CMD rm -f "$APP_DIR/deploy_in_progress" 2>/dev/null || true' EXIT
 cat <<EOF | $SUDO_CMD tee "$APP_DIR/deploy_status.json" > /dev/null 2>&1 || true
 {
   "in_progress": true,
@@ -261,7 +262,47 @@ fi
 $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
 $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
-# 5. RESTART SERVICES
+# 5. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
+echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
+
+DEPLOY_VERSION="2.4.30"
+if [ -f "$APP_DIR/frontend/build_output/version.json" ]; then
+    EXTRACTED_V=$(grep -o '"version": *"[^"]*"' "$APP_DIR/frontend/build_output/version.json" 2>/dev/null | cut -d'"' -f4)
+    if [ -n "$EXTRACTED_V" ]; then
+        DEPLOY_VERSION="$EXTRACTED_V"
+    fi
+fi
+
+cat <<EOF | $SUDO_CMD tee "$APP_DIR/frontend/dist/version.json" > /dev/null
+{
+  "commit": "$COMMIT_HASH",
+  "author": "$COMMIT_AUTHOR",
+  "date": "$COMMIT_DATE",
+  "message": "$COMMIT_MSG",
+  "timestamp": $(date +%s%3N 2>/dev/null || date +%s),
+  "version": "$DEPLOY_VERSION",
+  "deploy_status": "completed",
+  "deployed": true,
+  "in_progress": false
+}
+EOF
+$SUDO_CMD cp "$APP_DIR/frontend/dist/version.json" "$APP_DIR/frontend/public/version.json" 2>/dev/null || true
+
+cat <<EOF | $SUDO_CMD tee "$APP_DIR/deploy_status.json" > /dev/null
+{
+  "in_progress": false,
+  "status": "completed",
+  "deployed": true,
+  "completed_at": "$DATE_FORMATTED",
+  "commit": "$COMMIT_HASH"
+}
+EOF
+$SUDO_CMD cp "$APP_DIR/deploy_status.json" "$APP_DIR/frontend/dist/deploy_status.json" 2>/dev/null || true
+
+# Release the lock BEFORE restarting services
+$SUDO_CMD rm -f "$APP_DIR/deploy_in_progress" 2>/dev/null || true
+
+# 6. RESTART SERVICES
 echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"
 
 # Ensure fast reload & 3s stop timeout override and persistent EnvironmentFile exists for whatsq-backend
@@ -293,37 +334,6 @@ if [ -d "/etc/nginx/conf.d" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
 else
     $SUDO_CMD systemctl reload nginx 2>/dev/null || true
 fi
-
-# 6. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
-echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
-cat <<EOF | $SUDO_CMD tee "$APP_DIR/frontend/dist/version.json" > /dev/null
-{
-  "commit": "$COMMIT_HASH",
-  "author": "$COMMIT_AUTHOR",
-  "date": "$COMMIT_DATE",
-  "message": "$COMMIT_MSG",
-  "timestamp": $(date +%s%3N 2>/dev/null || date +%s),
-  "version": "2.4.29",
-  "deploy_status": "completed",
-  "deployed": true,
-  "in_progress": false
-}
-EOF
-$SUDO_CMD cp "$APP_DIR/frontend/dist/version.json" "$APP_DIR/frontend/public/version.json" 2>/dev/null || true
-
-cat <<EOF | $SUDO_CMD tee "$APP_DIR/deploy_status.json" > /dev/null
-{
-  "in_progress": false,
-  "status": "completed",
-  "deployed": true,
-  "completed_at": "$DATE_FORMATTED",
-  "commit": "$COMMIT_HASH"
-}
-EOF
-$SUDO_CMD cp "$APP_DIR/deploy_status.json" "$APP_DIR/frontend/dist/deploy_status.json" 2>/dev/null || true
-
-# Release the lock
-$SUDO_CMD rm -f "$APP_DIR/deploy_in_progress" 2>/dev/null || true
 
 # Instant broadcast of OTA update event to active browser SSE streams
 echo -e "\n${YELLOW}[OTA] Broadcasting deployment completion to active browser sessions...${NC}"
