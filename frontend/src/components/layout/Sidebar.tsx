@@ -673,14 +673,59 @@ export const Sidebar: React.FC = () => {
 
   // Mutually exclusive single-accordion state: opening one automatically collapses all others to save space & scrolling
   const [expandedSection, setExpandedSection] = useState<AccordionSection>(null);
+  const scrollTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scrollToSection = React.useCallback((section: AccordionSection) => {
+    if (!section) return;
+    if (scrollTimerRef.current) {
+      clearTimeout(scrollTimerRef.current);
+    }
+
+    scrollTimerRef.current = setTimeout(() => {
+      const nav = sidebarNavRef.current;
+      if (!nav) return;
+
+      const sectionEl = nav.querySelector<HTMLElement>(`[data-section="${section}"]`);
+      if (!sectionEl) return;
+
+      const navRect = nav.getBoundingClientRect();
+      const elRect = sectionEl.getBoundingClientRect();
+
+      // Relative distance of section container from the top edge of nav
+      const relativeOffset = elRect.top - navRect.top;
+      // Scroll nav so the newly opened section is pinned right at the top (with 8px breathing space)
+      const targetScrollTop = nav.scrollTop + relativeOffset - 8;
+
+      nav.scrollTo({
+        top: Math.max(0, targetScrollTop),
+        behavior: 'smooth',
+      });
+    }, 45);
+  }, []);
 
   const toggleSection = (section: AccordionSection) => {
-    setExpandedSection((prev) => (prev === section ? null : section));
+    setExpandedSection((prev) => {
+      const next = prev === section ? null : section;
+      if (next) {
+        scrollToSection(next);
+      }
+      return next;
+    });
   };
 
   const openSection = (section: AccordionSection) => {
     setExpandedSection(section);
+    if (section) {
+      scrollToSection(section);
+    }
   };
+
+  // Automatically scroll opened section to the top whenever expandedSection changes
+  React.useEffect(() => {
+    if (expandedSection) {
+      scrollToSection(expandedSection);
+    }
+  }, [expandedSection, scrollToSection]);
 
   const messengerOpen = expandedSection === 'messenger';
   const crmOpen = expandedSection === 'crm';
@@ -1034,7 +1079,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Messenger (Accordion containing Conversations, Bulk Message Overview, Send Bulk Message, etc.) */}
           {(isModuleEnabled('conversations') || isModuleEnabled('messenger')) && (
-          <div>
+          <div data-section="messenger">
             {isCollapsed ? (
               <button
                 onClick={() => {
@@ -1270,7 +1315,7 @@ export const Sidebar: React.FC = () => {
 
         {/* CRM */}
         {isModuleEnabled('crm') && (
-        <div>
+        <div data-section="crm">
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -1373,7 +1418,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Operations */}
         {isModuleEnabled('ops') && (
-        <div>
+        <div data-section="ops">
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -1514,7 +1559,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Finance */}
         {isModuleEnabled('finance') && (
-        <div>
+        <div data-section="finance">
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -1665,7 +1710,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Automation */}
         {isModuleEnabled('automation') && (
-        <div>
+        <div data-section="automation">
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -1756,7 +1801,7 @@ export const Sidebar: React.FC = () => {
 
         {/* AI Assistant */}
         {isModuleEnabled('ai') && (
-        <div>
+        <div data-section="ai">
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -2174,7 +2219,7 @@ export const Sidebar: React.FC = () => {
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                   Update Available
                 </span>
-                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.27'}</span>
+                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.28'}</span>
               </div>
               <button
                 onClick={handleBackupAndRestart}

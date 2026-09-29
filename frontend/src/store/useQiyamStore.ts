@@ -7766,7 +7766,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Fix Notifications Popover Stacking Context on CRM Leads v2.4.27',
+        latest_message: 'Sidebar Accordion Auto-Scroll & Viewport Anchoring v2.4.28',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,
