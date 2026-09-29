@@ -8,14 +8,12 @@ import {
   MessageSquare,
   Lock,
   Mail,
-  Phone,
   Eye,
   EyeOff,
   Sparkles,
   ArrowRight,
   AlertTriangle,
   RefreshCw,
-  CheckCircle2,
   Check,
   Smartphone,
   ChevronRight,
@@ -328,202 +326,187 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-between bg-[#040914] relative overflow-x-hidden text-slate-100 selection:bg-emerald-500 selection:text-slate-950 font-sans">
+    <div className="h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col justify-between bg-gradient-to-br from-[#F4FAF7] via-[#EFF8F4] to-[#E9F6F1] relative text-slate-800 selection:bg-emerald-500 selection:text-white font-sans">
       {/* ── Ambient Radial Mesh Glows & Background Curves ── */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-emerald-600/15 via-teal-500/10 to-transparent rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-tl from-cyan-600/15 via-teal-600/10 to-transparent rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-emerald-200/40 via-teal-100/30 to-transparent rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-tl from-teal-200/40 via-emerald-100/30 to-transparent rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-96 h-96 bg-emerald-200/30 rounded-full blur-[90px] pointer-events-none" />
 
       {/* Subtle Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(#10b98115_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
+      <div className="absolute inset-0 bg-[radial-gradient(#10b98118_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-60" />
 
       {/* ========================================================================= */}
       {/* 1. TOP HEADER BAR                                                         */}
       {/* ========================================================================= */}
-      <header className="w-full flex items-center justify-between px-6 lg:px-12 py-5 max-w-7xl mx-auto z-20">
+      <header className="w-full flex items-center justify-between px-6 lg:px-12 py-3 sm:py-4 max-w-7xl mx-auto z-20 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-emerald-500/30">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-emerald-500/25">
             Q
           </div>
           <div>
-            <div className="text-sm font-extrabold tracking-wider text-white uppercase flex items-center gap-1.5">
+            <div className="text-sm font-extrabold tracking-wider text-slate-900 uppercase flex items-center gap-1.5">
               QIYAM BUSINESS OS
             </div>
-            <div className="text-[11px] text-slate-400 font-medium">
-              Multi-Tenant WhatsApp Cloud API & Operations Platform
+            <div className="text-[11px] font-medium text-slate-500">
+              Multi-Tenant WhatsApp Cloud API &amp; Operations Platform
             </div>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B1728]/80 border border-emerald-500/30 text-emerald-400 text-xs font-semibold backdrop-blur-md shadow-xs">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Trusted by businesses worldwide</span>
+        {/* Right Badge: Trusted by businesses worldwide */}
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="hidden sm:inline">Trusted by businesses worldwide</span>
+          <span className="sm:hidden text-[11px]">Official Meta Partner</span>
         </div>
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. MAIN CENTER HERO & SPLIT SECTION                                       */}
+      {/* 2. MAIN CENTER HERO + DUAL COLUMN CONTENT                                 */}
       {/* ========================================================================= */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-12 py-4 lg:py-6 z-10 flex-1 flex items-center">
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center w-full">
+      <main className="w-full max-w-7xl mx-auto px-6 lg:px-12 flex-1 min-h-0 flex items-center justify-center z-10 overflow-y-auto lg:overflow-hidden py-1 sm:py-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center w-full my-auto">
           {/* ─────────────────────────────────────────────────────────────────────── */}
-          {/* LEFT SIDE: HERO HEADLINE + FEATURE CARDS + 3D DASHBOARD GRAPHIC         */}
+          {/* LEFT COLUMN: HERO HEADLINE + 2x2 FEATURE CARDS + 3D TABLET + DEMO BAR   */}
           {/* ─────────────────────────────────────────────────────────────────────── */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Meta Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#081726] border border-emerald-500/40 text-emerald-300 text-xs font-semibold shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-3.5 sm:space-y-4">
+            {/* Meta Cloud API Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] font-bold w-fit shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
+              </span>
               <span>Meta WhatsApp Cloud API Solution Provider</span>
             </div>
 
-            {/* Headline */}
-            <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-[1.12]">
+            {/* Hero Headline */}
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-black tracking-tight text-slate-900 leading-[1.18]">
                 Scale Customer{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+                <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
                   Engagement
                 </span>{' '}
                 with Official WhatsApp Automation
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-xl">
+              <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed max-w-xl font-normal pt-0.5">
                 The all-in-one suite for hotels, retail chains, healthcare, and enterprise field teams. Run verified bulk broadcasts, AI customer agents, live inbox, and employee management.
               </p>
             </div>
 
-            {/* Middle Section: 4 Feature Cards (2x2) with 3D Mockup */}
+            {/* Row with 2x2 Feature Cards and Isometric 3D Tablet Graphic */}
             <div className="relative pt-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-lg z-10 relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl relative z-10">
                 {/* Feature 1 */}
-                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-emerald-500/40 transition-all group backdrop-blur-md">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2.5 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all">
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-emerald-300 transition-all shadow-xs flex items-start gap-2.5 group">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
                     <Send className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-xs text-white group-hover:text-emerald-300 transition">
-                    Bulk Broadcasts
-                  </h3>
-                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
-                    Deliver thousands of approved messages with 99.9% read rates.
-                  </p>
+                  <div>
+                    <h2 className="text-xs font-bold text-slate-900 leading-tight">Bulk Broadcasts</h2>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                      Deliver thousands of approved messages with 99.9% read rates.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Feature 2 */}
-                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-teal-500/40 transition-all group backdrop-blur-md">
-                  <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center mb-2.5 group-hover:bg-teal-500/20 group-hover:scale-105 transition-all">
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-emerald-300 transition-all shadow-xs flex items-start gap-2.5 group">
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100 group-hover:scale-105 transition-transform">
                     <Building2 className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-xs text-white group-hover:text-teal-300 transition">
-                    Custom Client Portals
-                  </h3>
-                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
-                    Dedicated modules for every client with branded dashboards.
-                  </p>
+                  <div>
+                    <h2 className="text-xs font-bold text-slate-900 leading-tight">Custom Client Portals</h2>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                      Dedicated modules for every client with branded dashboards.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Feature 3 */}
-                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-cyan-500/40 transition-all group backdrop-blur-md">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mb-2.5 group-hover:bg-cyan-500/20 group-hover:scale-105 transition-all">
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-emerald-300 transition-all shadow-xs flex items-start gap-2.5 group">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
                     <MessageSquare className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-xs text-white group-hover:text-cyan-300 transition">
-                    Employee Dashboards
-                  </h3>
-                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
-                    Staff login via WhatsApp OTP, track attendance & performance.
-                  </p>
+                  <div>
+                    <h2 className="text-xs font-bold text-slate-900 leading-tight">Employee Dashboards</h2>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                      Staff login via WhatsApp OTP, track attendance &amp; performance.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Feature 4 */}
-                <div className="p-3.5 rounded-2xl bg-[#091527]/85 border border-[#142944] hover:border-emerald-500/40 transition-all group backdrop-blur-md">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2.5 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all">
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-emerald-300 transition-all shadow-xs flex items-start gap-2.5 group">
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100 group-hover:scale-105 transition-transform">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-xs text-white group-hover:text-emerald-300 transition">
-                    Enterprise Ready
-                  </h3>
-                  <p className="text-[11px] text-slate-400 leading-snug mt-1">
-                    Secure, scalable, and built for multi-tenant operations.
-                  </p>
+                  <div>
+                    <h2 className="text-xs font-bold text-slate-900 leading-tight">Enterprise Ready</h2>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                      Secure, scalable, and built for multi-tenant operations.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* ── 3D Isometric Tablet Mockup & Floating WhatsApp Icon ── */}
-              <div className="hidden xl:block absolute -right-6 -top-10 w-72 pointer-events-none select-none">
-                {/* Angled Glass Tablet Frame */}
-                <div className="relative w-full rounded-2xl bg-gradient-to-br from-[#0c1e36] to-[#071324] border border-emerald-500/30 p-3 shadow-2xl [transform:perspective(1000px)_rotateY(-12deg)_rotateX(6deg)] hover:[transform:perspective(1000px)_rotateY(-8deg)_rotateX(4deg)] transition-transform duration-500">
+              {/* ── 3D Tablet Mockup with Spline Chart (Visible on Large Screens Behind / Alongside) ── */}
+              <div className="hidden xl:block absolute -right-16 -top-10 w-72 h-48 pointer-events-none select-none z-0 transform perspective-1000 rotate-y-[-14deg] rotate-x-[8deg] scale-95 opacity-90">
+                <div className="w-full h-full rounded-2xl bg-white border border-slate-200/90 shadow-[0_20px_50px_rgba(0,100,60,0.12)] p-2.5 flex flex-col justify-between overflow-hidden">
                   {/* Tablet Header */}
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[10px]">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 rounded bg-emerald-500 text-[8px] font-bold text-white flex items-center justify-center">
-                        Q
-                      </div>
-                      <span className="font-bold text-slate-200 text-[9px]">Qiyam Business OS</span>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 text-[9px] text-slate-500">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <div className="w-3.5 h-3.5 rounded bg-emerald-500 text-white flex items-center justify-center text-[7px] font-black">Q</div>
+                      <span>Qiyam Business OS</span>
                     </div>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="text-[8px] bg-emerald-50 text-emerald-700 px-1 rounded font-semibold">Live WABA</span>
                   </div>
 
-                  {/* Tablet KPIs */}
-                  <div className="grid grid-cols-2 gap-2 my-2.5">
-                    <div className="p-2 rounded-lg bg-[#06101E] border border-slate-800/80">
-                      <div className="text-[8px] text-slate-400">Messages Sent</div>
-                      <div className="text-xs font-bold text-white font-mono mt-0.5">128,450</div>
-                      <div className="text-[7px] text-emerald-400 font-semibold">↑ 23%</div>
+                  {/* Tablet Stat Cards */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <div className="text-[8px] text-slate-400 font-medium">Messages Sent</div>
+                      <div className="text-[11px] font-bold text-slate-800">128,450</div>
+                      <div className="text-[8px] text-emerald-600 font-semibold">↑ 23%</div>
                     </div>
-                    <div className="p-2 rounded-lg bg-[#06101E] border border-slate-800/80">
-                      <div className="text-[8px] text-slate-400">Active Clients</div>
-                      <div className="text-xs font-bold text-white font-mono mt-0.5">24</div>
-                      <div className="text-[7px] text-emerald-400 font-semibold">↑ 3 new</div>
+                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                      <div className="text-[8px] text-slate-400 font-medium">Active Clients</div>
+                      <div className="text-[11px] font-bold text-slate-800">24</div>
+                      <div className="text-[8px] text-emerald-600 font-semibold">↑ 3 new</div>
                     </div>
                   </div>
 
-                  {/* Spline Chart Line */}
-                  <div className="py-1">
-                    <svg className="w-full h-10 overflow-visible" viewBox="0 0 200 60" fill="none">
+                  {/* Tablet SVG Spline Chart */}
+                  <div className="h-10 w-full pt-1">
+                    <svg className="w-full h-full" viewBox="0 0 200 40" fill="none">
                       <path
-                        d="M0 45 C 30 50, 50 20, 80 30 C 110 40, 140 10, 170 18 C 185 22, 195 5, 200 8"
-                        stroke="#10B981"
+                        d="M0 32 Q 35 15, 70 28 T 140 10 T 200 18"
+                        stroke="#10b981"
                         strokeWidth="2.5"
                         strokeLinecap="round"
+                        fill="none"
                       />
                       <path
-                        d="M0 45 C 30 50, 50 20, 80 30 C 110 40, 140 10, 170 18 C 185 22, 195 5, 200 8 L 200 60 L 0 60 Z"
-                        fill="url(#chart-gradient)"
-                        opacity="0.25"
+                        d="M0 32 Q 35 15, 70 28 T 140 10 T 200 18 L 200 40 L 0 40 Z"
+                        fill="url(#tabletLightGradient)"
+                        opacity="0.3"
                       />
                       <defs>
-                        <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10B981" />
-                          <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+                        <linearGradient id="tabletLightGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
                         </linearGradient>
                       </defs>
                     </svg>
                   </div>
-
-                  {/* Chat User Rows */}
-                  <div className="space-y-1 pt-1">
-                    <div className="flex items-center gap-2 p-1 rounded bg-[#06101E] text-[8px]">
-                      <div className="w-3.5 h-3.5 rounded-full bg-slate-700" />
-                      <div className="w-16 h-1.5 rounded bg-slate-700" />
-                    </div>
-                    <div className="flex items-center gap-2 p-1 rounded bg-[#06101E] text-[8px]">
-                      <div className="w-3.5 h-3.5 rounded-full bg-slate-700" />
-                      <div className="w-12 h-1.5 rounded bg-slate-700" />
-                    </div>
-                  </div>
                 </div>
 
-                {/* ── 3D WhatsApp Floating Cube with Glow ── */}
-                <div className="absolute -bottom-6 -left-8 pointer-events-auto">
-                  <div className="relative">
-                    {/* Pulsing Emerald Halo */}
-                    <div className="absolute -inset-2 rounded-2xl bg-emerald-400/40 blur-xl animate-pulse" />
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 p-0.5 shadow-[0_10px_30px_rgba(16,185,129,0.5)] transform -rotate-6 hover:rotate-0 transition-transform">
-                      <div className="w-full h-full rounded-[14px] bg-gradient-to-b from-emerald-500 to-teal-600 flex items-center justify-center relative overflow-hidden">
-                        <div className="absolute -top-6 -left-6 w-14 h-14 bg-white/30 rounded-full blur-xs" />
-                        {/* WhatsApp SVG Icon */}
-                        <svg className="w-8 h-8 text-white drop-shadow-md" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                        </svg>
-                      </div>
+                {/* 3D Floating WhatsApp Cube */}
+                <div className="absolute -bottom-3 -left-5">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-lg shadow-emerald-500/40 transform -rotate-12">
+                    <div className="w-full h-full rounded-[10px] bg-gradient-to-b from-emerald-400 to-emerald-600 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white drop-shadow-sm" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                      </svg>
                     </div>
                   </div>
                 </div>
@@ -531,10 +514,10 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
             </div>
 
             {/* ── 1-CLICK DEMO LOGIN BAR ── */}
-            <div className="pt-2">
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="font-extrabold text-amber-400 flex items-center gap-1.5 text-[11px] tracking-wider uppercase">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <div className="pt-1">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="font-extrabold text-amber-600 flex items-center gap-1.5 text-[11px] tracking-wider uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   1-Click Demo Login
                 </span>
                 <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
@@ -542,25 +525,25 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {/* 1. Super Admin Demo */}
                 <button
                   type="button"
                   onClick={() => {
                     handleSelectRole('super_admin');
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                  className={`p-2 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
                     loginRole === 'super_admin'
-                      ? 'bg-[#0E2138] border-amber-500/60 shadow-xs'
-                      : 'bg-[#091527]/90 border-[#142944] hover:border-slate-600'
+                      ? 'bg-amber-50/70 border-amber-300 shadow-2xs ring-1 ring-amber-400/40'
+                      : 'bg-white/90 border-slate-200/80 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                    <Crown className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                    <Crown className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">Super Admin</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate">admin @ admin@123</div>
+                    <div className="text-xs font-bold text-slate-900 truncate">Super Admin</div>
+                    <div className="text-[10px] text-slate-500 font-mono truncate">admin @ admin@123</div>
                   </div>
                 </button>
 
@@ -570,18 +553,18 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                   onClick={() => {
                     handleSelectRole('company_admin');
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                  className={`p-2 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
                     loginRole === 'company_admin'
-                      ? 'bg-[#0E2138] border-teal-500/60 shadow-xs'
-                      : 'bg-[#091527]/90 border-[#142944] hover:border-slate-600'
+                      ? 'bg-teal-50/70 border-teal-300 shadow-2xs ring-1 ring-teal-400/40'
+                      : 'bg-white/90 border-slate-200/80 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
-                    <Building2 className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-teal-100/80 text-teal-700 flex items-center justify-center shrink-0">
+                    <Building2 className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">Ambika Hotel</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate">ramachandran@...</div>
+                    <div className="text-xs font-bold text-slate-900 truncate">Ambika Hotel</div>
+                    <div className="text-[10px] text-slate-500 font-mono truncate">ramachandran@...</div>
                   </div>
                 </button>
 
@@ -591,18 +574,18 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                   onClick={() => {
                     handleSelectRole('employee');
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                  className={`p-2 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
                     loginRole === 'employee'
-                      ? 'bg-[#0E2138] border-cyan-500/60 shadow-xs'
-                      : 'bg-[#091527]/90 border-[#142944] hover:border-slate-600'
+                      ? 'bg-cyan-50/70 border-cyan-300 shadow-2xs ring-1 ring-cyan-400/40'
+                      : 'bg-white/90 border-slate-200/80 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <Users className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-cyan-100/80 text-cyan-700 flex items-center justify-center shrink-0">
+                    <Users className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">Staff Portal</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate">WhatsApp OTP</div>
+                    <div className="text-xs font-bold text-slate-900 truncate">Staff Portal</div>
+                    <div className="text-[10px] text-slate-500 font-mono truncate">WhatsApp OTP</div>
                   </div>
                 </button>
               </div>
@@ -610,94 +593,94 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
           </div>
 
           {/* ─────────────────────────────────────────────────────────────────────── */}
-          {/* RIGHT SIDE: THE SIGNATURE GLOWING LOGIN CARD                            */}
+          {/* RIGHT SIDE: THE SIGNATURE CLEAN WHITE LOGIN CARD                        */}
           {/* ─────────────────────────────────────────────────────────────────────── */}
           <div className="lg:col-span-5 w-full max-w-md mx-auto">
-            <div className="relative rounded-[28px] bg-[#071324]/95 border border-emerald-500/40 p-6 sm:p-7 shadow-[0_0_60px_-12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500/20 backdrop-blur-2xl">
+            <div className="relative rounded-[28px] bg-white/95 border border-slate-200/90 p-5 sm:p-6 shadow-[0_20px_50px_-10px_rgba(0,100,60,0.08)] ring-1 ring-slate-100 backdrop-blur-2xl">
               {/* Center Logo */}
-              <div className="flex flex-col items-center text-center mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-emerald-500/30 mb-3">
+              <div className="flex flex-col items-center text-center mb-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-emerald-500/25 mb-2">
                   Q
                 </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">Welcome Back</h2>
-                <p className="text-xs text-slate-400 mt-1">Sign in to your Qiyam Business OS account</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Sign in to your Qiyam Business OS account</p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Segmented 3-Way Role Selector */}
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-[#030914] border border-[#142944]">
+                <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100/80 border border-slate-200/80">
                   {/* Admin */}
                   <button
                     type="button"
                     onClick={() => handleSelectRole('super_admin')}
-                    className={`py-2 px-2 rounded-xl text-center transition cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-xl text-center transition cursor-pointer ${
                       loginRole === 'super_admin'
-                        ? 'bg-emerald-950/60 border border-emerald-500/80 text-emerald-300 shadow-sm'
-                        : 'text-slate-400 hover:text-white border border-transparent'
+                        ? 'bg-white border-2 border-emerald-500 text-emerald-900 shadow-2xs font-bold'
+                        : 'text-slate-500 hover:text-slate-900 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center justify-center gap-1 text-xs font-bold">
-                      <Crown className="w-3.5 h-3.5 text-emerald-400" />
+                      <Crown className={`w-3.5 h-3.5 ${loginRole === 'super_admin' ? 'text-emerald-600' : 'text-slate-400'}`} />
                       <span>Admin</span>
                     </div>
-                    <div className="text-[9px] text-slate-400 font-medium">Super Admin</div>
+                    <div className="text-[9px] text-slate-500 font-medium">Super Admin</div>
                   </button>
 
                   {/* Business */}
                   <button
                     type="button"
                     onClick={() => handleSelectRole('company_admin')}
-                    className={`py-2 px-2 rounded-xl text-center transition cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-xl text-center transition cursor-pointer ${
                       loginRole === 'company_admin'
-                        ? 'bg-emerald-950/60 border border-emerald-500/80 text-emerald-300 shadow-sm'
-                        : 'text-slate-400 hover:text-white border border-transparent'
+                        ? 'bg-white border-2 border-emerald-500 text-emerald-900 shadow-2xs font-bold'
+                        : 'text-slate-500 hover:text-slate-900 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center justify-center gap-1 text-xs font-bold">
-                      <Building2 className="w-3.5 h-3.5 text-teal-400" />
+                      <Building2 className={`w-3.5 h-3.5 ${loginRole === 'company_admin' ? 'text-emerald-600' : 'text-slate-400'}`} />
                       <span>Business</span>
                     </div>
-                    <div className="text-[9px] text-slate-400 font-medium">Company Admin</div>
+                    <div className="text-[9px] text-slate-500 font-medium">Company Admin</div>
                   </button>
 
                   {/* Staff */}
                   <button
                     type="button"
                     onClick={() => handleSelectRole('employee')}
-                    className={`py-2 px-2 rounded-xl text-center transition cursor-pointer ${
+                    className={`py-1.5 px-2 rounded-xl text-center transition cursor-pointer ${
                       loginRole === 'employee'
-                        ? 'bg-emerald-950/60 border border-emerald-500/80 text-emerald-300 shadow-sm'
-                        : 'text-slate-400 hover:text-white border border-transparent'
+                        ? 'bg-white border-2 border-emerald-500 text-emerald-900 shadow-2xs font-bold'
+                        : 'text-slate-500 hover:text-slate-900 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center justify-center gap-1 text-xs font-bold">
-                      <Users className="w-3.5 h-3.5 text-cyan-400" />
+                      <Users className={`w-3.5 h-3.5 ${loginRole === 'employee' ? 'text-emerald-600' : 'text-slate-400'}`} />
                       <span>Staff</span>
                     </div>
-                    <div className="text-[9px] text-slate-400 font-medium">Staff Member</div>
+                    <div className="text-[9px] text-slate-500 font-medium">Staff Member</div>
                   </button>
                 </div>
 
                 {/* Role Notice Banner */}
                 {loginRole === 'super_admin' && (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5">
-                    <Crown className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-2">
+                    <Crown className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div className="text-xs flex-1">
-                      <div className="font-bold text-amber-300">Master Provider Console Access</div>
-                      <div className="text-[10px] text-amber-200/80 mt-0.5">
+                      <div className="font-bold text-amber-900 text-[11.5px]">Master Provider Console Access</div>
+                      <div className="text-[10px] text-amber-800/80 mt-0.5 leading-snug">
                         Sign in with your admin credentials to access the complete platform.
                       </div>
                     </div>
-                    <Info className="w-3.5 h-3.5 text-amber-400/60 shrink-0" />
+                    <Info className="w-3.5 h-3.5 text-amber-500/70 shrink-0" />
                   </div>
                 )}
 
                 {loginRole === 'company_admin' && (
-                  <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-start gap-2.5">
-                    <Building2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                  <div className="p-2.5 rounded-xl bg-teal-50/90 border border-teal-200/80 flex items-start gap-2">
+                    <Building2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
                     <div className="text-xs flex-1">
-                      <div className="font-bold text-teal-300">Client Workspace Access (Ambika Hotel)</div>
-                      <div className="text-[10px] text-teal-200/80 mt-0.5">
+                      <div className="font-bold text-teal-900 text-[11.5px]">Client Workspace Access (Ambika Hotel)</div>
+                      <div className="text-[10px] text-teal-800/80 mt-0.5 leading-snug">
                         Manage your guests, employees, and pre-approved WhatsApp templates.
                       </div>
                     </div>
@@ -705,16 +688,16 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 )}
 
                 {loginRole === 'employee' && (
-                  <div className="p-2 rounded-xl bg-[#030914] border border-[#142944] flex items-center justify-between text-xs">
-                    <span className="text-slate-400 text-[11px] font-semibold">Login Method:</span>
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                    <span className="text-slate-500 text-[11px] font-semibold">Login Method:</span>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setEmployeeLoginMethod('otp')}
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
                           employeeLoginMethod === 'otp'
-                            ? 'bg-emerald-500 text-slate-950 font-black'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-emerald-600 text-white font-bold shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         <Smartphone className="w-3 h-3" />
@@ -725,8 +708,8 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                         onClick={() => setEmployeeLoginMethod('password')}
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                           employeeLoginMethod === 'password'
-                            ? 'bg-emerald-500 text-slate-950 font-black'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-emerald-600 text-white font-bold shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         Password
@@ -738,23 +721,22 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 {/* Form Inputs */}
                 {loginRole === 'employee' && employeeLoginMethod === 'otp' ? (
                   /* WhatsApp OTP form for staff using our CountryPhoneInput */
-                  <div className="space-y-3.5">
+                  <div className="space-y-3">
                     <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-slate-300">Staff WhatsApp Phone *</label>
-                      <div className="relative">
-                        <CountryPhoneInput
-                          value={empOtpPhone}
-                          onChange={(val) => setEmpOtpPhone(val)}
-                          placeholder="Staff WhatsApp number"
-                          required
-                        />
-                      </div>
-                      <div className="flex justify-end pt-1">
+                      <label className="block text-xs font-bold text-slate-700">Staff WhatsApp Phone *</label>
+                      <CountryPhoneInput
+                        value={empOtpPhone}
+                        onChange={(val) => setEmpOtpPhone(val)}
+                        placeholder="Staff WhatsApp number"
+                        variant="light"
+                        required
+                      />
+                      <div className="flex justify-end pt-0.5">
                         <button
                           type="button"
                           onClick={handleSendEmployeeOtp}
                           disabled={empOtpTimer > 0}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition cursor-pointer disabled:opacity-50"
                         >
                           {empOtpTimer > 0 ? `Resend code in ${empOtpTimer}s` : empOtpSent ? 'Resend Code' : 'Send WhatsApp OTP'}
                         </button>
@@ -762,15 +744,15 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     </div>
 
                     {empOtpSent && (
-                      <div className="space-y-1.5 animate-in fade-in">
-                        <label className="text-xs font-semibold text-slate-300">6-Digit Verification Code</label>
+                      <div className="space-y-1 animate-in fade-in">
+                        <label className="text-xs font-bold text-slate-700">6-Digit Verification Code</label>
                         <input
                           type="text"
                           maxLength={6}
                           value={empOtpCode}
                           onChange={(e) => setEmpOtpCode(e.target.value)}
                           placeholder="e.g. 482910"
-                          className="w-full text-center tracking-[0.4em] py-2.5 bg-[#050E1C] border border-emerald-500 rounded-xl text-lg font-bold font-mono text-emerald-300 outline-none"
+                          className="w-full text-center tracking-[0.4em] py-2 bg-slate-50 border border-emerald-500 rounded-xl text-lg font-bold font-mono text-emerald-800 outline-none focus:bg-white"
                         />
                       </div>
                     )}
@@ -778,55 +760,55 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     <button
                       type="button"
                       onClick={empOtpSent ? handleVerifyEmployeeOtp : handleSendEmployeeOtp}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99]"
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:brightness-105 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99]"
                     >
                       <Smartphone className="w-4 h-4" />
                       <span>{empOtpSent ? 'Verify OTP & Enter Staff Portal →' : 'Send WhatsApp OTP →'}</span>
                     </button>
                   </div>
                 ) : (
-                  /* Standard Login Form */
-                  <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                  /* Standard Login Form with White Inputs */
+                  <form onSubmit={handleLoginSubmit} className="space-y-3">
                     <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-slate-300">Username or Email *</label>
+                      <label className="block text-xs font-bold text-slate-700">Username or Email</label>
                       <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           required
                           value={loginIdentifier}
                           onChange={(e) => setLoginIdentifier(e.target.value)}
                           placeholder="admin or email"
-                          className="w-full pl-10 pr-3 py-2.5 bg-[#050E1C] border border-[#162C4A] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition"
+                          className="w-full pl-10 pr-3 py-2 bg-slate-50/80 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 outline-none transition"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <label className="block text-xs font-semibold text-slate-300">Password *</label>
+                        <label className="block text-xs font-bold text-slate-700">Password</label>
                         <button
                           type="button"
                           onClick={() => setIsForgotModalOpen(true)}
-                          className="text-[11px] text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
+                          className="text-[11px] text-emerald-600 hover:text-emerald-700 font-semibold transition cursor-pointer"
                         >
                           Forgot password?
                         </button>
                       </div>
                       <div className="relative">
-                        <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type={showPassword ? 'text' : 'password'}
                           required
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-10 pr-10 py-2.5 bg-[#050E1C] border border-[#162C4A] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition font-mono tracking-wider"
+                          className="w-full pl-10 pr-10 py-2 bg-slate-50/80 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none transition font-mono tracking-wider"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -834,18 +816,18 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     </div>
 
                     {/* Remember & SSL Encrypted Row */}
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-0.5">
+                    <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5">
                       <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           checked={rememberMe}
                           onChange={(e) => setRememberMe(e.target.checked)}
-                          className="rounded border-[#162C4A] bg-[#050E1C] text-emerald-500 focus:ring-0 focus:ring-offset-0"
+                          className="rounded border-slate-300 bg-white text-emerald-600 focus:ring-emerald-500/20"
                         />
-                        <span className="text-[11px] text-slate-300">Remember this device</span>
+                        <span className="text-[11px] text-slate-600 font-medium">Remember this device</span>
                       </label>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                         256-bit SSL Encrypted
                       </span>
                     </div>
@@ -854,7 +836,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-50 mt-1"
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:brightness-105 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-50 mt-1"
                     >
                       {isSubmitting ? (
                         <>
@@ -879,19 +861,19 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 )}
 
                 {/* OR Separator */}
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-[#142944]" />
-                  <span className="flex-shrink mx-3 text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                <div className="relative flex py-0.5 items-center">
+                  <div className="flex-grow border-t border-slate-200" />
+                  <span className="flex-shrink mx-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">
                     OR
                   </span>
-                  <div className="flex-grow border-t border-[#142944]" />
+                  <div className="flex-grow border-t border-slate-200" />
                 </div>
 
                 {/* Continue with Google */}
                 <button
                   type="button"
                   onClick={() => addToast('Google OAuth 2.0 Enterprise Single Sign-On Active', 'info')}
-                  className="w-full py-2.5 px-3 rounded-xl bg-[#06101E] hover:bg-[#0A1A2E] border border-[#162C4A] text-slate-200 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path
@@ -915,7 +897,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 </button>
 
                 {/* Footer Link to Open Client Registration Modal */}
-                <div className="pt-2 text-center text-xs text-slate-400 flex flex-col gap-1.5">
+                <div className="pt-1 text-center text-xs text-slate-500 flex flex-col gap-1">
                   <div>
                     <span>Are you a new hotel or business? </span>
                     <button
@@ -924,7 +906,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                         setIsRegisterModalOpen(true);
                         setSignupStep(1);
                       }}
-                      className="text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
+                      className="text-emerald-600 hover:text-emerald-700 font-bold transition cursor-pointer"
                     >
                       Register New Client (Ambika Hotel) →
                     </button>
@@ -934,7 +916,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsStaffModalOpen(true)}
-                      className="text-cyan-400 hover:text-cyan-300 font-semibold transition cursor-pointer text-[11px]"
+                      className="text-teal-600 hover:text-teal-700 font-semibold transition cursor-pointer text-[11px]"
                     >
                       Staff Member Registration →
                     </button>
@@ -949,17 +931,17 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
       {/* ========================================================================= */}
       {/* 3. CLEAN BOTTOM FOOTER BAR                                                */}
       {/* ========================================================================= */}
-      <footer className="w-full px-6 lg:px-12 py-4 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 z-10 border-t border-slate-900/60">
+      <footer className="w-full px-6 lg:px-12 py-2.5 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 z-10 border-t border-slate-200/60 shrink-0">
         <div>
           © 2026 Qiyam Business OS • Official Meta Cloud API Solution Provider
         </div>
-        <div className="flex items-center gap-4 mt-2 sm:mt-0">
-          <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
+        <div className="flex items-center gap-4 mt-1 sm:mt-0">
+          <span className="hover:text-slate-700 cursor-pointer">Privacy Policy</span>
           <span>•</span>
-          <span className="hover:text-slate-400 cursor-pointer">Terms of Service</span>
+          <span className="hover:text-slate-700 cursor-pointer">Terms of Service</span>
           <span>•</span>
-          <span className="text-emerald-400 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> All Systems Operational
+          <span className="text-emerald-600 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> All Systems Operational
           </span>
         </div>
       </footer>
@@ -968,12 +950,12 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
       {/* 4. MODAL 1: REGISTER NEW CLIENT (OUR ESTABLISHED FORM PATTERN)            */}
       {/* ========================================================================= */}
       {isRegisterModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div>
@@ -981,7 +963,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     Provision New Client Workspace (Ambika Hotel)
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Step {signupStep} of 2 • Client Onboarding & WhatsApp API Verification
+                    Step {signupStep} of 2 • Client Onboarding &amp; WhatsApp API Verification
                   </p>
                 </div>
               </div>
@@ -1018,10 +1000,10 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                       onChange={(e) => setClientForm({ ...clientForm, category: e.target.value })}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800 outline-none"
                     >
-                      <option value="Hospitality & Tourism">🏨 Hospitality & Tourism</option>
-                      <option value="Retail & eCommerce">🛍️ Retail & Supermarket</option>
-                      <option value="Healthcare & Clinics">🏥 Healthcare & Clinics</option>
-                      <option value="Field Service & MEP">🛠️ Field Service & MEP</option>
+                      <option value="Hospitality & Tourism">🏨 Hospitality &amp; Tourism</option>
+                      <option value="Retail & eCommerce">🛍️ Retail &amp; Supermarket</option>
+                      <option value="Healthcare & Clinics">🏥 Healthcare &amp; Clinics</option>
+                      <option value="Field Service & MEP">🛠️ Field Service &amp; MEP</option>
                       <option value="Other">🏢 Other Commercial Business</option>
                     </select>
                   </div>
@@ -1072,12 +1054,13 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                   <CountryPhoneInput
                     value={clientForm.ownerPhone}
                     onChange={(val) => setClientForm({ ...clientForm, ownerPhone: val })}
+                    variant="light"
                     required
                   />
                 </div>
 
                 {/* WhatsApp Cloud API Section & Rule Box */}
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
                   <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>Meta WhatsApp Cloud API Phone Number</span>
@@ -1091,6 +1074,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                     <CountryPhoneInput
                       value={clientForm.wabaPhone}
                       onChange={(val) => setClientForm({ ...clientForm, wabaPhone: val })}
+                      variant="light"
                       required
                     />
                   </div>
@@ -1108,7 +1092,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
 
                 {/* Desired Modules Checklist */}
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Requested Features & Modules</label>
+                  <label className="block font-bold text-slate-700">Requested Features &amp; Modules</label>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     {[
                       { id: 'conversations', label: 'WhatsApp Inbox & Live Chat' },
@@ -1118,7 +1102,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                       { id: 'automation', label: 'Visual Bot Automation' },
                       { id: 'ai', label: 'AI Copilot & Knowledge Bot' },
                     ].map((mod) => (
-                      <label key={mod.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+                      <label key={mod.id} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={clientForm.selectedModules.includes(mod.id)}
@@ -1155,70 +1139,60 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 </div>
               </form>
             ) : (
-              /* Step 2: OTP Verification */
+              /* Step 2: WhatsApp OTP Verification */
               <div className="p-6 space-y-4 text-xs">
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-1">
-                  <Smartphone className="w-8 h-8 text-emerald-600 mx-auto" />
-                  <h4 className="font-bold text-sm text-slate-900">Enter WhatsApp Verification OTP</h4>
-                  <p className="text-[11px] text-slate-600">
-                    A 6-digit security code was sent to <span className="font-mono font-bold text-slate-900">{clientForm.wabaPhone}</span>
+                <div className="text-center space-y-1">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-2">
+                    <Smartphone className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">Verify Official WhatsApp Line</h4>
+                  <p className="text-slate-500 text-xs">
+                    We sent a 6-digit verification code to <strong>{clientForm.wabaPhone}</strong>.
                   </p>
                 </div>
 
-                <div className="space-y-1 text-center">
-                  <label className="block font-bold text-slate-700">6-Digit OTP Code</label>
+                <div className="space-y-2 max-w-xs mx-auto">
                   <input
                     type="text"
                     maxLength={6}
                     value={signupOtpCode}
                     onChange={(e) => setSignupOtpCode(e.target.value)}
-                    placeholder="482910"
-                    className="w-48 mx-auto block text-center tracking-[0.4em] py-2.5 bg-slate-50 border border-emerald-500 rounded-xl text-xl font-bold font-mono text-emerald-700 outline-none"
+                    placeholder="Enter 6-digit code"
+                    className="w-full text-center tracking-[0.4em] py-2.5 bg-slate-50 border-2 border-emerald-500 rounded-xl text-xl font-bold font-mono text-emerald-800 outline-none"
                   />
-                  <div className="text-[10px] text-slate-400 pt-1">
-                    Demo OTP: <strong>{generatedSignupOtp || '123456'}</strong>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Code expires in {signupOtpTimer}s</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const res = generateWhatsAppOtp(clientForm.wabaPhone, 'client_signup');
+                        setGeneratedSignupOtp(res.code);
+                        setSignupOtpCode(res.code);
+                        setSignupOtpTimer(60);
+                        addToast(`📲 New OTP sent to WhatsApp: ${res.code}`, 'info');
+                      }}
+                      className="text-emerald-700 font-bold hover:underline"
+                    >
+                      Resend OTP
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setSignupStep(1)}
-                    className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                  >
-                    ← Edit Details
-                  </button>
-                  <button
-                    type="button"
-                    disabled={signupOtpTimer > 0}
-                    onClick={() => {
-                      const res = generateWhatsAppOtp(clientForm.wabaPhone, 'client_signup');
-                      setGeneratedSignupOtp(res.code);
-                      setSignupOtpCode(res.code);
-                      setSignupOtpTimer(60);
-                      addToast(`New code sent: ${res.code}`, 'info');
-                    }}
-                    className="text-xs text-emerald-700 font-bold hover:underline cursor-pointer disabled:text-slate-400"
-                  >
-                    {signupOtpTimer > 0 ? `Resend (${signupOtpTimer}s)` : 'Resend WhatsApp Code'}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setIsRegisterModalOpen(false)}
                     className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
                   >
-                    Cancel
+                    Back
                   </button>
                   <button
                     type="button"
                     onClick={handleVerifyClientSignup}
-                    className="px-5 py-2.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    className="px-5 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Launch {clientForm.businessName}</span>
+                    <Check className="w-4 h-4" />
+                    <span>Verify &amp; Provision Workspace</span>
                   </button>
                 </div>
               </div>
@@ -1228,19 +1202,19 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 5. MODAL 2: STAFF MEMBER REGISTRATION (OUR ESTABLISHED FORM PATTERN)       */}
+      {/* 5. MODAL 2: STAFF REGISTRATION (OUR ESTABLISHED PATTERN)                   */}
       {/* ========================================================================= */}
       {isStaffModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-800 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-xl bg-cyan-100 text-cyan-800 flex items-center justify-center font-bold">
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">Staff Member Registration</h3>
-                  <p className="text-[11px] text-slate-500">Join your employer's workspace via WhatsApp OTP</p>
+                  <p className="text-[11px] text-slate-500">Join your employer company with WhatsApp OTP</p>
                 </div>
               </div>
               <button
@@ -1255,10 +1229,8 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!staffForm.otpSent) {
-                  const res = generateWhatsAppOtp(staffForm.phone, 'employee_signup');
-                  setStaffForm({ ...staffForm, otpSent: true, otpCode: res.code });
-                  addToast(`📲 WhatsApp OTP sent to ${staffForm.phone}! (${res.code})`, 'info');
+                if (!staffForm.name || !staffForm.phone) {
+                  addToast('Please complete all staff fields.', 'warning');
                   return;
                 }
                 const res = registerEmployeeUser({
@@ -1270,13 +1242,14 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 });
                 setIsStaffModalOpen(false);
                 switchActiveTenant(res.user.companyId);
+                addToast(`✅ Welcome, ${staffForm.name}! You are registered under ${res.user.companyName}.`, 'success');
                 setActiveTab('employee-portal');
-                addToast(`Welcome ${staffForm.name}! Registered to ${res.user.companyName}.`, 'success');
+                onAuthSuccess?.();
               }}
               className="p-5 space-y-3.5 text-xs"
             >
               <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Select Employer / Company *</label>
+                <label className="block font-bold text-slate-700">Select Employer Company *</label>
                 <select
                   value={staffForm.companyId}
                   onChange={(e) => setStaffForm({ ...staffForm, companyId: e.target.value })}
@@ -1284,7 +1257,7 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 >
                   {tenants.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.businessName} ({t.branch || 'Main Branch'})
+                      {t.businessName} ({t.branch})
                     </option>
                   ))}
                 </select>
@@ -1295,35 +1268,43 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Ananya Sharma"
                   value={staffForm.name}
                   onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
-                  placeholder="e.g. Ananya Sharma"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Staff WhatsApp Mobile *</label>
+                <label className="block font-bold text-slate-700">WhatsApp Mobile Number *</label>
                 <CountryPhoneInput
                   value={staffForm.phone}
                   onChange={(val) => setStaffForm({ ...staffForm, phone: val })}
+                  variant="light"
                   required
                 />
               </div>
 
-              {staffForm.otpSent && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
-                  <label className="block font-bold text-emerald-800">Enter 6-Digit WhatsApp OTP</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Department</label>
                   <input
                     type="text"
-                    maxLength={6}
-                    value={staffForm.otpCode}
-                    onChange={(e) => setStaffForm({ ...staffForm, otpCode: e.target.value })}
-                    placeholder="482910"
-                    className="w-full text-center tracking-[0.4em] py-2 bg-white border border-emerald-500 rounded-xl text-lg font-bold font-mono text-emerald-800 outline-none"
+                    value={staffForm.department}
+                    onChange={(e) => setStaffForm({ ...staffForm, department: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 outline-none"
                   />
                 </div>
-              )}
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Job Title / Role</label>
+                  <input
+                    type="text"
+                    value={staffForm.roleTitle}
+                    onChange={(e) => setStaffForm({ ...staffForm, roleTitle: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 outline-none"
+                  />
+                </div>
+              </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
@@ -1335,9 +1316,9 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  className="px-5 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>{staffForm.otpSent ? 'Verify OTP & Complete Join' : 'Send WhatsApp OTP'}</span>
+                  <span>Register &amp; Enter Portal</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1347,20 +1328,15 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 6. MODAL 3: FORGOT PASSWORD (OUR ESTABLISHED FORM PATTERN)                */}
+      {/* 6. MODAL 3: FORGOT PASSWORD                                              */}
       {/* ========================================================================= */}
       {isForgotModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900">Reset Account Password</h3>
-                  <p className="text-[11px] text-slate-500">Receive instant WhatsApp OTP or email recovery</p>
-                </div>
+                <Lock className="w-4 h-4 text-emerald-700" />
+                <h3 className="font-bold text-sm text-slate-900">Reset Password</h3>
               </div>
               <button
                 type="button"
@@ -1371,40 +1347,42 @@ export const AuthPortalView: React.FC<AuthPortalViewProps> = ({
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addToast('Password reset link and OTP sent to your WhatsApp number!', 'success');
-                setIsForgotModalOpen(false);
-              }}
-              className="p-5 space-y-4 text-xs"
-            >
+            <div className="p-5 space-y-3.5 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                Enter your registered WhatsApp phone number to receive a secure password reset OTP.
+              </p>
+
               <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Registered WhatsApp Mobile Number *</label>
+                <label className="block font-bold text-slate-700">Registered Phone Number</label>
                 <CountryPhoneInput
                   value={forgotPhone}
                   onChange={(val) => setForgotPhone(val)}
+                  variant="light"
                   required
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  type="button"
+                  onClick={() => {
+                    const res = generateWhatsAppOtp(forgotPhone, 'password_reset');
+                    addToast(`📲 Password reset OTP sent to WhatsApp: ${res.code}`, 'info');
+                    setIsForgotModalOpen(false);
+                  }}
+                  className="px-4 py-1.5 bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold rounded-xl cursor-pointer"
                 >
-                  <span>Send Recovery OTP</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  Send Reset OTP
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
