@@ -1133,7 +1133,7 @@ export const SuperAdminView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B3B2C] hover:bg-[#072B1F] text-white font-bold text-xs shadow-xs transition cursor-pointer active:scale-95"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Provision Client</span>
+              <span>Provision Client</span>
             </button>
           </div>
         </div>
@@ -3568,7 +3568,7 @@ export const SuperAdminView: React.FC = () => {
                                       className="px-2.5 py-1 bg-[#0B3B2C] hover:bg-[#072B1F] text-white rounded-lg text-[11px] font-bold transition shadow-2xs cursor-pointer flex items-center gap-1 ml-auto"
                                     >
                                       <Plus className="w-3 h-3" />
-                                      <span>+ Top-Up</span>
+                                      <span>Top-Up</span>
                                     </button>
                                   </td>
                                 </>

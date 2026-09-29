@@ -166,7 +166,7 @@ export const RolesSecurityView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white transition shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              + Add Custom Role
+              <span>Add Custom Role</span>
             </button>
             <button
               onClick={() => saveRoleChanges(selectedRole.id)}

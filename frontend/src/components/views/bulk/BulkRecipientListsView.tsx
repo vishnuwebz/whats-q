@@ -1230,7 +1230,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              + Create List
+              <span>Create List</span>
             </button>
 
             <MetaWalletCard compact={true} />
@@ -1314,7 +1314,7 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add Opt-Out / Block</span>
+                  <span>Add Opt-Out / Block</span>
                 </button>
               </>
             )}

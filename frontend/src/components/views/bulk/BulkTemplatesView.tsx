@@ -544,7 +544,7 @@ export const BulkTemplatesView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              + Create Template
+              <span>Create Template</span>
             </button>
 
             <MetaWalletCard compact={true} />
