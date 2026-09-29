@@ -1458,46 +1458,6 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
               </div>
             </div>
 
-            {/* Compliance Banner */}
-            <div className="bg-gradient-to-r from-rose-900 via-slate-900 to-slate-950 rounded-2xl p-5 text-white shadow-md border border-rose-900/40 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-                  <ShieldAlert className="w-6 h-6 text-rose-300" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm sm:text-base text-white">
-                      Automated Meta Compliance &amp; Opt-Out Protection
-                    </h3>
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/30 text-rose-300 border border-rose-400/30">
-                      LIVE ENFORCEMENT
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                    When contacts text <strong>STOP</strong>, <strong>UNSUBSCRIBE</strong>, click opt-out buttons, or block your WhatsApp business line (Meta error 131051), our backend automatically records suppression and prevents subsequent promotional sends to preserve your sender rating.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
-                <button
-                  type="button"
-                  onClick={() => handleOpenSuppressionDetails('all')}
-                  className="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition border border-white/20 cursor-pointer active:scale-95"
-                >
-                  <ShieldAlert className="w-4 h-4 text-rose-300" />
-                  <span>View Details &amp; Diagnostics</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAddManualSuppressionOpen(true)}
-                  className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Manual Block</span>
-                </button>
-              </div>
-            </div>
 
             {/* Suppression Search & Filters Toolbar */}
             <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 flex flex-col md:flex-row items-center justify-between gap-3">
