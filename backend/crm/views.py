@@ -129,3 +129,95 @@ class FollowUpViewSet(viewsets.ModelViewSet):
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-id')
     serializer_class = CustomerSerializer
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+
+        # Normalize phone
+        phone = data.get('phone') or data.get('phone_number') or ''
+        phone = str(phone).strip()
+        data['phone'] = phone
+
+        # Normalize name
+        name = data.get('name') or data.get('contact_name') or ''
+        data['name'] = str(name).strip()
+
+        # Normalize address / location
+        address = data.get('address') or data.get('location') or 'Kozhikode, Kerala'
+        data['address'] = str(address).strip()
+
+        # Normalize tags & category
+        category = data.get('category')
+        tags = data.get('tags')
+        if tags is None:
+            tags = []
+        elif isinstance(tags, str):
+            tags = [tags]
+        elif not isinstance(tags, list):
+            tags = list(tags)
+
+        if category and category not in tags:
+            tags.append(category)
+        data['tags'] = tags
+
+        # Set first_seen if not provided
+        if not data.get('first_seen'):
+            data['first_seen'] = datetime.date.today().strftime('%b %d, %Y')
+
+        # Check if customer already exists by phone
+        customer_obj = None
+        if phone:
+            digits_only = ''.join(c for c in phone if c.isdigit())
+            clean_digits = digits_only[-10:] if len(digits_only) >= 10 else digits_only
+            customer_obj = Customer.objects.filter(phone=phone).first()
+            if not customer_obj and clean_digits:
+                customer_obj = Customer.objects.filter(phone__icontains=clean_digits).first()
+
+        if customer_obj:
+            serializer = self.get_serializer(customer_obj, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            response_data = serializer.data
+            response_status = status.HTTP_200_OK
+        else:
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            response_data = serializer.data
+            response_status = status.HTTP_201_CREATED
+
+        # Ensure a synchronized Conversation thread exists
+        if phone:
+            digits_only = ''.join(c for c in phone if c.isdigit())
+            clean_digits = digits_only[-10:] if len(digits_only) >= 10 else digits_only
+            conv = None
+            if clean_digits:
+                conv = Conversation.objects.filter(phone_number__icontains=clean_digits).first()
+            if not conv and name:
+                conv = Conversation.objects.filter(contact_name__iexact=name).first()
+
+            target_cat = category if category in ['Customer', 'Hot Lead', 'Lead', 'Vendor'] else 'Customer'
+            if conv:
+                if target_cat:
+                    conv.category = target_cat
+                if name and (not conv.contact_name or conv.contact_name == 'New Contact'):
+                    conv.contact_name = name
+                conv.save()
+            else:
+                Conversation.objects.create(
+                    contact_name=name or 'New Customer',
+                    phone_number=phone,
+                    category=target_cat,
+                    status='open',
+                    location=address,
+                    lead_owner='Unassigned',
+                    lead_stage=target_cat,
+                    source='CRM Directory',
+                    notes=data.get('notes', 'Added from Customers 360 Directory'),
+                    first_contact_date='Today',
+                    last_contact_date='Just now',
+                    unread_count=0,
+                )
+
+        return Response(response_data, status=response_status)
+

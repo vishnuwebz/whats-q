@@ -3347,7 +3347,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   leads: getStoredCache('leads', INITIAL_LEADS),
   deals: getStoredCache('deals', INITIAL_DEALS),
   followups: [],
-  customers: [],
+  customers: getStoredCache('customers', []),
   jobs: getStoredCache('jobs', INITIAL_JOBS),
   appointments: INITIAL_APPOINTMENTS,
   employees: getStoredCache('employees', INITIAL_EMPLOYEES),
@@ -7012,20 +7012,133 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   addCustomer: async (cust) => {
-    const nextId = get().customers.length + 1;
-    const item = { id: nextId, ...cust };
+    const custPhone = String(cust.phone || cust.phone_number || '').trim();
+    const custName = String(cust.name || cust.contact_name || '').trim();
+    const custLocation = String(cust.location || cust.address || 'Kozhikode, Kerala').trim();
+    const rawCategory = cust.category || 'Customer';
+    const validCategories = ['Customer', 'Hot Lead', 'Lead', 'Vendor'];
+    const custCategory = (validCategories.includes(String(rawCategory)) ? rawCategory : 'Customer') as 'Customer' | 'Hot Lead' | 'Lead' | 'Vendor';
+    const custAvatar = (cust.avatar as string) || `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=100&auto=format&fit=crop&q=80`;
+
+    const nextId = get().customers.length > 0
+      ? Math.max(...get().customers.map((c: any) => typeof c.id === 'number' ? c.id : parseInt(String(c.id).replace(/\D/g, '') || '0')), 0) + 1
+      : 1;
+
+    const item: Record<string, unknown> = {
+      id: nextId,
+      name: custName,
+      contact_name: custName,
+      phone: custPhone,
+      phone_number: custPhone,
+      address: custLocation,
+      location: custLocation,
+      category: custCategory,
+      tags: [custCategory],
+      avatar: custAvatar,
+      total_spent: Number(cust.total_spent || cust.estimated_value || 5600),
+      jobs_count: Number(cust.jobs_count || 1),
+      notes: String(cust.notes || ''),
+      first_seen: 'Just now',
+      ...cust,
+    };
+
+    // Synchronously update local store first so UI updates INSTANTLY
+    const phoneClean = custPhone.replace(/\D/g, '').slice(-10);
+
+    // Check if conversation already exists for this contact
+    const existingConvIndex = get().conversations.findIndex((c) => {
+      const cClean = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+      return Boolean((phoneClean && cClean && cClean === phoneClean) || (custName && c.contact_name?.toLowerCase() === custName.toLowerCase()));
+    });
+
+    let updatedConvs: Conversation[];
+    let targetConvId: string | number;
+
+    if (existingConvIndex >= 0) {
+      const existingConv = get().conversations[existingConvIndex];
+      targetConvId = existingConv.id;
+      const updatedConv: Conversation = {
+        ...existingConv,
+        contact_name: custName || existingConv.contact_name,
+        category: custCategory,
+        location: custLocation || existingConv.location,
+        avatar: custAvatar || existingConv.avatar,
+      };
+      updatedConvs = [
+        updatedConv,
+        ...get().conversations.filter((_, idx) => idx !== existingConvIndex),
+      ];
+    } else {
+      targetConvId = `conv_${Date.now()}`;
+      const newConv: Conversation = {
+        id: targetConvId,
+        contact_name: custName || 'New Customer',
+        phone_number: custPhone,
+        avatar: custAvatar,
+        category: custCategory,
+        unread_count: 0,
+        status: 'open',
+        lead_owner: 'Unassigned',
+        lead_stage: custCategory === 'Customer' ? 'Customer' : (custCategory === 'Vendor' ? 'Vendor' : 'New Contact'),
+        source: 'CRM Directory',
+        first_contact_date: 'Today',
+        last_contact_date: 'Just now',
+        location: custLocation,
+        language: 'English',
+        tags: [custCategory, 'CRM'],
+        notes: String(cust.notes || 'Added from Customers 360 Directory'),
+        messages: [],
+        is_online: true,
+        last_seen: 'Online',
+      };
+      updatedConvs = [newConv, ...get().conversations];
+    }
+
+    // Update customers list
+    const existingCustIdx = get().customers.findIndex((c: any) => {
+      const cClean = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
+      return Boolean(phoneClean && cClean && cClean === phoneClean);
+    });
+
+    let updatedCustomers: Record<string, unknown>[];
+    if (existingCustIdx >= 0) {
+      updatedCustomers = get().customers.map((c: any, idx: number) =>
+        idx === existingCustIdx ? { ...c, ...item } : c
+      );
+    } else {
+      updatedCustomers = [item, ...get().customers];
+    }
+
+    // Persist to store & localStorage
+    set({
+      customers: updatedCustomers,
+      conversations: updatedConvs,
+    });
+    persistCache('customers', updatedCustomers);
+    persistConversations(updatedConvs);
+
+    // Call backend API
     try {
       const res = await apiClient.post('/crm/customers/', item);
       const created = (res?.id && res.success !== false) ? res : item;
-      set((state) => ({ customers: [created, ...state.customers] }));
-      get().addToast('Customer added successfully', 'success');
+
+      if (res?.id) {
+        const finalCustomers = get().customers.map((c: any) =>
+          (c.id === nextId || c.phone === custPhone) ? { ...c, ...res } : c
+        );
+        set({ customers: finalCustomers });
+        persistCache('customers', finalCustomers);
+      }
+
+      get().addToast(`${custCategory === 'Vendor' ? 'Vendor' : 'Customer'} added successfully`, 'success');
       return created;
-    } catch {
-      set((state) => ({ customers: [item, ...state.customers] }));
-      get().addToast('Customer record created', 'success');
+    } catch (err) {
+      console.warn('[Store] Customer added locally, API returned:', err);
+      get().addToast(`${custCategory === 'Vendor' ? 'Vendor' : 'Customer'} saved locally`, 'success');
       return item;
     }
   },
+
 
   addExpense: async (exp) => {
     const nextId = get().expenses.length > 0
@@ -7770,7 +7883,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Verified Production Deployment Lock & Hard Refresh v2.4.29',
+        latest_message: 'CRM Customers Add & Vendor Sorting Filter v2.4.30',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

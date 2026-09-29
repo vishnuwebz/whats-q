@@ -1,36 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Users, Search, Filter, Plus, Phone, Mail, MapPin, MessageSquare, X, UserPlus } from 'lucide-react';
+import { Users, Search, MessageSquare, X, UserPlus } from 'lucide-react';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
 export const CustomersView: React.FC = () => {
-  const { conversations, addCustomer, setActiveTab, setSelectedConversationId, addToast, globalFilter } = useQiyamStore();
+  const { conversations, customers: storeCustomers, addCustomer, setActiveTab, setSelectedConversationId, addToast, globalFilter } = useQiyamStore();
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'Customer' | 'Lead' | 'Hot Lead'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'Customer' | 'Lead' | 'Hot Lead' | 'Vendor'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
     location: 'Kozhikode, Kerala',
-    category: 'Customer',
+    category: 'Customer' as 'Customer' | 'Hot Lead' | 'Lead' | 'Vendor',
   });
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    const trimmedName = form.name.trim();
+    if (!trimmedName) {
+      addToast('Please enter customer full name', 'warning');
+      return;
+    }
+    const cleanDigits = form.phone.replace(/\D/g, '');
+    if (cleanDigits.length < 5) {
+      addToast('Please enter a valid phone number', 'warning');
+      return;
+    }
+
     await addCustomer({
-      contact_name: form.name,
-      name: form.name,
-      phone_number: form.phone,
-      phone: form.phone,
-      location: form.location,
+      contact_name: trimmedName,
+      name: trimmedName,
+      phone_number: form.phone.trim(),
+      phone: form.phone.trim(),
+      location: form.location.trim() || 'Kozhikode, Kerala',
+      address: form.location.trim() || 'Kozhikode, Kerala',
       category: form.category,
       avatar: `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=100&auto=format&fit=crop&q=80`,
       estimated_value: 3000,
       last_contact_date: 'Just now',
     });
+
     setIsAddModalOpen(false);
     setForm({
       name: '',
@@ -40,17 +52,64 @@ export const CustomersView: React.FC = () => {
     });
   };
 
-  const customers = conversations.map((c) => ({
-    id: c.id,
-    name: c.contact_name,
-    phone: c.phone_number,
-    location: c.location,
-    avatar: c.avatar,
-    totalSpent: (c.estimated_value || 2800) * 2,
-    jobsCount: 3,
-    status: c.category,
-    lastSeen: c.last_contact_date,
-  }));
+  // Merge conversations and store customers deduplicated by phone/name
+  const customers = useMemo(() => {
+    const list: Array<{
+      id: string | number;
+      name: string;
+      phone: string;
+      location: string;
+      avatar?: string;
+      totalSpent: number;
+      jobsCount: number;
+      status: 'Customer' | 'Lead' | 'Hot Lead' | 'Vendor';
+      lastSeen: string;
+    }> = [];
+
+    const seenPhones = new Set<string>();
+
+    // 1. From conversations
+    (conversations || []).forEach((c) => {
+      const cleanPhone = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+      if (cleanPhone) seenPhones.add(cleanPhone);
+      list.push({
+        id: c.id,
+        name: c.contact_name || 'Unnamed',
+        phone: c.phone_number || '',
+        location: c.location || 'Kozhikode, Kerala',
+        avatar: c.avatar,
+        totalSpent: (c.estimated_value || 2800) * 2,
+        jobsCount: 3,
+        status: (c.category as any) || 'Customer',
+        lastSeen: c.last_contact_date || 'Recent',
+      });
+    });
+
+    // 2. From storeCustomers (if any not already in conversations)
+    (storeCustomers || []).forEach((sc: any) => {
+      const rawPhone = String(sc.phone || sc.phone_number || '');
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
+      if (cleanPhone && seenPhones.has(cleanPhone)) {
+        return;
+      }
+      if (cleanPhone) seenPhones.add(cleanPhone);
+
+      const cat = (sc.category || (Array.isArray(sc.tags) && sc.tags.find((t: string) => ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(t))) || 'Customer') as any;
+      list.unshift({
+        id: sc.id || `sc_${Date.now()}_${Math.random()}`,
+        name: sc.name || sc.contact_name || 'Unnamed',
+        phone: rawPhone,
+        location: sc.address || sc.location || 'Kozhikode, Kerala',
+        avatar: sc.avatar,
+        totalSpent: Number(sc.total_spent || sc.total_spend || 0) || 5600,
+        jobsCount: Number(sc.jobs_count || sc.orders_count || 1),
+        status: cat,
+        lastSeen: sc.first_seen || sc.last_contact_date || 'Just now',
+      });
+    });
+
+    return list;
+  }, [conversations, storeCustomers]);
 
   const effectiveSearch = search || globalFilter.query || '';
 
@@ -72,19 +131,35 @@ export const CustomersView: React.FC = () => {
   const verifiedCount = customers.filter((c) => c.status === 'Customer').length;
   const leadsCount = customers.filter((c) => c.status === 'Lead').length;
   const hotLeadsCount = customers.filter((c) => c.status === 'Hot Lead').length;
+  const vendorsCount = customers.filter((c) => c.status === 'Vendor').length;
+
+  const getBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'Customer':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Vendor':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'Hot Lead':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+      case 'Lead':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">
       <Header
         title="Customers 360 Directory"
-        subtitle="Complete database of verified customers, interaction timelines, and lifetime revenues."
+        subtitle="Complete database of verified customers, vendors, interaction timelines, and lifetime revenues."
         primaryActionLabel="Add Customer"
         onPrimaryAction={() => setIsAddModalOpen(true)}
       />
 
       <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
         {/* KPI Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-xs">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Contacts</div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{customers.length}</div>
@@ -96,11 +171,16 @@ export const CustomersView: React.FC = () => {
             <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">Active accounts</div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Vendors</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-600 mt-1">{vendorsCount}</div>
+            <div className="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-0.5">Suppliers & partners</div>
+          </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Lifetime Revenue</div>
             <div className="text-xl sm:text-2xl font-black text-blue-700 mt-1">₹{totalLifetimeRev.toLocaleString()}</div>
             <div className="text-[10px] sm:text-[11px] text-blue-600 font-medium mt-0.5">Across all services</div>
           </div>
-          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm col-span-2 sm:col-span-1">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Jobs Fulfilled</div>
             <div className="text-xl sm:text-2xl font-black text-purple-600 mt-1">{totalFulfilledJobs}</div>
             <div className="text-[10px] sm:text-[11px] text-purple-600 font-medium mt-0.5">{hotLeadsCount} hot prospects</div>
@@ -139,6 +219,7 @@ export const CustomersView: React.FC = () => {
               { id: 'Customer', label: `Customers (${verifiedCount})` },
               { id: 'Lead', label: `Leads (${leadsCount})` },
               { id: 'Hot Lead', label: `Hot Leads (${hotLeadsCount})` },
+              { id: 'Vendor', label: `Vendors (${vendorsCount})` },
             ].map((cat) => (
               <button
                 key={cat.id}
@@ -170,37 +251,51 @@ export const CustomersView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredCustomers.map((cust) => (
-                  <tr key={cust.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <CustomerAvatar name={cust.name} avatar={cust.avatar} phone={cust.phone} id={cust.id} size="sm" showPresence={true} />
-                        <span className="font-bold text-slate-900">{cust.name}</span>
+                {filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Users className="w-8 h-8 text-slate-300" />
+                        <span className="font-semibold text-slate-600 text-xs">No contacts found</span>
+                        <span className="text-[11px] text-slate-400">
+                          {search ? 'Try adjusting your search criteria' : 'Click "Add Customer" to create a new profile'}
+                        </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-600">{cust.phone}</td>
-                    <td className="py-3.5 px-4 text-slate-500">{cust.location}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{cust.jobsCount} completed</td>
-                    <td className="py-3.5 px-4 font-bold text-emerald-600">₹{cust.totalSpent.toLocaleString()}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {cust.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedConversationId(cust.id);
-                          setActiveTab('conversations');
-                        }}
-                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-[11px] flex items-center gap-1 ml-auto cursor-pointer"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span>Chat</span>
-                      </button>
-                    </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredCustomers.map((cust) => (
+                    <tr key={cust.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <CustomerAvatar name={cust.name} avatar={cust.avatar} phone={cust.phone} id={cust.id} size="sm" showPresence={true} />
+                          <span className="font-bold text-slate-900">{cust.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">{cust.phone}</td>
+                      <td className="py-3.5 px-4 text-slate-500">{cust.location}</td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">{cust.jobsCount} completed</td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-600">₹{cust.totalSpent.toLocaleString()}</td>
+                      <td className="py-3.5 px-4">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getBadgeStyle(cust.status)}`}>
+                          {cust.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedConversationId(cust.id);
+                            setActiveTab('conversations');
+                          }}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-[11px] flex items-center gap-1 ml-auto cursor-pointer"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>Chat</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -266,7 +361,7 @@ export const CustomersView: React.FC = () => {
                   <label className="font-bold text-slate-700">Category</label>
                   <select
                     value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    onChange={(e) => setForm({ ...form, category: e.target.value as any })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-emerald-500"
                   >
                     <option value="Customer">Customer</option>
