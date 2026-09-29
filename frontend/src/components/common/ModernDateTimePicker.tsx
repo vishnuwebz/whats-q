@@ -60,11 +60,30 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     };
   };
 
-  const initial = parseValue(value);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const todayStr = (() => {
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  })();
 
-  const [viewYear, setViewYear] = useState(initial.viewYear);
-  const [viewMonth, setViewMonth] = useState(initial.viewMonth);
-  const [selectedDate, setSelectedDate] = useState(initial.dateStr);
+  const minDateStr = minDateTime ? minDateTime.split('T')[0] : todayStr;
+
+  const initial = parseValue(value);
+  const initialSafeDate = initial.dateStr < minDateStr ? minDateStr : initial.dateStr;
+
+  const [viewYear, setViewYear] = useState(
+    initial.viewYear < currentYear ? currentYear : initial.viewYear
+  );
+  const [viewMonth, setViewMonth] = useState(
+    initial.viewYear < currentYear || (initial.viewYear === currentYear && initial.viewMonth < currentMonth)
+      ? currentMonth
+      : initial.viewMonth
+  );
+  const [selectedDate, setSelectedDate] = useState(initialSafeDate);
   const [hour, setHour] = useState(initial.hour);
   const [minute, setMinute] = useState(initial.minute);
   const [second, setSecond] = useState(initial.second);
@@ -79,9 +98,14 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   useEffect(() => {
     if (!isOpen && value) {
       const parsed = parseValue(value);
-      setViewYear(parsed.viewYear);
-      setViewMonth(parsed.viewMonth);
-      setSelectedDate(parsed.dateStr);
+      const safeDate = parsed.dateStr < minDateStr ? minDateStr : parsed.dateStr;
+      setViewYear(parsed.viewYear < currentYear ? currentYear : parsed.viewYear);
+      setViewMonth(
+        parsed.viewYear < currentYear || (parsed.viewYear === currentYear && parsed.viewMonth < currentMonth)
+          ? currentMonth
+          : parsed.viewMonth
+      );
+      setSelectedDate(safeDate);
       setHour(parsed.hour);
       setMinute(parsed.minute);
       setSecond(parsed.second);
@@ -90,7 +114,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       setMinInput(String(parsed.minute).padStart(2, '0'));
       setSecInput(String(parsed.second).padStart(2, '0'));
     }
-  }, [value, isOpen]);
+  }, [value, isOpen, minDateStr, currentYear, currentMonth]);
 
   // Construct ISO-like string: YYYY-MM-DDTHH:mm:ss
   const buildCurrentDateTimeString = (
@@ -170,7 +194,11 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
 
+  const isPrevMonthDisabled =
+    viewYear < currentYear || (viewYear === currentYear && viewMonth <= currentMonth);
+
   const handlePrevMonth = () => {
+    if (isPrevMonthDisabled) return;
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear((y) => y - 1);
@@ -201,6 +229,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   }, [isOpen]);
 
   const handleSelectDay = (dayDateStr: string) => {
+    if (dayDateStr < minDateStr) return; // Disallow selecting past dates
     setSelectedDate(dayDateStr);
     const updated = buildCurrentDateTimeString(dayDateStr, hour, minute, second, meridiem);
     onChange(updated);
@@ -357,14 +386,6 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     });
   })();
 
-  const todayStr = (() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  })();
-
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Trigger Button styled like input */}
@@ -436,9 +457,14 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
               <div className="flex items-center justify-between px-1">
                 <button
                   type="button"
+                  disabled={isPrevMonthDisabled}
                   onClick={handlePrevMonth}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition cursor-pointer"
-                  title="Previous Month"
+                  className={`p-1.5 rounded-lg transition ${
+                    isPrevMonthDisabled
+                      ? 'text-slate-200 cursor-not-allowed opacity-30'
+                      : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900 cursor-pointer'
+                  }`}
+                  title={isPrevMonthDisabled ? 'Cannot navigate to past months' : 'Previous Month'}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -474,7 +500,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                   return (
                     <div
                       key={`prev-${i}`}
-                      className="h-8 flex items-center justify-center text-slate-300 select-none text-[11px] font-normal"
+                      className="h-8 flex items-center justify-center text-slate-300 select-none text-[11px] font-normal cursor-not-allowed opacity-30"
                     >
                       {dayNum}
                     </div>
@@ -488,8 +514,23 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                   const dStr = String(dayNum).padStart(2, '0');
                   const dayDateStr = `${viewYear}-${mStr}-${dStr}`;
 
+                  const isPast = dayDateStr < minDateStr;
                   const isSelected = dayDateStr === selectedDate;
                   const isToday = dayDateStr === todayStr;
+
+                  if (isPast) {
+                    return (
+                      <button
+                        key={dayDateStr}
+                        type="button"
+                        disabled={true}
+                        className="h-8 rounded-lg text-xs font-normal text-slate-300 bg-transparent cursor-not-allowed select-none flex items-center justify-center transition-none opacity-40 hover:bg-transparent"
+                        title="Past dates cannot be selected"
+                      >
+                        <span>{dayNum}</span>
+                      </button>
+                    );
+                  }
 
                   return (
                     <button
@@ -500,7 +541,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                         isSelected
                           ? 'bg-emerald-600 text-white font-bold shadow-xs scale-105 z-10'
                           : 'bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100 hover:text-emerald-950'
-                      } ${isToday && !isSelected ? 'ring-1 ring-emerald-500 font-bold' : ''}`}
+                      } ${isToday && !isSelected ? 'ring-1 ring-emerald-500 font-bold bg-emerald-50/90' : ''}`}
                     >
                       <span>{dayNum}</span>
                     </button>
@@ -781,7 +822,9 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                 </button>
                 <button
                   type="button"
+                  disabled={selectedDate < minDateStr}
                   onClick={() => {
+                    if (selectedDate < minDateStr) return;
                     const finalStr = buildCurrentDateTimeString(
                       selectedDate,
                       hour,
@@ -792,7 +835,11 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                     onChange(finalStr);
                     setIsOpen(false);
                   }}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer text-xs flex items-center gap-1"
+                  className={`px-4 py-1.5 font-bold rounded-xl shadow-xs transition text-xs flex items-center gap-1 ${
+                    selectedDate < minDateStr
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 cursor-pointer'
+                  }`}
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Set Schedule</span>

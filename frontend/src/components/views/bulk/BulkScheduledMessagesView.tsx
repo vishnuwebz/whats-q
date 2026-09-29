@@ -30,6 +30,7 @@ import { BulkScheduledMessage, BulkContact } from '../../../types';
 import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { ModernDateTimePicker } from '../../common/ModernDateTimePicker';
+import { ModernTemplateSelect } from '../../common/ModernTemplateSelect';
 import { WhatsAppTemplatePreviewModal } from '../../common/WhatsAppTemplatePreviewModal';
 
 export const BulkScheduledMessagesView: React.FC = () => {
@@ -896,17 +897,20 @@ export const BulkScheduledMessagesView: React.FC = () => {
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">WhatsApp Template</label>
-                  <select
+                  <ModernTemplateSelect
                     value={editTemplateId}
-                    onChange={(e) => setEditTemplateId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
-                  >
-                    {bulkTemplates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.category})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(id, template) => {
+                      setEditTemplateId(id);
+                      if (template?.category) {
+                        const cat = template.category.toLowerCase();
+                        if (cat.includes('market')) setEditCategory('marketing');
+                        else if (cat.includes('auth')) setEditCategory('authentication');
+                        else setEditCategory('utility');
+                      }
+                    }}
+                    templates={bulkTemplates}
+                    required
+                  />
                 </div>
               </div>
 
@@ -1100,17 +1104,20 @@ export const BulkScheduledMessagesView: React.FC = () => {
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">WhatsApp Template</label>
-                  <select
+                  <ModernTemplateSelect
                     value={quickTemplateId}
-                    onChange={(e) => setQuickTemplateId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
-                  >
-                    {bulkTemplates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.category})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(id, template) => {
+                      setQuickTemplateId(id);
+                      if (template?.category) {
+                        const cat = template.category.toLowerCase();
+                        if (cat.includes('market')) setQuickCategory('marketing');
+                        else if (cat.includes('auth')) setQuickCategory('authentication');
+                        else setQuickCategory('utility');
+                      }
+                    }}
+                    templates={bulkTemplates}
+                    required
+                  />
                 </div>
               </div>
 
