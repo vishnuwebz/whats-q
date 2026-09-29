@@ -4,6 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 
+const APP_VERSION = '2.4.18';
+
 function getGitCommit(): string {
   try {
     return execSync('git rev-parse --short HEAD').toString().trim();
@@ -30,7 +32,7 @@ function otaVersionPlugin(): Plugin {
           hour12: true,
         }),
         timestamp: Date.now(),
-        version: '2.4.3',
+        version: APP_VERSION,
       };
 
       const publicDir = path.resolve(__dirname, 'public');
@@ -54,7 +56,7 @@ function otaVersionPlugin(): Plugin {
           hour12: true,
         }),
         timestamp: Date.now(),
-        version: '2.4.3',
+        version: APP_VERSION,
       };
 
       this.emitFile({

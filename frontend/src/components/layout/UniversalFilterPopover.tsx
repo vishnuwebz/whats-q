@@ -98,14 +98,6 @@ export const UniversalFilterPopover: React.FC<UniversalFilterPopoverProps> = ({
           { id: 'won', label: 'Won' },
           { id: 'lost', label: 'Lost' },
         ];
-      case 'crm-deals':
-        return [
-          { id: 'all', label: 'All Deals' },
-          { id: 'proposal_sent', label: 'Proposal Sent' },
-          { id: 'negotiation', label: 'Negotiation' },
-          { id: 'won', label: 'Won' },
-          { id: 'lost', label: 'Lost' },
-        ];
       case 'crm-followups':
         return [
           { id: 'all', label: 'All Follow-ups' },
@@ -188,7 +180,7 @@ export const UniversalFilterPopover: React.FC<UniversalFilterPopoverProps> = ({
 
   const statusOptions = getStatusOptionsForTab(activeTab);
   const supportsPriority = ['ops-jobs', 'ops-tasks', 'crm-followups', 'crm-leads', 'ops-routes', 'ops-appointments'].includes(activeTab);
-  const supportsAssignee = ['ops-jobs', 'ops-appointments', 'ops-tasks', 'ops-schedule', 'crm-leads', 'crm-deals', 'crm-followups', 'automation-approvals'].includes(activeTab);
+  const supportsAssignee = ['ops-jobs', 'ops-appointments', 'ops-tasks', 'ops-schedule', 'crm-leads', 'crm-followups', 'automation-approvals'].includes(activeTab);
 
   const handleApply = () => {
     setGlobalFilter({ status, priority, assignedTo, query });

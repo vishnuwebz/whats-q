@@ -65,7 +65,6 @@ const ALL_SYSTEM_PAGES: SystemPageItem[] = [
   { tab: 'conversations', title: 'WhatsApp Live Chat', subtitle: 'Messenger • Multi-agent WhatsApp inbox, real-time messaging & customer support', category: 'Messenger', icon: MessageSquare, keywords: 'chats messages inbox whatsapp live customer conversations support' },
   { tab: 'crm-leads', title: 'Leads Pipeline', subtitle: 'CRM • Inbound WhatsApp prospects, qualification stages & conversion funnel', category: 'CRM', icon: UserCheck, keywords: 'prospects pipeline inquiries conversion funnel leads crm' },
   { tab: 'crm-customers', title: 'Customer Directory', subtitle: 'CRM • Client directory, purchase history, profiles & lifetime value', category: 'CRM', icon: Users, keywords: 'clients directory accounts profiles customers crm' },
-  { tab: 'crm-deals', title: 'Pipeline Deals', subtitle: 'CRM • Revenue opportunities, sales deal stages & revenue forecast', category: 'CRM', icon: IndianRupee, keywords: 'stages revenue opportunities sales forecast deals pipeline' },
   { tab: 'crm-followups', title: 'Follow-ups & Reminders', subtitle: 'CRM • Scheduled reminder calls, pending customer tasks & touchpoints', category: 'CRM', icon: Clock, keywords: 'reminders scheduled calls pending tasks followups crm' },
 
   // Bulk Messaging
@@ -375,29 +374,6 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
       }
     });
 
-    // 5. Search CRM Deals
-    deals.forEach((d) => {
-      const score = calculateScore(d.deal_name, d.customer_name, `${d.stage} ${d.amount}`);
-      if (score > 0) {
-        items.push({
-          id: `deal-${d.id}`,
-          title: d.deal_name,
-          subtitle: `${d.customer_name} • ₹${d.amount.toLocaleString()} • Stage: ${d.stage.toUpperCase()}`,
-          category: 'CRM',
-          typeBadge: 'Deal',
-          typeBadgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-          icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
-          score,
-          onClick: () => {
-            setTargetHighlightId(d.id);
-            setActiveTab('crm-deals');
-            onClose();
-            addToast(`Showing deal: ${d.deal_name}`, 'info');
-          },
-        });
-      }
-    });
-
     // 6. Search Operations Jobs
     jobs.forEach((j) => {
       const score = calculateScore(`${j.job_id_str} — ${j.customer_name}`, j.service, `${j.status} ${j.assigned_to}`);
@@ -681,7 +657,7 @@ export const OmniSearchModal: React.FC<OmniSearchModalProps> = ({ isOpen, onClos
   const filteredResults = useMemo(() => {
     if (activeFilter === 'all') return allResults;
     if (activeFilter === 'pages') return allResults.filter((r) => r.typeBadge === 'Page');
-    if (activeFilter === 'crm') return allResults.filter((r) => r.category === 'CRM' || r.typeBadge === 'Chat' || r.typeBadge === 'Lead' || r.typeBadge === 'Deal');
+    if (activeFilter === 'crm') return allResults.filter((r) => r.category === 'CRM' || r.typeBadge === 'Chat' || r.typeBadge === 'Lead');
     if (activeFilter === 'ops') return allResults.filter((r) => r.category === 'Operations' || r.typeBadge === 'Job' || r.typeBadge === 'Staff' || r.typeBadge === 'Leave' || r.typeBadge === 'Appointment' || r.typeBadge === 'SKU');
     if (activeFilter === 'finance') return allResults.filter((r) => r.category === 'Finance' || r.typeBadge === 'Invoice' || r.typeBadge === 'Quote' || r.typeBadge === 'Expense' || r.typeBadge === 'Txn');
     return allResults;

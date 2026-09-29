@@ -1,14 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Lead, Deal } from '@/types';
+import { Lead } from '@/types';
 import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Kanban, List, Plus, Search, Filter, Phone, MessageSquare,
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
   Tag, Clock, UserPlus, FileText, ChevronRight, ChevronDown,
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
-  IndianRupee, CheckCircle2, RefreshCw
+  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 
@@ -40,7 +40,6 @@ export const LeadsView: React.FC = () => {
     isLeadDrawerOpen,
     setIsLeadDrawerOpen,
     updateLeadStage,
-    convertLeadToDeal,
     addToast,
     setActiveTab,
     addLead,
@@ -71,20 +70,6 @@ export const LeadsView: React.FC = () => {
   const [pendingStageChange, setPendingStageChange] = useState<{ lead: Lead; targetStage: Lead['stage'] } | null>(null);
   const [stageNote, setStageNote] = useState('');
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
-
-  // Convert Lead to Deal Modal State
-  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
-  const [isConverting, setIsConverting] = useState(false);
-  const [convertForm, setConvertForm] = useState({
-    deal_name: '',
-    amount: 10000,
-    stage: 'proposal_sent' as Deal['stage'],
-    probability: 75,
-    deal_owner: 'Rahul Mehta',
-    expected_close_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-    notes: '',
-    create_customer: true,
-  });
 
   // Stage popover toggling and updating
   const handleToggleStagePopover = (leadId: string | number) => {
@@ -124,33 +109,6 @@ export const LeadsView: React.FC = () => {
     }
   };
 
-  // Convert Lead helpers
-  const handleOpenConvertModal = (lead: Lead) => {
-    setConvertingLead(lead);
-    setConvertForm({
-      deal_name: `${lead.name} - ${lead.service || 'Deal'}`,
-      amount: lead.value || 10000,
-      stage: 'proposal_sent',
-      probability: 75,
-      deal_owner: lead.owner || 'Rahul Mehta',
-      expected_close_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      notes: lead.notes ? `Lead Notes: ${lead.notes}` : `Converted from lead ${lead.name}`,
-      create_customer: true,
-    });
-  };
-
-  const handleConfirmConvert = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!convertingLead) return;
-    setIsConverting(true);
-    try {
-      await convertLeadToDeal(convertingLead.id, convertForm);
-      setConvertingLead(null);
-    } finally {
-      setIsConverting(false);
-    }
-  };
-
   // React to targetHighlightId (from notifications or omnisearch)
   React.useEffect(() => {
     if (targetHighlightId) {
@@ -168,6 +126,8 @@ export const LeadsView: React.FC = () => {
     { id: 'qualified', label: 'Qualified', count: leads.filter((l) => l.stage === 'qualified').length, color: 'border-amber-500 text-amber-700 bg-amber-50' },
     { id: 'proposal_sent', label: 'Proposal Sent', count: leads.filter((l) => l.stage === 'proposal_sent').length, color: 'border-indigo-500 text-indigo-700 bg-indigo-50' },
     { id: 'negotiation', label: 'Negotiation', count: leads.filter((l) => l.stage === 'negotiation').length, color: 'border-orange-500 text-orange-700 bg-orange-50' },
+    { id: 'won', label: 'Won', count: leads.filter((l) => l.stage === 'won').length, color: 'border-emerald-500 text-emerald-700 bg-emerald-50' },
+    { id: 'lost', label: 'Lost', count: leads.filter((l) => l.stage === 'lost').length, color: 'border-rose-500 text-rose-700 bg-rose-50' },
   ];
 
   const effectiveSearch = searchQuery || globalFilter.query || '';
@@ -222,8 +182,7 @@ export const LeadsView: React.FC = () => {
     if (leadId) {
       const match = leads.find((l) => String(l.id) === String(leadId));
       if (match && match.stage !== stageId) {
-        setPendingStageChange({ lead: match, targetStage: stageId });
-        setStageNote('Moved via Kanban Board');
+        handleStageSelectClick(match, stageId);
       }
     }
   };
@@ -275,8 +234,15 @@ export const LeadsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-xs text-slate-500 font-medium hidden sm:block">
-          Total Leads: <strong className="text-slate-800">{leads.length}</strong> (₹{leads.reduce((a, b) => a + b.value, 0).toLocaleString()} pipeline value)
+        <div className="text-xs text-slate-500 font-medium hidden sm:flex items-center gap-2.5">
+          <span>Total: <strong className="text-slate-800">{leads.length}</strong></span>
+          <span className="text-slate-300">•</span>
+          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+            <Trophy className="w-3.5 h-3.5 text-emerald-600" />
+            Won: ₹{leads.filter((l) => l.stage === 'won').reduce((a, b) => a + b.value, 0).toLocaleString()} ({leads.filter((l) => l.stage === 'won').length})
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className="text-slate-700">Active Pipeline: <strong className="text-slate-900">₹{leads.filter((l) => l.stage !== 'won' && l.stage !== 'lost').reduce((a, b) => a + b.value, 0).toLocaleString()}</strong></span>
         </div>
       </div>
 
@@ -314,42 +280,98 @@ export const LeadsView: React.FC = () => {
                     data-no-horizontal-drag="true"
                     className="p-3 pb-8 overflow-y-auto space-y-3 flex-1 min-h-0 scrollbar-thin overscroll-contain kanban-column-cards"
                   >
-                    {colLeads.map((lead) => (
-                      <div
-                        key={lead.id}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('leadId', String(lead.id))}
-                        onClick={() => {
-                          setSelectedLead(lead);
-                          setIsLeadDrawerOpen(true);
-                        }}
-                        className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition-all cursor-pointer space-y-2 group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors">
-                            {lead.name}
-                          </h4>
-                          <span className="font-bold text-xs text-emerald-600">₹{lead.value.toLocaleString()}</span>
-                        </div>
+                    {colLeads.map((lead) => {
+                      const isWon = lead.stage === 'won';
+                      const isLost = lead.stage === 'lost';
+                      const isOpen = !isWon && !isLost;
 
-                        <div className="text-[11px] text-slate-600 font-medium">{lead.service}</div>
-
-                        <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100">
-                          <span>{lead.location}</span>
-                          <span className="font-medium text-slate-500">{lead.owner}</span>
-                        </div>
-
-                        {lead.tags && lead.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {lead.tags.map((tag, idx) => (
-                              <span key={idx} className="text-[9px] font-semibold px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
-                                {tag}
-                              </span>
-                            ))}
+                      return (
+                        <div
+                          key={lead.id}
+                          draggable
+                          onDragStart={(e) => e.dataTransfer.setData('leadId', String(lead.id))}
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            setIsLeadDrawerOpen(true);
+                          }}
+                          className={`p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer space-y-2 group ${
+                            isWon
+                              ? 'bg-emerald-50/50 border-emerald-300 hover:border-emerald-500'
+                              : isLost
+                              ? 'bg-rose-50/40 border-rose-200 hover:border-rose-400 opacity-80'
+                              : 'bg-white border-slate-200 hover:border-emerald-500'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5 truncate">
+                              {isWon && <Trophy className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                              {isLost && <XCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />}
+                              <span className="truncate">{lead.name}</span>
+                            </h4>
+                            <span className="font-bold text-xs text-emerald-600 shrink-0">₹{lead.value.toLocaleString()}</span>
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          <div className="text-[11px] text-slate-600 font-medium">{lead.service}</div>
+
+                          <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100">
+                            <span>{lead.location}</span>
+                            <span className="font-medium text-slate-500">{lead.owner}</span>
+                          </div>
+
+                          {lead.tags && lead.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {lead.tags.map((tag, idx) => (
+                                <span key={idx} className="text-[9px] font-semibold px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Quick 1-click Won / Lost action bar for active pipeline leads */}
+                          {isOpen && (
+                            <div className="pt-2 border-t border-slate-100/80 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => handleStageSelectClick(lead, 'won')}
+                                className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="Mark as Won"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                Won
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStageSelectClick(lead, 'lost')}
+                                className="px-1.5 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-semibold transition-all flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                                title="Mark as Lost"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                                Lost
+                              </button>
+                            </div>
+                          )}
+
+                          {isWon && (
+                            <div className="pt-1.5 border-t border-emerald-200/60 flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                              <span className="flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Deal Won & Closed
+                              </span>
+                            </div>
+                          )}
+
+                          {isLost && (
+                            <div className="pt-1.5 border-t border-rose-200/60 flex items-center justify-between text-[10px] text-rose-600 font-bold">
+                              <span className="flex items-center gap-1">
+                                <XCircle className="w-3 h-3 text-rose-500" />
+                                Closed as Lost
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {colLeads.length === 0 && (
                       <div className="text-center py-8 text-xs text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
@@ -566,16 +588,39 @@ export const LeadsView: React.FC = () => {
                               <Phone className="w-3.5 h-3.5 text-slate-500" />
                             </a>
 
-                            {/* Convert to Deal Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenConvertModal(lead)}
-                              className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-800 border border-purple-200/80 rounded-lg font-bold text-[11px] inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                              title="Convert this lead to a CRM Deal"
-                            >
-                              <UserPlus className="w-3 h-3 text-purple-600" />
-                              <span>Convert</span>
-                            </button>
+                            {/* Won / Lost Status or Quick Action Buttons */}
+                            {lead.stage === 'won' ? (
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-[11px] inline-flex items-center gap-1">
+                                <Trophy className="w-3 h-3 text-emerald-600" />
+                                <span>Won</span>
+                              </span>
+                            ) : lead.stage === 'lost' ? (
+                              <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-bold text-[11px] inline-flex items-center gap-1">
+                                <XCircle className="w-3 h-3 text-rose-500" />
+                                <span>Lost</span>
+                              </span>
+                            ) : (
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStageSelectClick(lead, 'won')}
+                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-[11px] inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                  title="Mark Lead as Won"
+                                >
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Won</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStageSelectClick(lead, 'lost')}
+                                  className="px-1.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-semibold text-[11px] inline-flex items-center gap-0.5 shadow-2xs transition-all cursor-pointer"
+                                  title="Mark Lead as Lost"
+                                >
+                                  <X className="w-3 h-3 text-rose-500" />
+                                  <span>Lost</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -610,7 +655,7 @@ export const LeadsView: React.FC = () => {
               </div>
 
             {/* Quick Action Strip */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
               <button
                 onClick={() => {
                   openConversationForContact({
@@ -620,19 +665,40 @@ export const LeadsView: React.FC = () => {
                     location: selectedLead.location,
                   });
                 }}
-                className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>WhatsApp Chat</span>
+                <MessageSquare className="w-4 h-4" />
+                <span>Open WhatsApp Chat</span>
               </button>
 
-              <button
-                onClick={() => handleOpenConvertModal(selectedLead)}
-                className="py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Convert to Deal</span>
-              </button>
+              {selectedLead.stage === 'won' ? (
+                <div className="w-full py-2 px-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold flex items-center justify-center gap-1.5 text-center">
+                  <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Lead Won & Customer Record Active</span>
+                </div>
+              ) : selectedLead.stage === 'lost' ? (
+                <div className="w-full py-2 px-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-bold flex items-center justify-center gap-1.5 text-center">
+                  <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Lead Closed as Lost</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleStageSelectClick(selectedLead, 'won')}
+                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Mark Won</span>
+                  </button>
+                  <button
+                    onClick={() => handleStageSelectClick(selectedLead, 'lost')}
+                    className="py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Mark Lost</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Stage Selector */}
@@ -809,6 +875,23 @@ export const LeadsView: React.FC = () => {
                     <option value="Direct Walk-in">Direct Walk-in</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Initial Pipeline Stage</label>
+                <select
+                  value={newLeadForm.stage}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, stage: e.target.value as Lead['stage'] })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                >
+                  <option value="new">New Lead</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="proposal_sent">Proposal Sent</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="won">Won / Closed</option>
+                  <option value="lost">Lost</option>
+                </select>
               </div>
 
               <div className="space-y-1">
@@ -989,183 +1072,6 @@ export const LeadsView: React.FC = () => {
                 )}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Convert Lead to CRM Deal Modal */}
-      {convertingLead && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setConvertingLead(null)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-slate-900">Convert Lead to Deal</h3>
-                  <p className="text-[11px] text-slate-500">
-                    Create a pipeline deal and optionally link customer in CRM directory.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConvertingLead(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Source Lead Context Card */}
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-slate-900 text-sm">{convertingLead.name}</div>
-                <div className="text-[11px] text-slate-500">{convertingLead.phone} • {convertingLead.service}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] text-slate-400 uppercase font-semibold">Lead Value</div>
-                <div className="font-bold text-emerald-600 font-mono">₹{convertingLead.value.toLocaleString()}</div>
-              </div>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleConfirmConvert} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Deal Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={convertForm.deal_name}
-                  onChange={(e) => setConvertForm({ ...convertForm, deal_name: e.target.value })}
-                  placeholder="e.g. AC Installation & Maintenance Contract"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Deal Value (₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={convertForm.amount}
-                    onChange={(e) => setConvertForm({ ...convertForm, amount: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Pipeline Stage</label>
-                  <select
-                    value={convertForm.stage}
-                    onChange={(e) => setConvertForm({ ...convertForm, stage: e.target.value as Deal['stage'] })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
-                  >
-                    <option value="proposal_sent">Proposal Sent</option>
-                    <option value="negotiation">Negotiation</option>
-                    <option value="contacted">Contacted</option>
-                    <option value="won">Won / Closed</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Win Probability ({convertForm.probability}%)</label>
-                  <input
-                    type="range"
-                    min={10}
-                    max={100}
-                    step={5}
-                    value={convertForm.probability}
-                    onChange={(e) => setConvertForm({ ...convertForm, probability: Number(e.target.value) })}
-                    className="w-full accent-purple-600 mt-2 cursor-pointer"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Expected Close Date</label>
-                  <input
-                    type="date"
-                    value={convertForm.expected_close_date}
-                    onChange={(e) => setConvertForm({ ...convertForm, expected_close_date: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Deal Owner</label>
-                  <input
-                    type="text"
-                    value={convertForm.deal_owner}
-                    onChange={(e) => setConvertForm({ ...convertForm, deal_owner: e.target.value })}
-                    placeholder="e.g. Rahul Mehta"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div className="flex items-center pt-5">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={convertForm.create_customer}
-                      onChange={(e) => setConvertForm({ ...convertForm, create_customer: e.target.checked })}
-                      className="w-4 h-4 rounded text-purple-600 accent-purple-600 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <span className="font-medium text-slate-700">Sync with CRM Customers</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Deal Notes</label>
-                <textarea
-                  rows={2}
-                  value={convertForm.notes}
-                  onChange={(e) => setConvertForm({ ...convertForm, notes: e.target.value })}
-                  placeholder="Handover context, agreed terms, customer notes..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none resize-none focus:ring-1 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConvertingLead(null)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isConverting}
-                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-sm shadow-purple-700/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isConverting ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Converting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Convert to Deal & Open</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ import {
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
-  Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone, RefreshCw
+  Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone, RefreshCw, Trophy
 } from 'lucide-react';
 
 import { SendTemplateModal } from './conversations/SendTemplateModal';
@@ -47,8 +47,6 @@ export const ConversationsView: React.FC = () => {
     sendMessage,
     sendTemplateMessage,
     templates,
-    convertLeadToDeal,
-    convertConversationToDeal,
     addLead,
     addAppointment,
     addJob,
@@ -1084,9 +1082,18 @@ export const ConversationsView: React.FC = () => {
         source: 'WhatsApp Assistant',
         notes: `Scheduled from WhatsApp conversation`,
       });
-      setActiveTab('ops-appointments');
-    } else if (action === 'Convert to Deal') {
-      convertConversationToDeal(currentConv.id);
+    } else if (action === 'Mark Lead Won' || action === 'Convert to Deal') {
+      await addLead({
+        name: currentConv.contact_name,
+        phone: currentConv.phone_number,
+        service: currentConv.service_needed || 'AC Repair',
+        stage: 'won',
+        value: currentConv.estimated_value || 3500,
+        source: 'WhatsApp Chat',
+        notes: `Deal won from WhatsApp chat. Location: ${currentConv.location || 'Kozhikode'}`,
+      });
+      setActiveTab('crm-leads');
+      addToast(`🎉 Lead for ${currentConv.contact_name} marked as WON in CRM!`, 'success');
     } else if (action === 'Mark as Resolved') {
       useQiyamStore.setState((s) => ({
         conversations: s.conversations.map((c) =>
@@ -1432,11 +1439,11 @@ export const ConversationsView: React.FC = () => {
         {/* Drawer Actions */}
         <div className="pt-2 border-t border-slate-100 space-y-2">
           <button
-            onClick={() => convertConversationToDeal(currentConv.id)}
+            onClick={() => handleQuickAction('Mark Lead Won')}
             className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Convert to Deal</span>
+            <Trophy className="w-3.5 h-3.5" />
+            <span>Mark as Won Lead</span>
           </button>
           <button
             onClick={async () => {
@@ -3142,10 +3149,10 @@ export const ConversationsView: React.FC = () => {
                   📅 Create Appointment
                 </button>
                 <button
-                  onClick={() => handleQuickAction('Convert to Deal')}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-amber-50 border border-slate-200 text-amber-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
+                  onClick={() => handleQuickAction('Mark Lead Won')}
+                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-emerald-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
                 >
-                  💼 Convert to Deal
+                  🏆 Mark Lead Won
                 </button>
                 <button
                   onClick={() => handleQuickAction('Mark as Resolved')}

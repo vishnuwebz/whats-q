@@ -55,7 +55,6 @@ const ALL_SIDEBAR_ITEMS: SidebarMenuItem[] = [
   { tab: 'bulk-suppression', title: 'Blocked Contacts & Opt-outs', category: 'Messenger', icon: Ban, keywords: 'blocked contacts opt-out stop unsubscribe dnd suppression compliance blacklisted hub' },
   { tab: 'crm-leads', title: 'Leads', category: 'CRM', icon: Users, keywords: 'prospects pipeline inquiries conversion funnel' },
   { tab: 'crm-customers', title: 'Customers', category: 'CRM', icon: UserCheck, keywords: 'clients directory accounts profiles' },
-  { tab: 'crm-deals', title: 'Pipeline Deals', category: 'CRM', icon: IndianRupee, keywords: 'stages revenue opportunities sales forecast' },
   { tab: 'crm-followups', title: 'Follow-ups', category: 'CRM', icon: Clock, keywords: 'reminders scheduled calls pending tasks' },
   { tab: 'branches', title: 'Branches', category: 'Main', icon: Building2, keywords: 'locations outlets offices stores calicut kochi' },
   { tab: 'ops-jobs', title: 'Jobs', category: 'Operations', icon: Briefcase, keywords: 'work orders field service tickets assignment' },
@@ -123,7 +122,7 @@ export const getTabAccordionSection = (tab: string): AccordionSection => {
   ].includes(tab)) {
     return 'messenger';
   }
-  if (['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(tab)) {
+  if (['crm-leads', 'crm-customers', 'crm-followups'].includes(tab)) {
     return 'crm';
   }
   if ([
@@ -761,7 +760,7 @@ export const Sidebar: React.FC = () => {
     'bulk-suppression',
     'bulk-scheduled',
   ].includes(activeTab);
-  const isCrmActive = ['crm-leads', 'crm-customers', 'crm-deals', 'crm-followups'].includes(activeTab);
+  const isCrmActive = ['crm-leads', 'crm-customers', 'crm-followups'].includes(activeTab);
   const isOpsActive = ['ops-jobs', 'ops-appointments', 'ops-employees', 'ops-schedule', 'ops-attendance', 'ops-tasks', 'ops-routes', 'ops-inventory', 'automation-approvals'].includes(activeTab);
   const isFinanceActive = ['finance-overview', 'finance-transactions', 'finance-invoices', 'finance-quotations', 'finance-expenses', 'finance-payments', 'finance-accounts', 'finance-reports', 'finance-budget', 'finance-payroll'].includes(activeTab);
   const isAutomationActive = ['automation-builder', 'automation-workflows', 'automation-templates', 'automation-logs'].includes(activeTab);
@@ -1278,7 +1277,7 @@ export const Sidebar: React.FC = () => {
                 toggleSidebarCollapse();
                 openSection('crm');
               }}
-              title="CRM (Leads, Customers, Deals, Follow-ups)"
+              title="CRM (Leads, Customers, Follow-ups)"
               className={`w-full flex items-center justify-center p-2.5 rounded-lg transition-all ${
                 isCrmActive
                   ? 'bg-emerald-600 text-white shadow-sm'
@@ -1332,16 +1331,6 @@ export const Sidebar: React.FC = () => {
                   >
                     <Users className="w-3.5 h-3.5" />
                     <span>Customers</span>
-                  </button>
-                  <button
-                    data-tab="crm-deals"
-                    onClick={() => handleTabClick('crm-deals')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      isActive('crm-deals') ? 'bg-emerald-600/90 text-white font-semibold' : 'hover:bg-[#16233B] text-slate-400'
-                    }`}
-                  >
-                    <Briefcase className="w-3.5 h-3.5" />
-                    <span>Deals</span>
                   </button>
                   <button
                     data-tab="crm-followups"
@@ -2185,7 +2174,7 @@ export const Sidebar: React.FC = () => {
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                   Update Available
                 </span>
-                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.3'}</span>
+                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.18'}</span>
               </div>
               <button
                 onClick={handleBackupAndRestart}

@@ -5737,6 +5737,29 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       };
     });
 
+    // When a lead is marked as Won, automatically ensure they exist in Customers
+    if (newStage === 'won') {
+      const state = get();
+      const existing = (state.customers || []).find((c: any) => {
+        const cPhone = String(c.phone || '').replace(/\D/g, '');
+        const lPhone = String(lead.phone || '').replace(/\D/g, '');
+        return Boolean(cPhone && lPhone && (cPhone === lPhone || cPhone.endsWith(lPhone.slice(-10)) || lPhone.endsWith(cPhone.slice(-10))));
+      });
+      if (!existing) {
+        state.addCustomer({
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email || '',
+          location: lead.location || '',
+          category: 'Customer',
+          total_spend: lead.value || 0,
+          orders_count: 1,
+          status: 'Active',
+          last_order_date: 'Today',
+        });
+      }
+    }
+
     try {
       const res = await apiClient.put(`/crm/leads/${leadId}/`, { ...lead, stage: newStage, notes: updatedNotes });
       if (res && res.success !== false) {
@@ -7743,7 +7766,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Instant OTA Hard-Refresh & Real-Time Sync v2.4.3',
+        latest_message: 'Instant OTA Hard-Refresh & Real-Time Sync v2.4.18',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

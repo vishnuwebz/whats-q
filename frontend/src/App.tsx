@@ -19,7 +19,6 @@ import { ConversationsView } from './components/views/ConversationsView';
 
 // CRM Views
 import { LeadsView } from './components/views/crm/LeadsView';
-import { DealsView } from './components/views/crm/DealsView';
 import { FollowupsView } from './components/views/crm/FollowupsView';
 import { CustomersView } from './components/views/crm/CustomersView';
 
@@ -224,9 +223,8 @@ export const App: React.FC = () => {
 
       // CRM
       case 'crm-leads':
-        return <LeadsView />;
       case 'crm-deals':
-        return <DealsView />;
+        return <LeadsView />;
       case 'crm-followups':
         return <FollowupsView />;
       case 'crm-customers':
