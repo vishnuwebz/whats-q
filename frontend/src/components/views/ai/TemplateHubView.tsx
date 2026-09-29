@@ -7,7 +7,7 @@ import {
   Globe, ExternalLink, Settings, Smartphone, Trash2, Edit3,
   ArrowRight, Phone, Check, CheckCheck, FileText, Share2, Layers,
   Image as ImageIcon, Video, AlertCircle, GitBranch, Zap, ShieldCheck, Loader2, X,
-  Eye
+  Eye, Scissors
 } from 'lucide-react';
 import { WhatsAppTemplateItem } from '@/types';
 import { MetaConfigModal } from './MetaConfigModal';
@@ -30,6 +30,8 @@ export const TemplateHubView: React.FC = () => {
     testMetaConnection,
     addToast,
     requestGeneralConfirmation,
+    saveMetaTemplate,
+    submitTemplateToMeta,
   } = useQiyamStore();
 
   const [search, setSearch] = useState('');
@@ -42,6 +44,7 @@ export const TemplateHubView: React.FC = () => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
+  const [isTrimming, setIsTrimming] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
   const [workflowTemplateTarget, setWorkflowTemplateTarget] = useState<Partial<WhatsAppTemplateItem> | null>(null);
   const [isAutoWorkflowModalOpen, setIsAutoWorkflowModalOpen] = useState(false);
@@ -242,6 +245,247 @@ export const TemplateHubView: React.FC = () => {
 
   // Selected Template for Live Phone Preview
   const activeTemplate = filtered.find(t => String(t.id) === String(selectedTemplateId)) || filtered[0] || templates[0];
+
+  // Comprehensive parser extracting exact parameter details for In Review & Rejected templates
+  const parseTemplateMetaNotice = useCallback((tmpl: WhatsAppTemplateItem) => {
+    if (!tmpl) return null;
+    const reason = (tmpl.rejection_reason || '').trim();
+    const lowerReason = reason.toLowerCase();
+    const isPending = isTemplatePending(tmpl);
+    const isRejected = isTemplateRejected(tmpl);
+
+    // 1. Language / Duplicate conflict
+    if (
+      lowerReason.includes('already exists') ||
+      lowerReason.includes('content in this language')
+    ) {
+      const conflicting = getConflictingTemplate(tmpl);
+      return {
+        category: 'language_conflict' as const,
+        field: 'name' as const,
+        fieldName: 'Template Name & Language',
+        isPending,
+        isRejected,
+        title: isPending ? 'Meta Review Notice: Language Content Already Exists' : 'Meta Error: Language Content Already Exists',
+        badge: 'Conflict on Meta',
+        badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+        reason: reason || `A template named "${tmpl.name}" with language "${tmpl.language || 'en_US'}" already exists on your Meta WhatsApp account.`,
+        conflicting,
+      };
+    }
+
+    // 2. Character limit on Header (Meta strict limit: 60 chars)
+    const isHeaderLimit =
+      lowerReason.includes('header') &&
+      (lowerReason.includes('character limit') || lowerReason.includes('limit exceeded') || lowerReason.includes('more than 60'));
+    const headerOver60 = tmpl.header_type === 'TEXT' && (tmpl.header_text || '').length > 60;
+
+    if (isHeaderLimit || headerOver60) {
+      const currentText = tmpl.header_text || '';
+      const currentLength = currentText.length;
+      const maxLimit = 60;
+      const excess = Math.max(0, currentLength - maxLimit);
+      const validPart = currentText.slice(0, maxLimit);
+      const excessPart = currentText.slice(maxLimit);
+
+      return {
+        category: 'character_limit' as const,
+        field: 'header' as const,
+        fieldName: 'Header Text (TEXT)',
+        isPending,
+        isRejected,
+        title: isPending
+          ? 'Meta Compliance Review: Header Character Limit Exceeded'
+          : 'Meta Submission Rejection: Header Character Limit Exceeded',
+        badge: excess > 0 ? `+${excess} chars over limit` : 'Header Limit (60 chars)',
+        badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+        reason: reason || `The Header field has ${currentLength} characters, which exceeds Meta's 60-character limit.`,
+        currentText,
+        currentLength,
+        maxLimit,
+        excess,
+        validPart,
+        excessPart,
+        trimmedSuggestion: validPart.trim(),
+      };
+    }
+
+    // 3. Character limit on Footer (Meta strict limit: 60 chars)
+    const isFooterLimit =
+      lowerReason.includes('footer') &&
+      (lowerReason.includes('character limit') || lowerReason.includes('limit exceeded') || lowerReason.includes('more than 60'));
+    const footerOver60 = (tmpl.footer_text || '').length > 60;
+
+    if (isFooterLimit || footerOver60) {
+      const currentText = tmpl.footer_text || '';
+      const currentLength = currentText.length;
+      const maxLimit = 60;
+      const excess = Math.max(0, currentLength - maxLimit);
+      const validPart = currentText.slice(0, maxLimit);
+      const excessPart = currentText.slice(maxLimit);
+
+      return {
+        category: 'character_limit' as const,
+        field: 'footer' as const,
+        fieldName: 'Footer Field',
+        isPending,
+        isRejected,
+        title: isPending
+          ? 'Meta Compliance Review: Footer Character Limit Exceeded'
+          : 'Meta Submission Rejection: Footer Character Limit Exceeded',
+        badge: excess > 0 ? `+${excess} chars over limit` : 'Footer Limit (60 chars)',
+        badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+        reason: reason || `The Footer field has ${currentLength} characters, which exceeds Meta's 60-character limit.`,
+        currentText,
+        currentLength,
+        maxLimit,
+        excess,
+        validPart,
+        excessPart,
+        trimmedSuggestion: validPart.trim(),
+      };
+    }
+
+    // 4. Character limit on Body (> 1024 chars)
+    const bodyText = tmpl.body_text || tmpl.body || '';
+    const isBodyLimit =
+      lowerReason.includes('body') &&
+      (lowerReason.includes('character limit') || lowerReason.includes('limit exceeded') || lowerReason.includes('1024'));
+    const bodyOver1024 = bodyText.length > 1024;
+
+    if (isBodyLimit || bodyOver1024) {
+      const currentLength = bodyText.length;
+      const maxLimit = 1024;
+      const excess = Math.max(0, currentLength - maxLimit);
+      const validPart = bodyText.slice(0, maxLimit);
+      const excessPart = bodyText.slice(maxLimit);
+
+      return {
+        category: 'character_limit' as const,
+        field: 'body' as const,
+        fieldName: 'Body Message Text',
+        isPending,
+        isRejected,
+        title: isPending
+          ? 'Meta Compliance Review: Body Character Limit Exceeded'
+          : 'Meta Submission Rejection: Body Character Limit Exceeded',
+        badge: excess > 0 ? `+${excess} chars over limit` : 'Body Limit (1024 chars)',
+        badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+        reason: reason || `Body has ${currentLength} characters, which exceeds Meta's 1,024-character limit.`,
+        currentText: bodyText,
+        currentLength,
+        maxLimit,
+        excess,
+        validPart,
+        excessPart,
+        trimmedSuggestion: validPart.trim(),
+      };
+    }
+
+    // 5. Missing Sample / Variables parameter issue
+    if (
+      lowerReason.includes('parameter') ||
+      lowerReason.includes('sample') ||
+      lowerReason.includes('variable') ||
+      lowerReason.includes('example')
+    ) {
+      return {
+        category: 'variable_issue' as const,
+        field: 'variables' as const,
+        fieldName: 'Dynamic Variables Sample Values',
+        isPending,
+        isRejected,
+        title: isPending
+          ? 'Meta Compliance Review: Variable Sample Values Missing'
+          : 'Meta Submission Rejection: Variable Parameter Issue',
+        badge: 'Samples Required',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+        reason: reason || 'Meta requires concrete sample values for all dynamic variables {{1}}, {{2}}.',
+      };
+    }
+
+    // 6. Generic rejection / compliance feedback
+    if (reason && reason !== 'NONE') {
+      return {
+        category: 'generic_rejection' as const,
+        field: 'general' as const,
+        fieldName: 'Meta Review Flag',
+        isPending,
+        isRejected,
+        title: isPending
+          ? 'Meta Compliance Review Feedback'
+          : 'Meta Submission Rejection',
+        badge: isPending ? 'Action Required' : 'Rejected',
+        badgeColor: isPending ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-rose-100 text-rose-800 border-rose-300',
+        reason,
+      };
+    }
+
+    // 7. Normal In Review (Pending Meta SLA)
+    if (isPending) {
+      return {
+        category: 'in_review_normal' as const,
+        field: 'general' as const,
+        fieldName: 'Meta Graph API Compliance',
+        isPending: true,
+        isRejected: false,
+        title: 'Meta Review In Progress (Pending Approval)',
+        badge: 'In Review (~15m SLA)',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+        reason: '',
+      };
+    }
+
+    return null;
+  }, [isTemplatePending, isTemplateRejected, getConflictingTemplate]);
+
+  // Notice for active template in Right Phone Preview
+  const activeTemplateNotice = useMemo(() => {
+    if (!activeTemplate) return null;
+    return parseTemplateMetaNotice(activeTemplate);
+  }, [activeTemplate, parseTemplateMetaNotice]);
+
+  // Direct One-Click Auto-Trim & Resubmit Handler
+  const handleAutoTrimField = useCallback(async (
+    tmpl: WhatsAppTemplateItem,
+    field: 'header' | 'footer' | 'body',
+    trimmedVal: string
+  ) => {
+    if (!tmpl) return;
+    setIsTrimming(String(tmpl.id));
+    try {
+      const updatedData: Partial<WhatsAppTemplateItem> = {
+        id: tmpl.id,
+        name: tmpl.name,
+        category: tmpl.category,
+        meta_category: tmpl.meta_category,
+        language: tmpl.language,
+        header_type: tmpl.header_type,
+        header_text: field === 'header' ? trimmedVal : (tmpl.header_text || ''),
+        header_sample: tmpl.header_sample,
+        header_url: tmpl.header_url,
+        body: field === 'body' ? trimmedVal : (tmpl.body_text || tmpl.body || ''),
+        body_text: field === 'body' ? trimmedVal : (tmpl.body_text || tmpl.body || ''),
+        body_variables: tmpl.body_variables || {},
+        footer_text: field === 'footer' ? trimmedVal : (tmpl.footer_text || ''),
+        buttons: tmpl.buttons || [],
+        allow_category_change: tmpl.allow_category_change ?? true,
+      };
+
+      addToast(`Auto-trimming ${field} to ${trimmedVal.length} chars...`, 'info');
+      const saved = await saveMetaTemplate(updatedData as any);
+      if (saved) {
+        addToast(`Resubmitting "${tmpl.name}" to Meta Graph API...`, 'info');
+        await submitTemplateToMeta(tmpl.id);
+        await verifyMetaTemplate(tmpl.id);
+        addToast(`Successfully trimmed ${field} and resubmitted to Meta!`, 'success');
+      }
+    } catch (err: any) {
+      addToast(`Auto-trim failed: ${err.message}`, 'error');
+    } finally {
+      setIsTrimming(null);
+    }
+  }, [addToast, saveMetaTemplate, submitTemplateToMeta, verifyMetaTemplate]);
 
   // Respective conflicting template if activeTemplate has a language conflict
   const activeConflictingTemplate = useMemo(() => {
@@ -709,134 +953,489 @@ export const TemplateHubView: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Header Text Preview if TEXT */}
+                    {tmpl.header_type === 'TEXT' && tmpl.header_text && (
+                      <div className="mb-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              Header (TEXT):
+                            </span>
+                            {tmpl.header_text.length > 60 && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                                Exceeds 60 Chars
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-semibold text-slate-900 leading-snug font-mono break-words">
+                            {tmpl.header_text}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold shrink-0 ${
+                            tmpl.header_text.length > 60
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {tmpl.header_text.length}/60 chars
+                        </span>
+                      </div>
+                    )}
+
                     {/* Body snippet */}
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 font-mono text-[11px] text-slate-700 leading-relaxed whitespace-pre-line max-h-24 overflow-hidden text-ellipsis">
                       {tmpl.body_text || tmpl.body}
                     </div>
 
-                    {/* Rejection / Conflict Resolution Card */}
-                    {tmpl.rejection_reason && (isRejected || tmpl.rejection_reason !== 'NONE') && (() => {
-                      const isLanguageConflict =
-                        tmpl.rejection_reason.toLowerCase().includes('already exists') ||
-                        tmpl.rejection_reason.toLowerCase().includes('content in this language');
-                      const conflictingTmpl = getConflictingTemplate(tmpl);
+                    {/* Exact Meta Notice & Parameter Analysis Card (For In Review & Rejected) */}
+                    {(() => {
+                      const issue = parseTemplateMetaNotice(tmpl);
+                      if (!issue) return null;
 
-                      return (
-                        <div className="mt-3 p-3 bg-red-50/90 border-2 border-red-200 rounded-2xl text-xs space-y-2.5 shadow-2xs">
-                          {/* Alert Header */}
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-[11px] text-red-900 uppercase tracking-wide">
-                                  {isLanguageConflict ? 'Meta Error: Language Content Already Exists' : 'Meta Submission Rejection'}
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-200/80 text-red-900 font-mono font-semibold">
-                                  Lang: {tmpl.language || 'en_US'}
-                                </span>
+                      // 1. Character Limit Exceeded Card
+                      if (issue.category === 'character_limit') {
+                        return (
+                          <div className={`mt-3 p-3.5 rounded-2xl text-xs space-y-3 shadow-2xs border-2 ${
+                            issue.isPending
+                              ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                              : 'bg-red-50/90 border-red-300 text-red-950'
+                          }`}>
+                            {/* Alert Header */}
+                            <div className="flex items-start justify-between gap-2 flex-wrap">
+                              <div className="flex items-start gap-2 min-w-0">
+                                {issue.isPending ? (
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                ) : (
+                                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-[11px] uppercase tracking-wide text-slate-900">
+                                      {issue.title}
+                                    </span>
+                                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold border ${issue.badgeColor}`}>
+                                      {issue.badge}
+                                    </span>
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-200/80 text-slate-800 font-mono font-semibold">
+                                      Lang: {tmpl.language || 'en_US'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-700 font-medium mt-1 leading-snug">
+                                    {issue.reason}
+                                  </p>
+                                </div>
                               </div>
-                              <p className="text-[11px] text-red-800 font-medium mt-0.5 leading-snug">
-                                {tmpl.rejection_reason}
-                              </p>
                             </div>
-                          </div>
 
-                          {/* Respective Conflicting Template Details & One-Click Navigation */}
-                          {isLanguageConflict && conflictingTmpl ? (
-                            <div className="bg-white rounded-xl p-3 border border-red-200/80 shadow-xs space-y-2">
-                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                    Respective Existing Template:
-                                  </span>
-                                  <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                    {conflictingTmpl.name}
+                            {/* Exact Field Parameter Breakdown Box */}
+                            <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs space-y-2.5">
+                              <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                                <div className="flex items-center gap-1.5 font-semibold text-slate-600">
+                                  <span>Parameter Field:</span>
+                                  <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                    {issue.fieldName}
                                   </span>
                                 </div>
-                                {conflictingTmpl.meta_template_id && (
-                                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                    Meta #{conflictingTmpl.meta_template_id}
+                                <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                                  <span className="text-slate-500 font-medium">Exact Character Count:</span>
+                                  <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                                    {issue.currentLength} / {issue.maxLimit} chars
                                   </span>
-                                )}
+                                  {issue.excess > 0 && (
+                                    <span className="font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
+                                      (+{issue.excess} over Meta limit)
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
-                              {/* Body excerpt of respective existing template */}
-                              <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-mono text-slate-600 line-clamp-2 leading-relaxed">
-                                {conflictingTmpl.body_text || conflictingTmpl.body}
-                              </div>
-
-                              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                                <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                                  <span className="font-bold text-emerald-700 uppercase">
-                                    ● {conflictingTmpl.meta_status || conflictingTmpl.status || 'APPROVED'}
+                              {/* Visual Breakdown of Valid vs Excess Characters */}
+                              {issue.currentText && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
+                                    Current Content Breakdown:
                                   </span>
-                                  <span>•</span>
-                                  <span>Lang: {conflictingTmpl.language || 'en_US'}</span>
-                                  <span>•</span>
-                                  <span>Used {conflictingTmpl.usage_count || 0} times</span>
+                                  <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 font-mono text-[11px] leading-relaxed break-words">
+                                    <span className="text-slate-800 font-medium bg-emerald-50/70 border-b-2 border-emerald-500 px-0.5" title="Valid characters within Meta limit">
+                                      {issue.validPart}
+                                    </span>
+                                    {issue.excessPart && (
+                                      <span
+                                        className="text-rose-900 bg-rose-200/90 font-bold border-b-2 border-rose-600 px-1 py-0.5 ml-0.5 rounded-sm line-through decoration-rose-700"
+                                        title={`Exceeds limit by ${issue.excess} characters`}
+                                      >
+                                        {issue.excessPart}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5 flex-wrap gap-1">
+                                    <span className="flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                                      First {issue.maxLimit} chars accepted by Meta
+                                    </span>
+                                    {issue.excess > 0 && (
+                                      <span className="flex items-center gap-1 text-rose-600 font-semibold">
+                                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                                        {issue.excess} characters rejected by Meta
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Proposed Auto-Trimmed Version & Quick Actions */}
+                              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                                <div className="text-[10px] text-slate-500 max-w-sm">
+                                  💡 Meta Graph API strictly requires {issue.fieldName} to have <strong>{issue.maxLimit} characters or fewer</strong> before approving.
                                 </div>
 
                                 <div className="flex items-center gap-1.5 flex-wrap">
+                                  {issue.excess > 0 && issue.trimmedSuggestion && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAutoTrimField(tmpl, issue.field, issue.trimmedSuggestion!);
+                                      }}
+                                      disabled={isTrimming === String(tmpl.id)}
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+                                      title={`Auto-trim ${issue.fieldName} to ${issue.maxLimit} characters and resubmit to Meta`}
+                                    >
+                                      {isTrimming === String(tmpl.id) ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Scissors className="w-3.5 h-3.5" />
+                                      )}
+                                      <span>Auto-Trim to {issue.maxLimit} Chars & Resubmit</span>
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleNavigateToTemplate(conflictingTmpl);
+                                      handleEdit(tmpl);
                                     }}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                                    title={`Open and view existing approved template "${conflictingTmpl.name}"`}
+                                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                                    title="Open template in full editor to fix manually"
                                   >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>Click to View Respective Template</span>
-                                    <ArrowRight className="w-3.5 h-3.5" />
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>Edit in Editor</span>
                                   </button>
 
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteDuplicate(tmpl);
+                                      handleLiveVerify(tmpl.id);
                                     }}
-                                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
-                                    title="Delete this rejected duplicate template"
+                                    disabled={isVerifying === String(tmpl.id)}
+                                    className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer disabled:opacity-60"
+                                    title="Check live status directly on Meta Graph API"
                                   >
-                                    <Trash2 className="w-3 h-3 text-rose-600" />
-                                    <span>Delete Duplicate</span>
+                                    <RefreshCw className={`w-3.5 h-3.5 ${isVerifying === String(tmpl.id) ? 'animate-spin' : ''}`} />
+                                    <span>Verify Meta API</span>
                                   </button>
+
+                                  <a
+                                    href={getMetaManagerUrl(tmpl.name)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-2.5 py-1.5 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] font-bold text-xs rounded-xl flex items-center gap-1 transition"
+                                    title="Open this template in Facebook Meta WhatsApp Manager"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <span>Meta Manager</span>
+                                  </a>
                                 </div>
                               </div>
                             </div>
-                          ) : isLanguageConflict ? (
-                            <div className="bg-white rounded-xl p-2.5 border border-red-200/80 shadow-xs flex items-center justify-between gap-2 flex-wrap">
-                              <div className="text-[11px] text-slate-700">
-                                A template named <strong className="font-mono">{tmpl.name}</strong> ({tmpl.language || 'en_US'}) already exists on your official Meta WhatsApp account.
+                          </div>
+                        );
+                      }
+
+                      // 2. Language / Duplicate Conflict Card
+                      if (issue.category === 'language_conflict') {
+                        const conflictingTmpl = issue.conflicting;
+                        return (
+                          <div className="mt-3 p-3 bg-red-50/90 border-2 border-red-200 rounded-2xl text-xs space-y-2.5 shadow-2xs">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-[11px] text-red-900 uppercase tracking-wide">
+                                    {issue.title}
+                                  </span>
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-200/80 text-red-900 font-mono font-semibold">
+                                    Lang: {tmpl.language || 'en_US'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-red-800 font-medium mt-0.5 leading-snug">
+                                  {issue.reason}
+                                </p>
                               </div>
+                            </div>
+
+                            {conflictingTmpl ? (
+                              <div className="bg-white rounded-xl p-3 border border-red-200/80 shadow-xs space-y-2">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                      Respective Existing Template:
+                                    </span>
+                                    <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                      {conflictingTmpl.name}
+                                    </span>
+                                  </div>
+                                  {conflictingTmpl.meta_template_id && (
+                                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                      Meta #{conflictingTmpl.meta_template_id}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-mono text-slate-600 line-clamp-2 leading-relaxed">
+                                  {conflictingTmpl.body_text || conflictingTmpl.body}
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                                  <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                    <span className="font-bold text-emerald-700 uppercase">
+                                      ● {conflictingTmpl.meta_status || conflictingTmpl.status || 'APPROVED'}
+                                    </span>
+                                    <span>•</span>
+                                    <span>Lang: {conflictingTmpl.language || 'en_US'}</span>
+                                    <span>•</span>
+                                    <span>Used {conflictingTmpl.usage_count || 0} times</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleNavigateToTemplate(conflictingTmpl);
+                                      }}
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                                      title={`Open and view existing approved template "${conflictingTmpl.name}"`}
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>Click to View Respective Template</span>
+                                      <ArrowRight className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteDuplicate(tmpl);
+                                      }}
+                                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                                      title="Delete this duplicate template"
+                                    >
+                                      <Trash2 className="w-3 h-3 text-rose-600" />
+                                      <span>Delete Duplicate</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-xl p-2.5 border border-red-200/80 shadow-xs flex items-center justify-between gap-2 flex-wrap">
+                                <div className="text-[11px] text-slate-700">
+                                  A template named <strong className="font-mono">{tmpl.name}</strong> ({tmpl.language || 'en_US'}) already exists on your official Meta WhatsApp account.
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSync();
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                  >
+                                    <RefreshCw className="w-3 h-3" />
+                                    <span>Sync from Meta</span>
+                                  </button>
+                                  <a
+                                    href={getMetaManagerUrl(tmpl.name)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-[#1877F2] font-bold text-xs rounded-lg flex items-center gap-1 transition"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    <span>Find in Meta Manager</span>
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // 3. Normal In Review Card (No error, awaiting Meta approval)
+                      if (issue.category === 'in_review_normal') {
+                        return (
+                          <div className="mt-3 p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs space-y-2 shadow-2xs">
+                            <div className="flex items-start justify-between gap-2 flex-wrap">
+                              <div className="flex items-start gap-2">
+                                <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-[11px] text-amber-950 uppercase tracking-wide">
+                                      {issue.title}
+                                    </span>
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-900 font-mono font-semibold">
+                                      Status: PENDING
+                                    </span>
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-white text-slate-700 font-mono font-semibold border border-amber-200">
+                                      {tmpl.meta_category || 'UTILITY'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-amber-900/90 font-medium mt-1 leading-relaxed">
+                                    {tmpl.meta_category === 'MARKETING'
+                                      ? 'This marketing template is in Meta’s compliance queue. Review typically completes within 2 to 24 hours.'
+                                      : 'Utility templates undergo automated Meta AI verification and are typically approved within ~15 minutes.'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-2.5 border border-amber-200/80 flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                {tmpl.meta_template_id ? (
+                                  <span className="font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                    Meta #{tmpl.meta_template_id}
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-slate-400">Awaiting Meta ID</span>
+                                )}
+                                <span>•</span>
+                                <span>Lang: {tmpl.language || 'en_US'}</span>
+                                <span>•</span>
+                                <span>Category: {tmpl.meta_category || 'UTILITY'}</span>
+                              </div>
+
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleSync();
+                                    handleLiveVerify(tmpl.id);
                                   }}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                  disabled={isVerifying === String(tmpl.id)}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 transition cursor-pointer disabled:opacity-60"
+                                  title="Check live approval directly from Meta Graph API"
                                 >
-                                  <RefreshCw className="w-3 h-3" />
-                                  <span>Sync from Meta</span>
+                                  <RefreshCw className={`w-3 h-3 ${isVerifying === String(tmpl.id) ? 'animate-spin' : ''}`} />
+                                  <span>Live Check Meta API</span>
                                 </button>
+
                                 <a
                                   href={getMetaManagerUrl(tmpl.name)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-[#1877F2] font-bold text-xs rounded-lg flex items-center gap-1 transition"
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-[#1877F2] font-bold text-xs rounded-lg flex items-center gap-1 transition"
                                 >
                                   <ExternalLink className="w-3 h-3" />
-                                  <span>Find in Meta Manager</span>
+                                  <span>Meta Manager</span>
                                 </a>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(tmpl);
+                                  }}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
                               </div>
                             </div>
-                          ) : null}
+                          </div>
+                        );
+                      }
+
+                      // 4. Variable Sample Issue or Generic Rejection Card
+                      return (
+                        <div className={`mt-3 p-3 rounded-2xl text-xs space-y-2.5 shadow-2xs border-2 ${
+                          issue.isPending
+                            ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                            : 'bg-red-50/90 border-red-300 text-red-950'
+                        }`}>
+                          <div className="flex items-start gap-2">
+                            {issue.isPending ? (
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-[11px] uppercase tracking-wide text-slate-900">
+                                  {issue.title}
+                                </span>
+                                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold border ${issue.badgeColor}`}>
+                                  {issue.badge}
+                                </span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-200/80 text-slate-800 font-mono font-semibold">
+                                  Lang: {tmpl.language || 'en_US'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-700 font-medium mt-1 leading-snug">
+                                {issue.reason}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-xl p-2.5 border border-slate-200 shadow-xs flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              Resolution: Make the necessary compliance corrections and resubmit to Meta.
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(tmpl);
+                                }}
+                                className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Fix in Editor</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleLiveVerify(tmpl.id);
+                                }}
+                                disabled={isVerifying === String(tmpl.id)}
+                                className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-1 transition cursor-pointer disabled:opacity-60"
+                              >
+                                <RefreshCw className={`w-3.5 h-3.5 ${isVerifying === String(tmpl.id) ? 'animate-spin' : ''}`} />
+                                <span>Verify Status</span>
+                              </button>
+
+                              <a
+                                href={getMetaManagerUrl(tmpl.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-[#1877F2] font-bold text-xs rounded-lg flex items-center gap-1 transition"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Meta Manager</span>
+                              </a>
+                            </div>
+                          </div>
                         </div>
                       );
                     })()}
@@ -1096,33 +1695,106 @@ export const TemplateHubView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Active Template Conflict Resolution Alert */}
-              {activeConflictingTemplate && (
-                <div className="bg-rose-950/70 border border-rose-500/50 rounded-xl p-2.5 text-xs text-rose-100 space-y-1.5 animate-in fade-in">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[10px] text-rose-300 flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                      Duplicate Conflict on Meta
-                    </span>
-                    {activeConflictingTemplate.meta_template_id && (
-                      <span className="text-[9px] font-mono bg-rose-900/80 px-1.5 py-0.2 rounded text-rose-200">
-                        Meta #{activeConflictingTemplate.meta_template_id}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-rose-200/90 leading-tight">
-                    An approved version of &quot;{activeConflictingTemplate.name}&quot; already exists on Meta.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleNavigateToTemplate(activeConflictingTemplate)}
-                    className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Switch Preview to Approved Template</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
+              {/* Active Template Issue / Review Notice in Phone Preview Pane */}
+              {activeTemplateNotice && (
+                <>
+                  {/* 1. Language Duplicate Conflict */}
+                  {activeTemplateNotice.category === 'language_conflict' && activeTemplateNotice.conflicting && (
+                    <div className="bg-rose-950/70 border border-rose-500/50 rounded-xl p-2.5 text-xs text-rose-100 space-y-1.5 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[10px] text-rose-300 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                          Duplicate Conflict on Meta
+                        </span>
+                        {activeTemplateNotice.conflicting.meta_template_id && (
+                          <span className="text-[9px] font-mono bg-rose-900/80 px-1.5 py-0.2 rounded text-rose-200">
+                            Meta #{activeTemplateNotice.conflicting.meta_template_id}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-rose-200/90 leading-tight">
+                        An approved version of &quot;{activeTemplateNotice.conflicting.name}&quot; already exists on Meta.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTemplate(activeTemplateNotice.conflicting!)}
+                        className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Switch Preview to Approved Template</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. Character Limit Notice */}
+                  {activeTemplateNotice.category === 'character_limit' && (
+                    <div className="bg-amber-950/70 border border-amber-500/50 rounded-xl p-2.5 text-xs text-amber-100 space-y-1.5 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[10px] text-amber-300 flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          {activeTemplateNotice.fieldName} Limit Exceeded
+                        </span>
+                        <span className="text-[9px] font-mono bg-amber-900/80 px-1.5 py-0.2 rounded text-amber-200">
+                          {activeTemplateNotice.currentLength} / {activeTemplateNotice.maxLimit} chars
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-amber-200/90 leading-tight">
+                        {activeTemplateNotice.fieldName} is {activeTemplateNotice.excess} chars over Meta limit ({activeTemplateNotice.maxLimit} max).
+                      </p>
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        {activeTemplateNotice.excess > 0 && activeTemplateNotice.trimmedSuggestion && (
+                          <button
+                            type="button"
+                            onClick={() => handleAutoTrimField(activeTemplate, activeTemplateNotice.field, activeTemplateNotice.trimmedSuggestion!)}
+                            disabled={isTrimming === String(activeTemplate.id)}
+                            className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 transition shadow-xs cursor-pointer disabled:opacity-60"
+                          >
+                            <Scissors className="w-3 h-3" />
+                            <span>Trim to {activeTemplateNotice.maxLimit} Chars</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(activeTemplate)}
+                          className="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 transition border border-white/10 cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit in Editor</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. In Review Normal Notice */}
+                  {activeTemplateNotice.category === 'in_review_normal' && (
+                    <div className="bg-slate-800/80 border border-amber-500/40 rounded-xl p-2.5 text-xs text-slate-200 space-y-1.5 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[10px] text-amber-300 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          Meta Review In Progress
+                        </span>
+                        <span className="text-[9px] font-mono bg-white/10 px-1.5 py-0.2 rounded text-slate-300">
+                          {activeTemplate.meta_category || 'UTILITY'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-300 leading-tight">
+                        {activeTemplate.meta_category === 'MARKETING'
+                          ? 'Marketing templates undergo compliance check (2–24h).'
+                          : 'Utility templates are reviewed automatically within ~15 minutes.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleLiveVerify(activeTemplate.id)}
+                        disabled={isVerifying === String(activeTemplate.id)}
+                        className="w-full py-1.5 px-2 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-[10px] rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-60"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isVerifying === String(activeTemplate.id) ? 'animate-spin' : ''}`} />
+                        <span>Live Check Meta API</span>
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
