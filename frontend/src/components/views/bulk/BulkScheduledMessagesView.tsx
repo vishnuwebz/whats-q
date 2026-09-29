@@ -28,6 +28,7 @@ import { useQiyamStore } from '../../../store/useQiyamStore';
 import { BulkScheduledMessage, BulkContact } from '../../../types';
 import { MetaWalletCard } from './MetaWalletCard';
 import { SidebarToggle } from '../../layout/SidebarToggle';
+import { ModernDateTimePicker } from '../../common/ModernDateTimePicker';
 
 export const BulkScheduledMessagesView: React.FC = () => {
   const {
@@ -870,12 +871,9 @@ export const BulkScheduledMessagesView: React.FC = () => {
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Scheduled Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    step="1"
+                  <ModernDateTimePicker
                     value={newScheduledDateTime}
-                    onChange={(e) => setNewScheduledDateTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-xs bg-white"
+                    onChange={setNewScheduledDateTime}
                     required
                   />
                 </div>
@@ -1077,12 +1075,9 @@ export const BulkScheduledMessagesView: React.FC = () => {
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Dispatch Date &amp; Time</label>
-                  <input
-                    type="datetime-local"
-                    step="1"
+                  <ModernDateTimePicker
                     value={quickDateTime}
-                    onChange={(e) => setQuickDateTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                    onChange={setQuickDateTime}
                     required
                   />
                 </div>

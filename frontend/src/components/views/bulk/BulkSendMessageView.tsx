@@ -46,6 +46,7 @@ import { MetaWalletCard } from './MetaWalletCard';
 import { WhatsAppGuidelinesModal } from './WhatsAppGuidelinesModal';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { CountryPhoneInput } from '../../common/CountryPhoneInput';
+import { ModernDateTimePicker } from '../../common/ModernDateTimePicker';
 
 export interface MarketingImagePreset {
   id: string;
@@ -1318,12 +1319,10 @@ export const BulkSendMessageView: React.FC = () => {
                     <label className="block font-semibold text-blue-900 text-[11px]">
                       Select Broadcast Date & Time
                     </label>
-                    <input
-                      type="datetime-local"
-                      step="1"
+                    <ModernDateTimePicker
                       value={scheduledDateTime}
-                      onChange={(e) => setScheduledDateTime(e.target.value)}
-                      className="w-full px-3 py-2 border border-blue-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-hidden"
+                      onChange={setScheduledDateTime}
+                      required
                     />
                   </div>
                 )}

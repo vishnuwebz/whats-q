@@ -7766,7 +7766,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Bulk Scheduled Precision & Real-Time Sync v2.4.21',
+        latest_message: 'Modern DateTime UI Picker & Schedule Accuracy v2.4.22',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,
