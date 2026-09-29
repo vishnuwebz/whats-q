@@ -503,14 +503,6 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
     ).length;
   }, [importedContacts, selectedContactIds]);
 
-  const handleHeaderImportClick = () => {
-    setImportMethod('csv');
-    setIsCreateOpen(true);
-    setTimeout(() => {
-      createModalFileInputRef.current?.click();
-    }, 150);
-  };
-
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) {
@@ -1309,14 +1301,6 @@ export const BulkRecipientListsView: React.FC<BulkRecipientListsViewProps> = ({ 
                 <span className="bg-white/20 text-[9px] px-1.5 py-0.2 rounded-full uppercase tracking-wider font-extrabold text-emerald-100">
                   New
                 </span>
-              </button>
-
-              <button
-                onClick={handleHeaderImportClick}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer"
-              >
-                <Upload className="w-3.5 h-3.5 text-slate-500" />
-                <span>Import CSV / Excel</span>
               </button>
 
               <button
