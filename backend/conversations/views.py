@@ -1566,6 +1566,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
             conversation.active_line_type = 'meta_cloud'
 
         conversation.last_contact_date = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+        if sender == 'agent':
+            conversation.lead_stage = 'Contacted'
+            try:
+                from crm.services import mark_lead_contacted_from_reply
+                mark_lead_contacted_from_reply(
+                    phone=conversation.phone_number,
+                    contact_name=conversation.contact_name,
+                    owner_name=sender_name or conversation.lead_owner
+                )
+            except Exception as crm_err:
+                logger.warning(f"[CRM Sync] Could not mark lead contacted on send_message: {crm_err}")
+
         conversation.save()
 
         msg_data = MessageSerializer(msg).data
@@ -3204,6 +3216,16 @@ class WhatsAppWebhookView(APIView):
                                 }
                             )
 
+                            try:
+                                from crm.services import mark_lead_contacted_from_reply
+                                mark_lead_contacted_from_reply(
+                                    phone=cust_display,
+                                    contact_name=conv.contact_name,
+                                    owner_name=resolved_emp_name
+                                )
+                            except Exception as crm_reply_err:
+                                logger.warning(f"[CRM Dynamic Sync] Error marking lead contacted from employee outbound: {crm_reply_err}")
+
                             if is_created_conv:
                                 emit_event('conversation.created', ConversationSerializer(conv).data)
 
@@ -3334,6 +3356,21 @@ class WhatsAppWebhookView(APIView):
                             recipient_phone=resolved_line_phone,
                             rich_card=rich_card_data
                         )
+
+                        # Dynamic Real-time CRM Leads Synchronization
+                        try:
+                            from crm.services import sync_inbound_message_to_crm_lead
+                            sync_inbound_message_to_crm_lead(
+                                phone=conv.phone_number or clean_sender,
+                                contact_name=conv.contact_name,
+                                message_text=text_body,
+                                owner=conv.lead_owner,
+                                source=conv.source,
+                                service=conv.service_needed,
+                                location=conv.location
+                            )
+                        except Exception as crm_sync_err:
+                            logger.warning(f"[CRM Dynamic Sync] Error syncing inbound message to CRM lead: {crm_sync_err}")
 
                         # Detect WhatsApp Opt-Out / Opt-In keywords & quick reply buttons
                         clean_upper = text_body.strip().upper()
@@ -3948,6 +3985,21 @@ class SimulateWhatsAppMessageView(APIView):
             }
         )
 
+        # Dynamic Real-time CRM Leads Synchronization
+        try:
+            from crm.services import sync_inbound_message_to_crm_lead
+            sync_inbound_message_to_crm_lead(
+                phone=phone,
+                contact_name=contact_name,
+                message_text=text,
+                owner=conv.lead_owner,
+                source=conv.source,
+                service=conv.service_needed,
+                location=conv.location
+            )
+        except Exception as sim_crm_err:
+            logger.warning(f"[CRM Simulation Sync] Error syncing lead: {sim_crm_err}")
+
         # Customer sent a message -> all prior outbound messages were read
         Message.objects.filter(
             conversation=conv,
@@ -4263,7 +4315,13 @@ class StartWhatsAppChatView(APIView):
             rich_card=msg_rich_card
         )
 
-        conv.save(update_fields=['last_contact_date', 'status'])
+        conv.lead_stage = 'Contacted'
+        conv.save(update_fields=['last_contact_date', 'status', 'lead_stage'])
+        try:
+            from crm.services import mark_lead_contacted_from_reply
+            mark_lead_contacted_from_reply(phone=phone, contact_name=contact_name, owner_name=assigned_staff)
+        except Exception as crm_err:
+            logger.warning(f"[CRM Sync] mark_lead_contacted_from_reply error in start-chat: {crm_err}")
 
         msg_data = MessageSerializer(msg).data
         conv_data = ConversationSerializer(conv).data

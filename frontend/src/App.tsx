@@ -304,6 +304,8 @@ export const App: React.FC = () => {
       case 'branches':
       case 'automation-branches':
         return <BranchesView />;
+      case 'branches-docs':
+        return <BranchesView initialSubPage="documentation" />;
       case 'automation-logs':
         return <AutomationLogsView />;
       case 'automation-approvals':

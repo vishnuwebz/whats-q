@@ -6,7 +6,7 @@ import {
   Smile, Mic, CheckCheck, Clock, UserCheck,
   ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
-  MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays,
+  MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays, Calendar,
   SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
   Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone, RefreshCw, Trophy
 } from 'lucide-react';
@@ -20,6 +20,7 @@ import { LinkEmployeeWhatsAppModal } from './conversations/LinkEmployeeWhatsAppM
 import { EditEmployeeDeviceModal } from './conversations/EditEmployeeDeviceModal';
 import { LinkedDevicesDetailsModal } from './conversations/LinkedDevicesDetailsModal';
 import { VoiceNotePlayer } from './conversations/VoiceNotePlayer';
+import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
 import { Conversation, LinkedEmployeeDevice } from '@/types';
@@ -47,6 +48,7 @@ export const ConversationsView: React.FC = () => {
     sendMessage,
     sendTemplateMessage,
     templates,
+    leads,
     addLead,
     addAppointment,
     addJob,
@@ -97,6 +99,7 @@ export const ConversationsView: React.FC = () => {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [testSimulateInput, setTestSimulateInput] = useState('');
 
   // Chat header action buttons minimize/expand state (persisted)
@@ -307,6 +310,34 @@ export const ConversationsView: React.FC = () => {
       (e) => (e.name && e.name.toLowerCase().includes(q)) || (e.role && e.role.toLowerCase().includes(q))
     );
   }, [availableStaffList, staffSearchQuery]);
+
+  const matchingLeadForFollowUp = useMemo(() => {
+    if (!currentConv) return null;
+    const cleanDigits = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+    const convPhoneDigits = cleanDigits(currentConv.phone_number);
+    const found = leads.find((l) => {
+      if (convPhoneDigits && cleanDigits(l.phone) === convPhoneDigits) return true;
+      if (l.name && currentConv.contact_name && l.name.toLowerCase() === currentConv.contact_name.toLowerCase()) return true;
+      return false;
+    });
+    if (found) return found;
+
+    return {
+      id: currentConv.id,
+      name: currentConv.contact_name || 'Customer',
+      phone: currentConv.phone_number || '',
+      service: currentConv.service_needed || 'WhatsApp Inquiry',
+      location: currentConv.location || 'Kozhikode, Kerala',
+      value: currentConv.estimated_value || 3000,
+      stage: 'new',
+      owner: currentConv.lead_owner && currentConv.lead_owner !== 'Unassigned' ? currentConv.lead_owner : (employees[0]?.name || 'Rahul Mehta'),
+      source: currentConv.source || 'WhatsApp',
+      notes: currentConv.notes || '',
+      tags: currentConv.tags || [],
+      created_at_str: currentConv.first_contact_date || 'Today',
+      last_contact_str: currentConv.last_contact_date || 'Just now',
+    } as any;
+  }, [currentConv, leads, employees]);
 
   const handleAssignStaff = async (staffName: string, staffPhone?: string) => {
     if (!currentConv) return;
@@ -3238,10 +3269,12 @@ export const ConversationsView: React.FC = () => {
                   <span>{currentSuppression ? `Template Restricted (${currentSuppression.label})` : 'Use WhatsApp Template'}</span>
                 </button>
                 <button
-                  onClick={() => handleQuickAction('Create Lead')}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200 text-purple-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
+                  onClick={() => setIsFollowUpModalOpen(true)}
+                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-sky-50 border border-slate-200 text-sky-700 font-medium whitespace-nowrap text-[11px] cursor-pointer flex items-center gap-1"
+                  title="Schedule Follow-up with this customer"
                 >
-                  + Create Lead
+                  <Calendar className="w-3 h-3 text-sky-600" />
+                  <span>Follow Up</span>
                 </button>
                 <button
                   onClick={() => handleQuickAction('Send Quotation')}
@@ -3888,6 +3921,18 @@ export const ConversationsView: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Schedule Follow-up Modal */}
+      {isFollowUpModalOpen && (
+        <ScheduleFollowUpModal
+          isOpen={isFollowUpModalOpen}
+          onClose={() => setIsFollowUpModalOpen(false)}
+          initialLead={matchingLeadForFollowUp}
+          onSuccess={() => {
+            setIsFollowUpModalOpen(false);
+          }}
+        />
       )}
     </div>
   );

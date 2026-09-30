@@ -9,8 +9,9 @@ import {
   TrendingUp, Check, RefreshCw, ChevronRight, SlidersHorizontal,
   ArrowLeft, Phone, Mail, Globe, ExternalLink, ShieldCheck, Zap,
   Activity, Award, UserPlus, MessageSquare, AlertCircle, Eye,
-  Sparkles, CheckCircle, Smartphone
+  Sparkles, CheckCircle, Smartphone, BookOpen
 } from 'lucide-react';
+import { BranchDocumentationView } from './BranchDocumentationView';
 
 export const BRANCH_IMAGE_PRESETS = [
   {
@@ -164,7 +165,11 @@ export const getBranchActivity = (branch: BranchItem) => {
   ];
 };
 
-export const BranchesView: React.FC = () => {
+export interface BranchesViewProps {
+  initialSubPage?: 'overview' | 'fleet-network' | 'workforce-roster' | 'customer-analytics' | 'operational-health' | 'documentation';
+}
+
+export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) => {
   const {
     branches,
     employees,
@@ -179,8 +184,27 @@ export const BranchesView: React.FC = () => {
     globalFilter,
   } = useQiyamStore();
 
-  // Sub-pages triggered by Top Shortcuts
-  const [activeSubPage, setActiveSubPage] = useState<'overview' | 'fleet-network' | 'workforce-roster' | 'customer-analytics' | 'operational-health'>('overview');
+  // Sub-pages triggered by Top Shortcuts & Documentation
+  const [activeSubPage, setActiveSubPage] = useState<'overview' | 'fleet-network' | 'workforce-roster' | 'customer-analytics' | 'operational-health' | 'documentation'>(() => {
+    if (initialSubPage) return initialSubPage;
+    try {
+      const url = new URL(window.location.href);
+      const sub = url.searchParams.get('sub') || url.searchParams.get('view') || url.searchParams.get('tab');
+      if (sub === 'documentation' || sub === 'docs' || window.location.pathname.includes('/branches/docs') || window.location.pathname.includes('/branches/documentation')) {
+        return 'documentation';
+      }
+      if (sub && ['fleet-network', 'workforce-roster', 'customer-analytics', 'operational-health'].includes(sub)) {
+        return sub as any;
+      }
+    } catch {}
+    return 'overview';
+  });
+
+  React.useEffect(() => {
+    if (initialSubPage && initialSubPage !== activeSubPage) {
+      setActiveSubPage(initialSubPage);
+    }
+  }, [initialSubPage]);
 
   // Branch Depth Details Drawer State
   const [selectedBranchForDepth, setSelectedBranchForDepth] = useState<BranchItem | null>(null);
@@ -423,11 +447,19 @@ export const BranchesView: React.FC = () => {
             { id: 'workforce-roster', label: 'Workforce Roster', icon: Users, count: totalEmployeesCount },
             { id: 'customer-analytics', label: 'Customer Reach', icon: UserCheck, count: totalCustomersCount },
             { id: 'operational-health', label: 'Operational Health', icon: Activity, count: `${activeBranchesCount} Active` },
+            { id: 'documentation', label: 'Documentation & Guide', icon: BookOpen },
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveSubPage(tab.id as any)}
+              onClick={() => {
+                setActiveSubPage(tab.id as any);
+                if (tab.id === 'documentation') {
+                  try { window.history.pushState(null, '', '/branches/docs'); } catch {}
+                } else {
+                  try { window.history.pushState(null, '', '/branches'); } catch {}
+                }
+              }}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
                 activeSubPage === tab.id
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -1127,15 +1159,19 @@ export const BranchesView: React.FC = () => {
                 </div>
 
                 <div className="pt-4">
-                  <a
-                    href="/api/docs/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 px-3 py-2 rounded-xl transition-colors"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSubPage('documentation');
+                      try {
+                        window.history.pushState(null, '', '/branches/docs');
+                      } catch {}
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
                   >
                     <span>View Documentation</span>
                     <ChevronRight className="w-3.5 h-3.5" />
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1603,6 +1639,27 @@ export const BranchesView: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            SUB-PAGE 6: DEDICATED BRANCH DOCUMENTATION & GUIDES
+            ══════════════════════════════════════════════════════ */}
+        {activeSubPage === 'documentation' && (
+          <BranchDocumentationView
+            onBack={() => {
+              setActiveSubPage('overview');
+              try {
+                window.history.pushState(null, '', '/branches');
+              } catch {}
+            }}
+            onNavigateSubPage={(sub) => {
+              setActiveSubPage(sub);
+              try {
+                window.history.pushState(null, '', '/branches');
+              } catch {}
+            }}
+            onOpenAddBranch={handleOpenAddModal}
+          />
         )}
       </div>
 

@@ -51,6 +51,7 @@ export const TAB_TO_PATH: Record<TabType, string> = {
   'automation-workflows': '/automation/workflows',
   'automation-templates': '/automation/templates',
   'branches': '/branches',
+  'branches-docs': '/branches/docs',
   'automation-branches': '/branches',
   'automation-logs': '/automation/logs',
   'automation-approvals': '/automation/approvals',
@@ -80,6 +81,11 @@ export const TAB_TO_PATH: Record<TabType, string> = {
 
 // Common path aliases for convenience and deep links
 const PATH_ALIASES: Record<string, TabType> = {
+  '/branches/docs': 'branches-docs',
+  '/branches/documentation': 'branches-docs',
+  '/branches-docs': 'branches-docs',
+  '/branches-documentation': 'branches-docs',
+  '/branch-docs': 'branches-docs',
   '/rcs': 'rcs-messaging',
   '/rcs-messaging': 'rcs-messaging',
   '/rcs/messaging': 'rcs-messaging',

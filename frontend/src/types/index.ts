@@ -14,6 +14,7 @@ export type TabType =
   | 'crm-deals'
   | 'crm-followups'
   | 'branches'
+  | 'branches-docs'
   | 'ops-jobs'
   | 'ops-appointments'
   | 'ops-employees'

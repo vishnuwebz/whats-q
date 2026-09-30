@@ -2573,9 +2573,17 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   applyRealtimeLead: (leadUpdate) => {
-    set((state) => ({
-      leads: state.leads.map((l) => String(l.id) === String(leadUpdate.id) ? { ...l, ...leadUpdate } : l)
-    }));
+    set((state) => {
+      const exists = state.leads.some((l) => String(l.id) === String(leadUpdate.id));
+      if (exists) {
+        return {
+          leads: state.leads.map((l) => String(l.id) === String(leadUpdate.id) ? { ...l, ...leadUpdate } : l)
+        };
+      }
+      return {
+        leads: [leadUpdate as Lead, ...state.leads]
+      };
+    });
   },
 
   applyRealtimeJob: (jobUpdate) => {
@@ -3921,6 +3929,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         ...conv,
         is_deleted: false,
         last_contact_date: 'Just now',
+        lead_stage: sender === 'agent' ? 'Contacted' : conv.lead_stage,
         active_line_device: isEmployeeDevice ? (employeeDevice?.device_label || resolvedSenderDevice) : (conv.active_line_device || 'Meta Cloud API (+91 94963 00233)'),
         active_line_phone: isEmployeeDevice ? (employeeDevice?.phone_number || resolvedSenderPhone) : (conv.active_line_phone || '+91 94963 00233'),
         active_employee_name: isEmployeeDevice ? (employeeDevice?.employee_name || resolvedSenderName) : conv.active_employee_name,
@@ -3930,6 +3939,19 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           : conv.lead_owner,
         messages: [...conv.messages, optimisticMsg],
       };
+
+      const cleanPhone = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+      const convDigits = cleanPhone(conv.phone_number);
+      const nextLeads = (sender === 'agent')
+        ? state.leads.map((l) => {
+            const lDigits = cleanPhone(l.phone);
+            const matches = (convDigits && lDigits && convDigits === lDigits) || (l.name && conv.contact_name && l.name.toLowerCase() === conv.contact_name.toLowerCase());
+            if (matches && (l.stage === 'new' || l.stage === 'follow_up')) {
+              return { ...l, stage: 'contacted' as const, last_contact_str: 'Just now' };
+            }
+            return l;
+          })
+        : state.leads;
 
       const nextConversations = [
         updatedConv,
@@ -3941,6 +3963,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         conversations: nextConversations,
         deletedConversations: nextDeleted,
         selectedConversationId: conv.id,
+        leads: nextLeads,
       };
     });
 

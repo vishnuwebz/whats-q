@@ -148,6 +148,24 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('lead.created', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'lead.created', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing lead.created event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('lead.updated', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'lead.updated', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing lead.updated event:', err);
+        }
+      });
+
       this.eventSource.addEventListener('system.update_available', (e: any) => {
         try {
           const payload = JSON.parse(e.data);
@@ -390,6 +408,7 @@ class RealtimeSyncManager {
         break;
       }
 
+      case 'lead.created':
       case 'lead.updated': {
         if (event.data && event.data.id) {
           store.applyRealtimeLead(event.data);

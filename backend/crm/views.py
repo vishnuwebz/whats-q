@@ -189,6 +189,26 @@ class LeadViewSet(viewsets.ModelViewSet):
         sync_lead_to_followup(instance, is_deleted=True)
         instance.delete()
 
+    @action(detail=True, methods=['post'], url_path='update_stage')
+    def update_stage(self, request, pk=None):
+        lead = self.get_object()
+        new_stage = request.data.get('stage')
+        if new_stage:
+            lead.stage = new_stage
+            now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+            lead.last_contact_str = now_full
+            if request.data.get('notes'):
+                lead.notes = (lead.notes or '') + f"\n[{now_full}] " + str(request.data.get('notes'))
+            if request.data.get('owner'):
+                lead.owner = request.data.get('owner')
+            lead.save()
+            sync_lead_to_followup(lead, is_deleted=False)
+            from core.events import emit_event
+            lead_data = LeadSerializer(lead).data
+            emit_event('lead.updated', lead_data)
+            return Response(lead_data, status=status.HTTP_200_OK)
+        return Response({'error': 'stage is required'}, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=['post'])
     def convert_to_deal(self, request, pk=None):
         lead = self.get_object()
@@ -289,6 +309,11 @@ class FollowUpViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         followup = serializer.save()
         sync_followup_to_lead(followup, is_deleted=False)
+        try:
+            from .services import notify_assigned_employee_via_whatsapp
+            notify_assigned_employee_via_whatsapp(followup)
+        except Exception as e:
+            pass
 
     def perform_update(self, serializer):
         followup = serializer.save()
@@ -297,6 +322,13 @@ class FollowUpViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         sync_followup_to_lead(instance, is_deleted=True)
         instance.delete()
+
+    @action(detail=True, methods=['post'], url_path='notify_employee')
+    def notify_employee(self, request, pk=None):
+        followup = self.get_object()
+        from .services import notify_assigned_employee_via_whatsapp
+        res = notify_assigned_employee_via_whatsapp(followup)
+        return Response(res, status=status.HTTP_200_OK)
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-id')
