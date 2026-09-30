@@ -1,9 +1,148 @@
+from django.db import models
+from django.db.models import Q
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Lead, Deal, FollowUp, Customer
 from conversations.models import Conversation
 import datetime
+import re
+
+def extract_clean_phone(phone_str):
+    if not phone_str:
+        return ''
+    digits = ''.join(c for c in str(phone_str) if c.isdigit())
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
+def sync_followup_to_lead(followup, is_deleted=False):
+    """
+    Ensures that any creation, update, or deletion of a FollowUp is immediately
+    reflected on the corresponding Lead in the CRM pipeline.
+    """
+    lead = None
+    # 1. Match by Lead # in related_to (e.g. "Lead #12 - John Doe")
+    if followup.related_to:
+        m = re.search(r'Lead\s*#?(\d+)', followup.related_to, re.IGNORECASE)
+        if m:
+            try:
+                lead = Lead.objects.filter(id=int(m.group(1))).first()
+            except (ValueError, TypeError):
+                lead = None
+
+    clean_digits = extract_clean_phone(followup.phone)
+
+    # 2. Match by 10-digit phone
+    if not lead and clean_digits:
+        lead = Lead.objects.filter(phone__icontains=clean_digits).first()
+
+    # 3. Match by exact customer name
+    if not lead and followup.customer_name:
+        lead = Lead.objects.filter(name__iexact=followup.customer_name.strip()).first()
+
+    if lead:
+        clean_lead_phone = extract_clean_phone(lead.phone)
+        lead_query = Q(related_to__icontains=f"Lead #{lead.id}")
+        if clean_lead_phone:
+            lead_query |= Q(phone__icontains=clean_lead_phone)
+
+        if is_deleted:
+            other_fu = FollowUp.objects.filter(lead_query).exclude(pk=followup.pk).exclude(status='completed').order_by('due_date', 'due_time').first()
+            if other_fu:
+                lead.next_follow_up_date = other_fu.due_date
+                lead.next_follow_up_time = other_fu.due_time
+            else:
+                lead.next_follow_up_date = None
+                lead.next_follow_up_time = None
+        else:
+            if followup.status == 'completed':
+                other_fu = FollowUp.objects.filter(lead_query).exclude(pk=followup.pk).exclude(status='completed').order_by('due_date', 'due_time').first()
+                if other_fu:
+                    lead.next_follow_up_date = other_fu.due_date
+                    lead.next_follow_up_time = other_fu.due_time
+                else:
+                    lead.next_follow_up_date = None
+                    lead.next_follow_up_time = None
+            else:
+                lead.next_follow_up_date = followup.due_date
+                lead.next_follow_up_time = followup.due_time
+                if lead.stage in ['new', 'contacted']:
+                    lead.stage = 'follow_up'
+
+            if followup.assigned_to:
+                lead.owner = followup.assigned_to
+        lead.save()
+    elif not is_deleted and followup.customer_name and followup.customer_name.strip() not in ['Customer', '']:
+        # Create a new Lead for this prospect if none existed
+        service_val = followup.related_to if (followup.related_to and 'Lead #' not in followup.related_to) else 'AC Installation & Repair'
+        Lead.objects.create(
+            name=followup.customer_name.strip(),
+            phone=followup.phone or '',
+            service=service_val or 'General Service',
+            location='Kozhikode, Kerala',
+            value=3500.0,
+            stage='follow_up',
+            owner=followup.assigned_to or 'Rahul Mehta',
+            source='Follow-up',
+            notes=followup.notes or f"Follow-up: {followup.title}",
+            next_follow_up_date=followup.due_date if followup.status != 'completed' else None,
+            next_follow_up_time=followup.due_time if followup.status != 'completed' else None,
+        )
+
+
+def sync_lead_to_followup(lead, is_deleted=False):
+    """
+    Ensures that changes to a Lead's follow_up stage or next_follow_up_date
+    dynamically update or create a corresponding FollowUp.
+    """
+    clean_digits = extract_clean_phone(lead.phone)
+    lead_query = Q(related_to__icontains=f"Lead #{lead.id}")
+    if clean_digits:
+        lead_query |= Q(phone__icontains=clean_digits)
+
+    existing_fu = FollowUp.objects.filter(lead_query).order_by('-id').first()
+
+    if is_deleted:
+        if existing_fu:
+            existing_fu.delete()
+        return
+
+    if lead.stage == 'follow_up' or lead.next_follow_up_date:
+        today_str = datetime.date.today().strftime('%Y-%m-%d')
+        due_d = lead.next_follow_up_date or today_str
+        due_t = lead.next_follow_up_time or '11:00 AM'
+        assigned = lead.owner or 'Vikram Patel'
+
+        if existing_fu:
+            existing_fu.customer_name = lead.name
+            existing_fu.phone = lead.phone
+            existing_fu.assigned_to = assigned
+            existing_fu.due_date = due_d
+            existing_fu.due_time = due_t
+            if existing_fu.status == 'completed':
+                existing_fu.status = 'due_today' if due_d == today_str else 'scheduled'
+            existing_fu.save()
+        else:
+            FollowUp.objects.create(
+                title=f"Follow-up with {lead.name}",
+                related_to=f"Lead #{lead.id} - {lead.name} ({lead.service or 'Service'})",
+                customer_name=lead.name,
+                phone=lead.phone,
+                follow_up_type='whatsapp',
+                assigned_to=assigned,
+                due_date=due_d,
+                due_time=due_t,
+                status='due_today' if due_d == today_str else 'scheduled',
+                priority='high',
+                notes=lead.notes or f"Follow-up scheduled from Leads pipeline for {lead.name}"
+            )
+    elif lead.stage in ['won', 'lost']:
+        pending_fus = FollowUp.objects.filter(lead_query).exclude(status='completed')
+        for fu in pending_fus:
+            fu.status = 'completed'
+            fu.notes = (fu.notes or '') + f"\n[Completed: Lead marked as {lead.stage}]"
+            fu.save()
+
 
 class LeadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,6 +176,18 @@ class CustomerSerializer(serializers.ModelSerializer):
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all().order_by('-id')
     serializer_class = LeadSerializer
+
+    def perform_create(self, serializer):
+        lead = serializer.save()
+        sync_lead_to_followup(lead, is_deleted=False)
+
+    def perform_update(self, serializer):
+        lead = serializer.save()
+        sync_lead_to_followup(lead, is_deleted=False)
+
+    def perform_destroy(self, instance):
+        sync_lead_to_followup(instance, is_deleted=True)
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def convert_to_deal(self, request, pk=None):
@@ -134,6 +285,18 @@ class DealViewSet(viewsets.ModelViewSet):
 class FollowUpViewSet(viewsets.ModelViewSet):
     queryset = FollowUp.objects.all().order_by('id')
     serializer_class = FollowUpSerializer
+
+    def perform_create(self, serializer):
+        followup = serializer.save()
+        sync_followup_to_lead(followup, is_deleted=False)
+
+    def perform_update(self, serializer):
+        followup = serializer.save()
+        sync_followup_to_lead(followup, is_deleted=False)
+
+    def perform_destroy(self, instance):
+        sync_followup_to_lead(instance, is_deleted=True)
+        instance.delete()
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-id')

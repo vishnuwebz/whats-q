@@ -24,8 +24,9 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
   isEditMode = false,
   onSuccess,
 }) => {
-  const { customers, addFollowUp, updateFollowUp, updateLeadStage, updateLead, addToast } = useQiyamStore();
+  const { customers, followups, addFollowUp, updateFollowUp, updateLeadStage, updateLead, addToast } = useQiyamStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [matchedFollowUp, setMatchedFollowUp] = useState<FollowUp | null>(null);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -54,6 +55,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
     if (!isOpen) return;
 
     if (isEditMode && initialFollowUp) {
+      setMatchedFollowUp(initialFollowUp);
       setFormData({
         title: initialFollowUp.title || '',
         customer_name: initialFollowUp.customer_name || '',
@@ -68,20 +70,31 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
         notes: initialFollowUp.notes || '',
       });
     } else if (initialLead) {
+      const cleanPhone = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+      const leadDigits = cleanPhone(initialLead.phone);
+      const existing = followups.find((f) => {
+        if (f.related_to && f.related_to.includes(`Lead #${initialLead.id}`)) return true;
+        if (leadDigits && cleanPhone(f.phone) === leadDigits) return true;
+        return false;
+      }) || null;
+
+      setMatchedFollowUp(existing);
+
       setFormData({
-        title: `Follow-up with ${initialLead.name}`,
+        title: existing?.title || `Follow-up with ${initialLead.name}`,
         customer_name: initialLead.name,
         phone: initialLead.phone || '',
-        related_to: `Lead #${initialLead.id} - ${initialLead.name} (${initialLead.service || 'Service'})`,
-        follow_up_type: 'whatsapp',
-        assigned_to: initialLead.owner || 'Rahul Mehta',
-        due_date: todayStr,
-        due_time: '11:00 AM',
-        status: 'due_today',
-        priority: 'high',
-        notes: initialLead.notes || '',
+        related_to: existing?.related_to || `Lead #${initialLead.id} - ${initialLead.name} (${initialLead.service || 'Service'})`,
+        follow_up_type: existing?.follow_up_type || 'whatsapp',
+        assigned_to: existing?.assigned_to || initialLead.owner || 'Rahul Mehta',
+        due_date: existing?.due_date || initialLead.next_follow_up_date || todayStr,
+        due_time: existing?.due_time || initialLead.next_follow_up_time || '11:00 AM',
+        status: existing?.status === 'completed' ? 'due_today' : (existing?.status || 'due_today'),
+        priority: existing?.priority || 'high',
+        notes: existing?.notes || initialLead.notes || '',
       });
     } else {
+      setMatchedFollowUp(null);
       setFormData({
         title: '',
         customer_name: '',
@@ -96,7 +109,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
         notes: '',
       });
     }
-  }, [isOpen, isEditMode, initialFollowUp, initialLead, todayStr]);
+  }, [isOpen, isEditMode, initialFollowUp, initialLead, followups, todayStr]);
 
   if (!isOpen) return null;
 
@@ -146,15 +159,27 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      if (isEditMode && initialFollowUp) {
-        await updateFollowUp(initialFollowUp.id, formData);
-        addToast(`Follow-up "${formData.title}" updated successfully!`, 'success');
-        onSuccess?.({ ...initialFollowUp, ...formData });
+      const effectiveFollowUpId = (isEditMode && initialFollowUp?.id) || matchedFollowUp?.id;
+
+      if (effectiveFollowUpId) {
+        await updateFollowUp(effectiveFollowUpId, formData);
+        if (initialLead) {
+          await updateLead(initialLead.id, {
+            stage: 'follow_up',
+            next_follow_up_date: formData.due_date,
+            next_follow_up_time: formData.due_time,
+            owner: formData.assigned_to,
+          });
+          addToast(`Follow-up rescheduled & updated for ${initialLead.name}!`, 'success');
+        } else {
+          addToast(`Follow-up "${formData.title}" updated successfully!`, 'success');
+        }
+        onSuccess?.({ ...formData, id: effectiveFollowUpId } as FollowUp);
         onClose();
       } else {
         const created = await addFollowUp({
           ...formData,
-          related_to: formData.related_to.trim() || 'General Inquiry',
+          related_to: formData.related_to.trim() || (initialLead ? `Lead #${initialLead.id} - ${initialLead.name}` : 'General Inquiry'),
         });
 
         // If triggered from a lead drag or stage select
@@ -163,6 +188,7 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
             stage: 'follow_up',
             next_follow_up_date: formData.due_date,
             next_follow_up_time: formData.due_time,
+            owner: formData.assigned_to,
           });
           addToast(`Follow-up scheduled & moved ${initialLead.name} to Follow-up stage!`, 'success');
         }
@@ -178,6 +204,8 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
     }
   };
 
+  const isReschedule = Boolean(matchedFollowUp || isEditMode);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] overflow-y-auto">
@@ -186,17 +214,22 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-base text-slate-900">
-                {isEditMode ? 'Edit Follow-up' : 'Schedule New Follow-up'}
+                {isReschedule ? 'Reschedule / Edit Follow-up' : 'Schedule New Follow-up'}
               </h3>
               {initialLead && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">
                   Lead #{initialLead.id}
                 </span>
               )}
+              {matchedFollowUp && !isEditMode && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                  Reschedule Active
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {initialLead
-                ? `Plan next interaction with ${initialLead.name} to advance pipeline.`
+                ? (isReschedule ? `Update existing scheduled interaction for ${initialLead.name}.` : `Plan next interaction with ${initialLead.name} to advance pipeline.`)
                 : 'Plan customer outreach, calls, or reminders with staff.'}
             </p>
           </div>
@@ -381,6 +414,8 @@ export const ScheduleFollowUpModal: React.FC<ScheduleFollowUpModalProps> = ({
                 'Saving...'
               ) : isEditMode ? (
                 'Save Changes'
+              ) : matchedFollowUp ? (
+                'Update & Reschedule'
               ) : initialLead ? (
                 'Schedule & Move to Follow-up'
               ) : (

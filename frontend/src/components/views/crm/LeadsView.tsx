@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
-import { Lead } from '@/types';
+import { Lead, FollowUp } from '@/types';
+import { qiyamApi } from '@/api/qiyamApi';
 import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Kanban, List, Plus, Search, Filter, Phone, MessageSquare,
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
   Tag, Clock, UserPlus, FileText, ChevronRight, ChevronDown,
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
-  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle
+  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
@@ -38,11 +39,13 @@ export const getStageConfig = (stageId: Lead['stage']) => {
 export const LeadsView: React.FC = () => {
   const {
     leads,
+    followups,
     selectedLead,
     setSelectedLead,
     isLeadDrawerOpen,
     setIsLeadDrawerOpen,
     updateLeadStage,
+    deleteLead,
     addToast,
     setActiveTab,
     addLead,
@@ -74,6 +77,70 @@ export const LeadsView: React.FC = () => {
   const [stageNote, setStageNote] = useState('');
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
   const [followUpModalLead, setFollowUpModalLead] = useState<Lead | null>(null);
+
+  // Multi-Selection State for Bulk / Respected Leads
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Array<string | number>>([]);
+
+  // Delete Confirmation Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [leadsToDelete, setLeadsToDelete] = useState<Lead[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Open Delete Modal for a Single Lead
+  const handleOpenDeleteModal = (lead: Lead) => {
+    setLeadsToDelete([lead]);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Open Delete Modal for Selected Leads
+  const handleOpenDeleteSelectedModal = () => {
+    const matched = leads.filter((l) => selectedLeadIds.includes(l.id));
+    if (matched.length === 0) return;
+    setLeadsToDelete(matched);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Toggle single lead selection
+  const handleToggleSelectLead = (leadId: string | number, e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedLeadIds((prev) =>
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  // Select all / Deselect all for current filtered leads
+  const handleSelectAllLeads = () => {
+    if (selectedLeadIds.length === filteredLeads.length && filteredLeads.length > 0) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(filteredLeads.map((l) => l.id));
+    }
+  };
+
+  // Confirm Delete Action
+  const handleConfirmDelete = async () => {
+    if (leadsToDelete.length === 0) return;
+    setIsDeleting(true);
+    try {
+      for (const lead of leadsToDelete) {
+        await deleteLead(lead.id);
+      }
+      setSelectedLeadIds((prev) =>
+        prev.filter((id) => !leadsToDelete.some((l) => l.id === id))
+      );
+      if (selectedLead && leadsToDelete.some((l) => l.id === selectedLead.id)) {
+        setIsLeadDrawerOpen(false);
+        setSelectedLead(null);
+      }
+      setIsDeleteModalOpen(false);
+      setLeadsToDelete([]);
+    } catch (err: any) {
+      console.error('[LeadsView] Failed to delete lead(s):', err);
+      addToast('Failed to delete lead(s). Please try again.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Right-Click Context Menu State (Quick Move & Actions)
   const [contextMenu, setContextMenu] = useState<{
@@ -107,6 +174,75 @@ export const LeadsView: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  // Dynamic synchronization: fetch fresh leads and follow-ups from backend on mount
+  useEffect(() => {
+    Promise.allSettled([
+      qiyamApi.fetchLeads(),
+      qiyamApi.fetchFollowUps(),
+    ]).then(([leadsRes, fuRes]) => {
+      useQiyamStore.setState((state) => {
+        let nextLeads = state.leads;
+        if (leadsRes.status === 'fulfilled' && Array.isArray(leadsRes.value) && leadsRes.value.length > 0) {
+          const freshLeads = leadsRes.value as Lead[];
+          const existingMap = new Map<string, Lead>();
+          freshLeads.forEach((l) => existingMap.set(String(l.id), l));
+          state.leads.forEach((l) => {
+            if (!existingMap.has(String(l.id))) {
+              existingMap.set(String(l.id), l);
+            }
+          });
+          nextLeads = Array.from(existingMap.values());
+          try {
+            localStorage.setItem('whatsq_leads_cache', JSON.stringify(nextLeads));
+          } catch {}
+        }
+
+        let nextFollowups = state.followups;
+        if (fuRes.status === 'fulfilled' && Array.isArray(fuRes.value) && fuRes.value.length > 0) {
+          const freshFu = fuRes.value as FollowUp[];
+          const fuMap = new Map<string, FollowUp>();
+          freshFu.forEach((f) => fuMap.set(String(f.id), f));
+          state.followups.forEach((f) => {
+            if (!fuMap.has(String(f.id))) {
+              fuMap.set(String(f.id), f);
+            }
+          });
+          nextFollowups = Array.from(fuMap.values());
+          try {
+            localStorage.setItem('whatsq_followups_cache', JSON.stringify(nextFollowups));
+          } catch {}
+        }
+
+        return { leads: nextLeads, followups: nextFollowups };
+      });
+    }).catch((e) => console.warn('[LeadsView] Could not fetch fresh leads/followups:', e));
+  }, []);
+
+  // Dynamic follow-up resolver matching both lead properties and followups store
+  const getLeadFollowUpInfo = (lead: Lead) => {
+    const cleanDigits = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+    const lDigits = cleanDigits(lead.phone);
+    const fu = followups.find((f) => {
+      if (f.related_to && f.related_to.includes(`Lead #${lead.id}`)) return true;
+      if (lDigits && cleanDigits(f.phone) === lDigits) return true;
+      return false;
+    });
+
+    const date = lead.next_follow_up_date || fu?.due_date;
+    const time = lead.next_follow_up_time || fu?.due_time;
+    const status = fu?.status || 'scheduled';
+    const isCompleted = status === 'completed';
+
+    return {
+      hasFollowUp: Boolean(date),
+      date,
+      time,
+      status,
+      isCompleted,
+      fu,
+    };
+  };
 
   // Stage popover toggling and updating
   const handleToggleStagePopover = (leadId: string | number) => {
@@ -279,7 +415,27 @@ export const LeadsView: React.FC = () => {
         </div>
 
         <div className="text-xs text-slate-500 font-medium hidden sm:flex items-center gap-2.5">
-          <span>Total: <strong className="text-slate-800">{leads.length}</strong></span>
+          {selectedLeadIds.length > 0 && (
+            <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 px-2.5 py-1 rounded-lg animate-in fade-in">
+              <span className="font-bold">{selectedLeadIds.length} selected</span>
+              <button
+                type="button"
+                onClick={handleOpenDeleteSelectedModal}
+                className="font-bold text-rose-800 hover:text-rose-900 underline flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Delete</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedLeadIds([])}
+                className="text-slate-400 hover:text-slate-600 text-[10px] ml-1 cursor-pointer"
+              >
+                (Clear)
+              </button>
+            </div>
+          )}
+          <span>Total: <strong className="text-slate-800">{filteredLeads.length}</strong></span>
           <span className="text-slate-300">•</span>
           <span className="text-emerald-700 font-semibold flex items-center gap-1">
             <Trophy className="w-3.5 h-3.5 text-emerald-600" />
@@ -328,6 +484,7 @@ export const LeadsView: React.FC = () => {
                       const isWon = lead.stage === 'won';
                       const isLost = lead.stage === 'lost';
                       const isOpen = !isWon && !isLost;
+                      const isSelected = selectedLeadIds.includes(lead.id);
 
                       return (
                         <div
@@ -340,7 +497,9 @@ export const LeadsView: React.FC = () => {
                           }}
                           onContextMenu={(e) => handleContextMenu(e, lead)}
                           className={`p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer space-y-2 group ${
-                            contextMenu?.lead.id === lead.id
+                            isSelected
+                              ? 'ring-2 ring-emerald-500 bg-emerald-50/30 border-emerald-400 shadow-md'
+                              : contextMenu?.lead.id === lead.id
                               ? 'ring-2 ring-emerald-500 bg-emerald-50/20 border-emerald-400 shadow-md'
                               : isWon
                               ? 'bg-emerald-50/50 border-emerald-300 hover:border-emerald-500'
@@ -350,12 +509,35 @@ export const LeadsView: React.FC = () => {
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5 truncate">
-                              {isWon && <Trophy className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                              {isLost && <XCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />}
-                              <span className="truncate">{lead.name}</span>
-                            </h4>
-                            <span className="font-bold text-xs text-emerald-600 shrink-0">₹{lead.value.toLocaleString()}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => handleToggleSelectLead(lead.id, e)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                                title="Select lead"
+                              />
+                              <h4 className="font-bold text-xs text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5 truncate">
+                                {isWon && <Trophy className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                {isLost && <XCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />}
+                                <span className="truncate">{lead.name}</span>
+                              </h4>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="font-bold text-xs text-emerald-600 font-mono">₹{lead.value.toLocaleString()}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDeleteModal(lead);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                                title="Delete this lead"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
 
                           <div className="text-[11px] text-slate-600 font-medium">{lead.service}</div>
@@ -365,12 +547,25 @@ export const LeadsView: React.FC = () => {
                             <span className="font-medium text-slate-500">{lead.owner}</span>
                           </div>
 
-                          {lead.next_follow_up_date && (
-                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200/80 px-2 py-1 rounded-lg">
-                              <Calendar className="w-3 h-3 text-sky-600 shrink-0" />
-                              <span className="truncate">Follow-up: {lead.next_follow_up_date}{lead.next_follow_up_time ? ` @ ${lead.next_follow_up_time}` : ''}</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const info = getLeadFollowUpInfo(lead);
+                            if (!info.hasFollowUp) return null;
+                            return (
+                              <div className={`flex items-center justify-between text-[10px] font-semibold px-2 py-1 rounded-lg border ${
+                                info.isCompleted
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                  : 'bg-sky-50 text-sky-700 border-sky-200/80'
+                              }`}>
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <Calendar className="w-3 h-3 text-sky-600 shrink-0" />
+                                  <span className="truncate">Follow-up: {info.date}{info.time ? ` @ ${info.time}` : ''}</span>
+                                </div>
+                                {info.isCompleted && (
+                                  <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold ml-1 shrink-0">Done</span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {lead.tags && lead.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 pt-1">
@@ -382,45 +577,71 @@ export const LeadsView: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Quick 1-click Won / Lost action bar for active pipeline leads */}
+                          {/* Quick 1-click Won / Lost / Delete action bar for active pipeline leads */}
                           {isOpen && (
-                            <div className="pt-2 border-t border-slate-100/80 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="pt-2 border-t border-slate-100/80 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                               <button
                                 type="button"
-                                onClick={() => handleStageSelectClick(lead, 'won')}
-                                className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                                title="Mark as Won"
+                                onClick={() => handleOpenDeleteModal(lead)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                                title="Delete lead"
                               >
-                                <Check className="w-2.5 h-2.5" />
-                                Won
+                                <Trash2 className="w-3 h-3" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleStageSelectClick(lead, 'lost')}
-                                className="px-1.5 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-semibold transition-all flex items-center gap-0.5 cursor-pointer shadow-2xs"
-                                title="Mark as Lost"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                                Lost
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStageSelectClick(lead, 'won')}
+                                  className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  title="Mark as Won"
+                                >
+                                  <Check className="w-2.5 h-2.5" />
+                                  Won
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStageSelectClick(lead, 'lost')}
+                                  className="px-1.5 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-semibold transition-all flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                                  title="Mark as Lost"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                  Lost
+                                </button>
+                              </div>
                             </div>
                           )}
 
                           {isWon && (
-                            <div className="pt-1.5 border-t border-emerald-200/60 flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                            <div className="pt-1.5 border-t border-emerald-200/60 flex items-center justify-between text-[10px] text-emerald-700 font-bold" onClick={(e) => e.stopPropagation()}>
                               <span className="flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 Deal Won & Closed
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteModal(lead)}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete lead"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
                           )}
 
                           {isLost && (
-                            <div className="pt-1.5 border-t border-rose-200/60 flex items-center justify-between text-[10px] text-rose-600 font-bold">
+                            <div className="pt-1.5 border-t border-rose-200/60 flex items-center justify-between text-[10px] text-rose-600 font-bold" onClick={(e) => e.stopPropagation()}>
                               <span className="flex items-center gap-1">
                                 <XCircle className="w-3 h-3 text-rose-500" />
                                 Closed as Lost
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteModal(lead)}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete lead"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
                           )}
                         </div>
@@ -444,6 +665,15 @@ export const LeadsView: React.FC = () => {
               <table className="w-full text-left text-xs min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
                   <tr>
+                    <th className="py-3 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
+                        onChange={handleSelectAllLeads}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                        title={selectedLeadIds.length === filteredLeads.length ? "Deselect all" : "Select all"}
+                      />
+                    </th>
                     <th className="py-3 px-4">Lead Name</th>
                     <th className="py-3 px-4">Phone</th>
                     <th className="py-3 px-4">Service</th>
@@ -470,17 +700,38 @@ export const LeadsView: React.FC = () => {
                         }}
                         onContextMenu={(e) => handleContextMenu(e, lead)}
                         className={`hover:bg-slate-50/80 cursor-pointer transition-colors ${
-                          contextMenu?.lead.id === lead.id ? 'bg-emerald-50/60 ring-1 ring-emerald-400' : ''
+                          selectedLeadIds.includes(lead.id)
+                            ? 'bg-emerald-50/40 ring-1 ring-emerald-300/60'
+                            : contextMenu?.lead.id === lead.id
+                            ? 'bg-emerald-50/60 ring-1 ring-emerald-400'
+                            : ''
                         }`}
                       >
+                        <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLeadIds.includes(lead.id)}
+                            onChange={() => handleToggleSelectLead(lead.id)}
+                            className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div className="font-bold text-slate-900">{lead.name}</div>
-                          {lead.next_follow_up_date && (
-                            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded mt-0.5">
-                              <Calendar className="w-2.5 h-2.5 text-sky-600 shrink-0" />
-                              <span>Follow-up: {lead.next_follow_up_date}{lead.next_follow_up_time ? ` @ ${lead.next_follow_up_time}` : ''}</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const info = getLeadFollowUpInfo(lead);
+                            if (!info.hasFollowUp) return null;
+                            return (
+                              <div className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded mt-0.5 border ${
+                                info.isCompleted
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                  : 'bg-sky-50 text-sky-700 border-sky-200/80'
+                              }`}>
+                                <Calendar className="w-2.5 h-2.5 text-sky-600 shrink-0" />
+                                <span>Follow-up: {info.date}{info.time ? ` @ ${info.time}` : ''}</span>
+                                {info.isCompleted && <span className="text-[9px] font-bold text-emerald-800 ml-0.5">(Done)</span>}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-4 font-mono text-slate-500">{lead.phone}</td>
                         <td className="py-3 px-4 font-medium">{lead.service}</td>
@@ -686,6 +937,16 @@ export const LeadsView: React.FC = () => {
                                 </button>
                               </div>
                             )}
+
+                            {/* Delete Lead Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDeleteModal(lead)}
+                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition-all cursor-pointer shadow-2xs inline-flex items-center ml-0.5"
+                              title={`Delete ${lead.name}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -711,12 +972,22 @@ export const LeadsView: React.FC = () => {
                   <h3 className="font-bold text-base text-slate-900">{selectedLead.name}</h3>
                   <p className="text-xs text-slate-500 font-mono">{selectedLead.phone}</p>
                 </div>
-                <button
-                  onClick={() => setIsLeadDrawerOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDeleteModal(selectedLead)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                    title={`Delete ${selectedLead.name}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsLeadDrawerOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
             {/* Quick Action Strip */}
@@ -824,24 +1095,34 @@ export const LeadsView: React.FC = () => {
             </div>
 
             {/* Scheduled Follow-up */}
-            <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5 font-bold text-amber-800 text-xs">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Next Scheduled Follow-up</span>
+            {(() => {
+              const info = getLeadFollowUpInfo(selectedLead);
+              return (
+                <div className={`p-3 rounded-xl border ${info.hasFollowUp ? 'bg-amber-50/70 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-800 text-xs">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Next Scheduled Follow-up</span>
+                      {info.isCompleted && (
+                        <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                          Completed
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpModalLead(selectedLead)}
+                      className="text-[10px] font-bold text-amber-900 bg-amber-200/60 hover:bg-amber-200 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
+                    >
+                      {info.hasFollowUp ? 'Reschedule' : 'Schedule'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-amber-700">
+                    {info.hasFollowUp ? `${info.date} at ${info.time || '10:00 AM'}` : 'No follow-up scheduled yet'}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setFollowUpModalLead(selectedLead)}
-                  className="text-[10px] font-bold text-amber-900 bg-amber-200/60 hover:bg-amber-200 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
-                >
-                  {selectedLead.next_follow_up_date ? 'Reschedule' : 'Schedule'}
-                </button>
-              </div>
-              <p className="text-[11px] text-amber-700">
-                {selectedLead.next_follow_up_date ? `${selectedLead.next_follow_up_date} at ${selectedLead.next_follow_up_time || '10:00 AM'}` : 'No follow-up scheduled yet'}
-              </p>
-            </div>
+              );
+            })()}
 
             {/* Notes */}
             <div>
@@ -852,6 +1133,18 @@ export const LeadsView: React.FC = () => {
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none resize-none text-xs"
                 placeholder="Add notes about this lead..."
               />
+            </div>
+
+            {/* Delete Lead Action */}
+            <div className="pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => handleOpenDeleteModal(selectedLead)}
+                className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200/80 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>Delete Lead</span>
+              </button>
             </div>
           </div>
         </>
@@ -1303,6 +1596,141 @@ export const LeadsView: React.FC = () => {
               >
                 <FileText className="w-3.5 h-3.5 text-slate-500" />
                 <span>View Full Details</span>
+              </button>
+
+              <div className="pt-1 mt-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lead = contextMenu.lead;
+                    setContextMenu(null);
+                    handleOpenDeleteModal(lead);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Delete Lead</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Action Bar (Shown when leads are selected) */}
+      {selectedLeadIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-800 flex items-center gap-4 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center">
+              {selectedLeadIds.length}
+            </span>
+            <span className="text-xs font-medium text-slate-200">
+              {selectedLeadIds.length === 1 ? '1 lead selected' : `${selectedLeadIds.length} leads selected`}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-slate-700" />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenDeleteSelectedModal}
+              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLeadIds([])}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl cursor-pointer transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && leadsToDelete.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    {leadsToDelete.length === 1 ? 'Delete Lead' : `Delete ${leadsToDelete.length} Leads`}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {leadsToDelete.length === 1
+                      ? 'Permanently delete this CRM lead'
+                      : `Permanently delete ${leadsToDelete.length} selected leads`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* List / Preview of leads being deleted */}
+            <div className="space-y-2">
+              <p className="text-slate-600 text-xs">
+                Are you sure you want to delete the following {leadsToDelete.length === 1 ? 'lead' : 'leads'}? This action cannot be undone. Any linked follow-up schedules will also be removed.
+              </p>
+              <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2 space-y-1 scrollbar-thin">
+                {leadsToDelete.map((ld) => (
+                  <div key={ld.id} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                    <div className="font-semibold text-slate-800 truncate mr-2">
+                      {ld.name}
+                      <span className="text-[10px] text-slate-400 font-mono ml-2 font-normal">{ld.phone}</span>
+                    </div>
+                    <span className="text-emerald-700 font-bold shrink-0">₹{ld.value.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm shadow-rose-700/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{leadsToDelete.length === 1 ? 'Delete Lead' : `Delete (${leadsToDelete.length})`}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

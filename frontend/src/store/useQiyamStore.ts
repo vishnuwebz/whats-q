@@ -5767,6 +5767,24 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       }
     }
 
+    // If marked won or lost, mark pending followups as completed
+    if (newStage === 'won' || newStage === 'lost') {
+      const state = get();
+      const cleanLPhone = String(lead.phone || '').replace(/\D/g, '').slice(-10);
+      const nextFollowups = state.followups.map((f) => {
+        const matches =
+          (f.related_to && f.related_to.includes(`Lead #${leadId}`)) ||
+          (cleanLPhone && String(f.phone || '').replace(/\D/g, '').slice(-10) === cleanLPhone);
+        if (matches && f.status !== 'completed') {
+          apiClient.patch(`/crm/follow-ups/${f.id}/`, { status: 'completed' }).catch(() => {});
+          return { ...f, status: 'completed' as const };
+        }
+        return f;
+      });
+      persistCache('followups', nextFollowups);
+      set({ followups: nextFollowups });
+    }
+
     try {
       const res = await apiClient.put(`/crm/leads/${leadId}/`, { ...lead, stage: newStage, notes: updatedNotes });
       if (res && res.success !== false) {
@@ -5797,11 +5815,69 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     if (!lead) return false;
     const updatedLead: Lead = { ...lead, ...updates };
 
+    // Dynamically synchronize with followups in store
+    let nextFollowups = [...get().followups];
+    const cleanLPhone = String(updatedLead.phone || '').replace(/\D/g, '').slice(-10);
+
+    if (updates.next_follow_up_date || updates.stage === 'follow_up') {
+      const existingFuIndex = nextFollowups.findIndex((f) =>
+        (f.related_to && f.related_to.includes(`Lead #${leadId}`)) ||
+        (cleanLPhone && String(f.phone || '').replace(/\D/g, '').slice(-10) === cleanLPhone)
+      );
+
+      if (existingFuIndex >= 0) {
+        const targetFu = nextFollowups[existingFuIndex];
+        const updatedFu: FollowUp = {
+          ...targetFu,
+          customer_name: updatedLead.name,
+          phone: updatedLead.phone,
+          due_date: updates.next_follow_up_date || targetFu.due_date,
+          due_time: updates.next_follow_up_time || targetFu.due_time,
+          assigned_to: updates.owner || targetFu.assigned_to,
+          status: targetFu.status === 'completed' ? 'scheduled' : targetFu.status,
+        };
+        nextFollowups[existingFuIndex] = updatedFu;
+        persistCache('followups', nextFollowups);
+        apiClient.patch(`/crm/follow-ups/${targetFu.id}/`, updatedFu).catch(() => {});
+      } else if (updates.next_follow_up_date) {
+        const newFu: FollowUp = {
+          id: Date.now(),
+          title: `Follow-up with ${updatedLead.name}`,
+          related_to: `Lead #${updatedLead.id} - ${updatedLead.name} (${updatedLead.service || 'Service'})`,
+          customer_name: updatedLead.name,
+          phone: updatedLead.phone,
+          follow_up_type: 'whatsapp',
+          assigned_to: updatedLead.owner || 'Rahul Mehta',
+          due_date: updates.next_follow_up_date,
+          due_time: updates.next_follow_up_time || '11:00 AM',
+          status: 'scheduled',
+          priority: 'high',
+          notes: updatedLead.notes || '',
+        };
+        nextFollowups = [newFu, ...nextFollowups];
+        persistCache('followups', nextFollowups);
+        apiClient.post('/crm/follow-ups/', newFu).catch(() => {});
+      }
+    } else if (updates.stage === 'won' || updates.stage === 'lost') {
+      nextFollowups = nextFollowups.map((f) => {
+        const matches =
+          (f.related_to && f.related_to.includes(`Lead #${leadId}`)) ||
+          (cleanLPhone && String(f.phone || '').replace(/\D/g, '').slice(-10) === cleanLPhone);
+        if (matches && f.status !== 'completed') {
+          apiClient.patch(`/crm/follow-ups/${f.id}/`, { status: 'completed' }).catch(() => {});
+          return { ...f, status: 'completed' as const };
+        }
+        return f;
+      });
+      persistCache('followups', nextFollowups);
+    }
+
     set((state) => {
       const newLeads = state.leads.map((l) => (String(l.id) === String(leadId) ? updatedLead : l));
       persistCache('leads', newLeads);
       return {
         leads: newLeads,
+        followups: nextFollowups,
         selectedLead: String(state.selectedLead?.id) === String(leadId) ? updatedLead : state.selectedLead,
       };
     });
@@ -7690,39 +7766,162 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       notes: fu.notes || '',
       ...fu,
     };
+
+    const state = get();
+    // Helper phone normalizer
+    const cleanPhone = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+
+    // Check if an existing follow-up exists for this same lead or phone to avoid duplicate creation
+    const existingIndex = state.followups.findIndex((f) => {
+      if (String(f.id) === String(item.id)) return true;
+      if (item.related_to && f.related_to && item.related_to.includes('Lead #') && f.related_to.includes('Lead #')) {
+        const m1 = item.related_to.match(/Lead\s*#?(\d+)/i);
+        const m2 = f.related_to.match(/Lead\s*#?(\d+)/i);
+        if (m1 && m2 && m1[1] === m2[1]) return true;
+      }
+      return false;
+    });
+
+    let updatedFollowups: FollowUp[];
+    let targetFu = item;
+    if (existingIndex >= 0) {
+      targetFu = { ...state.followups[existingIndex], ...item, id: state.followups[existingIndex].id };
+      updatedFollowups = state.followups.map((f, i) => (i === existingIndex ? targetFu : f));
+    } else {
+      updatedFollowups = [item, ...state.followups.filter((f) => String(f.id) !== String(item.id))];
+    }
+    persistCache('followups', updatedFollowups);
+
+    // Dynamic sync with matching Lead:
+    let updatedLeads = [...state.leads];
+    const itemDigits = cleanPhone(targetFu.phone);
+    const leadIdMatch = targetFu.related_to ? targetFu.related_to.match(/Lead\s*#?(\d+)/i) : null;
+
+    let matchingLead = updatedLeads.find((l) => {
+      if (leadIdMatch && String(l.id) === leadIdMatch[1]) return true;
+      if (itemDigits && cleanPhone(l.phone) === itemDigits) return true;
+      if (targetFu.customer_name && l.name?.trim().toLowerCase() === targetFu.customer_name.trim().toLowerCase()) return true;
+      return false;
+    });
+
+    if (matchingLead) {
+      updatedLeads = updatedLeads.map((l) => {
+        if (String(l.id) === String(matchingLead!.id)) {
+          return {
+            ...l,
+            stage: l.stage === 'new' || l.stage === 'contacted' ? 'follow_up' : l.stage,
+            next_follow_up_date: targetFu.due_date,
+            next_follow_up_time: targetFu.due_time,
+            owner: targetFu.assigned_to || l.owner,
+          };
+        }
+        return l;
+      });
+    } else if (targetFu.customer_name && targetFu.customer_name.trim() !== 'Customer') {
+      const newLead: Lead = {
+        id: Date.now(),
+        name: targetFu.customer_name.trim(),
+        phone: targetFu.phone,
+        service: targetFu.related_to || 'AC Repair',
+        location: 'Kozhikode, Kerala',
+        value: 3500,
+        stage: 'follow_up',
+        owner: targetFu.assigned_to || 'Rahul Mehta',
+        source: 'Follow-up',
+        created_at_str: 'Today',
+        last_contact_str: 'Just now',
+        notes: targetFu.notes || `Scheduled follow-up: ${targetFu.title}`,
+        tags: ['Follow-up Scheduled'],
+        next_follow_up_date: targetFu.due_date,
+        next_follow_up_time: targetFu.due_time,
+      };
+      updatedLeads = [newLead, ...updatedLeads];
+    }
+    persistCache('leads', updatedLeads);
+
+    set({ followups: updatedFollowups, leads: updatedLeads });
+    get().addToast(`Follow-up scheduled for ${targetFu.customer_name}`, 'success');
+
     try {
-      const res = await apiClient.post('/crm/follow-ups/', item);
-      const created: FollowUp = (res?.id && res.success !== false) ? (res as FollowUp) : item;
-      set((state) => {
-        const remaining = state.followups.filter(
-          (f) => String(f.id) !== String(created.id) && String(f.id) !== String(item.id)
-        );
-        const nextList = [created, ...remaining];
-        persistCache('followups', nextList);
-        return { followups: nextList };
-      });
-      get().addToast(`Follow-up scheduled for ${created.customer_name}`, 'success');
-      return created;
+      if (existingIndex >= 0) {
+        const res = await apiClient.patch(`/crm/follow-ups/${targetFu.id}/`, targetFu);
+        return (res && res.id) ? (res as FollowUp) : targetFu;
+      } else {
+        const res = await apiClient.post('/crm/follow-ups/', targetFu);
+        const created: FollowUp = (res?.id && res.success !== false) ? (res as FollowUp) : targetFu;
+        if (created.id !== targetFu.id) {
+          set((s) => {
+            const nextList = s.followups.map((f) => (String(f.id) === String(targetFu.id) ? created : f));
+            persistCache('followups', nextList);
+            return { followups: nextList };
+          });
+        }
+        return created;
+      }
     } catch {
-      set((state) => {
-        const remaining = state.followups.filter((f) => String(f.id) !== String(item.id));
-        const nextList = [item, ...remaining];
-        persistCache('followups', nextList);
-        return { followups: nextList };
-      });
-      get().addToast(`Follow-up scheduled for ${item.customer_name}`, 'success');
-      return item;
+      return targetFu;
     }
   },
 
   updateFollowUp: async (id, patch) => {
-    set((state) => {
-      const nextList = state.followups.map((f) =>
-        String(f.id) === String(id) ? { ...f, ...patch } : f
-      );
-      persistCache('followups', nextList);
-      return { followups: nextList };
-    });
+    const state = get();
+    const currentFu = state.followups.find((f) => String(f.id) === String(id));
+    const mergedFu = currentFu ? { ...currentFu, ...patch } : null;
+
+    const nextFollowups = state.followups.map((f) =>
+      String(f.id) === String(id) ? { ...f, ...patch } : f
+    );
+    persistCache('followups', nextFollowups);
+
+    // Dynamic sync with matching Lead in store:
+    let updatedLeads = [...state.leads];
+    if (mergedFu) {
+      const cleanPhone = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+      const fuDigits = cleanPhone(mergedFu.phone);
+      const leadIdMatch = mergedFu.related_to ? mergedFu.related_to.match(/Lead\s*#?(\d+)/i) : null;
+
+      const matchingLead = updatedLeads.find((l) => {
+        if (leadIdMatch && String(l.id) === leadIdMatch[1]) return true;
+        if (fuDigits && cleanPhone(l.phone) === fuDigits) return true;
+        if (mergedFu.customer_name && l.name?.trim().toLowerCase() === mergedFu.customer_name.trim().toLowerCase()) return true;
+        return false;
+      });
+
+      if (matchingLead) {
+        updatedLeads = updatedLeads.map((l) => {
+          if (String(l.id) === String(matchingLead.id)) {
+            if (patch.status === 'completed') {
+              // Check if any other pending follow-up is scheduled for this lead
+              const otherFu = nextFollowups.find((other) =>
+                String(other.id) !== String(id) &&
+                other.status !== 'completed' &&
+                (
+                  (leadIdMatch && other.related_to && other.related_to.includes(`Lead #${l.id}`)) ||
+                  (fuDigits && cleanPhone(other.phone) === fuDigits)
+                )
+              );
+              return {
+                ...l,
+                next_follow_up_date: otherFu ? otherFu.due_date : undefined,
+                next_follow_up_time: otherFu ? otherFu.due_time : undefined,
+              };
+            } else {
+              return {
+                ...l,
+                next_follow_up_date: patch.due_date !== undefined ? patch.due_date : l.next_follow_up_date,
+                next_follow_up_time: patch.due_time !== undefined ? patch.due_time : l.next_follow_up_time,
+                owner: patch.assigned_to || l.owner,
+                stage: l.stage === 'new' || l.stage === 'contacted' ? 'follow_up' : l.stage,
+              };
+            }
+          }
+          return l;
+        });
+        persistCache('leads', updatedLeads);
+      }
+    }
+
+    set({ followups: nextFollowups, leads: updatedLeads });
     try {
       await apiClient.patch(`/crm/follow-ups/${id}/`, patch);
     } catch (e) {
@@ -7731,11 +7930,46 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   deleteFollowUp: async (id) => {
-    set((state) => {
-      const nextList = state.followups.filter((f) => String(f.id) !== String(id));
-      persistCache('followups', nextList);
-      return { followups: nextList };
-    });
+    const state = get();
+    const deletedFu = state.followups.find((f) => String(f.id) === String(id));
+    const nextList = state.followups.filter((f) => String(f.id) !== String(id));
+    persistCache('followups', nextList);
+
+    let updatedLeads = [...state.leads];
+    if (deletedFu) {
+      const cleanPhone = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+      const fuDigits = cleanPhone(deletedFu.phone);
+      const leadIdMatch = deletedFu.related_to ? deletedFu.related_to.match(/Lead\s*#?(\d+)/i) : null;
+
+      const matchingLead = updatedLeads.find((l) => {
+        if (leadIdMatch && String(l.id) === leadIdMatch[1]) return true;
+        if (fuDigits && cleanPhone(l.phone) === fuDigits) return true;
+        return false;
+      });
+
+      if (matchingLead) {
+        const otherFu = nextList.find((other) =>
+          other.status !== 'completed' &&
+          (
+            (leadIdMatch && other.related_to && other.related_to.includes(`Lead #${matchingLead.id}`)) ||
+            (fuDigits && cleanPhone(other.phone) === fuDigits)
+          )
+        );
+        updatedLeads = updatedLeads.map((l) => {
+          if (String(l.id) === String(matchingLead.id)) {
+            return {
+              ...l,
+              next_follow_up_date: otherFu ? otherFu.due_date : undefined,
+              next_follow_up_time: otherFu ? otherFu.due_time : undefined,
+            };
+          }
+          return l;
+        });
+        persistCache('leads', updatedLeads);
+      }
+    }
+
+    set({ followups: nextList, leads: updatedLeads });
     try {
       await apiClient.delete(`/crm/follow-ups/${id}/`);
     } catch (e) {

@@ -13,6 +13,7 @@ import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
 export const FollowupsView: React.FC = () => {
   const {
     followups,
+    leads,
     updateFollowUp,
     deleteFollowUp,
     addToast,
@@ -59,26 +60,48 @@ export const FollowupsView: React.FC = () => {
     return `${y}-${m}-${day}`;
   }, []);
 
-  // Sync fresh follow-ups from backend on mount
+  // Sync fresh follow-ups and leads from backend on mount
   useEffect(() => {
-    qiyamApi
-      .fetchFollowUps()
-      .then((fresh) => {
-        if (Array.isArray(fresh) && fresh.length > 0) {
-          useQiyamStore.setState((state) => {
-            const existingMap = new Map<string, FollowUp>();
-            fresh.forEach((f) => existingMap.set(String(f.id), f));
-            state.followups.forEach((f) => {
-              if (!existingMap.has(String(f.id))) {
-                existingMap.set(String(f.id), f);
-              }
-            });
-            const merged = Array.from(existingMap.values());
-            return { followups: merged };
+    Promise.allSettled([
+      qiyamApi.fetchFollowUps(),
+      qiyamApi.fetchLeads(),
+    ]).then(([fuRes, leadsRes]) => {
+      useQiyamStore.setState((state) => {
+        let nextFollowups = state.followups;
+        if (fuRes.status === 'fulfilled' && Array.isArray(fuRes.value) && fuRes.value.length > 0) {
+          const fresh = fuRes.value as FollowUp[];
+          const existingMap = new Map<string, FollowUp>();
+          fresh.forEach((f) => existingMap.set(String(f.id), f));
+          state.followups.forEach((f) => {
+            if (!existingMap.has(String(f.id))) {
+              existingMap.set(String(f.id), f);
+            }
           });
+          nextFollowups = Array.from(existingMap.values());
+          try {
+            localStorage.setItem('whatsq_followups_cache', JSON.stringify(nextFollowups));
+          } catch {}
         }
-      })
-      .catch((e) => console.warn('[FollowupsView] Could not fetch fresh follow-ups:', e));
+
+        let nextLeads = state.leads;
+        if (leadsRes.status === 'fulfilled' && Array.isArray(leadsRes.value) && leadsRes.value.length > 0) {
+          const freshLeads = leadsRes.value as any[];
+          const leadMap = new Map<string, any>();
+          freshLeads.forEach((l) => leadMap.set(String(l.id), l));
+          state.leads.forEach((l) => {
+            if (!leadMap.has(String(l.id))) {
+              leadMap.set(String(l.id), l);
+            }
+          });
+          nextLeads = Array.from(leadMap.values());
+          try {
+            localStorage.setItem('whatsq_leads_cache', JSON.stringify(nextLeads));
+          } catch {}
+        }
+
+        return { followups: nextFollowups, leads: nextLeads };
+      });
+    }).catch((e) => console.warn('[FollowupsView] Could not fetch fresh follow-ups/leads:', e));
   }, []);
 
   // Dynamic effective status calculation
