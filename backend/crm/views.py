@@ -21,9 +21,18 @@ class FollowUpSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CustomerSerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField()
+
     class Meta:
         model = Customer
         fields = '__all__'
+
+    def get_category(self, obj):
+        if obj.tags:
+            for cat in ['Customer', 'Hot Lead', 'Lead', 'Vendor']:
+                if cat in obj.tags:
+                    return cat
+        return 'Customer'
 
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all().order_by('-id')

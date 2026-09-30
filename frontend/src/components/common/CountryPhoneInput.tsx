@@ -110,14 +110,16 @@ export function cleanDigits(val: string): string {
 
 /**
  * Format digits according to a mask (e.g. 'XXXXX XXXXX')
+ * When digits start with '0', adjusts mask prefix to retain clean national grouping
  */
 export function formatWithMask(digits: string, mask: string): string {
   if (!digits) return '';
+  const effectiveMask = digits.startsWith('0') ? 'X' + mask : mask;
   let result = '';
   let digitIndex = 0;
 
-  for (let i = 0; i < mask.length && digitIndex < digits.length; i++) {
-    const maskChar = mask[i];
+  for (let i = 0; i < effectiveMask.length && digitIndex < digits.length; i++) {
+    const maskChar = effectiveMask[i];
     if (maskChar === 'X') {
       result += digits[digitIndex];
       digitIndex++;
@@ -155,7 +157,9 @@ export function parsePhoneInput(
     for (const c of sortedCountries) {
       if (trimmed.startsWith(c.dialCode)) {
         const remaining = trimmed.slice(c.dialCode.length);
-        return { country: c, nationalDigits: cleanDigits(remaining).slice(0, c.maxDigits) };
+        const remDigits = cleanDigits(remaining);
+        const max = remDigits.startsWith('0') ? c.maxDigits + 1 : c.maxDigits;
+        return { country: c, nationalDigits: remDigits.slice(0, max) };
       }
     }
   }
@@ -166,20 +170,18 @@ export function parsePhoneInput(
     const codeDigits = cleanDigits(c.dialCode);
     if (digitsOnly.startsWith(codeDigits) && digitsOnly.length > codeDigits.length + 5) {
       const remaining = digitsOnly.slice(codeDigits.length);
-      return { country: c, nationalDigits: remaining.slice(0, c.maxDigits) };
+      const max = remaining.startsWith('0') ? c.maxDigits + 1 : c.maxDigits;
+      return { country: c, nationalDigits: remaining.slice(0, max) };
     }
   }
 
   // Local number with leading zero e.g. 09496300233
-  let national = digitsOnly;
-  if (national.startsWith('0') && national.length > 10) {
-    national = national.slice(1);
-  }
-
   const preferred = COUNTRIES.find((c) => c.iso === preferredCountryIso) || DEFAULT_COUNTRY;
+  const national = digitsOnly;
+  const effectiveMax = national.startsWith('0') ? preferred.maxDigits + 1 : preferred.maxDigits;
   return {
     country: preferred,
-    nationalDigits: national.slice(0, preferred.maxDigits),
+    nationalDigits: national.slice(0, effectiveMax),
   };
 }
 
@@ -297,8 +299,9 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
     setSelectedCountry(country);
     setIsOpen(false);
     setSearchQuery('');
-    // re-slice national digits if needed
-    const truncatedDigits = nationalDigits.slice(0, country.maxDigits);
+    // re-slice national digits if needed (allowing +1 if starting with 0)
+    const effectiveMax = nationalDigits.startsWith('0') ? country.maxDigits + 1 : country.maxDigits;
+    const truncatedDigits = nationalDigits.slice(0, effectiveMax);
     setNationalDigits(truncatedDigits);
     emitChange(truncatedDigits, country);
     phoneInputRef.current?.focus();
@@ -316,13 +319,10 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
       return;
     }
 
-    // Normal typing: extract raw digits and apply limits
-    let raw = cleanDigits(inputVal);
-    // If user starts with 0 and enters full 10/11 digits, strip leading 0
-    if (raw.startsWith('0') && raw.length > selectedCountry.maxDigits) {
-      raw = raw.slice(1);
-    }
-    const truncated = raw.slice(0, selectedCountry.maxDigits);
+    // Normal typing: extract raw digits and apply limits without stripping leading zeros
+    const raw = cleanDigits(inputVal);
+    const effectiveMax = raw.startsWith('0') ? selectedCountry.maxDigits + 1 : selectedCountry.maxDigits;
+    const truncated = raw.slice(0, effectiveMax);
     setNationalDigits(truncated);
     emitChange(truncated, selectedCountry);
   };
@@ -405,7 +405,7 @@ export const CountryPhoneInput: React.FC<CountryPhoneInputProps> = ({
         {/* National digit count indicator on length */}
         {nationalDigits.length > 0 && (
           <div className="shrink-0 text-[10px] font-mono text-slate-400 px-1 select-none">
-            {nationalDigits.length}/{selectedCountry.maxDigits}
+            {nationalDigits.length}/{nationalDigits.startsWith('0') ? selectedCountry.maxDigits + 1 : selectedCountry.maxDigits}
           </div>
         )}
       </div>

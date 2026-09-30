@@ -7197,12 +7197,32 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
 
     // 3. Sync with backend API
     try {
-      const res = await apiClient.put(`/crm/customers/${id}/`, updates);
+      const isRealDbId = typeof id === 'number' || (!String(id).startsWith('conv_') && !String(id).startsWith('sc_') && !isNaN(Number(id)));
+      let res: any;
+      if (isRealDbId) {
+        res = await apiClient.put(`/crm/customers/${id}/`, updates);
+      } else {
+        res = await apiClient.post('/crm/customers/', updates);
+      }
+      if (res?.id) {
+        const finalCustomers = get().customers.map((c: any) =>
+          (c.id === id || (phoneClean && String(c.phone || c.phone_number || '').includes(phoneClean))) ? { ...c, ...res } : c
+        );
+        set({ customers: finalCustomers });
+        persistCache('customers', finalCustomers);
+      }
       get().addToast(`${custCategory === 'Vendor' ? 'Vendor' : 'Customer'} updated successfully`, 'success');
       return (res || updates) as Record<string, unknown>;
     } catch {
       try {
-        await apiClient.post('/crm/customers/', updates);
+        const res = await apiClient.post('/crm/customers/', updates);
+        if (res?.id) {
+          const finalCustomers = get().customers.map((c: any) =>
+            (c.id === id || (phoneClean && String(c.phone || c.phone_number || '').includes(phoneClean))) ? { ...c, ...res } : c
+          );
+          set({ customers: finalCustomers });
+          persistCache('customers', finalCustomers);
+        }
         get().addToast(`${custCategory === 'Vendor' ? 'Vendor' : 'Customer'} updated successfully`, 'success');
         return updates;
       } catch (err) {
@@ -7245,7 +7265,23 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
 
     // 3. Call backend API
     try {
-      await apiClient.delete(`/crm/customers/${id}/`);
+      const isRealDbId = typeof id === 'number' || (!String(id).startsWith('conv_') && !String(id).startsWith('sc_') && !isNaN(Number(id)));
+      if (isRealDbId) {
+        await apiClient.delete(`/crm/customers/${id}/`);
+      } else if (cleanTargetPhone) {
+        try {
+          const allCusts = (await apiClient.get('/crm/customers/')) as any[];
+          const matched = allCusts?.find((c: any) => {
+            const cPhone = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
+            return cPhone === cleanTargetPhone;
+          });
+          if (matched?.id) {
+            await apiClient.delete(`/crm/customers/${matched.id}/`);
+          }
+        } catch {
+          // ignore
+        }
+      }
       get().addToast('Customer removed successfully', 'success');
       return true;
     } catch {
