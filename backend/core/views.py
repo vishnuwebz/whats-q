@@ -273,8 +273,26 @@ class SystemUpdateView(APIView):
                 with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
                     content = f.read()[-5000:]
             status['deploy_log'] = content
-            frontend_dist = os.path.join(settings.BASE_DIR.parent, 'frontend', 'dist')
+            frontend_dir = os.path.join(settings.BASE_DIR.parent, 'frontend')
+            frontend_dist = os.path.join(frontend_dir, 'dist')
+            build_output = os.path.join(frontend_dir, 'build_output')
             index_path = os.path.join(frontend_dist, 'index.html')
+
+            # Auto-healing: If dist or index.html is missing, sync immediately from build_output
+            if not os.path.exists(index_path) and os.path.exists(os.path.join(build_output, 'index.html')):
+                import shutil
+                try:
+                    os.makedirs(frontend_dist, exist_ok=True)
+                    for item in os.listdir(build_output):
+                        s = os.path.join(build_output, item)
+                        d = os.path.join(frontend_dist, item)
+                        if os.path.isdir(s):
+                            shutil.copytree(s, d, dirs_exist_ok=True)
+                        else:
+                            shutil.copy2(s, d)
+                except Exception as err:
+                    status['auto_heal_error'] = str(err)
+
             status['dist_exists'] = os.path.exists(frontend_dist)
             status['index_exists'] = os.path.exists(index_path)
             if os.path.exists(frontend_dist):

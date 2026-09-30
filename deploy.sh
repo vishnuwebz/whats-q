@@ -233,18 +233,14 @@ cd "$APP_DIR/frontend"
 $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
 $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
-# If build_output/index.html is present, copy it cleanly to dist via atomic swap
+# If build_output/index.html is present, sync contents cleanly into dist
 if [ -d "$APP_DIR/frontend/build_output" ] && [ -f "$APP_DIR/frontend/build_output/index.html" ]; then
     echo -e "${GREEN}[SUCCESS] Valid pre-compiled frontend bundle detected in build_output. Deploying...${NC}"
-    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_new" 2>/dev/null || true
-    $SUDO_CMD cp -r "$APP_DIR/frontend/build_output" "$APP_DIR/frontend/dist_new" 2>/dev/null || true
-    $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist_new" 2>/dev/null || true
-    $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist_new" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist_new" 2>/dev/null || true
-    # Atomic swap: dist is never missing or unreadable
-    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_old" 2>/dev/null || true
-    $SUDO_CMD mv "$APP_DIR/frontend/dist" "$APP_DIR/frontend/dist_old" 2>/dev/null || true
-    $SUDO_CMD mv "$APP_DIR/frontend/dist_new" "$APP_DIR/frontend/dist"
-    $SUDO_CMD rm -rf "$APP_DIR/frontend/dist_old" 2>/dev/null || true
+    mkdir -p "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD mkdir -p "$APP_DIR/frontend/dist" 2>/dev/null || true
+    cp -rf "$APP_DIR/frontend/build_output"/* "$APP_DIR/frontend/dist/" 2>/dev/null || $SUDO_CMD cp -rf "$APP_DIR/frontend/build_output"/* "$APP_DIR/frontend/dist/" 2>/dev/null || true
+    chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chmod -R 775 "$APP_DIR/frontend/dist" 2>/dev/null || true
+    $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD chown -R www-data:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
+    echo -e "${GREEN}[SUCCESS] Frontend bundle synced into dist!${NC}"
 elif [ -f "$APP_DIR/frontend/dist/index.html" ]; then
     echo -e "${GREEN}[SUCCESS] Valid frontend bundle already present in dist.${NC}"
 else
@@ -280,6 +276,7 @@ if [ -f "$APP_DIR/frontend/build_output/version.json" ]; then
     fi
 fi
 
+mkdir -p "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO_CMD mkdir -p "$APP_DIR/frontend/dist" 2>/dev/null || true
 cat <<EOF | $SUDO_CMD tee "$APP_DIR/frontend/dist/version.json" > /dev/null
 {
   "commit": "$COMMIT_HASH",
