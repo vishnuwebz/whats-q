@@ -157,6 +157,30 @@ def mark_lead_contacted_from_reply(phone=None, contact_name=None, owner_name=Non
             lead.save()
             lead_data = LeadSerializer(lead).data
             emit_event('lead.updated', lead_data)
+    elif clean_digits and len(clean_digits) >= 7:
+        # If lead did not exist in CRM, auto-create it directly in 'contacted' stage!
+        from .views import LeadSerializer
+        now_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+        clean_phone_display = phone if str(phone).startswith('+') else f"+{phone}"
+        resolved_name = contact_name.strip() if (contact_name and contact_name.strip() not in ['WhatsApp Customer', 'Customer', 'Valued Customer', '']) else f"Customer (+{clean_digits[-4:]})"
+        lead = Lead.objects.create(
+            name=resolved_name,
+            phone=clean_phone_display,
+            service='WhatsApp Inquiry',
+            location='Kozhikode, Kerala',
+            value=2800.0,
+            stage='contacted',
+            owner=owner_name or 'Rahul Mehta',
+            source='WhatsApp Outbound',
+            created_at_str=now_full,
+            last_contact_str=now_full,
+            notes=f"Contacted on WhatsApp: \"{str(reply_text or '')[:150]}\"",
+            tags=['WhatsApp Contacted', 'Auto-Synced Lead'],
+        )
+        lead_data = LeadSerializer(lead).data
+        emit_event('lead.created', lead_data)
+        emit_event('lead.updated', lead_data)
+        logger.info(f"[CRM Sync] Auto-created new CRM Lead #{lead.id} ({lead.name}) in 'contacted' stage upon manual reply")
 
     return lead
 

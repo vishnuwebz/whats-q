@@ -41,6 +41,7 @@ export const getStageConfig = (stageId: Lead['stage']) => {
 export const LeadsView: React.FC = () => {
   const {
     leads,
+    conversations,
     trashLeads,
     followups,
     selectedLead,
@@ -65,6 +66,7 @@ export const LeadsView: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'trash'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
+  const [columnSearchQueries, setColumnSearchQueries] = useState<Record<string, string>>({});
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [newLeadForm, setNewLeadForm] = useState({
     name: '',
@@ -466,7 +468,61 @@ export const LeadsView: React.FC = () => {
 
   const effectiveSearch = searchQuery || globalFilter.query || '';
 
-  const filteredLeads = leads.filter((l) => {
+  // Auto-reconcile any conversations marked as Lead that aren't yet in leads
+  const combinedLeads = useMemo(() => {
+    const existingPhones = new Set(
+      leads.map((l) => String(l.phone || '').replace(/\D/g, '').slice(-10)).filter(Boolean)
+    );
+    const existingNames = new Set(
+      leads.map((l) => (l.name || '').trim().toLowerCase()).filter(Boolean)
+    );
+
+    const synthesized: Lead[] = [];
+    (conversations || []).forEach((c) => {
+      const isLeadConv = c.category === 'Lead' || c.category === 'Hot Lead' || Boolean(c.lead_stage);
+      if (!isLeadConv) return;
+
+      const cPhoneDigits = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+      const cName = (c.contact_name || '').trim().toLowerCase();
+
+      if (cPhoneDigits && existingPhones.has(cPhoneDigits)) return;
+      if (cName && existingNames.has(cName)) return;
+
+      const stageMap: Record<string, Lead['stage']> = {
+        'New Lead': 'new',
+        'Contacted': 'contacted',
+        'Follow-up': 'follow_up',
+        'Appointment Confirmed': 'qualified',
+        'Proposal Sent': 'proposal_sent',
+        'In Negotiation': 'negotiation',
+        'Negotiation': 'negotiation',
+        'Won': 'won',
+        'Lost': 'lost',
+      };
+
+      const resolvedStage: Lead['stage'] = stageMap[c.lead_stage || ''] || 'new';
+
+      synthesized.push({
+        id: `conv-lead-${c.id}`,
+        name: c.contact_name || `Customer (+${cPhoneDigits.slice(-4)})`,
+        phone: c.phone_number,
+        service: c.service_needed || 'WhatsApp Inquiry',
+        location: c.location || 'Koyilandy, Kerala',
+        value: Number(c.estimated_value) || 2800,
+        stage: resolvedStage,
+        owner: c.lead_owner || 'Rahul Mehta',
+        source: c.source || 'WhatsApp',
+        created_at_str: c.first_contact_date || 'Today',
+        last_contact_str: c.last_contact_date || 'Just now',
+        notes: c.notes || 'Inbound WhatsApp conversation',
+        tags: c.tags || ['WhatsApp Lead'],
+      });
+    });
+
+    return [...leads, ...synthesized];
+  }, [leads, conversations]);
+
+  const filteredLeads = combinedLeads.filter((l) => {
     if (globalFilter.status && globalFilter.status !== 'all') {
       const s = globalFilter.status.toLowerCase();
       const match =
@@ -480,11 +536,28 @@ export const LeadsView: React.FC = () => {
       return false;
     }
     if (!isDateWithinInterval(l.created_at_str, globalDateInterval)) {
-      return false;
+      // Do not hide newly arrived leads, today's leads, or new stage inquiries
+      const isNewOrToday =
+        l.stage === 'new' ||
+        l.created_at_str?.toLowerCase().includes('today') ||
+        l.last_contact_str?.toLowerCase().includes('today') ||
+        l.last_contact_str?.toLowerCase().includes('just now') ||
+        (l.created_at_str && l.created_at_str.includes(new Date().getFullYear().toString()));
+      if (!isNewOrToday) {
+        return false;
+      }
     }
     if (!effectiveSearch) return true;
     const q = effectiveSearch.toLowerCase();
-    return l.name.toLowerCase().includes(q) || l.phone.includes(q) || l.service.toLowerCase().includes(q);
+    const cleanQ = q.replace(/\D/g, '');
+    const lDigits = (l.phone || '').replace(/\D/g, '');
+    return (
+      l.name.toLowerCase().includes(q) ||
+      l.phone.toLowerCase().includes(q) ||
+      (cleanQ && lDigits.includes(cleanQ)) ||
+      (l.service && l.service.toLowerCase().includes(q)) ||
+      (l.location && l.location.toLowerCase().includes(q))
+    );
   });
 
   const filteredTrashLeads = trashLeads.filter((item) => {
@@ -971,6 +1044,23 @@ export const LeadsView: React.FC = () => {
                 const colLeads = filteredLeads.filter((l) => l.stage === col.id);
                 const isTargetCol = highlightedColumnId === col.id;
 
+                const colSearchRaw = (columnSearchQueries[col.id] || '').trim().toLowerCase();
+                const colSearchDigits = colSearchRaw.replace(/\D/g, '');
+
+                const displayColLeads = colSearchRaw
+                  ? colLeads.filter((l) => {
+                      const matchName = l.name.toLowerCase().includes(colSearchRaw);
+                      const lDigits = (l.phone || '').replace(/\D/g, '');
+                      const matchPhone =
+                        l.phone.toLowerCase().includes(colSearchRaw) ||
+                        (colSearchDigits && lDigits.includes(colSearchDigits));
+                      const matchService = (l.service || '').toLowerCase().includes(colSearchRaw);
+                      const matchLoc = (l.location || '').toLowerCase().includes(colSearchRaw);
+                      const matchOwner = (l.owner || '').toLowerCase().includes(colSearchRaw);
+                      return matchName || matchPhone || matchService || matchLoc || matchOwner;
+                    })
+                  : colLeads;
+
                 return (
                   <div
                     key={col.id}
@@ -987,13 +1077,40 @@ export const LeadsView: React.FC = () => {
                   <div className="p-3.5 border-b border-slate-200/60 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${col.color}`}>
-                        {col.count}
+                        {colSearchRaw ? `${displayColLeads.length} / ${col.count}` : col.count}
                       </span>
                       <h3 className="font-bold text-xs text-slate-800">{col.label}</h3>
                     </div>
                     <span className="text-[11px] font-bold text-slate-500">
-                      ₹{colLeads.reduce((sum, l) => sum + l.value, 0).toLocaleString()}
+                      ₹{displayColLeads.reduce((sum, l) => sum + l.value, 0).toLocaleString()}
                     </span>
+                  </div>
+
+                  {/* Dedicated Kanban Column Search Bar */}
+                  <div className="px-3 pt-2.5 pb-1 shrink-0">
+                    <div className="relative flex items-center">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder={`Search ${col.label.toLowerCase()}... (name, phone)`}
+                        value={columnSearchQueries[col.id] || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setColumnSearchQueries((prev) => ({ ...prev, [col.id]: val }));
+                        }}
+                        className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200/90 rounded-xl text-xs placeholder:text-slate-400 text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-2xs"
+                      />
+                      {columnSearchQueries[col.id] && (
+                        <button
+                          type="button"
+                          onClick={() => setColumnSearchQueries((prev) => ({ ...prev, [col.id]: '' }))}
+                          className="absolute right-2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                          title="Clear column search"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Column Cards */}
@@ -1003,7 +1120,21 @@ export const LeadsView: React.FC = () => {
                     data-no-horizontal-drag="true"
                     className="p-3 pb-8 overflow-y-auto space-y-3 flex-1 min-h-0 scrollbar-thin overscroll-contain kanban-column-cards"
                   >
-                    {colLeads.map((lead) => {
+                    {colSearchRaw && displayColLeads.length === 0 ? (
+                      <div className="p-4 text-center text-slate-400 space-y-1.5 bg-white/70 rounded-xl border border-dashed border-slate-200 my-2">
+                        <Search className="w-4 h-4 mx-auto text-slate-300" />
+                        <p className="text-xs font-semibold text-slate-600">No leads found in {col.label}</p>
+                        <p className="text-[10px] text-slate-400 truncate">"{columnSearchQueries[col.id]}"</p>
+                        <button
+                          type="button"
+                          onClick={() => setColumnSearchQueries((prev) => ({ ...prev, [col.id]: '' }))}
+                          className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 underline mt-1 cursor-pointer"
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    ) : (
+                      displayColLeads.map((lead) => {
                       const isWon = lead.stage === 'won';
                       const isLost = lead.stage === 'lost';
                       const isOpen = !isWon && !isLost;
@@ -1201,7 +1332,7 @@ export const LeadsView: React.FC = () => {
                           )}
                         </div>
                       );
-                    })}
+                    }))}
 
                     {colLeads.length === 0 && (
                       <div className="text-center py-8 text-xs text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">

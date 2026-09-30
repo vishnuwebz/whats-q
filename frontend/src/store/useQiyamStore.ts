@@ -2574,15 +2574,19 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   applyRealtimeLead: (leadUpdate) => {
     set((state) => {
-      const exists = state.leads.some((l) => String(l.id) === String(leadUpdate.id));
-      if (exists) {
-        return {
-          leads: state.leads.map((l) => String(l.id) === String(leadUpdate.id) ? { ...l, ...leadUpdate } : l)
-        };
+      const cleanUPhone = String(leadUpdate.phone || '').replace(/\D/g, '').slice(-10);
+      const existsIndex = state.leads.findIndex((l) =>
+        String(l.id) === String(leadUpdate.id) ||
+        (cleanUPhone && String(l.phone || '').replace(/\D/g, '').slice(-10) === cleanUPhone)
+      );
+      let nextLeads: Lead[];
+      if (existsIndex >= 0) {
+        nextLeads = state.leads.map((l, i) => i === existsIndex ? { ...l, ...leadUpdate } : l);
+      } else {
+        nextLeads = [leadUpdate as Lead, ...state.leads];
       }
-      return {
-        leads: [leadUpdate as Lead, ...state.leads]
-      };
+      persistCache('leads', nextLeads);
+      return { leads: nextLeads };
     });
   },
 
@@ -3942,16 +3946,43 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
       const cleanPhone = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
       const convDigits = cleanPhone(conv.phone_number);
-      const nextLeads = (sender === 'agent')
-        ? state.leads.map((l) => {
-            const lDigits = cleanPhone(l.phone);
-            const matches = (convDigits && lDigits && convDigits === lDigits) || (l.name && conv.contact_name && l.name.toLowerCase() === conv.contact_name.toLowerCase());
-            if (matches && (l.stage === 'new' || l.stage === 'follow_up')) {
-              return { ...l, stage: 'contacted' as const, last_contact_str: 'Just now' };
-            }
-            return l;
-          })
-        : state.leads;
+      let leadFound = false;
+      let nextLeads = state.leads.map((l) => {
+        const lDigits = cleanPhone(l.phone);
+        const matches = (convDigits && lDigits && convDigits === lDigits) || (l.name && conv.contact_name && l.name.toLowerCase() === conv.contact_name.toLowerCase());
+        if (matches) {
+          leadFound = true;
+          if (sender === 'agent') {
+            return { ...l, stage: (l.stage === 'new' ? 'contacted' : l.stage) as Lead['stage'], last_contact_str: 'Just now' };
+          } else {
+            return { ...l, last_contact_str: 'Just now' };
+          }
+        }
+        return l;
+      });
+
+      if (!leadFound && convDigits) {
+        const isLeadConv = conv.category === 'Lead' || conv.category === 'Hot Lead' || Boolean(conv.lead_stage) || sender === 'customer' || sender === 'agent';
+        if (isLeadConv) {
+          const newLeadItem: Lead = {
+            id: `lead-conv-${conv.id}-${Date.now()}`,
+            name: conv.contact_name || `Customer (+${convDigits.slice(-4)})`,
+            phone: conv.phone_number,
+            service: conv.service_needed || 'WhatsApp Inquiry',
+            location: conv.location || 'Koyilandy, Kerala',
+            value: Number(conv.estimated_value) || 2800,
+            stage: sender === 'agent' ? 'contacted' : 'new',
+            owner: conv.lead_owner || 'Rahul Mehta',
+            source: conv.source || 'WhatsApp Inbound',
+            created_at_str: 'Today',
+            last_contact_str: 'Just now',
+            notes: `${sender === 'customer' ? 'Inbound inquiry' : 'Outbound message'}: "${text}"`,
+            tags: ['WhatsApp Lead', 'Auto-Synced Lead'],
+          };
+          nextLeads = [newLeadItem, ...nextLeads];
+        }
+      }
+      persistCache('leads', nextLeads);
 
       const nextConversations = [
         updatedConv,
@@ -4118,6 +4149,30 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     if (res?.conversation) {
       const conv = mapConversation(res.conversation as Record<string, unknown>);
       removeDeletedConversationId(conv.id);
+
+      const cleanP = String(conv.phone_number || phone).replace(/\D/g, '').slice(-10);
+      const leadExists = get().leads.some((l) => String(l.phone || '').replace(/\D/g, '').slice(-10) === cleanP);
+      let updatedLeads = get().leads;
+      if (!leadExists && cleanP) {
+        const newSimLead: Lead = {
+          id: `lead-sim-${conv.id || Date.now()}`,
+          name: conv.contact_name || name || `Customer (+${cleanP.slice(-4)})`,
+          phone: conv.phone_number || phone,
+          service: conv.service_needed || 'WhatsApp Inquiry',
+          location: conv.location || 'Koyilandy, Kerala',
+          value: Number(conv.estimated_value) || 2800,
+          stage: 'new',
+          owner: conv.lead_owner || 'Rahul Mehta',
+          source: conv.source || 'WhatsApp Inbound',
+          created_at_str: 'Today',
+          last_contact_str: 'Just now',
+          notes: `Inbound inquiry: "${text}"`,
+          tags: ['WhatsApp Inbound', 'Auto-Synced Lead'],
+        };
+        updatedLeads = [newSimLead, ...get().leads];
+        persistCache('leads', updatedLeads);
+      }
+
       set((state) => {
         const remainingDeleted = (state.deletedConversations || []).filter((c) => String(c.id) !== String(conv.id));
         const exists = state.conversations.some((c) => String(c.id) === String(conv.id));
@@ -4129,6 +4184,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           conversations,
           deletedConversations: remainingDeleted,
           selectedConversationId: conv.id,
+          leads: updatedLeads,
         };
       });
       const lineNote = conv.active_line_device ? ` on line [${conv.active_line_device}]` : '';
