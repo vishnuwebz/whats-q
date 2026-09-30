@@ -7997,7 +7997,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'Deploy script atomic reload & safe.directory fix v2.4.32',
+        latest_message: 'Pre-flight safe.directory and atomic self-update v2.4.33',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

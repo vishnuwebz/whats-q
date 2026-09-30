@@ -63,6 +63,14 @@ fi
 cd "$APP_DIR"
 echo -e "\n${YELLOW}[2/5] Pulling latest updates from Git...${NC}"
 
+# Ensure safe.directory is configured before any git operations
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+if [ -n "$SUDO_CMD" ]; then
+    $SUDO_CMD git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
+elif [ "$(id -u)" -eq 0 ]; then
+    git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
+fi
+
 # Auto-configure authenticated Git remote if token file or env exists
 if [ -f "/etc/whatsq.token" ]; then
     TOKEN=$($SUDO_CMD cat /etc/whatsq.token 2>/dev/null | tr -d '\r\n ') || true
@@ -79,13 +87,6 @@ $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 
 git fetch origin main
 git reset --hard origin/main
-
-git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
-if [ -n "$SUDO_CMD" ]; then
-    $SUDO_CMD git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
-elif [ "$(id -u)" -eq 0 ]; then
-    git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
-fi
 
 COMMIT_HASH=$(git rev-parse --short HEAD)
 COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
@@ -271,7 +272,7 @@ $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO
 # 5. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
 echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
 
-DEPLOY_VERSION="2.4.32"
+DEPLOY_VERSION="2.4.33"
 if [ -f "$APP_DIR/frontend/build_output/version.json" ]; then
     EXTRACTED_V=$(grep -o '"version": *"[^"]*"' "$APP_DIR/frontend/build_output/version.json" 2>/dev/null | cut -d'"' -f4)
     if [ -n "$EXTRACTED_V" ]; then
