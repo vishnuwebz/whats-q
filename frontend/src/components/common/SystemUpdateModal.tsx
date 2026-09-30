@@ -205,7 +205,7 @@ export const SystemUpdateModal: React.FC = () => {
                   {formatDateTime(versionInfo.current_date) || 'Active'}
                 </span>
               </div>
-              <p className="text-slate-600 text-[11px] line-clamp-1 leading-snug">
+              <p className="text-slate-600 text-[11px] leading-snug break-words">
                 {versionInfo.current_message || 'Running production build'}
               </p>
               {versionInfo.current_author && (
@@ -238,12 +238,13 @@ export const SystemUpdateModal: React.FC = () => {
                 }`}>
                   {versionInfo.latest_commit}
                 </span>
-                <span className="text-[10.5px] text-emerald-800 font-semibold">
+                <span className="text-[10.5px] text-emerald-800 font-semibold flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-600" />
                   {formatDateTime(versionInfo.latest_date || versionInfo.current_date)}
                 </span>
               </div>
-              <p className="text-slate-700 text-[11px] font-medium line-clamp-1 leading-snug">
-                {versionInfo.latest_message || 'Up to date with origin/main'}
+              <p className="text-slate-700 text-[11px] font-medium leading-snug break-words">
+                {versionInfo.latest_message || versionInfo.current_message || 'Up to date with origin/main'}
               </p>
               {versionInfo.latest_author && (
                 <p className="text-[10px] text-slate-400">

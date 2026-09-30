@@ -248,6 +248,17 @@ class SystemUpdateService:
                 info['latest_date'] = info['current_date']
                 info['latest_message'] = info['current_message']
 
+        # Ensure latest_message and latest_date always display exact commit details when on latest release
+        if not info.get('update_available'):
+            if info.get('current_message'):
+                info['latest_message'] = info['current_message']
+            if info.get('current_date'):
+                info['latest_date'] = info['current_date']
+            if info.get('current_author'):
+                info['latest_author'] = info['current_author']
+            if info.get('current_commit'):
+                info['latest_commit'] = info['current_commit']
+
         if not info.get('last_updated'):
             info['last_updated'] = info.get('current_date')
 

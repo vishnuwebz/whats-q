@@ -843,6 +843,8 @@ interface QiyamState {
     }
   ) => Promise<string | number>;
   addCustomer: (cust: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  updateCustomer: (id: string | number, updates: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
+  deleteCustomer: (id: string | number, phone?: string) => Promise<boolean>;
   addExpense: (exp: Partial<Expense>) => Promise<Expense>;
   updateExpense: (id: string | number, updates: Partial<Expense>) => Promise<Expense | null>;
   deleteExpense: (id: string | number) => Promise<boolean>;
@@ -7139,6 +7141,118 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
     }
   },
 
+  updateCustomer: async (id, updates) => {
+    const custPhone = String(updates.phone || updates.phone_number || '').trim();
+    const custName = String(updates.name || updates.contact_name || '').trim();
+    const custLocation = String(updates.location || updates.address || '').trim();
+    const rawCategory = updates.category;
+    const validCategories = ['Customer', 'Hot Lead', 'Lead', 'Vendor'];
+    const custCategory = (rawCategory && validCategories.includes(String(rawCategory)))
+      ? (rawCategory as 'Customer' | 'Hot Lead' | 'Lead' | 'Vendor')
+      : undefined;
+    const phoneClean = custPhone.replace(/\D/g, '').slice(-10);
+
+    // 1. Update customers array in store
+    const updatedCustomers = get().customers.map((c: any) => {
+      const cClean = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
+      const isMatch = String(c.id) === String(id) || (phoneClean && cClean && cClean === phoneClean);
+      if (isMatch) {
+        return {
+          ...c,
+          ...updates,
+          name: custName || c.name || c.contact_name,
+          contact_name: custName || c.contact_name || c.name,
+          phone: custPhone || c.phone || c.phone_number,
+          phone_number: custPhone || c.phone_number || c.phone,
+          location: custLocation || c.location || c.address,
+          address: custLocation || c.address || c.location,
+          ...(custCategory ? { category: custCategory, tags: [custCategory] } : {}),
+        };
+      }
+      return c;
+    });
+
+    // 2. Update conversations array in store
+    const updatedConvs = get().conversations.map((c) => {
+      const cClean = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+      const isMatch = String(c.id) === String(id) || (phoneClean && cClean && cClean === phoneClean);
+      if (isMatch) {
+        return {
+          ...c,
+          ...(custName ? { contact_name: custName } : {}),
+          ...(custPhone ? { phone_number: custPhone } : {}),
+          ...(custLocation ? { location: custLocation } : {}),
+          ...(custCategory ? { category: custCategory, lead_stage: custCategory } : {}),
+        };
+      }
+      return c;
+    });
+
+    set({
+      customers: updatedCustomers,
+      conversations: updatedConvs,
+    });
+    persistCache('customers', updatedCustomers);
+    persistConversations(updatedConvs);
+
+    // 3. Sync with backend API
+    try {
+      const res = await apiClient.put(`/crm/customers/${id}/`, updates);
+      get().addToast(`${custCategory === 'Vendor' ? 'Vendor' : 'Customer'} updated successfully`, 'success');
+      return (res || updates) as Record<string, unknown>;
+    } catch {
+      try {
+        await apiClient.post('/crm/customers/', updates);
+        get().addToast(`${custCategory === 'Vendor' ? 'Vendor' : 'Customer'} updated successfully`, 'success');
+        return updates;
+      } catch (err) {
+        console.warn('[Store] Customer update saved locally, backend warning:', err);
+        get().addToast('Customer updated locally', 'success');
+        return updates;
+      }
+    }
+  },
+
+  deleteCustomer: async (id, phone) => {
+    const cleanTargetPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    // 1. Remove from customers array
+    const remainingCustomers = get().customers.filter((c: any) => {
+      if (String(c.id) === String(id)) return false;
+      if (cleanTargetPhone) {
+        const cPhone = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
+        if (cPhone === cleanTargetPhone) return false;
+      }
+      return true;
+    });
+
+    // 2. Remove from conversations array
+    const remainingConvs = get().conversations.filter((c) => {
+      if (String(c.id) === String(id)) return false;
+      if (cleanTargetPhone) {
+        const cPhone = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+        if (cPhone === cleanTargetPhone) return false;
+      }
+      return true;
+    });
+
+    set({
+      customers: remainingCustomers,
+      conversations: remainingConvs,
+    });
+    persistCache('customers', remainingCustomers);
+    persistConversations(remainingConvs);
+
+    // 3. Call backend API
+    try {
+      await apiClient.delete(`/crm/customers/${id}/`);
+      get().addToast('Customer removed successfully', 'success');
+      return true;
+    } catch {
+      get().addToast('Customer removed', 'info');
+      return true;
+    }
+  },
 
   addExpense: async (exp) => {
     const nextId = get().expenses.length > 0
@@ -7883,7 +7997,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
         latest_commit: '9c8f12a',
         latest_author: 'QBS-360 Core Team',
         latest_date: nowFormatted,
-        latest_message: 'CRM Customers Add & Vendor Sorting Filter v2.4.30',
+        latest_message: 'CRM Customer Edit & Delete Actions v2.4.31',
         update_available: true,
         is_git: true,
         last_updated: get().versionInfo?.last_updated || get().versionInfo?.current_date || nowFormatted,

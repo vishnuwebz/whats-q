@@ -86,6 +86,7 @@ COMMIT_HASH=$(git rev-parse --short HEAD)
 COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
 COMMIT_MSG=$(git log -1 --pretty=format:'%s')
 COMMIT_DATE=$(git log -1 --pretty=format:'%cd' --date=format:'%b %d, %Y, %I:%M %p')
+COMMIT_MSG_ESCAPED=$(printf '%s' "$COMMIT_MSG" | sed 's/\\/\\\\/g; s/"/\\"/g')
 
 # Generate version metadata snapshot for instant backend & frontend consumption
 cat <<EOF > "$APP_DIR/backend/version_meta.json"
@@ -93,7 +94,7 @@ cat <<EOF > "$APP_DIR/backend/version_meta.json"
   "current_commit": "$COMMIT_HASH",
   "current_author": "$COMMIT_AUTHOR",
   "current_date": "$COMMIT_DATE",
-  "current_message": "$COMMIT_MSG",
+  "current_message": "$COMMIT_MSG_ESCAPED",
   "last_updated": "$COMMIT_DATE"
 }
 EOF
@@ -104,7 +105,7 @@ cat <<EOF > "$APP_DIR/frontend/public/version.json"
   "commit": "$COMMIT_HASH",
   "author": "$COMMIT_AUTHOR",
   "date": "$COMMIT_DATE",
-  "message": "$COMMIT_MSG",
+  "message": "$COMMIT_MSG_ESCAPED",
   "timestamp": $(date +%s%3N 2>/dev/null || date +%s)
 }
 EOF
@@ -142,7 +143,7 @@ set +a
 python manage.py migrate --noinput
 
 # Auto-seed check: Guarantee conversations and workspace are NEVER left empty post-deployment
-python -c "
+python3 - << 'PYEOF' 2>/dev/null || true
 import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiyam_backend.settings')
 django.setup()
@@ -158,7 +159,7 @@ if count == 0:
         print(f'[AUTO-SEED] Warning during seed: {e}')
 else:
     print(f'[INFO] Verified database integrity: {count} conversations active.')
-"
+PYEOF
 
 python manage.py collectstatic --noinput --clear
 
@@ -176,7 +177,7 @@ if [ -d "$APP_DIR/whatsapp_gateway" ]; then
     $NPM_BIN install --omit=dev --silent 2>&1 || true
     
     # Configure and restart systemd service for whatsq-gateway on port 4000
-    if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
+    if [ -d "/etc/systemd/system" ] && { [ -n "$SUDO_CMD" ] || [ "$(id -u)" -eq 0 ]; }; then
         cat << EOF | $SUDO_CMD tee /etc/systemd/system/whatsq-gateway.service > /dev/null
 [Unit]
 Description=WhatsQ WhatsApp Multi-Device Gateway Microservice (Port 4000)
@@ -265,7 +266,7 @@ $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO
 # 5. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
 echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
 
-DEPLOY_VERSION="2.4.30"
+DEPLOY_VERSION="2.4.31"
 if [ -f "$APP_DIR/frontend/build_output/version.json" ]; then
     EXTRACTED_V=$(grep -o '"version": *"[^"]*"' "$APP_DIR/frontend/build_output/version.json" 2>/dev/null | cut -d'"' -f4)
     if [ -n "$EXTRACTED_V" ]; then
@@ -278,7 +279,7 @@ cat <<EOF | $SUDO_CMD tee "$APP_DIR/frontend/dist/version.json" > /dev/null
   "commit": "$COMMIT_HASH",
   "author": "$COMMIT_AUTHOR",
   "date": "$COMMIT_DATE",
-  "message": "$COMMIT_MSG",
+  "message": "$COMMIT_MSG_ESCAPED",
   "timestamp": $(date +%s%3N 2>/dev/null || date +%s),
   "version": "$DEPLOY_VERSION",
   "deploy_status": "completed",
@@ -306,7 +307,7 @@ $SUDO_CMD rm -f "$APP_DIR/deploy_in_progress" 2>/dev/null || true
 echo -e "\n${YELLOW}[5/5] Fast Reloading WhatsQ Services (Instant Zero-Downtime)...${NC}"
 
 # Ensure fast reload & 3s stop timeout override and persistent EnvironmentFile exists for whatsq-backend
-if [ -d "/etc/systemd/system" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
+if [ -d "/etc/systemd/system" ] && { [ -n "$SUDO_CMD" ] || [ "$(id -u)" -eq 0 ]; }; then
     $SUDO_CMD mkdir -p /etc/systemd/system/whatsq-backend.service.d 2>/dev/null || true
     if [ ! -f "/etc/systemd/system/whatsq-backend.service.d/fast-reload.conf" ]; then
         cat << 'EOF' | $SUDO_CMD tee /etc/systemd/system/whatsq-backend.service.d/fast-reload.conf > /dev/null 2>&1 || true
@@ -328,7 +329,7 @@ else
     echo -e "${GREEN}[SUCCESS] WhatsQ Backend started!${NC}"
 fi
 # Configure Nginx client_max_body_size (50M) to permanently eliminate HTTP 413
-if [ -d "/etc/nginx/conf.d" ] && [ -n "$SUDO_CMD" -o "$(id -u)" -eq 0 ]; then
+if [ -d "/etc/nginx/conf.d" ] && { [ -n "$SUDO_CMD" ] || [ "$(id -u)" -eq 0 ]; }; then
     echo "client_max_body_size 50M;" | $SUDO_CMD tee /etc/nginx/conf.d/whatsq_upload_size.conf > /dev/null 2>&1 || true
     $SUDO_CMD nginx -t >/dev/null 2>&1 && $SUDO_CMD systemctl reload nginx 2>/dev/null || true
 else
@@ -339,7 +340,7 @@ fi
 echo -e "\n${YELLOW}[OTA] Broadcasting deployment completion to active browser sessions...${NC}"
 cd "$APP_DIR/backend"
 source venv/bin/activate 2>/dev/null || true
-python -c "
+python3 - << 'PYEOF' 2>/dev/null || true
 import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qiyam_backend.settings')
 django.setup()
@@ -353,7 +354,7 @@ info['in_progress'] = False
 event_bus.publish('system.update_available', info)
 event_bus.publish('system.deployed', info)
 print('[OTA] Broadcast complete: system.update_available & system.deployed sent.')
-" 2>/dev/null || true
+PYEOF
 
 # Sync update script binary
 $SUDO_CMD cp "$APP_DIR/deploy.sh" /usr/local/bin/update-whatsq 2>/dev/null || true

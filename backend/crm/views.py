@@ -221,3 +221,73 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         return Response(response_data, status=response_status)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+
+        # Normalize fields
+        if 'phone_number' in data and not data.get('phone'):
+            data['phone'] = data.get('phone_number')
+        if 'contact_name' in data and not data.get('name'):
+            data['name'] = data.get('contact_name')
+        if 'location' in data and not data.get('address'):
+            data['address'] = data.get('location')
+
+        category = data.get('category')
+        if category:
+            tags = data.get('tags')
+            if tags is None:
+                tags = list(instance.tags or [])
+            elif isinstance(tags, str):
+                tags = [tags]
+            elif not isinstance(tags, list):
+                tags = list(tags)
+            if category not in tags:
+                tags.append(category)
+            data['tags'] = tags
+
+        old_phone = instance.phone
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Also sync conversation
+        new_phone = serializer.data.get('phone') or old_phone
+        new_name = serializer.data.get('name')
+        new_address = serializer.data.get('address')
+        if new_phone or old_phone:
+            old_digits = ''.join(c for c in old_phone if c.isdigit())[-10:] if old_phone else ''
+            new_digits = ''.join(c for c in new_phone if c.isdigit())[-10:] if new_phone else ''
+            conv = None
+            if old_digits:
+                conv = Conversation.objects.filter(phone_number__icontains=old_digits).first()
+            if not conv and new_digits:
+                conv = Conversation.objects.filter(phone_number__icontains=new_digits).first()
+            if conv:
+                if new_name:
+                    conv.contact_name = new_name
+                if new_phone:
+                    conv.phone_number = new_phone
+                if new_address:
+                    conv.location = new_address
+                if category and category in ['Customer', 'Hot Lead', 'Lead', 'Vendor']:
+                    conv.category = category
+                    conv.lead_stage = category
+                conv.save()
+
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        phone = instance.phone
+        digits = ''.join(c for c in phone if c.isdigit())[-10:] if phone else ''
+        self.perform_destroy(instance)
+
+        # Also remove or clean up in Conversation
+        if digits:
+            Conversation.objects.filter(phone_number__icontains=digits).delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
