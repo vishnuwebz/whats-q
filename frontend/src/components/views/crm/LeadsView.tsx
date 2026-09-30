@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Lead, FollowUp } from '@/types';
@@ -517,10 +517,29 @@ export const LeadsView: React.FC = () => {
 
   // Kanban Horizontal Smooth Scroll & Quick-Jump State
   const kanbanScrollContainerRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScrollingRef = useRef(false);
   const [highlightedColumnId, setHighlightedColumnId] = useState<string | null>(null);
   const [activeScrolledStage, setActiveScrolledStage] = useState<string>('new');
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+
+  // Won Deals Tooltip & Quick View State
+  const [isWonTooltipOpen, setIsWonTooltipOpen] = useState(false);
+  const wonTooltipTimerRef = useRef<any>(null);
+  const wonLeads = useMemo(() => leads.filter((l) => l.stage === 'won'), [leads]);
+  const wonTotalValue = useMemo(() => wonLeads.reduce((a, b) => a + b.value, 0), [wonLeads]);
+
+  const handleJumpToWon = () => {
+    if (viewMode !== 'kanban') {
+      setViewMode('kanban');
+      setTimeout(() => {
+        scrollToKanbanColumn('won');
+      }, 150);
+    } else {
+      scrollToKanbanColumn('won');
+    }
+    setIsWonTooltipOpen(false);
+  };
 
   const checkScrollBounds = () => {
     const container = kanbanScrollContainerRef.current;
@@ -528,44 +547,59 @@ export const LeadsView: React.FC = () => {
     setCanScrollLeft(container.scrollLeft > 20);
     setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 20);
 
-    // Identify which column is currently closest to the left edge in view
+    // If scrolling programmatically via a pill click, do not let intermediate scroll events override the active stage!
+    if (isProgrammaticScrollingRef.current) return;
+
     const containerRect = container.getBoundingClientRect();
-    let closestStage = 'new';
+    const containerLeft = containerRect.left;
+
+    let bestStage = 'new';
     let minDistance = Infinity;
 
     stages.forEach((s) => {
       const colEl = document.getElementById(`kanban-col-${s.id}`);
       if (colEl) {
         const colRect = colEl.getBoundingClientRect();
-        const dist = Math.abs(colRect.left - (containerRect.left + 24));
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestStage = s.id;
+        // Measure position relative to container's left edge
+        const relLeft = colRect.left - containerLeft;
+        // Column must have its left edge at or past container left edge (with small tolerance)
+        if (relLeft >= -30 && relLeft < minDistance) {
+          minDistance = relLeft;
+          bestStage = s.id;
         }
       }
     });
 
-    setActiveScrolledStage(closestStage);
+    setActiveScrolledStage(bestStage);
   };
 
   const scrollToKanbanColumn = (stageId: Lead['stage']) => {
     setActiveScrolledStage(stageId);
+    setHighlightedColumnId(stageId);
+    isProgrammaticScrollingRef.current = true;
+
     const container = kanbanScrollContainerRef.current;
     const colEl = document.getElementById(`kanban-col-${stageId}`);
     if (colEl && container) {
-      const containerLeft = container.getBoundingClientRect().left;
-      const colLeft = colEl.getBoundingClientRect().left;
-      const scrollOffset = colLeft - containerLeft + container.scrollLeft - 16;
+      // Calculate precise target using offsetLeft
+      const scrollTarget = colEl.offsetLeft - 16;
 
       container.scrollTo({
-        left: Math.max(0, scrollOffset),
+        left: Math.max(0, scrollTarget),
         behavior: 'smooth',
       });
 
-      setHighlightedColumnId(stageId);
+      // Keep lock active for duration of smooth scroll
+      setTimeout(() => {
+        isProgrammaticScrollingRef.current = false;
+        checkScrollBounds();
+      }, 700);
+
       setTimeout(() => {
         setHighlightedColumnId((prev) => (prev === stageId ? null : prev));
       }, 1800);
+    } else {
+      isProgrammaticScrollingRef.current = false;
     }
   };
 
@@ -728,10 +762,104 @@ export const LeadsView: React.FC = () => {
               )}
               <span>Total: <strong className="text-slate-800">{filteredLeads.length}</strong></span>
               <span className="text-slate-300">•</span>
-              <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                <Trophy className="w-3.5 h-3.5 text-emerald-600" />
-                Won: ₹{leads.filter((l) => l.stage === 'won').reduce((a, b) => a + b.value, 0).toLocaleString()} ({leads.filter((l) => l.stage === 'won').length})
-              </span>
+              <div
+                className="relative inline-block"
+                onMouseEnter={() => {
+                  if (wonTooltipTimerRef.current) clearTimeout(wonTooltipTimerRef.current);
+                  setIsWonTooltipOpen(true);
+                }}
+                onMouseLeave={() => {
+                  wonTooltipTimerRef.current = setTimeout(() => {
+                    setIsWonTooltipOpen(false);
+                  }, 250);
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleJumpToWon}
+                  className="group/won text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 hover:border-emerald-300 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs hover:scale-102"
+                  title="Hover for Won deals details or click to view in Kanban"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-emerald-600 group-hover/won:rotate-12 transition-transform" />
+                  <span>Won: ₹{wonTotalValue.toLocaleString()}</span>
+                  <span className="bg-emerald-200/80 text-emerald-800 px-1.5 py-0.2 rounded-full text-[10px] font-mono">
+                    {wonLeads.length}
+                  </span>
+                </button>
+
+                {/* Won Deals Hover Popover */}
+                {isWonTooltipOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-emerald-200/80 ring-1 ring-black/5 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3"
+                    onMouseEnter={() => {
+                      if (wonTooltipTimerRef.current) clearTimeout(wonTooltipTimerRef.current);
+                    }}
+                    onMouseLeave={() => setIsWonTooltipOpen(false)}
+                  >
+                    {/* Popover Header */}
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-2xs">
+                          <Trophy className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs text-slate-900">Won Closed Deals</h4>
+                          <p className="text-[10px] text-slate-500">{wonLeads.length} successful conversions</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-extrabold text-sm text-emerald-600 font-mono">₹{wonTotalValue.toLocaleString()}</div>
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/60">
+                          Closed Revenue
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Won Leads Mini-List */}
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-thin pr-1">
+                      {wonLeads.length === 0 ? (
+                        <p className="text-xs text-slate-400 py-3 text-center">No won deals recorded yet.</p>
+                      ) : (
+                        wonLeads.map((w) => (
+                          <div
+                            key={w.id}
+                            onClick={() => {
+                              setSelectedLead(w);
+                              setIsLeadDrawerOpen(true);
+                              setIsWonTooltipOpen(false);
+                            }}
+                            className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer group/witem"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="font-bold text-xs text-slate-800 truncate group-hover/witem:text-emerald-900">
+                                {w.name}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate">
+                                {w.service || 'Service Closed'}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="font-bold text-xs text-emerald-600 font-mono">₹{w.value.toLocaleString()}</span>
+                              <div className="text-[9px] text-slate-400 font-mono">{w.phone}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* CTA Button to jump to Won column */}
+                    <button
+                      type="button"
+                      onClick={handleJumpToWon}
+                      className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer group/cta"
+                    >
+                      <Trophy className="w-3.5 h-3.5" />
+                      <span>View Won Section in Kanban</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/cta:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                )}
+              </div>
               <span className="text-slate-300">•</span>
               <span className="text-slate-700">Active Pipeline: <strong className="text-slate-900">₹{leads.filter((l) => l.stage !== 'won' && l.stage !== 'lost').reduce((a, b) => a + b.value, 0).toLocaleString()}</strong></span>
             </>
@@ -751,8 +879,7 @@ export const LeadsView: React.FC = () => {
 
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
               {stages.map((st) => {
-                const isActive = activeScrolledStage === st.id;
-                const isHighlighted = highlightedColumnId === st.id;
+                const isSelected = highlightedColumnId ? highlightedColumnId === st.id : activeScrolledStage === st.id;
 
                 return (
                   <button
@@ -760,10 +887,8 @@ export const LeadsView: React.FC = () => {
                     type="button"
                     onClick={() => scrollToKanbanColumn(st.id)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer shadow-2xs border ${
-                      isHighlighted
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-105 ring-2 ring-emerald-300'
-                        : isActive
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                      isSelected
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-slate-900/20 scale-102'
                         : 'bg-slate-50 hover:bg-slate-100/90 text-slate-700 border-slate-200/90 hover:border-slate-300'
                     }`}
                     title={`Click to smoothly jump directly to ${st.label} column`}
@@ -772,9 +897,7 @@ export const LeadsView: React.FC = () => {
                     <span className="whitespace-nowrap">{st.label}</span>
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full font-mono ${
-                        isHighlighted
-                          ? 'bg-white/30 text-white'
-                          : isActive
+                        isSelected
                           ? 'bg-white/20 text-white'
                           : 'bg-slate-200/80 text-slate-700'
                       }`}

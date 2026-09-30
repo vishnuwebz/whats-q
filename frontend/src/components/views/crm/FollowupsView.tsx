@@ -6,7 +6,7 @@ import { qiyamApi } from '@/api/qiyamApi';
 import {
   PhoneCall, MessageSquare, Mail, Calendar, Clock, CheckCircle2,
   Plus, Search, X, Edit2, Trash2, RotateCcw, FileText, User, AlertCircle,
-  LayoutGrid, List, Table
+  LayoutGrid, List, Table, ArrowUpDown, ChevronDown
 } from 'lucide-react';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
 
@@ -139,9 +139,27 @@ export const FollowupsView: React.FC = () => {
     };
   }, [followups, todayStr]);
 
-  // Filtered Cards: Decoupled from stale demo interval, with multi-field search
+  // Sorting State with persistence
+  const [sortBy, setSortBy] = useState<
+    'recently_added' | 'due_date_asc' | 'due_date_desc' | 'priority_high' | 'customer_name_asc' | 'customer_name_desc' | 'oldest_added'
+  >(() => {
+    try {
+      return (localStorage.getItem('whatsq_followups_sort_by') as any) || 'recently_added';
+    } catch {
+      return 'recently_added';
+    }
+  });
+
+  const handleSortChange = (newSort: typeof sortBy) => {
+    setSortBy(newSort);
+    try {
+      localStorage.setItem('whatsq_followups_sort_by', newSort);
+    } catch {}
+  };
+
+  // Filtered & Sorted Cards: Decoupled from stale demo interval, with multi-field search and active sorting
   const filtered = useMemo(() => {
-    return followups.filter((f) => {
+    const list = followups.filter((f) => {
       const effStatus = getEffectiveStatus(f);
 
       // Status Tab filter
@@ -173,7 +191,43 @@ export const FollowupsView: React.FC = () => {
 
       return true;
     });
-  }, [followups, activeTabFilter, globalFilter, search, todayStr]);
+
+    return list.slice().sort((a, b) => {
+      if (sortBy === 'recently_added') {
+        const numA = Number(a.id) || 0;
+        const numB = Number(b.id) || 0;
+        if (numA && numB) return numB - numA;
+        return String(b.id).localeCompare(String(a.id));
+      }
+      if (sortBy === 'oldest_added') {
+        const numA = Number(a.id) || 0;
+        const numB = Number(b.id) || 0;
+        if (numA && numB) return numA - numB;
+        return String(a.id).localeCompare(String(b.id));
+      }
+      if (sortBy === 'due_date_asc') {
+        const dateA = new Date(a.due_date || '9999-12-31').getTime();
+        const dateB = new Date(b.due_date || '9999-12-31').getTime();
+        return dateA - dateB;
+      }
+      if (sortBy === 'due_date_desc') {
+        const dateA = new Date(a.due_date || '0000-01-01').getTime();
+        const dateB = new Date(b.due_date || '0000-01-01').getTime();
+        return dateB - dateA;
+      }
+      if (sortBy === 'priority_high') {
+        const priorityWeight = { high: 3, medium: 2, low: 1 };
+        return (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
+      }
+      if (sortBy === 'customer_name_asc') {
+        return (a.customer_name || '').localeCompare(b.customer_name || '');
+      }
+      if (sortBy === 'customer_name_desc') {
+        return (b.customer_name || '').localeCompare(a.customer_name || '');
+      }
+      return 0;
+    });
+  }, [followups, activeTabFilter, globalFilter, search, todayStr, sortBy]);
 
   // Open Edit Modal
   const handleOpenEdit = (item: FollowUp) => {
@@ -331,6 +385,26 @@ export const FollowupsView: React.FC = () => {
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
+            </div>
+
+            {/* Sort Control Dropdown */}
+            <div className="relative shrink-0">
+              <select
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value as any)}
+                className="h-8 pl-8 pr-7 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer focus:ring-1 focus:ring-emerald-500 appearance-none shadow-2xs transition-colors"
+                title="Sort follow-ups"
+              >
+                <option value="recently_added">Recently Added (Newest)</option>
+                <option value="due_date_asc">Due Date (Urgent / Earliest)</option>
+                <option value="due_date_desc">Due Date (Latest First)</option>
+                <option value="priority_high">Priority (High to Low)</option>
+                <option value="customer_name_asc">Customer Name (A → Z)</option>
+                <option value="customer_name_desc">Customer Name (Z → A)</option>
+                <option value="oldest_added">Oldest Added First</option>
+              </select>
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* View Mode Switcher: Cards (Default), List, Table */}
