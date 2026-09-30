@@ -183,11 +183,29 @@ class CustomerViewSet(viewsets.ModelViewSet):
                 customer_obj = Customer.objects.filter(phone__icontains=clean_digits).first()
 
         if customer_obj:
-            serializer = self.get_serializer(customer_obj, data=data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            response_data = serializer.data
-            response_status = status.HTTP_200_OK
+            if data.get('check_duplicate_only'):
+                return Response({
+                    'duplicate': True,
+                    'existing_id': customer_obj.id,
+                    'existing_name': customer_obj.name,
+                    'existing_phone': customer_obj.phone,
+                    'existing_category': customer_obj.tags[0] if customer_obj.tags else 'Customer',
+                    'message': f"Phone number {phone} is already registered to {customer_obj.name}"
+                }, status=status.HTTP_409_CONFLICT)
+
+            if data.get('delete_existing_and_create'):
+                customer_obj.delete()
+                serializer = self.get_serializer(data=data)
+                serializer.is_valid(raise_exception=True)
+                self.perform_create(serializer)
+                response_data = serializer.data
+                response_status = status.HTTP_201_CREATED
+            else:
+                serializer = self.get_serializer(customer_obj, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+                response_data = serializer.data
+                response_status = status.HTTP_200_OK
         else:
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)

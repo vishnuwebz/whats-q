@@ -17,6 +17,8 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
@@ -38,6 +40,24 @@ const SORT_OPTIONS: { id: CustomerSortOption; label: string; icon: any }[] = [
   { id: 'spent_desc', label: 'Lifetime Revenue (High to Low)', icon: TrendingUp },
   { id: 'jobs_desc', label: 'Total Jobs (Most Completed)', icon: Briefcase },
 ];
+
+export interface CustomerDirectoryItem {
+  id: string | number;
+  uniqueKey: string;
+  source: 'customer' | 'conversation';
+  conversationId?: string | number;
+  name: string;
+  phone: string;
+  cleanPhone: string;
+  location: string;
+  avatar?: string;
+  totalSpent: number;
+  jobsCount: number;
+  status: 'Customer' | 'Lead' | 'Hot Lead' | 'Vendor';
+  lastSeen: string;
+  createdAtNum: number;
+  rawId: number;
+}
 
 export const CustomersView: React.FC = () => {
   const {
@@ -65,6 +85,19 @@ export const CustomersView: React.FC = () => {
     location: 'Kozhikode, Kerala',
     category: 'Customer' as 'Customer' | 'Hot Lead' | 'Lead' | 'Vendor',
   });
+
+  // Duplicate Phone Number Conflict Resolution State
+  const [duplicateConflict, setDuplicateConflict] = useState<{
+    isOpen: boolean;
+    existing: CustomerDirectoryItem;
+    pendingForm: {
+      name: string;
+      phone: string;
+      location: string;
+      category: 'Customer' | 'Hot Lead' | 'Lead' | 'Vendor';
+    };
+  } | null>(null);
+  const [isResolvingConflict, setIsResolvingConflict] = useState(false);
 
   // Edit Customer Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -111,28 +144,131 @@ export const CustomersView: React.FC = () => {
       .catch((e) => console.warn('[CustomersView] Could not fetch fresh customers:', e));
   }, []);
 
-  const handleCreateCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedName = form.name.trim();
-    if (!trimmedName) {
-      addToast('Please enter customer full name', 'warning');
-      return;
-    }
-    const cleanDigits = form.phone.replace(/\D/g, '');
-    if (cleanDigits.length < 5) {
-      addToast('Please enter a valid phone number', 'warning');
-      return;
-    }
+  // Primary source of truth: storeCustomers. Secondary: unsaved conversation contacts.
+  // Guaranteed UNIQUE and stable keys for React reconciliation.
+  const customers = useMemo<CustomerDirectoryItem[]>(() => {
+    const list: CustomerDirectoryItem[] = [];
+    const seenPhones = new Set<string>();
 
+    // Map conversations by clean 10-digit phone
+    const convByPhone = new Map<string, any>();
+    (conversations || []).forEach((c) => {
+      const cleanPhone = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+      if (cleanPhone) convByPhone.set(cleanPhone, c);
+    });
+
+    // 1. Process storeCustomers first (source of truth for directory)
+    (storeCustomers || []).forEach((sc: any, idx: number) => {
+      const rawPhone = String(sc.phone || sc.phone_number || '').trim();
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
+      if (cleanPhone) seenPhones.add(cleanPhone);
+
+      const matchedConv = cleanPhone ? convByPhone.get(cleanPhone) : null;
+      const cat = (sc.category ||
+        (Array.isArray(sc.tags) &&
+          sc.tags.find((t: string) => ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(t))) ||
+        matchedConv?.category ||
+        'Customer') as any;
+
+      const numId = typeof sc.id === 'number' ? sc.id : parseInt(String(sc.id).replace(/\D/g, '') || '0');
+      let createdTime = 0;
+      if (sc.created_at) {
+        createdTime = new Date(sc.created_at).getTime() || 0;
+      }
+      if (!createdTime && sc.timestamp) {
+        createdTime = Number(sc.timestamp) || 0;
+      }
+      if (!createdTime && numId > 0) {
+        createdTime = numId * 1000;
+      }
+
+      const stableId = sc.id ?? `sc_${cleanPhone || idx}`;
+      const uniqueKey = `cust_sc_${stableId}_${cleanPhone || idx}`;
+
+      list.push({
+        id: stableId,
+        uniqueKey,
+        source: 'customer',
+        conversationId: matchedConv?.id,
+        name: sc.name || sc.contact_name || matchedConv?.contact_name || 'Unnamed',
+        phone: rawPhone || matchedConv?.phone_number || '',
+        cleanPhone,
+        location: sc.address || sc.location || matchedConv?.location || 'Kozhikode, Kerala',
+        avatar: sc.avatar || matchedConv?.avatar,
+        totalSpent:
+          Number(sc.total_spent || sc.total_spend || 0) ||
+          (matchedConv?.estimated_value ? matchedConv.estimated_value * 2 : 5600),
+        jobsCount: Number(sc.jobs_count || sc.orders_count || 1),
+        status: ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(cat) ? cat : 'Customer',
+        lastSeen: sc.first_seen || sc.last_contact_date || matchedConv?.last_contact_date || 'Just now',
+        createdAtNum: createdTime,
+        rawId: numId,
+      });
+    });
+
+    // 2. Add contacts from conversations that don't yet have an explicit customer record
+    (conversations || []).forEach((c, idx: number) => {
+      const cleanPhone = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
+      if (cleanPhone && seenPhones.has(cleanPhone)) {
+        return;
+      }
+      if (cleanPhone) seenPhones.add(cleanPhone);
+
+      const cat = (c.category ||
+        (c.lead_stage === 'Customer'
+          ? 'Customer'
+          : c.lead_stage === 'Vendor'
+          ? 'Vendor'
+          : 'Lead')) as any;
+
+      const stableId = c.id ?? `conv_${cleanPhone || idx}`;
+      const uniqueKey = `cust_conv_${stableId}_${cleanPhone || idx}`;
+
+      list.push({
+        id: stableId,
+        uniqueKey,
+        source: 'conversation',
+        conversationId: c.id,
+        name: c.contact_name || 'Unnamed',
+        phone: c.phone_number || '',
+        cleanPhone,
+        location: c.location || 'Kozhikode, Kerala',
+        avatar: c.avatar,
+        totalSpent: (c.estimated_value || 2800) * 2,
+        jobsCount: 1,
+        status: ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(cat) ? cat : 'Customer',
+        lastSeen: c.last_contact_date || 'Recent',
+        createdAtNum: 0,
+        rawId: typeof c.id === 'number' ? c.id : 0,
+      });
+    });
+
+    return list;
+  }, [storeCustomers, conversations]);
+
+  // Live detection of duplicate phone number while typing in Add Contact modal
+  const detectedDuplicate = useMemo(() => {
+    const cleanDigits = form.phone.replace(/\D/g, '');
+    if (cleanDigits.length < 7) return null;
+    const last10 = cleanDigits.slice(-10);
+    return (
+      (customers as CustomerDirectoryItem[]).find(
+        (c) => c.cleanPhone && c.cleanPhone.length >= 7 && c.cleanPhone === last10
+      ) || null
+    );
+  }, [form.phone, customers]);
+
+  const proceedCreateCustomer = async (formData: typeof form) => {
+    const trimmedName = formData.name.trim();
     await addCustomer({
       contact_name: trimmedName,
       name: trimmedName,
-      phone_number: form.phone.trim(),
-      phone: form.phone.trim(),
-      location: form.location.trim() || 'Kozhikode, Kerala',
-      address: form.location.trim() || 'Kozhikode, Kerala',
-      category: form.category,
-      tags: [form.category],
+      phone_number: formData.phone.trim(),
+      phone: formData.phone.trim(),
+      location: formData.location.trim() || 'Kozhikode, Kerala',
+      address: formData.location.trim() || 'Kozhikode, Kerala',
+      category: formData.category,
+      tags: [formData.category],
       avatar: `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=100&auto=format&fit=crop&q=80`,
       estimated_value: 3000,
       total_spent: 5600,
@@ -147,6 +283,99 @@ export const CustomersView: React.FC = () => {
       location: 'Kozhikode, Kerala',
       category: 'Customer',
     });
+    setDuplicateConflict(null);
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = form.name.trim();
+    if (!trimmedName) {
+      addToast('Please enter customer full name', 'warning');
+      return;
+    }
+    const cleanDigits = form.phone.replace(/\D/g, '');
+    if (cleanDigits.length < 5) {
+      addToast('Please enter a valid phone number', 'warning');
+      return;
+    }
+
+    const last10 = cleanDigits.slice(-10);
+    const existing = (customers as CustomerDirectoryItem[]).find(
+      (c) => c.cleanPhone && c.cleanPhone.length >= 7 && c.cleanPhone === last10
+    );
+
+    if (existing) {
+      setDuplicateConflict({
+        isOpen: true,
+        existing,
+        pendingForm: { ...form },
+      });
+      return;
+    }
+
+    await proceedCreateCustomer(form);
+  };
+
+  // Conflict Resolution: Update existing contact with pending name/category
+  const handleResolveUpdateExisting = async () => {
+    if (!duplicateConflict) return;
+    const { existing, pendingForm } = duplicateConflict;
+    setIsResolvingConflict(true);
+    try {
+      await updateCustomer(existing.id, {
+        id: existing.id,
+        name: pendingForm.name.trim(),
+        contact_name: pendingForm.name.trim(),
+        phone: existing.phone,
+        phone_number: existing.phone,
+        location: pendingForm.location.trim() || existing.location,
+        address: pendingForm.location.trim() || existing.location,
+        category: pendingForm.category,
+        tags: [pendingForm.category],
+      });
+      setDuplicateConflict(null);
+      setIsAddModalOpen(false);
+      setForm({ name: '', phone: '', location: 'Kozhikode, Kerala', category: 'Customer' });
+      addToast(`Updated ${existing.name}'s profile to "${pendingForm.name}"`, 'success');
+    } catch (err) {
+      console.error('Failed to update contact:', err);
+    } finally {
+      setIsResolvingConflict(false);
+    }
+  };
+
+  // Conflict Resolution: Delete existing contact and replace with new
+  const handleResolveDeleteAndReplace = async () => {
+    if (!duplicateConflict) return;
+    const { existing, pendingForm } = duplicateConflict;
+    setIsResolvingConflict(true);
+    try {
+      await deleteCustomer(existing.id, existing.phone);
+      await proceedCreateCustomer(pendingForm);
+      addToast(
+        `Deleted old contact "${existing.name}" and registered new profile "${pendingForm.name}"`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Failed to replace contact:', err);
+      addToast('Failed to replace contact', 'error');
+    } finally {
+      setIsResolvingConflict(false);
+    }
+  };
+
+  // Conflict Resolution: Open existing in Edit Modal
+  const handleResolveEditExisting = () => {
+    if (!duplicateConflict) return;
+    const existing = duplicateConflict.existing;
+    setDuplicateConflict(null);
+    setIsAddModalOpen(false);
+    handleOpenEdit(existing);
+    addToast(`Editing existing contact: ${existing.name}`, 'info');
+  };
+
+  const handleCancelConflict = () => {
+    setDuplicateConflict(null);
   };
 
   const handleOpenEdit = (cust: any) => {
@@ -206,128 +435,34 @@ export const CustomersView: React.FC = () => {
     setDeletingCustomer(null);
   };
 
-  // Primary source of truth: storeCustomers. Secondary: unsaved conversation contacts.
-  const customers = useMemo(() => {
-    const list: Array<{
-      id: string | number;
-      conversationId?: string | number;
-      name: string;
-      phone: string;
-      location: string;
-      avatar?: string;
-      totalSpent: number;
-      jobsCount: number;
-      status: 'Customer' | 'Lead' | 'Hot Lead' | 'Vendor';
-      lastSeen: string;
-      createdAtNum: number;
-      rawId: number;
-    }> = [];
+  // Robust Search, Category and Status filtering
+  const filteredCustomers = useMemo<CustomerDirectoryItem[]>(() => {
+    const q = (search || globalFilter.query || '').trim().toLowerCase();
+    const cleanQ = q.replace(/\D/g, '');
 
-    const seenPhones = new Set<string>();
-
-    // Map conversations by clean 10-digit phone
-    const convByPhone = new Map<string, any>();
-    (conversations || []).forEach((c) => {
-      const cleanPhone = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
-      if (cleanPhone) convByPhone.set(cleanPhone, c);
-    });
-
-    // 1. Process storeCustomers first (source of truth for directory)
-    (storeCustomers || []).forEach((sc: any) => {
-      const rawPhone = String(sc.phone || sc.phone_number || '').trim();
-      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
-      if (cleanPhone) seenPhones.add(cleanPhone);
-
-      const matchedConv = cleanPhone ? convByPhone.get(cleanPhone) : null;
-      const cat = (sc.category ||
-        (Array.isArray(sc.tags) &&
-          sc.tags.find((t: string) => ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(t))) ||
-        matchedConv?.category ||
-        'Customer') as any;
-
-      const numId = typeof sc.id === 'number' ? sc.id : parseInt(String(sc.id).replace(/\D/g, '') || '0');
-      let createdTime = 0;
-      if (sc.created_at) {
-        createdTime = new Date(sc.created_at).getTime() || 0;
-      }
-      if (!createdTime && sc.timestamp) {
-        createdTime = Number(sc.timestamp) || 0;
-      }
-      if (!createdTime && numId > 0) {
-        createdTime = numId * 1000;
-      }
-
-      list.push({
-        id: sc.id || `cust_${Date.now()}_${Math.random()}`,
-        conversationId: matchedConv?.id,
-        name: sc.name || sc.contact_name || matchedConv?.contact_name || 'Unnamed',
-        phone: rawPhone || matchedConv?.phone_number || '',
-        location: sc.address || sc.location || matchedConv?.location || 'Kozhikode, Kerala',
-        avatar: sc.avatar || matchedConv?.avatar,
-        totalSpent:
-          Number(sc.total_spent || sc.total_spend || 0) ||
-          (matchedConv?.estimated_value ? matchedConv.estimated_value * 2 : 5600),
-        jobsCount: Number(sc.jobs_count || sc.orders_count || 1),
-        status: ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(cat) ? cat : 'Customer',
-        lastSeen: sc.first_seen || sc.last_contact_date || matchedConv?.last_contact_date || 'Just now',
-        createdAtNum: createdTime,
-        rawId: numId,
-      });
-    });
-
-    // 2. Add contacts from conversations that don't yet have an explicit customer record
-    (conversations || []).forEach((c) => {
-      const cleanPhone = String(c.phone_number || '').replace(/\D/g, '').slice(-10);
-      if (cleanPhone && seenPhones.has(cleanPhone)) {
-        return;
-      }
-      if (cleanPhone) seenPhones.add(cleanPhone);
-
-      const cat = (c.category ||
-        (c.lead_stage === 'Customer'
-          ? 'Customer'
-          : c.lead_stage === 'Vendor'
-          ? 'Vendor'
-          : 'Lead')) as any;
-
-      list.push({
-        id: c.id,
-        conversationId: c.id,
-        name: c.contact_name || 'Unnamed',
-        phone: c.phone_number || '',
-        location: c.location || 'Kozhikode, Kerala',
-        avatar: c.avatar,
-        totalSpent: (c.estimated_value || 2800) * 2,
-        jobsCount: 1,
-        status: ['Customer', 'Lead', 'Hot Lead', 'Vendor'].includes(cat) ? cat : 'Customer',
-        lastSeen: c.last_contact_date || 'Recent',
-        createdAtNum: 0,
-        rawId: 0,
-      });
-    });
-
-    return list;
-  }, [storeCustomers, conversations]);
-
-  const effectiveSearch = search || globalFilter.query || '';
-
-  // Filter and sort customers
-  const filteredCustomers = useMemo(() => {
     const result = customers.filter((cust) => {
+      // 1. Category Filter
       if (categoryFilter !== 'all' && cust.status !== categoryFilter) return false;
+
+      // 2. Global status filter (if any)
       if (globalFilter.status && globalFilter.status !== 'all') {
         if (globalFilter.status === 'open' && cust.status !== 'Hot Lead' && cust.status !== 'Lead')
           return false;
         if (globalFilter.status === 'completed' && cust.status !== 'Customer') return false;
       }
-      if (effectiveSearch) {
-        const q = effectiveSearch.toLowerCase();
-        return (
-          cust.name.toLowerCase().includes(q) ||
-          cust.phone.toLowerCase().includes(q) ||
-          cust.location.toLowerCase().includes(q)
-        );
+
+      // 3. Search query matching across name, location, status, raw phone and stripped digits
+      if (q) {
+        const nameMatch = cust.name.toLowerCase().includes(q);
+        const locMatch = cust.location.toLowerCase().includes(q);
+        const catMatch = cust.status.toLowerCase().includes(q);
+        const phoneMatch = cust.phone.toLowerCase().includes(q);
+        const phoneClean = cust.cleanPhone || cust.phone.replace(/\D/g, '');
+        const phoneDigitsMatch = cleanQ.length >= 2 && phoneClean.includes(cleanQ);
+
+        return nameMatch || locMatch || catMatch || phoneMatch || phoneDigitsMatch;
       }
+
       return true;
     });
 
@@ -359,7 +494,7 @@ export const CustomersView: React.FC = () => {
           return 0;
       }
     });
-  }, [customers, categoryFilter, globalFilter, effectiveSearch, sortBy]);
+  }, [customers, categoryFilter, globalFilter, search, sortBy]);
 
   const totalLifetimeRev = customers.reduce((acc, c) => acc + (Number(c.totalSpent) || 0), 0);
   const totalFulfilledJobs = customers.reduce((acc, c) => acc + (Number(c.jobsCount) || 0), 0);
@@ -514,7 +649,7 @@ export const CustomersView: React.FC = () => {
               )}
             </div>
 
-            <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] hidden xl:inline">
+            <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] hidden sm:inline">
               {filteredCustomers.length} of {customers.length}
             </span>
           </div>
@@ -592,16 +727,29 @@ export const CustomersView: React.FC = () => {
                     <td colSpan={7} className="py-12 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Users className="w-8 h-8 text-slate-300" />
-                        <span className="font-semibold text-slate-600 text-xs">No contacts found</span>
+                        <span className="font-semibold text-slate-600 text-xs">
+                          {search.trim() ? `No contacts matching "${search.trim()}"` : 'No contacts found'}
+                        </span>
                         <span className="text-[11px] text-slate-400">
-                          {search ? 'Try adjusting your search criteria' : 'Click "Add Customer" to create a new profile'}
+                          {search.trim() ? (
+                            <button
+                              type="button"
+                              onClick={() => setSearch('')}
+                              className="text-emerald-600 font-semibold hover:underline cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <span>Clear search query</span>
+                              <X className="w-3 h-3" />
+                            </button>
+                          ) : (
+                            'Click "Add Customer" to create a new profile'
+                          )}
                         </span>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filteredCustomers.map((cust) => (
-                    <tr key={cust.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={cust.uniqueKey} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <CustomerAvatar
@@ -704,6 +852,29 @@ export const CustomersView: React.FC = () => {
                   onChange={(val) => setForm({ ...form, phone: val })}
                   required
                 />
+                {detectedDuplicate && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between gap-2 mt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">
+                        Already exists: <strong>{detectedDuplicate.name}</strong> ({detectedDuplicate.status})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDuplicateConflict({
+                          isOpen: true,
+                          existing: detectedDuplicate,
+                          pendingForm: { ...form },
+                        })
+                      }
+                      className="px-2 py-0.5 bg-amber-200/80 hover:bg-amber-300 text-amber-900 font-bold rounded-md shrink-0 cursor-pointer transition-colors"
+                    >
+                      Resolve Conflict
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -887,6 +1058,166 @@ export const CustomersView: React.FC = () => {
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm shadow-rose-700/20 cursor-pointer"
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Phone Number Conflict Resolution Modal */}
+      {duplicateConflict && duplicateConflict.isOpen && (
+        <div className="fixed inset-0 z-60 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-amber-200 w-full max-w-lg p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700 shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Phone Number Already Exists</h3>
+                  <p className="text-[11px] text-slate-500">
+                    A directory profile already uses this phone number.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelConflict}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Existing Contact Card */}
+            <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-amber-950 space-y-2">
+              <p className="font-semibold text-xs">
+                Phone number{' '}
+                <span className="font-mono font-bold text-amber-900">
+                  {duplicateConflict.pendingForm.phone}
+                </span>{' '}
+                is already registered to:
+              </p>
+              <div className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <CustomerAvatar
+                    name={duplicateConflict.existing.name}
+                    avatar={duplicateConflict.existing.avatar}
+                    phone={duplicateConflict.existing.phone}
+                    id={duplicateConflict.existing.id}
+                    size="md"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        {duplicateConflict.existing.name}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getBadgeStyle(
+                          duplicateConflict.existing.status
+                        )}`}
+                      >
+                        {duplicateConflict.existing.status}
+                      </span>
+                    </div>
+                    <div className="text-slate-500 text-[11px] mt-0.5 flex items-center gap-2 truncate">
+                      <span className="font-mono">{duplicateConflict.existing.phone}</span>
+                      <span>•</span>
+                      <span>{duplicateConflict.existing.location}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-bold text-slate-800 text-xs">
+                    ₹{duplicateConflict.existing.totalSpent.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {duplicateConflict.existing.jobsCount} completed jobs
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-slate-600 text-xs leading-relaxed">
+              You are attempting to add{' '}
+              <strong className="text-slate-900">{duplicateConflict.pendingForm.name}</strong> as a{' '}
+              <strong>{duplicateConflict.pendingForm.category}</strong>. Choose how you would like to
+              handle this conflict:
+            </p>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={handleResolveUpdateExisting}
+                disabled={isResolvingConflict}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 transition-colors text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Pencil className="w-4 h-4 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <span className="font-bold block text-xs">
+                      Update Existing Profile to "{duplicateConflict.pendingForm.name}"
+                    </span>
+                    <span className="text-[11px] text-blue-700/80">
+                      Keeps interaction history and updates details to {duplicateConflict.pendingForm.name} (
+                      {duplicateConflict.pendingForm.category})
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-blue-500 shrink-0" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResolveDeleteAndReplace}
+                disabled={isResolvingConflict}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 transition-colors text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Trash2 className="w-4 h-4 text-rose-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <span className="font-bold block text-xs">
+                      Delete Existing "{duplicateConflict.existing.name}" & Save New
+                    </span>
+                    <span className="text-[11px] text-rose-700/80">
+                      Deletes {duplicateConflict.existing.name} and registers a clean new profile for{' '}
+                      {duplicateConflict.pendingForm.name}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-rose-500 shrink-0" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResolveEditExisting}
+                disabled={isResolvingConflict}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition-colors text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <UserPlus className="w-4 h-4 text-slate-500 shrink-0" />
+                  <div>
+                    <span className="font-bold block text-xs">
+                      Open Existing Profile in Edit Modal
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Review and manually edit existing contact fields
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              </button>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={handleCancelConflict}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
+              >
+                Cancel & Change Number
               </button>
             </div>
           </div>
