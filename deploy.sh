@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+main() {
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
@@ -79,8 +80,12 @@ $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || true
 git fetch origin main
 git reset --hard origin/main
 
-git config --global --add safe.directory "$APP_DIR" || true
-git config --system --add safe.directory "$APP_DIR" || true
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+if [ -n "$SUDO_CMD" ]; then
+    $SUDO_CMD git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
+elif [ "$(id -u)" -eq 0 ]; then
+    git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
+fi
 
 COMMIT_HASH=$(git rev-parse --short HEAD)
 COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
@@ -266,7 +271,7 @@ $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO
 # 5. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
 echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
 
-DEPLOY_VERSION="2.4.31"
+DEPLOY_VERSION="2.4.32"
 if [ -f "$APP_DIR/frontend/build_output/version.json" ]; then
     EXTRACTED_V=$(grep -o '"version": *"[^"]*"' "$APP_DIR/frontend/build_output/version.json" 2>/dev/null | cut -d'"' -f4)
     if [ -n "$EXTRACTED_V" ]; then
@@ -356,18 +361,25 @@ event_bus.publish('system.deployed', info)
 print('[OTA] Broadcast complete: system.update_available & system.deployed sent.')
 PYEOF
 
-# Sync update script binary
-$SUDO_CMD cp "$APP_DIR/deploy.sh" /usr/local/bin/update-whatsq 2>/dev/null || true
-$SUDO_CMD chmod +x /usr/local/bin/update-whatsq 2>/dev/null || true
-
 echo -e "\n${CYAN}======================================================${NC}"
 echo -e "${GREEN}        WHATSQ SYSTEM UPDATE COMPLETED!               ${NC}"
 echo -e "${CYAN}======================================================${NC}"
 echo -e "   Domain        : ${BLUE}https://whatsq.qiyambusinesssolutions.com${NC}"
-echo -e "   Deployed Commit: ${CYAN}${COMMIT_HASH}${NC} - \"${COMMIT_MSG}\""
-echo -e "   Pushed By     : ${COMMIT_AUTHOR}"
-echo -e "   Commit Time   : ${COMMIT_DATE}"
-echo -e "   Updated At    : ${DATE_FORMATTED}"
-echo -e "   Auto-Backup   : ${BACKUP_FILE} (${BACKUP_SIZE})"
+printf "   Deployed Commit: %b%s%b - \"%s\"\n" "${CYAN}" "${COMMIT_HASH}" "${NC}" "${COMMIT_MSG}"
+printf "   Pushed By     : %s\n" "${COMMIT_AUTHOR}"
+printf "   Commit Time   : %s\n" "${COMMIT_DATE}"
+printf "   Updated At    : %s\n" "${DATE_FORMATTED}"
+printf "   Auto-Backup   : %s (%s)\n" "${BACKUP_FILE}" "${BACKUP_SIZE}"
 echo -e "   Services      : PostgreSQL (Active) | Redis (Active) | Backend (Active) | WhatsApp Gateway (Port 4000) | Nginx (Active)"
 echo -e "${CYAN}======================================================${NC}"
+
+# Safely sync update script binary using atomic rename (never truncate running file in-place)
+if [ -n "$SUDO_CMD" ] || [ "$(id -u)" -eq 0 ]; then
+    $SUDO_CMD cp "$APP_DIR/deploy.sh" /usr/local/bin/update-whatsq.tmp 2>/dev/null || true
+    $SUDO_CMD chmod 755 /usr/local/bin/update-whatsq.tmp 2>/dev/null || true
+    $SUDO_CMD mv -f /usr/local/bin/update-whatsq.tmp /usr/local/bin/update-whatsq 2>/dev/null || true
+fi
+}
+
+main "$@"
+exit $?
