@@ -268,7 +268,7 @@ $SUDO_CMD chown -R ubuntu:www-data "$APP_DIR/frontend/dist" 2>/dev/null || $SUDO
 # 5. FINALIZE DEPLOYMENT LOCK & STAMP VERSION ONLY AFTER SUCCESSFUL DEPLOYMENT
 echo -e "\n${YELLOW}[OTA] Deployment verified successfully! Stamping version & releasing lock...${NC}"
 
-DEPLOY_VERSION="2.4.41"
+DEPLOY_VERSION="2.4.42"
 if [ -f "$APP_DIR/frontend/build_output/version.json" ]; then
     EXTRACTED_V=$(grep -o '"version": *"[^"]*"' "$APP_DIR/frontend/build_output/version.json" 2>/dev/null | cut -d'"' -f4)
     if [ -n "$EXTRACTED_V" ]; then

@@ -7,9 +7,9 @@ import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Kanban, List, Plus, Search, Filter, Phone, MessageSquare,
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
-  Tag, Clock, UserPlus, FileText, ChevronRight, ChevronDown,
+  Tag, Clock, UserPlus, FileText, ChevronRight, ChevronLeft, ChevronDown,
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
-  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2, RotateCcw, Edit3
+  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2, RotateCcw, Edit3, Compass
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
@@ -464,17 +464,6 @@ export const LeadsView: React.FC = () => {
     }
   }, [targetHighlightId, leads, setSelectedLead, setIsLeadDrawerOpen]);
 
-  const stages: Array<{ id: Lead['stage']; label: string; count: number; color: string }> = [
-    { id: 'new', label: 'New Lead', count: leads.filter((l) => l.stage === 'new').length, color: 'border-blue-500 text-blue-700 bg-blue-50' },
-    { id: 'contacted', label: 'Contacted', count: leads.filter((l) => l.stage === 'contacted').length, color: 'border-purple-500 text-purple-700 bg-purple-50' },
-    { id: 'follow_up', label: 'Follow-up', count: leads.filter((l) => l.stage === 'follow_up').length, color: 'border-sky-500 text-sky-700 bg-sky-50' },
-    { id: 'qualified', label: 'Qualified', count: leads.filter((l) => l.stage === 'qualified').length, color: 'border-amber-500 text-amber-700 bg-amber-50' },
-    { id: 'proposal_sent', label: 'Proposal Sent', count: leads.filter((l) => l.stage === 'proposal_sent').length, color: 'border-indigo-500 text-indigo-700 bg-indigo-50' },
-    { id: 'negotiation', label: 'Negotiation', count: leads.filter((l) => l.stage === 'negotiation').length, color: 'border-orange-500 text-orange-700 bg-orange-50' },
-    { id: 'won', label: 'Won', count: leads.filter((l) => l.stage === 'won').length, color: 'border-emerald-500 text-emerald-700 bg-emerald-50' },
-    { id: 'lost', label: 'Lost', count: leads.filter((l) => l.stage === 'lost').length, color: 'border-rose-500 text-rose-700 bg-rose-50' },
-  ];
-
   const effectiveSearch = searchQuery || globalFilter.query || '';
 
   const filteredLeads = leads.filter((l) => {
@@ -507,6 +496,97 @@ export const LeadsView: React.FC = () => {
       item.lead.service.toLowerCase().includes(q)
     );
   });
+
+  const stages: Array<{
+    id: Lead['stage'];
+    label: string;
+    count: number;
+    color: string;
+    dotColor: string;
+    badgeClass: string;
+  }> = [
+    { id: 'new', label: 'New Lead', count: filteredLeads.filter((l) => l.stage === 'new').length, color: 'border-blue-500 text-blue-700 bg-blue-50', dotColor: 'bg-blue-500', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
+    { id: 'contacted', label: 'Contacted', count: filteredLeads.filter((l) => l.stage === 'contacted').length, color: 'border-purple-500 text-purple-700 bg-purple-50', dotColor: 'bg-purple-500', badgeClass: 'bg-purple-50 text-purple-700 border-purple-200' },
+    { id: 'follow_up', label: 'Follow-up', count: filteredLeads.filter((l) => l.stage === 'follow_up').length, color: 'border-sky-500 text-sky-700 bg-sky-50', dotColor: 'bg-sky-500', badgeClass: 'bg-sky-50 text-sky-700 border-sky-200' },
+    { id: 'qualified', label: 'Qualified', count: filteredLeads.filter((l) => l.stage === 'qualified').length, color: 'border-amber-500 text-amber-700 bg-amber-50', dotColor: 'bg-amber-500', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+    { id: 'proposal_sent', label: 'Proposal Sent', count: filteredLeads.filter((l) => l.stage === 'proposal_sent').length, color: 'border-indigo-500 text-indigo-700 bg-indigo-50', dotColor: 'bg-indigo-500', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    { id: 'negotiation', label: 'Negotiation', count: filteredLeads.filter((l) => l.stage === 'negotiation').length, color: 'border-orange-500 text-orange-700 bg-orange-50', dotColor: 'bg-orange-500', badgeClass: 'bg-orange-50 text-orange-700 border-orange-200' },
+    { id: 'won', label: 'Won', count: filteredLeads.filter((l) => l.stage === 'won').length, color: 'border-emerald-500 text-emerald-700 bg-emerald-50', dotColor: 'bg-emerald-500', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    { id: 'lost', label: 'Lost', count: filteredLeads.filter((l) => l.stage === 'lost').length, color: 'border-rose-500 text-rose-700 bg-rose-50', dotColor: 'bg-rose-500', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
+  ];
+
+  // Kanban Horizontal Smooth Scroll & Quick-Jump State
+  const kanbanScrollContainerRef = useRef<HTMLDivElement>(null);
+  const [highlightedColumnId, setHighlightedColumnId] = useState<string | null>(null);
+  const [activeScrolledStage, setActiveScrolledStage] = useState<string>('new');
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScrollBounds = () => {
+    const container = kanbanScrollContainerRef.current;
+    if (!container) return;
+    setCanScrollLeft(container.scrollLeft > 20);
+    setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 20);
+
+    // Identify which column is currently closest to the left edge in view
+    const containerRect = container.getBoundingClientRect();
+    let closestStage = 'new';
+    let minDistance = Infinity;
+
+    stages.forEach((s) => {
+      const colEl = document.getElementById(`kanban-col-${s.id}`);
+      if (colEl) {
+        const colRect = colEl.getBoundingClientRect();
+        const dist = Math.abs(colRect.left - (containerRect.left + 24));
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestStage = s.id;
+        }
+      }
+    });
+
+    setActiveScrolledStage(closestStage);
+  };
+
+  const scrollToKanbanColumn = (stageId: Lead['stage']) => {
+    setActiveScrolledStage(stageId);
+    const container = kanbanScrollContainerRef.current;
+    const colEl = document.getElementById(`kanban-col-${stageId}`);
+    if (colEl && container) {
+      const containerLeft = container.getBoundingClientRect().left;
+      const colLeft = colEl.getBoundingClientRect().left;
+      const scrollOffset = colLeft - containerLeft + container.scrollLeft - 16;
+
+      container.scrollTo({
+        left: Math.max(0, scrollOffset),
+        behavior: 'smooth',
+      });
+
+      setHighlightedColumnId(stageId);
+      setTimeout(() => {
+        setHighlightedColumnId((prev) => (prev === stageId ? null : prev));
+      }, 1800);
+    }
+  };
+
+  const scrollKanbanBy = (direction: 'left' | 'right') => {
+    if (kanbanScrollContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -350 : 350;
+      kanbanScrollContainerRef.current.scrollBy({
+        left: scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'kanban') {
+      const timer = setTimeout(() => {
+        checkScrollBounds();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, filteredLeads.length]);
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -659,20 +739,127 @@ export const LeadsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Kanban Stage Quick-Jump Navigation Bar */}
+      {viewMode === 'kanban' && (
+        <div className="bg-white border-b border-slate-200/90 px-3 sm:px-6 py-2 flex items-center justify-between gap-3 shrink-0 shadow-2xs">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-slate-500 font-bold text-[11px] shrink-0 select-none pr-1">
+              <Compass className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+              <span className="hidden sm:inline">Jump to Column:</span>
+              <span className="sm:hidden">Jump:</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+              {stages.map((st) => {
+                const isActive = activeScrolledStage === st.id;
+                const isHighlighted = highlightedColumnId === st.id;
+
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => scrollToKanbanColumn(st.id)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer shadow-2xs border ${
+                      isHighlighted
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-105 ring-2 ring-emerald-300'
+                        : isActive
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100/90 text-slate-700 border-slate-200/90 hover:border-slate-300'
+                    }`}
+                    title={`Click to smoothly jump directly to ${st.label} column`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${st.dotColor} shrink-0 ring-1 ring-white/60`} />
+                    <span className="whitespace-nowrap">{st.label}</span>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full font-mono ${
+                        isHighlighted
+                          ? 'bg-white/30 text-white'
+                          : isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-200/80 text-slate-700'
+                      }`}
+                    >
+                      {st.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Slide Navigation Left/Right Arrows */}
+          <div className="flex items-center gap-1 shrink-0 pl-1 border-l border-slate-100">
+            <button
+              type="button"
+              onClick={() => scrollKanbanBy('left')}
+              disabled={!canScrollLeft}
+              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer shadow-2xs disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Scroll Left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollKanbanBy('right')}
+              disabled={!canScrollRight}
+              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer shadow-2xs disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Scroll Right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Kanban Content Area */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
         {viewMode === 'kanban' ? (
-          <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-5 md:p-6 flex gap-3 sm:gap-4 items-stretch scrollbar-thin min-h-0">
-            {stages.map((col) => {
-              const colLeads = filteredLeads.filter((l) => l.stage === col.id);
+          <div className="flex-1 relative min-h-0 flex flex-col overflow-hidden">
+            {/* Floating Left Slide Button */}
+            {canScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollKanbanBy('left')}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-slate-950 shadow-xl border border-slate-200/90 flex items-center justify-center cursor-pointer transition-all hover:scale-110 shadow-slate-900/10"
+                title="Slide Left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
 
-              return (
-                <div
-                  key={col.id}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, col.id)}
-                  className="w-[85vw] sm:w-72 bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col h-full max-h-full min-h-0 shrink-0 shadow-sm"
-                >
+            {/* Floating Right Slide Button */}
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollKanbanBy('right')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-slate-950 shadow-xl border border-slate-200/90 flex items-center justify-center cursor-pointer transition-all hover:scale-110 shadow-slate-900/10"
+                title="Slide Right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+
+            <div
+              ref={kanbanScrollContainerRef}
+              onScroll={checkScrollBounds}
+              className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-5 md:p-6 flex gap-3 sm:gap-4 items-stretch scrollbar-thin min-h-0 scroll-smooth"
+            >
+              {stages.map((col) => {
+                const colLeads = filteredLeads.filter((l) => l.stage === col.id);
+                const isTargetCol = highlightedColumnId === col.id;
+
+                return (
+                  <div
+                    key={col.id}
+                    id={`kanban-col-${col.id}`}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, col.id)}
+                    className={`w-[85vw] sm:w-72 bg-slate-100/80 rounded-2xl border transition-all duration-500 flex flex-col h-full max-h-full min-h-0 shrink-0 shadow-sm ${
+                      isTargetCol
+                        ? 'ring-2 ring-emerald-500 ring-offset-2 border-emerald-400 bg-emerald-50/25 shadow-lg scale-[1.015]'
+                        : 'border-slate-200/80'
+                    }`}
+                  >
                   {/* Column Header */}
                   <div className="p-3.5 border-b border-slate-200/60 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
@@ -902,6 +1089,7 @@ export const LeadsView: React.FC = () => {
                 </div>
               );
             })}
+            </div>
           </div>
         ) : viewMode === 'list' ? (
           /* List View Table */
