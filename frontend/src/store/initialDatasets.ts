@@ -1107,3 +1107,62 @@ export const INITIAL_ROUTES: Route[] = [
   }
 ];
 
+export const INITIAL_FOLLOWUPS: FollowUp[] = [
+  {
+    id: 1,
+    title: 'Confirm AC Installation',
+    related_to: 'AC Installation - Vikram Mehta DEAL-1024',
+    customer_name: 'Vikram Mehta',
+    phone: '+91 90000 11123',
+    follow_up_type: 'call',
+    assigned_to: 'Amit Sharma',
+    due_date: 'May 12, 2024',
+    due_time: '10:30 AM',
+    status: 'due_today',
+    priority: 'high',
+    notes: 'Confirm installation slot & address.'
+  },
+  {
+    id: 2,
+    title: 'Share Quotation',
+    related_to: 'AC Repair - Amit Verma DEAL-1023',
+    customer_name: 'Amit Verma',
+    phone: '+91 98765 43210',
+    follow_up_type: 'whatsapp',
+    assigned_to: 'Priya Sharma',
+    due_date: 'May 12, 2024',
+    due_time: '12:00 PM',
+    status: 'due_today',
+    priority: 'high',
+    notes: 'Share quote breakdown.'
+  },
+  {
+    id: 3,
+    title: 'Payment Reminder',
+    related_to: 'Home Cleaning - Priya Sharma DEAL-1018',
+    customer_name: 'Priya Sharma',
+    phone: '+91 89213 56789',
+    follow_up_type: 'whatsapp',
+    assigned_to: 'Neha Patel',
+    due_date: 'May 13, 2024',
+    due_time: '09:00 AM',
+    status: 'scheduled',
+    priority: 'medium',
+    notes: 'Send payment link for advance balance.'
+  },
+  {
+    id: 4,
+    title: 'Follow-up on Quote',
+    related_to: 'Deep Cleaning - Sneha Joshi DEAL-1014',
+    customer_name: 'Sneha Joshi',
+    phone: '+91 96789 11223',
+    follow_up_type: 'call',
+    assigned_to: 'Priya Sharma',
+    due_date: 'May 10, 2024',
+    due_time: '02:00 PM',
+    status: 'overdue',
+    priority: 'high',
+    notes: 'Check if quotation was approved.'
+  }
+];
+

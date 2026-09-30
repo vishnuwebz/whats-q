@@ -2219,7 +2219,7 @@ export const Sidebar: React.FC = () => {
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                   Update Available
                 </span>
-                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.35'}</span>
+                <span className="text-slate-500 font-mono">v{versionInfo?.latest_commit ? versionInfo.latest_commit.slice(0, 7) : '2.4.36'}</span>
               </div>
               <button
                 onClick={handleBackupAndRestart}

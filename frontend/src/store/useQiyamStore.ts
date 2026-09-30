@@ -74,7 +74,8 @@ import {
   INITIAL_EXPENSES,
   INITIAL_ACCOUNTS,
   INITIAL_TASKS,
-  INITIAL_ROUTES
+  INITIAL_ROUTES,
+  INITIAL_FOLLOWUPS
 } from './initialDatasets';
 import { INITIAL_TEMPLATES } from './initialTemplates';
 
@@ -3348,7 +3349,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   deletedConversations: [],
   leads: getStoredCache('leads', INITIAL_LEADS),
   deals: getStoredCache('deals', INITIAL_DEALS),
-  followups: [],
+  followups: getStoredCache('followups', INITIAL_FOLLOWUPS),
   customers: getStoredCache('customers', []),
   jobs: getStoredCache('jobs', INITIAL_JOBS),
   appointments: INITIAL_APPOINTMENTS,
@@ -3488,7 +3489,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const metaConfig    = (results[2].status === 'fulfilled' && (results[2] as any).value) || current.metaConfig || getStoredMetaConfig();
     const leads         = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
     const deals         = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
-    const followups     = safeVal(5, current.followups, [], 'followups');
+    const followups     = safeVal(5, current.followups, INITIAL_FOLLOWUPS, 'followups');
     const customers     = safeVal(6, current.customers, [], 'customers');
     const jobs          = safeVal(7, current.jobs, INITIAL_JOBS, 'jobs');
     const appointments  = safeVal(8, current.appointments, INITIAL_APPOINTMENTS, 'appointments');
@@ -7672,41 +7673,55 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   addFollowUp: async (fu) => {
-    const nextId = get().followups.length + 1;
+    const nextId = Date.now();
     const item: FollowUp = {
-      id: nextId,
-      title: fu.title || 'Payment Reminder Call',
-      related_to: fu.related_to || 'INV-2024-0183',
+      id: fu.id || nextId,
+      title: fu.title || 'Follow-up Call',
+      related_to: fu.related_to || 'Service Inquiry',
       customer_name: fu.customer_name || 'Customer',
-      phone: fu.phone || '+91 98765 43210',
-      follow_up_type: fu.follow_up_type || 'whatsapp',
+      phone: fu.phone || '',
+      follow_up_type: fu.follow_up_type || 'call',
       assigned_to: fu.assigned_to || 'Rahul Mehta',
-      due_date: fu.due_date || 'Today',
-      due_time: fu.due_time || '4:00 PM',
-      status: fu.status || 'due_today',
-      priority: fu.priority || 'high',
-      notes: fu.notes || 'Follow-up regarding scheduled service',
+      due_date: fu.due_date || new Date().toISOString().split('T')[0],
+      due_time: fu.due_time || '11:00 AM',
+      status: fu.status || 'scheduled',
+      priority: fu.priority || 'medium',
+      notes: fu.notes || '',
       ...fu,
     };
     try {
       const res = await apiClient.post('/crm/follow-ups/', item);
-      const created = (res?.id && res.success !== false) ? (res as FollowUp) : item;
-      set((state) => ({ followups: [created, ...state.followups] }));
+      const created: FollowUp = (res?.id && res.success !== false) ? (res as FollowUp) : item;
+      set((state) => {
+        const remaining = state.followups.filter(
+          (f) => String(f.id) !== String(created.id) && String(f.id) !== String(item.id)
+        );
+        const nextList = [created, ...remaining];
+        persistCache('followups', nextList);
+        return { followups: nextList };
+      });
       get().addToast(`Follow-up scheduled for ${created.customer_name}`, 'success');
       return created;
     } catch {
-      set((state) => ({ followups: [item, ...state.followups] }));
+      set((state) => {
+        const remaining = state.followups.filter((f) => String(f.id) !== String(item.id));
+        const nextList = [item, ...remaining];
+        persistCache('followups', nextList);
+        return { followups: nextList };
+      });
       get().addToast(`Follow-up scheduled for ${item.customer_name}`, 'success');
       return item;
     }
   },
 
   updateFollowUp: async (id, patch) => {
-    set((state) => ({
-      followups: state.followups.map((f) =>
+    set((state) => {
+      const nextList = state.followups.map((f) =>
         String(f.id) === String(id) ? { ...f, ...patch } : f
-      ),
-    }));
+      );
+      persistCache('followups', nextList);
+      return { followups: nextList };
+    });
     try {
       await apiClient.patch(`/crm/follow-ups/${id}/`, patch);
     } catch (e) {
@@ -7715,9 +7730,11 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
   },
 
   deleteFollowUp: async (id) => {
-    set((state) => ({
-      followups: state.followups.filter((f) => String(f.id) !== String(id)),
-    }));
+    set((state) => {
+      const nextList = state.followups.filter((f) => String(f.id) !== String(id));
+      persistCache('followups', nextList);
+      return { followups: nextList };
+    });
     try {
       await apiClient.delete(`/crm/follow-ups/${id}/`);
     } catch (e) {
