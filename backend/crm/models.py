@@ -4,6 +4,7 @@ class Lead(models.Model):
     STAGE_CHOICES = [
         ('new', 'New Lead'),
         ('contacted', 'Contacted'),
+        ('follow_up', 'Follow-up'),
         ('qualified', 'Qualified'),
         ('proposal_sent', 'Proposal Sent'),
         ('negotiation', 'Negotiation'),

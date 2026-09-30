@@ -339,7 +339,7 @@ export interface Lead {
   service: string;
   location: string;
   value: number;
-  stage: 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
+  stage: 'new' | 'contacted' | 'follow_up' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
   owner: string;
   source: string;
   created_at_str: string;

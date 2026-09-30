@@ -5861,6 +5861,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     const updatedLead: Lead = {
       ...lead,
+      stage: 'follow_up',
       next_follow_up_date: followUpDate,
       next_follow_up_time: followUpTime,
     };

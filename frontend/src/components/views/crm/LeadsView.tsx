@@ -11,6 +11,8 @@ import {
   IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
+import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
+import { AgentSelectDropdown } from '@/components/common/AgentSelectDropdown';
 
 export const ALL_LEAD_STAGES: Array<{
   id: Lead['stage'];
@@ -21,6 +23,7 @@ export const ALL_LEAD_STAGES: Array<{
 }> = [
   { id: 'new', label: 'New Lead', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100', dotColor: 'bg-blue-500', description: 'Fresh inquiry awaiting first contact' },
   { id: 'contacted', label: 'Contacted', badgeClass: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100', dotColor: 'bg-purple-500', description: 'Initial outreach or WhatsApp chat underway' },
+  { id: 'follow_up', label: 'Follow-up', badgeClass: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100', dotColor: 'bg-sky-500', description: 'Follow-up planned or scheduled with prospect' },
   { id: 'qualified', label: 'Qualified', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100', dotColor: 'bg-amber-500', description: 'Budget, authority & interest verified' },
   { id: 'proposal_sent', label: 'Proposal Sent', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100', dotColor: 'bg-indigo-500', description: 'Quote or proposal shared with prospect' },
   { id: 'negotiation', label: 'Negotiation', badgeClass: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100', dotColor: 'bg-orange-500', description: 'Discussing terms, pricing, or scope' },
@@ -70,6 +73,7 @@ export const LeadsView: React.FC = () => {
   const [pendingStageChange, setPendingStageChange] = useState<{ lead: Lead; targetStage: Lead['stage'] } | null>(null);
   const [stageNote, setStageNote] = useState('');
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
+  const [followUpModalLead, setFollowUpModalLead] = useState<Lead | null>(null);
 
   // Stage popover toggling and updating
   const handleToggleStagePopover = (leadId: string | number) => {
@@ -79,6 +83,12 @@ export const LeadsView: React.FC = () => {
   const handleStageSelectClick = async (lead: Lead, targetStage: Lead['stage']) => {
     setActiveStagePopoverId(null);
     if (lead.stage === targetStage) return;
+
+    // Moving to follow_up: Open the dedicated Schedule Follow-up modal!
+    if (targetStage === 'follow_up') {
+      setFollowUpModalLead(lead);
+      return;
+    }
 
     // Terminal / critical milestones (Won or Lost) require confirmation and context
     if (targetStage === 'won' || targetStage === 'lost') {
@@ -123,6 +133,7 @@ export const LeadsView: React.FC = () => {
   const stages: Array<{ id: Lead['stage']; label: string; count: number; color: string }> = [
     { id: 'new', label: 'New Lead', count: leads.filter((l) => l.stage === 'new').length, color: 'border-blue-500 text-blue-700 bg-blue-50' },
     { id: 'contacted', label: 'Contacted', count: leads.filter((l) => l.stage === 'contacted').length, color: 'border-purple-500 text-purple-700 bg-purple-50' },
+    { id: 'follow_up', label: 'Follow-up', count: leads.filter((l) => l.stage === 'follow_up').length, color: 'border-sky-500 text-sky-700 bg-sky-50' },
     { id: 'qualified', label: 'Qualified', count: leads.filter((l) => l.stage === 'qualified').length, color: 'border-amber-500 text-amber-700 bg-amber-50' },
     { id: 'proposal_sent', label: 'Proposal Sent', count: leads.filter((l) => l.stage === 'proposal_sent').length, color: 'border-indigo-500 text-indigo-700 bg-indigo-50' },
     { id: 'negotiation', label: 'Negotiation', count: leads.filter((l) => l.stage === 'negotiation').length, color: 'border-orange-500 text-orange-700 bg-orange-50' },
@@ -137,7 +148,7 @@ export const LeadsView: React.FC = () => {
       const s = globalFilter.status.toLowerCase();
       const match =
         l.stage === s ||
-        (s === 'open' && (l.stage === 'new' || l.stage === 'contacted')) ||
+        (s === 'open' && (l.stage === 'new' || l.stage === 'contacted' || l.stage === 'follow_up')) ||
         (s === 'in_progress' && (l.stage === 'qualified' || l.stage === 'proposal_sent' || l.stage === 'negotiation')) ||
         (s === 'completed' && l.stage === 'won');
       if (!match) return false;
@@ -318,6 +329,13 @@ export const LeadsView: React.FC = () => {
                             <span className="font-medium text-slate-500">{lead.owner}</span>
                           </div>
 
+                          {lead.next_follow_up_date && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200/80 px-2 py-1 rounded-lg">
+                              <Calendar className="w-3 h-3 text-sky-600 shrink-0" />
+                              <span className="truncate">Follow-up: {lead.next_follow_up_date}{lead.next_follow_up_time ? ` @ ${lead.next_follow_up_time}` : ''}</span>
+                            </div>
+                          )}
+
                           {lead.tags && lead.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 pt-1">
                               {lead.tags.map((tag, idx) => (
@@ -416,7 +434,15 @@ export const LeadsView: React.FC = () => {
                         }}
                         className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                       >
-                        <td className="py-3 px-4 font-bold text-slate-900">{lead.name}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-900">{lead.name}</div>
+                          {lead.next_follow_up_date && (
+                            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded mt-0.5">
+                              <Calendar className="w-2.5 h-2.5 text-sky-600 shrink-0" />
+                              <span>Follow-up: {lead.next_follow_up_date}{lead.next_follow_up_time ? ` @ ${lead.next_follow_up_time}` : ''}</span>
+                            </div>
+                          )}
+                        </td>
                         <td className="py-3 px-4 font-mono text-slate-500">{lead.phone}</td>
                         <td className="py-3 px-4 font-medium">{lead.service}</td>
                         <td className="py-3 px-4 text-slate-500">{lead.location}</td>
@@ -709,14 +735,19 @@ export const LeadsView: React.FC = () => {
                 onChange={(e) => {
                   const target = e.target.value as Lead['stage'];
                   if (target !== selectedLead.stage) {
-                    setPendingStageChange({ lead: selectedLead, targetStage: target });
-                    setStageNote('Stage changed via Lead Details Drawer');
+                    if (target === 'follow_up') {
+                      setFollowUpModalLead(selectedLead);
+                    } else {
+                      setPendingStageChange({ lead: selectedLead, targetStage: target });
+                      setStageNote('Stage changed via Lead Details Drawer');
+                    }
                   }
                 }}
                 className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none cursor-pointer"
               >
                 <option value="new">New Lead</option>
                 <option value="contacted">Contacted</option>
+                <option value="follow_up">Follow-up</option>
                 <option value="qualified">Qualified</option>
                 <option value="proposal_sent">Proposal Sent</option>
                 <option value="negotiation">Negotiation</option>
@@ -755,12 +786,21 @@ export const LeadsView: React.FC = () => {
 
             {/* Scheduled Follow-up */}
             <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200">
-              <div className="flex items-center gap-1.5 font-bold text-amber-800 text-xs mb-1">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Next Scheduled Follow-up</span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800 text-xs">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Next Scheduled Follow-up</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFollowUpModalLead(selectedLead)}
+                  className="text-[10px] font-bold text-amber-900 bg-amber-200/60 hover:bg-amber-200 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
+                >
+                  {selectedLead.next_follow_up_date ? 'Reschedule' : 'Schedule'}
+                </button>
               </div>
               <p className="text-[11px] text-amber-700">
-                {selectedLead.next_follow_up_date || 'Tomorrow'} at {selectedLead.next_follow_up_time || '10:00 AM'}
+                {selectedLead.next_follow_up_date ? `${selectedLead.next_follow_up_date} at ${selectedLead.next_follow_up_time || '10:00 AM'}` : 'No follow-up scheduled yet'}
               </p>
             </div>
 
@@ -877,21 +917,31 @@ export const LeadsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Initial Pipeline Stage</label>
-                <select
-                  value={newLeadForm.stage}
-                  onChange={(e) => setNewLeadForm({ ...newLeadForm, stage: e.target.value as Lead['stage'] })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
-                >
-                  <option value="new">New Lead</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="proposal_sent">Proposal Sent</option>
-                  <option value="negotiation">Negotiation</option>
-                  <option value="won">Won / Closed</option>
-                  <option value="lost">Lost</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Initial Pipeline Stage</label>
+                  <select
+                    value={newLeadForm.stage}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, stage: e.target.value as Lead['stage'] })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                  >
+                    <option value="new">New Lead</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="follow_up">Follow-up</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="proposal_sent">Proposal Sent</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="won">Won / Closed</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </div>
+                <div>
+                  <AgentSelectDropdown
+                    label="Assigned Agent / Owner"
+                    value={newLeadForm.owner}
+                    onChange={(val) => setNewLeadForm({ ...newLeadForm, owner: val })}
+                  />
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -1075,6 +1125,13 @@ export const LeadsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Schedule Follow-up Modal (When dragging, selecting Follow-up stage, or rescheduling) */}
+      <ScheduleFollowUpModal
+        isOpen={!!followUpModalLead}
+        initialLead={followUpModalLead}
+        onClose={() => setFollowUpModalLead(null)}
+      />
     </div>
   );
 };
