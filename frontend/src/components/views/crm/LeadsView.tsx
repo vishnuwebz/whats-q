@@ -9,7 +9,7 @@ import {
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
   Tag, Clock, UserPlus, FileText, ChevronRight, ChevronDown,
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
-  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2
+  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2, RotateCcw
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
@@ -39,6 +39,7 @@ export const getStageConfig = (stageId: Lead['stage']) => {
 export const LeadsView: React.FC = () => {
   const {
     leads,
+    trashLeads,
     followups,
     selectedLead,
     setSelectedLead,
@@ -46,6 +47,10 @@ export const LeadsView: React.FC = () => {
     setIsLeadDrawerOpen,
     updateLeadStage,
     deleteLead,
+    restoreLead,
+    permanentlyDeleteLead,
+    restoreAllLeads,
+    emptyLeadsTrash,
     addToast,
     setActiveTab,
     addLead,
@@ -55,7 +60,7 @@ export const LeadsView: React.FC = () => {
     targetHighlightId,
   } = useQiyamStore();
 
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'trash'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [newLeadForm, setNewLeadForm] = useState({
@@ -117,10 +122,23 @@ export const LeadsView: React.FC = () => {
     }
   };
 
-  // Confirm Delete Action
+  // Immediate Undo Banner State
+  const [recentlyDeleted, setRecentlyDeleted] = useState<{
+    items: Lead[];
+    count: number;
+    timer?: any;
+  } | null>(null);
+
+  // Trash Multi-Selection & State
+  const [selectedTrashIds, setSelectedTrashIds] = useState<Array<string | number>>([]);
+  const [isEmptyTrashModalOpen, setIsEmptyTrashModalOpen] = useState(false);
+  const [isRestoringAll, setIsRestoringAll] = useState(false);
+
+  // Confirm Delete Action (Moves to Trash & Triggers Instant Undo Toast)
   const handleConfirmDelete = async () => {
     if (leadsToDelete.length === 0) return;
     setIsDeleting(true);
+    const deletedItems = [...leadsToDelete];
     try {
       for (const lead of leadsToDelete) {
         await deleteLead(lead.id);
@@ -134,12 +152,84 @@ export const LeadsView: React.FC = () => {
       }
       setIsDeleteModalOpen(false);
       setLeadsToDelete([]);
+
+      // Trigger Floating Undo Banner (active for 10 seconds)
+      if (recentlyDeleted?.timer) clearTimeout(recentlyDeleted.timer);
+      const timer = setTimeout(() => {
+        setRecentlyDeleted(null);
+      }, 10000);
+
+      setRecentlyDeleted({
+        items: deletedItems,
+        count: deletedItems.length,
+        timer,
+      });
     } catch (err: any) {
       console.error('[LeadsView] Failed to delete lead(s):', err);
       addToast('Failed to delete lead(s). Please try again.', 'error');
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // One-Click Undo Action
+  const handleUndoRecentDelete = async () => {
+    if (!recentlyDeleted || recentlyDeleted.items.length === 0) return;
+    if (recentlyDeleted.timer) clearTimeout(recentlyDeleted.timer);
+
+    const itemsToRestore = [...recentlyDeleted.items];
+    setRecentlyDeleted(null);
+
+    let restoredCount = 0;
+    for (const item of itemsToRestore) {
+      const ok = await restoreLead(item.id);
+      if (ok) restoredCount++;
+    }
+
+    addToast(
+      restoredCount === 1
+        ? `Restored "${itemsToRestore[0]?.name}" back to pipeline`
+        : `Restored ${restoredCount} leads back to pipeline`,
+      'success'
+    );
+  };
+
+  // Trash Selection Handlers
+  const handleToggleSelectTrash = (leadId: string | number, e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedTrashIds((prev) =>
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const handleSelectAllTrash = () => {
+    if (selectedTrashIds.length === filteredTrashLeads.length && filteredTrashLeads.length > 0) {
+      setSelectedTrashIds([]);
+    } else {
+      setSelectedTrashIds(filteredTrashLeads.map((t) => t.id));
+    }
+  };
+
+  const handleRestoreSelectedTrash = async () => {
+    if (selectedTrashIds.length === 0) return;
+    const ids = [...selectedTrashIds];
+    setSelectedTrashIds([]);
+    let count = 0;
+    for (const id of ids) {
+      const ok = await restoreLead(id);
+      if (ok) count++;
+    }
+    addToast(`Restored ${count} selected lead(s) back to pipeline`, 'success');
+  };
+
+  const handleDeleteSelectedTrashForever = async () => {
+    if (selectedTrashIds.length === 0) return;
+    const ids = [...selectedTrashIds];
+    setSelectedTrashIds([]);
+    for (const id of ids) {
+      await permanentlyDeleteLead(id);
+    }
+    addToast(`Permanently deleted ${ids.length} lead(s)`, 'info');
   };
 
   // Right-Click Context Menu State (Quick Move & Actions)
@@ -333,6 +423,16 @@ export const LeadsView: React.FC = () => {
     return l.name.toLowerCase().includes(q) || l.phone.includes(q) || l.service.toLowerCase().includes(q);
   });
 
+  const filteredTrashLeads = trashLeads.filter((item) => {
+    if (!effectiveSearch) return true;
+    const q = effectiveSearch.toLowerCase();
+    return (
+      item.lead.name.toLowerCase().includes(q) ||
+      item.lead.phone.includes(q) ||
+      item.lead.service.toLowerCase().includes(q)
+    );
+  });
+
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLeadForm.name.trim()) return;
@@ -383,7 +483,7 @@ export const LeadsView: React.FC = () => {
           <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 shrink-0">
             <button
               onClick={() => setViewMode('kanban')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'kanban' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -392,12 +492,27 @@ export const LeadsView: React.FC = () => {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <List className="w-3.5 h-3.5" />
               <span>List</span>
+            </button>
+            <button
+              onClick={() => setViewMode('trash')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'trash' ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-200' : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="View Deleted Leads & Recycle Bin"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>Trash</span>
+              {trashLeads.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 text-[10px] font-bold bg-rose-100 text-rose-700 rounded-full">
+                  {trashLeads.length}
+                </span>
+              )}
             </button>
           </div>
 
@@ -408,41 +523,64 @@ export const LeadsView: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search leads..."
+              placeholder={viewMode === 'trash' ? "Search deleted leads..." : "Search leads..."}
               className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full sm:w-60"
             />
           </div>
         </div>
 
         <div className="text-xs text-slate-500 font-medium hidden sm:flex items-center gap-2.5">
-          {selectedLeadIds.length > 0 && (
-            <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 px-2.5 py-1 rounded-lg animate-in fade-in">
-              <span className="font-bold">{selectedLeadIds.length} selected</span>
-              <button
-                type="button"
-                onClick={handleOpenDeleteSelectedModal}
-                className="font-bold text-rose-800 hover:text-rose-900 underline flex items-center gap-1 cursor-pointer"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Delete</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedLeadIds([])}
-                className="text-slate-400 hover:text-slate-600 text-[10px] ml-1 cursor-pointer"
-              >
-                (Clear)
-              </button>
+          {viewMode === 'trash' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-rose-700 font-semibold flex items-center gap-1 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+                <Trash2 className="w-3 h-3 text-rose-500" />
+                <span>{filteredTrashLeads.length} in trash</span>
+              </span>
+              {filteredTrashLeads.length > 0 && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEmptyTrashModalOpen(true)}
+                    className="text-rose-600 hover:text-rose-800 font-bold cursor-pointer hover:underline text-xs"
+                  >
+                    Empty Trash
+                  </button>
+                </>
+              )}
             </div>
+          ) : (
+            <>
+              {selectedLeadIds.length > 0 && (
+                <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 px-2.5 py-1 rounded-lg animate-in fade-in">
+                  <span className="font-bold">{selectedLeadIds.length} selected</span>
+                  <button
+                    type="button"
+                    onClick={handleOpenDeleteSelectedModal}
+                    className="font-bold text-rose-800 hover:text-rose-900 underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLeadIds([])}
+                    className="text-slate-400 hover:text-slate-600 text-[10px] ml-1 cursor-pointer"
+                  >
+                    (Clear)
+                  </button>
+                </div>
+              )}
+              <span>Total: <strong className="text-slate-800">{filteredLeads.length}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <Trophy className="w-3.5 h-3.5 text-emerald-600" />
+                Won: ₹{leads.filter((l) => l.stage === 'won').reduce((a, b) => a + b.value, 0).toLocaleString()} ({leads.filter((l) => l.stage === 'won').length})
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-700">Active Pipeline: <strong className="text-slate-900">₹{leads.filter((l) => l.stage !== 'won' && l.stage !== 'lost').reduce((a, b) => a + b.value, 0).toLocaleString()}</strong></span>
+            </>
           )}
-          <span>Total: <strong className="text-slate-800">{filteredLeads.length}</strong></span>
-          <span className="text-slate-300">•</span>
-          <span className="text-emerald-700 font-semibold flex items-center gap-1">
-            <Trophy className="w-3.5 h-3.5 text-emerald-600" />
-            Won: ₹{leads.filter((l) => l.stage === 'won').reduce((a, b) => a + b.value, 0).toLocaleString()} ({leads.filter((l) => l.stage === 'won').length})
-          </span>
-          <span className="text-slate-300">•</span>
-          <span className="text-slate-700">Active Pipeline: <strong className="text-slate-900">₹{leads.filter((l) => l.stage !== 'won' && l.stage !== 'lost').reduce((a, b) => a + b.value, 0).toLocaleString()}</strong></span>
         </div>
       </div>
 
@@ -658,7 +796,7 @@ export const LeadsView: React.FC = () => {
               );
             })}
           </div>
-        ) : (
+        ) : viewMode === 'list' ? (
           /* List View Table */
           <div className="flex-1 overflow-y-auto p-3 sm:p-6">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto scrollbar-thin min-h-[460px] pb-32">
@@ -955,6 +1093,218 @@ export const LeadsView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        ) : (
+          /* Trash / Recycle Bin View */
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 flex flex-col space-y-4">
+            {/* Trash Action & Stat Banner */}
+            <div className="bg-white rounded-2xl border border-rose-200/80 p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <span>Leads Trash & Recycle Bin</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">
+                      {filteredTrashLeads.length} {filteredTrashLeads.length === 1 ? 'item' : 'items'}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Deleted leads remain here so you can easily restore them at any time. Restoring a lead brings it back to its original pipeline stage.
+                  </p>
+                </div>
+              </div>
+
+              {/* Trash Quick Toolbar */}
+              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                {selectedTrashIds.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleRestoreSelectedTrash}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Restore Selected ({selectedTrashIds.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteSelectedTrashForever}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Forever</span>
+                    </button>
+                  </>
+                )}
+
+                {trashLeads.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isRestoringAll}
+                      onClick={async () => {
+                        setIsRestoringAll(true);
+                        try {
+                          await restoreAllLeads();
+                        } finally {
+                          setIsRestoringAll(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                      title="Restore all leads back to pipeline"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${isRestoringAll ? 'animate-spin' : ''}`} />
+                      <span>Restore All</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEmptyTrashModalOpen(true)}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Empty Trash</span>
+                    </button>
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode('kanban')}
+                  className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-semibold text-xs cursor-pointer transition-colors"
+                >
+                  Back to Pipeline
+                </button>
+              </div>
+            </div>
+
+            {/* Trash Table or Empty State */}
+            {filteredTrashLeads.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center flex flex-col items-center justify-center space-y-3 shadow-xs">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center">
+                  <Trash2 className="w-8 h-8 opacity-60" />
+                </div>
+                <h4 className="font-bold text-sm text-slate-800">Trash is Empty</h4>
+                <p className="text-xs text-slate-400 max-w-sm">
+                  {effectiveSearch
+                    ? `No deleted leads match "${effectiveSearch}".`
+                    : 'There are no deleted leads in the trash. Any leads you remove will be kept here for easy recovery.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('kanban')}
+                  className="mt-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  View Active Leads
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left text-xs min-w-[700px]">
+                  <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
+                    <tr>
+                      <th className="py-3 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedTrashIds.length === filteredTrashLeads.length && filteredTrashLeads.length > 0}
+                          onChange={handleSelectAllTrash}
+                          className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
+                          title="Select all deleted leads"
+                        />
+                      </th>
+                      <th className="py-3 px-4">Lead Name</th>
+                      <th className="py-3 px-4">Phone / WhatsApp</th>
+                      <th className="py-3 px-4">Service</th>
+                      <th className="py-3 px-4">Estimated Value</th>
+                      <th className="py-3 px-4">Stage Before Deletion</th>
+                      <th className="py-3 px-4">Deleted At</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {filteredTrashLeads.map((item) => {
+                      const stageCfg = getStageConfig(item.lead.stage);
+                      const isSelected = selectedTrashIds.includes(item.id);
+                      const deletedDateFormatted = (() => {
+                        try {
+                          const d = new Date(item.deleted_at);
+                          return d.toLocaleString([], {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          });
+                        } catch {
+                          return item.deleted_at || 'Recently';
+                        }
+                      })();
+
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            isSelected ? 'bg-rose-50/40 ring-1 ring-rose-300/60' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => handleToggleSelectTrash(item.id, e)}
+                              className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900">{item.lead.name}</div>
+                            <div className="text-[10px] text-slate-400">{item.lead.location}</div>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-slate-600">{item.lead.phone}</td>
+                          <td className="py-3 px-4 font-medium">{item.lead.service}</td>
+                          <td className="py-3 px-4 font-bold text-emerald-600">₹{item.lead.value.toLocaleString()}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${stageCfg.badgeClass}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${stageCfg.dotColor}`} />
+                              <span>{stageCfg.label}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 font-medium">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>{deletedDateFormatted}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Restore Button */}
+                              <button
+                                type="button"
+                                onClick={() => restoreLead(item.id)}
+                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-xs inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                title="Restore lead back to pipeline"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Restore</span>
+                              </button>
+
+                              {/* Delete Forever Button */}
+                              <button
+                                type="button"
+                                onClick={() => permanentlyDeleteLead(item.id)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                                title="Permanently delete from trash"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -1723,14 +2073,109 @@ export const LeadsView: React.FC = () => {
                 {isDeleting ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Deleting...</span>
+                    <span>Moving to Trash...</span>
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>{leadsToDelete.length === 1 ? 'Delete Lead' : `Delete (${leadsToDelete.length})`}</span>
+                    <span>{leadsToDelete.length === 1 ? 'Move to Trash' : `Move to Trash (${leadsToDelete.length})`}</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Instant Undo Toast Banner (Visible after deletion for 10s) */}
+      {recentlyDeleted && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="w-7 h-7 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+            <Trash2 className="w-3.5 h-3.5" />
+          </div>
+          <div className="text-xs">
+            <span className="font-semibold text-white">
+              {recentlyDeleted.count === 1
+                ? `Moved "${recentlyDeleted.items[0]?.name}" to Trash`
+                : `Moved ${recentlyDeleted.count} leads to Trash`}
+            </span>
+            <span className="text-slate-400 block text-[10px]">Easily restore anytime from Trash</span>
+          </div>
+          <div className="flex items-center gap-1.5 ml-2">
+            <button
+              type="button"
+              onClick={handleUndoRecentDelete}
+              className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+              title="Undo deletion and restore back to pipeline"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Undo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (recentlyDeleted.timer) clearTimeout(recentlyDeleted.timer);
+                setRecentlyDeleted(null);
+              }}
+              className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty Trash Confirmation Modal */}
+      {isEmptyTrashModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setIsEmptyTrashModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Empty Trash</h3>
+                  <p className="text-[11px] text-slate-500">Permanently purge all deleted leads</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEmptyTrashModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-slate-600 text-xs">
+              Are you sure you want to permanently delete all {trashLeads.length} leads in the trash? This action cannot be undone and these leads cannot be restored.
+            </p>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEmptyTrashModalOpen(false)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await emptyLeadsTrash();
+                  setIsEmptyTrashModalOpen(false);
+                }}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm shadow-rose-700/20 flex items-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Empty Trash Forever</span>
               </button>
             </div>
           </div>

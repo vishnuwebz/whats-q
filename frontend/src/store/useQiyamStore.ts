@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import {
-  TabType, Conversation, Lead, Deal, FollowUp, Job, Appointment,
+  TabType, Conversation, Lead, TrashLeadItem, Deal, FollowUp, Job, Appointment,
   Employee, AttendanceRecord, Task, Route, InventoryItem, Transaction,
   Invoice, Quotation, Expense, PaymentAccount, Workflow, AutomationLog, Approval,
   KnowledgeArticle, WhatsAppTemplateItem, IntegrationItem, BranchItem, FlowNode, WhatsAppMessage,
@@ -604,6 +604,7 @@ interface QiyamState {
   conversations: Conversation[];
   deletedConversations: Conversation[];
   leads: Lead[];
+  trashLeads: TrashLeadItem[];
   deals: Deal[];
   followups: FollowUp[];
   customers: Record<string, unknown>[];
@@ -759,6 +760,10 @@ interface QiyamState {
   updateLeadStage: (leadId: string | number, newStage: Lead['stage'], note?: string) => Promise<boolean>;
   updateLead: (leadId: string | number, updates: Partial<Lead>) => Promise<boolean>;
   deleteLead: (leadId: string | number) => Promise<boolean>;
+  restoreLead: (leadId: string | number) => Promise<boolean>;
+  permanentlyDeleteLead: (leadId: string | number) => Promise<boolean>;
+  restoreAllLeads: () => Promise<number>;
+  emptyLeadsTrash: () => Promise<boolean>;
   scheduleFollowUpForLead: (leadId: string | number, followUpData: any) => Promise<boolean>;
   convertLeadToDeal: (leadId: string | number, customData?: Record<string, any>) => Promise<Deal | null>;
   convertConversationToDeal: (conversationId: string | number) => Promise<void>;
@@ -3348,6 +3353,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   conversations: getStoredConversations(),
   deletedConversations: [],
   leads: getStoredCache('leads', INITIAL_LEADS),
+  trashLeads: getStoredCache('trashLeads', []),
   deals: getStoredCache('deals', INITIAL_DEALS),
   followups: getStoredCache('followups', INITIAL_FOLLOWUPS),
   customers: getStoredCache('customers', []),
@@ -5904,15 +5910,35 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   deleteLead: async (leadId) => {
     const lead = get().leads.find((l) => String(l.id) === String(leadId));
-    const leadName = lead ? lead.name : 'Lead';
+    if (!lead) return false;
+    const leadName = lead.name;
+
+    // Find linked follow-up if any
+    const cleanDigits = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+    const lDigits = cleanDigits(lead.phone);
+    const linkedFollowUp = get().followups.find((f) => {
+      if (f.related_to && f.related_to.includes(`Lead #${lead.id}`)) return true;
+      if (lDigits && cleanDigits(f.phone) === lDigits) return true;
+      return false;
+    });
+
+    const trashItem: TrashLeadItem = {
+      id: lead.id,
+      lead: { ...lead, is_deleted: true, deleted_at: new Date().toISOString() },
+      deleted_at: new Date().toISOString(),
+      linkedFollowUp,
+    };
 
     set((state) => {
-      const remaining = state.leads.filter((l) => String(l.id) !== String(leadId));
+      const remainingLeads = state.leads.filter((l) => String(l.id) !== String(leadId));
+      const nextTrash = [trashItem, ...state.trashLeads.filter((t) => String(t.id) !== String(leadId))];
       try {
-        localStorage.setItem('whatsq_leads_cache', JSON.stringify(remaining));
+        localStorage.setItem('whatsq_leads_cache', JSON.stringify(remainingLeads));
+        localStorage.setItem('whatsq_trashLeads_cache', JSON.stringify(nextTrash));
       } catch {}
       return {
-        leads: remaining,
+        leads: remainingLeads,
+        trashLeads: nextTrash,
         selectedLead: String(state.selectedLead?.id) === String(leadId) ? null : state.selectedLead,
         isLeadDrawerOpen: String(state.selectedLead?.id) === String(leadId) ? false : state.isLeadDrawerOpen,
       };
@@ -5920,12 +5946,157 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     try {
       await apiClient.delete(`/crm/leads/${leadId}/`);
-      get().addToast(`Lead "${leadName}" deleted successfully`, 'success');
+      get().addToast(`Moved "${leadName}" to Trash`, 'success');
       return true;
     } catch {
-      get().addToast(`Lead "${leadName}" removed from local storage`, 'info');
+      get().addToast(`Lead "${leadName}" moved to Trash locally`, 'info');
       return true;
     }
+  },
+
+  restoreLead: async (leadId) => {
+    const trashItem = get().trashLeads.find((t) => String(t.id) === String(leadId));
+    if (!trashItem) return false;
+
+    const originalLead = trashItem.lead;
+    const cleanLead: Partial<Lead> = {
+      name: originalLead.name,
+      phone: originalLead.phone,
+      email: originalLead.email || '',
+      service: originalLead.service,
+      location: originalLead.location,
+      value: originalLead.value,
+      stage: originalLead.stage,
+      owner: originalLead.owner,
+      source: originalLead.source,
+      notes: originalLead.notes,
+      tags: originalLead.tags || [],
+      next_follow_up_date: originalLead.next_follow_up_date,
+      next_follow_up_time: originalLead.next_follow_up_time,
+    };
+
+    let restoredLead: Lead = {
+      ...originalLead,
+      is_deleted: false,
+      deleted_at: undefined,
+    };
+
+    try {
+      const res: any = await apiClient.post('/crm/leads/', cleanLead);
+      if (res && res.id) {
+        restoredLead = res as Lead;
+      }
+    } catch (e) {
+      console.warn('[useQiyamStore] restoreLead backend call failed, restoring locally:', e);
+    }
+
+    set((state) => {
+      const remainingTrash = state.trashLeads.filter((t) => String(t.id) !== String(leadId));
+      const nextLeads = [restoredLead, ...state.leads.filter((l) => String(l.id) !== String(restoredLead.id))];
+      try {
+        localStorage.setItem('whatsq_leads_cache', JSON.stringify(nextLeads));
+        localStorage.setItem('whatsq_trashLeads_cache', JSON.stringify(remainingTrash));
+      } catch {}
+      return {
+        leads: nextLeads,
+        trashLeads: remainingTrash,
+      };
+    });
+
+    get().addToast(`Restored "${restoredLead.name}" to pipeline`, 'success');
+    return true;
+  },
+
+  permanentlyDeleteLead: async (leadId) => {
+    const trashItem = get().trashLeads.find((t) => String(t.id) === String(leadId));
+    const leadName = trashItem ? trashItem.lead.name : 'Lead';
+
+    set((state) => {
+      const remainingTrash = state.trashLeads.filter((t) => String(t.id) !== String(leadId));
+      try {
+        localStorage.setItem('whatsq_trashLeads_cache', JSON.stringify(remainingTrash));
+      } catch {}
+      return {
+        trashLeads: remainingTrash,
+      };
+    });
+
+    try {
+      await apiClient.delete(`/crm/leads/${leadId}/`);
+    } catch {}
+
+    get().addToast(`Permanently deleted "${leadName}"`, 'info');
+    return true;
+  },
+
+  restoreAllLeads: async () => {
+    const items = [...get().trashLeads];
+    if (items.length === 0) return 0;
+
+    let restoredCount = 0;
+    const restoredLeads: Lead[] = [];
+
+    for (const item of items) {
+      const cleanLead: Partial<Lead> = {
+        name: item.lead.name,
+        phone: item.lead.phone,
+        email: item.lead.email || '',
+        service: item.lead.service,
+        location: item.lead.location,
+        value: item.lead.value,
+        stage: item.lead.stage,
+        owner: item.lead.owner,
+        source: item.lead.source,
+        notes: item.lead.notes,
+        tags: item.lead.tags || [],
+        next_follow_up_date: item.lead.next_follow_up_date,
+        next_follow_up_time: item.lead.next_follow_up_time,
+      };
+
+      try {
+        const res: any = await apiClient.post('/crm/leads/', cleanLead);
+        if (res && res.id) {
+          restoredLeads.push(res as Lead);
+        } else {
+          restoredLeads.push({ ...item.lead, is_deleted: false, deleted_at: undefined });
+        }
+      } catch {
+        restoredLeads.push({ ...item.lead, is_deleted: false, deleted_at: undefined });
+      }
+      restoredCount++;
+    }
+
+    set((state) => {
+      const nextLeads = [...restoredLeads, ...state.leads];
+      try {
+        localStorage.setItem('whatsq_leads_cache', JSON.stringify(nextLeads));
+        localStorage.setItem('whatsq_trashLeads_cache', JSON.stringify([]));
+      } catch {}
+      return {
+        leads: nextLeads,
+        trashLeads: [],
+      };
+    });
+
+    get().addToast(`Restored all ${restoredCount} leads to pipeline`, 'success');
+    return restoredCount;
+  },
+
+  emptyLeadsTrash: async () => {
+    const count = get().trashLeads.length;
+    if (count === 0) return true;
+
+    set(() => {
+      try {
+        localStorage.setItem('whatsq_trashLeads_cache', JSON.stringify([]));
+      } catch {}
+      return {
+        trashLeads: [],
+      };
+    });
+
+    get().addToast(`Trash emptied (${count} leads permanently deleted)`, 'info');
+    return true;
   },
 
   scheduleFollowUpForLead: async (leadId, followUpData) => {

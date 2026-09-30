@@ -348,6 +348,15 @@ export interface Lead {
   tags: string[];
   next_follow_up_date?: string;
   next_follow_up_time?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
+}
+
+export interface TrashLeadItem {
+  id: string | number;
+  lead: Lead;
+  deleted_at: string;
+  linkedFollowUp?: FollowUp;
 }
 
 export interface Deal {
