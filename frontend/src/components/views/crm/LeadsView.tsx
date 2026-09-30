@@ -9,11 +9,13 @@ import {
   Calendar, MoreVertical, X, Check, ArrowRight, UserCheck,
   Tag, Clock, UserPlus, FileText, ChevronRight, ChevronDown,
   ArrowRightLeft, AlertTriangle, ShieldCheck, Sparkles, Building2,
-  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2, RotateCcw
+  IndianRupee, CheckCircle2, RefreshCw, Trophy, XCircle, Trash2, RotateCcw, Edit3
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
 import { AgentSelectDropdown } from '@/components/common/AgentSelectDropdown';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
+import { ModernTimePicker } from '@/components/common/ModernTimePicker';
 
 export const ALL_LEAD_STAGES: Array<{
   id: Lead['stage'];
@@ -46,6 +48,7 @@ export const LeadsView: React.FC = () => {
     isLeadDrawerOpen,
     setIsLeadDrawerOpen,
     updateLeadStage,
+    updateLead,
     deleteLead,
     restoreLead,
     permanentlyDeleteLead,
@@ -82,6 +85,78 @@ export const LeadsView: React.FC = () => {
   const [stageNote, setStageNote] = useState('');
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
   const [followUpModalLead, setFollowUpModalLead] = useState<Lead | null>(null);
+
+  // Edit Lead Modal State
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [editLeadForm, setEditLeadForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    service: '',
+    value: 0,
+    location: '',
+    source: 'WhatsApp Click-to-Ad',
+    stage: 'new' as Lead['stage'],
+    owner: '',
+    next_follow_up_date: '',
+    next_follow_up_time: '',
+    notes: '',
+  });
+  const [isSavingEditLead, setIsSavingEditLead] = useState(false);
+
+  const handleOpenEditLeadModal = (lead: Lead) => {
+    // Check if lead has a linked follow-up in followups store
+    const cleanDigits = (p?: string) => String(p || '').replace(/\D/g, '').slice(-10);
+    const lDigits = cleanDigits(lead.phone);
+    const matchedFu = followups.find((f) => {
+      if (f.related_to && f.related_to.includes(`Lead #${lead.id}`)) return true;
+      if (lDigits && cleanDigits(f.phone) === lDigits) return true;
+      return false;
+    });
+
+    const followUpDate = lead.next_follow_up_date || matchedFu?.due_date || '';
+    const followUpTime = lead.next_follow_up_time || matchedFu?.due_time || '11:00 AM';
+
+    setEditingLead(lead);
+    setEditLeadForm({
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email || '',
+      service: lead.service || 'AC Installation & Repair',
+      value: lead.value || 0,
+      location: lead.location || '',
+      source: lead.source || 'WhatsApp Click-to-Ad',
+      stage: lead.stage,
+      owner: lead.owner || 'Rahul Mehta',
+      next_follow_up_date: followUpDate,
+      next_follow_up_time: followUpTime,
+      notes: lead.notes || '',
+    });
+  };
+
+  const handleSaveEditLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLead) return;
+    if (!editLeadForm.name.trim()) {
+      addToast('Customer name is required', 'error');
+      return;
+    }
+
+    setIsSavingEditLead(true);
+    try {
+      await updateLead(editingLead.id, editLeadForm);
+      if (selectedLead && String(selectedLead.id) === String(editingLead.id)) {
+        setSelectedLead({ ...selectedLead, ...editLeadForm });
+      }
+      addToast(`Lead "${editLeadForm.name}" updated successfully!`, 'success');
+      setEditingLead(null);
+    } catch (err: any) {
+      console.error('[LeadsView] Failed to update lead:', err);
+      addToast('Failed to update lead details', 'error');
+    } finally {
+      setIsSavingEditLead(false);
+    }
+  };
 
   // Multi-Selection State for Bulk / Respected Leads
   const [selectedLeadIds, setSelectedLeadIds] = useState<Array<string | number>>([]);
@@ -668,6 +743,17 @@ export const LeadsView: React.FC = () => {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  handleOpenEditLeadModal(lead);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all cursor-pointer"
+                                title={`Edit ${lead.name}`}
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handleOpenDeleteModal(lead);
                                 }}
                                 className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
@@ -689,19 +775,29 @@ export const LeadsView: React.FC = () => {
                             const info = getLeadFollowUpInfo(lead);
                             if (!info.hasFollowUp) return null;
                             return (
-                              <div className={`flex items-center justify-between text-[10px] font-semibold px-2 py-1 rounded-lg border ${
-                                info.isCompleted
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                                  : 'bg-sky-50 text-sky-700 border-sky-200/80'
-                              }`}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFollowUpModalLead(lead);
+                                }}
+                                className="w-full flex items-center justify-between text-[10px] font-semibold px-2 py-1 rounded-lg border bg-sky-50 hover:bg-sky-100/90 text-sky-700 hover:text-sky-900 border-sky-200/90 hover:border-sky-300 transition-all cursor-pointer group/fu shadow-2xs text-left"
+                                title="Click to edit follow-up schedule and details"
+                              >
                                 <div className="flex items-center gap-1.5 truncate">
-                                  <Calendar className="w-3 h-3 text-sky-600 shrink-0" />
+                                  <Calendar className="w-3 h-3 text-sky-600 shrink-0 group-hover/fu:scale-110 transition-transform" />
                                   <span className="truncate">Follow-up: {info.date}{info.time ? ` @ ${info.time}` : ''}</span>
                                 </div>
-                                {info.isCompleted && (
-                                  <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold ml-1 shrink-0">Done</span>
-                                )}
-                              </div>
+                                <div className="flex items-center gap-1 shrink-0 ml-1">
+                                  {info.isCompleted && (
+                                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold">Done</span>
+                                  )}
+                                  <span className="text-[9px] text-sky-700 font-bold bg-white/90 hover:bg-white px-1.5 py-0.5 rounded border border-sky-200/80 flex items-center gap-0.5 shadow-2xs group-hover/fu:border-sky-400">
+                                    <Edit3 className="w-2.5 h-2.5 text-sky-600" />
+                                    <span>Edit</span>
+                                  </span>
+                                </div>
+                              </button>
                             );
                           })()}
 
@@ -727,6 +823,17 @@ export const LeadsView: React.FC = () => {
                                 <Trash2 className="w-3 h-3" />
                               </button>
                               <div className="flex items-center gap-1.5">
+                                {lead.stage === 'follow_up' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setFollowUpModalLead(lead)}
+                                    className="px-2 py-0.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                    title="Edit follow-up schedule"
+                                  >
+                                    <Calendar className="w-2.5 h-2.5 text-sky-600" />
+                                    Edit Schedule
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleStageSelectClick(lead, 'won')}
@@ -859,15 +966,24 @@ export const LeadsView: React.FC = () => {
                             const info = getLeadFollowUpInfo(lead);
                             if (!info.hasFollowUp) return null;
                             return (
-                              <div className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded mt-0.5 border ${
-                                info.isCompleted
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                                  : 'bg-sky-50 text-sky-700 border-sky-200/80'
-                              }`}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFollowUpModalLead(lead);
+                                }}
+                                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded mt-0.5 border cursor-pointer transition-all hover:scale-102 ${
+                                  info.isCompleted
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
+                                    : 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100'
+                                }`}
+                                title="Click to edit follow-up schedule"
+                              >
                                 <Calendar className="w-2.5 h-2.5 text-sky-600 shrink-0" />
                                 <span>Follow-up: {info.date}{info.time ? ` @ ${info.time}` : ''}</span>
                                 {info.isCompleted && <span className="text-[9px] font-bold text-emerald-800 ml-0.5">(Done)</span>}
-                              </div>
+                                <Edit3 className="w-2.5 h-2.5 text-sky-500 ml-0.5" />
+                              </button>
                             );
                           })()}
                         </td>
@@ -1075,6 +1191,16 @@ export const LeadsView: React.FC = () => {
                                 </button>
                               </div>
                             )}
+
+                            {/* Edit Lead Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditLeadModal(lead)}
+                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 transition-all cursor-pointer shadow-2xs inline-flex items-center ml-0.5"
+                              title={`Edit ${lead.name}`}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
 
                             {/* Delete Lead Button */}
                             <button
@@ -1325,6 +1451,14 @@ export const LeadsView: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
+                    onClick={() => handleOpenEditLeadModal(selectedLead)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer transition-colors"
+                    title={`Edit ${selectedLead.name}`}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleOpenDeleteModal(selectedLead)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
                     title={`Delete ${selectedLead.name}`}
@@ -1485,15 +1619,24 @@ export const LeadsView: React.FC = () => {
               />
             </div>
 
-            {/* Delete Lead Action */}
-            <div className="pt-3 border-t border-slate-100">
+            {/* Lead Action Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleOpenEditLeadModal(selectedLead)}
+                className="flex-1 py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl border border-emerald-200/80 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <Edit3 className="w-4 h-4 text-emerald-600" />
+                <span>Edit Lead</span>
+              </button>
               <button
                 type="button"
                 onClick={() => handleOpenDeleteModal(selectedLead)}
-                className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200/80 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                className="py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200/80 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                title="Delete Lead"
               >
                 <Trash2 className="w-4 h-4 text-rose-600" />
-                <span>Delete Lead</span>
+                <span>Delete</span>
               </button>
             </div>
           </div>
@@ -1651,6 +1794,234 @@ export const LeadsView: React.FC = () => {
                 >
                   Create Lead
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Modal */}
+      {editingLead && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => !isSavingEditLead && setEditingLead(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-4 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Edit Lead Details</h3>
+                  <p className="text-[11px] text-slate-500">Update customer information, pipeline stage, and follow-up schedule.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingLead(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditLead} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Customer Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editLeadForm.name}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, name: e.target.value })}
+                    placeholder="e.g. Farhan Ali"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-800"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Phone / WhatsApp *</label>
+                  <CountryPhoneInput
+                    value={editLeadForm.phone}
+                    onChange={(val) => setEditLeadForm({ ...editLeadForm, phone: val })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Service Needed</label>
+                  <select
+                    value={editLeadForm.service}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, service: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="AC Installation & Repair">AC Installation & Repair</option>
+                    <option value="Split AC Deep Service">Split AC Deep Service</option>
+                    <option value="Commercial HVAC Maintenance">Commercial HVAC Maintenance</option>
+                    <option value="Gas Refill & Leakage Check">Gas Refill & Leakage Check</option>
+                    <option value="Electrical & Plumbing">Electrical & Plumbing</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Estimated Value (₹)</label>
+                  <input
+                    type="number"
+                    value={editLeadForm.value}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, value: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-700 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Location</label>
+                  <input
+                    type="text"
+                    value={editLeadForm.location}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, location: e.target.value })}
+                    placeholder="e.g. Mavoor Road, Calicut"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Lead Source</label>
+                  <select
+                    value={editLeadForm.source}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, source: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="WhatsApp Click-to-Ad">WhatsApp Click-to-Ad</option>
+                    <option value="Website Contact Form">Website Contact Form</option>
+                    <option value="Google Search Ads">Google Search Ads</option>
+                    <option value="Customer Referral">Customer Referral</option>
+                    <option value="Direct Walk-in">Direct Walk-in</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Pipeline Stage</label>
+                  <select
+                    value={editLeadForm.stage}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, stage: e.target.value as Lead['stage'] })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-semibold"
+                  >
+                    <option value="new">New Lead</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="follow_up">Follow-up</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="proposal_sent">Proposal Sent</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="won">Won / Closed</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </div>
+                <div>
+                  <AgentSelectDropdown
+                    label="Assigned Agent / Owner"
+                    value={editLeadForm.owner}
+                    onChange={(val) => setEditLeadForm({ ...editLeadForm, owner: val })}
+                  />
+                </div>
+              </div>
+
+              {/* Follow-up Section (Visible when stage is follow_up or a date is already set) */}
+              {(editLeadForm.stage === 'follow_up' || Boolean(editLeadForm.next_follow_up_date)) && (
+                <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-200/90 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-sky-600" />
+                      Follow-up Schedule
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetLead = editingLead;
+                        setEditingLead(null);
+                        setFollowUpModalLead(targetLead);
+                      }}
+                      className="text-[10px] font-bold text-sky-700 hover:text-sky-900 bg-white/90 hover:bg-white px-2 py-0.5 rounded-lg border border-sky-200 cursor-pointer shadow-2xs transition-all"
+                    >
+                      Advanced Follow-up Scheduler →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <ModernDatePicker
+                        label="Follow-up Date"
+                        value={editLeadForm.next_follow_up_date || new Date().toISOString().split('T')[0]}
+                        onChange={(d) => setEditLeadForm({ ...editLeadForm, next_follow_up_date: d })}
+                      />
+                    </div>
+                    <div>
+                      <ModernTimePicker
+                        label="Follow-up Time"
+                        value={editLeadForm.next_follow_up_time || '11:00 AM'}
+                        onChange={(t) => setEditLeadForm({ ...editLeadForm, next_follow_up_time: t })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Internal Notes</label>
+                <textarea
+                  rows={2}
+                  value={editLeadForm.notes}
+                  onChange={(e) => setEditLeadForm({ ...editLeadForm, notes: e.target.value })}
+                  placeholder="Additional context or requirements..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none resize-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetLead = editingLead;
+                    setEditingLead(null);
+                    setFollowUpModalLead(targetLead);
+                  }}
+                  className="px-3 py-2 text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 font-bold rounded-xl flex items-center gap-1.5 cursor-pointer text-xs transition-colors"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Reschedule Follow-up</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isSavingEditLead}
+                    onClick={() => setEditingLead(null)}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEditLead}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm shadow-emerald-700/20 cursor-pointer disabled:opacity-50 flex items-center gap-1.5 transition-all"
+                  >
+                    {isSavingEditLead ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Changes</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1931,7 +2302,20 @@ export const LeadsView: React.FC = () => {
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
               >
                 <Clock className="w-3.5 h-3.5 text-sky-600" />
-                <span>Schedule Follow-up</span>
+                <span>{contextMenu.lead.stage === 'follow_up' ? 'Edit Follow-up Schedule' : 'Schedule Follow-up'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const lead = contextMenu.lead;
+                  setContextMenu(null);
+                  handleOpenEditLeadModal(lead);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Edit Lead Details</span>
               </button>
 
               <button
