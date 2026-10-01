@@ -78,7 +78,7 @@ import {
   INITIAL_FOLLOWUPS,
 } from './initialDatasets';
 import { INITIAL_TEMPLATES } from './initialTemplates';
-import { INITIAL_MULTI_BRANCH_CUSTOMERS } from './customerSeedData';
+import { INITIAL_MULTI_BRANCH_CUSTOMERS, syncCustomersWithBranches } from './customerSeedData';
 
 const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
 
@@ -610,7 +610,7 @@ interface QiyamState {
   trashLeads: TrashLeadItem[];
   deals: Deal[];
   followups: FollowUp[];
-  customers: Record<string, unknown>[];
+  customers: any[];
   jobs: Job[];
   appointments: Appointment[];
   employees: Employee[];
@@ -3469,7 +3469,10 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   followups: getStoredCache('followups', INITIAL_FOLLOWUPS),
   customers: (() => {
     const cached = getStoredCache('customers', []);
-    return Array.isArray(cached) && cached.length >= 100 ? cached : INITIAL_MULTI_BRANCH_CUSTOMERS;
+    const cachedBranches = getStoredCache('branches', INITIAL_BRANCHES);
+    return Array.isArray(cached) && cached.length >= 500
+      ? cached
+      : syncCustomersWithBranches(cached, cachedBranches);
   })(),
   jobs: getStoredCache('jobs', INITIAL_JOBS),
   appointments: INITIAL_APPOINTMENTS,
@@ -3610,7 +3613,10 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const leads         = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
     const deals         = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
     const followups     = safeVal(5, current.followups, INITIAL_FOLLOWUPS, 'followups');
-    const customers     = safeVal(6, current.customers, [], 'customers');
+    const branches      = safeVal(23, current.branches, INITIAL_BRANCHES, 'branches');
+    const rawCustomers  = safeVal(6, current.customers, [], 'customers');
+    const customers     = syncCustomersWithBranches(rawCustomers, branches);
+    persistCache('customers', customers);
     const jobs          = safeVal(7, current.jobs, INITIAL_JOBS, 'jobs');
     const appointments  = safeVal(8, current.appointments, INITIAL_APPOINTMENTS, 'appointments');
     const employees     = safeVal(9, current.employees, INITIAL_EMPLOYEES, 'employees');
@@ -3634,7 +3640,6 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const approvals     = safeVal(20, current.approvals, [], 'approvals');
     const knowledgeArticles = safeVal(21, current.knowledgeArticles, DEFAULT_KNOWLEDGE_ARTICLES, 'knowledgeArticles');
     const integrations  = safeVal(22, current.integrations, INITIAL_INTEGRATIONS, 'integrations');
-    const branches      = safeVal(23, current.branches, INITIAL_BRANCHES, 'branches');
     const workspace     = (results[24].status === 'fulfilled' && (results[24] as any).value) || current.workspace || null;
     const channelMetrics = safeVal(25, current.channelMetrics, [], 'channelMetrics');
     const intentMetrics  = safeVal(26, current.intentMetrics, [], 'intentMetrics');

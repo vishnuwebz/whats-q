@@ -668,33 +668,44 @@ export interface BranchCustomerItem {
 }
 
 export const getBranchCustomers = (branch: BranchItem): BranchCustomerItem[] => {
-  const branchName = branch.name || '';
-  const city = branch.city || 'Regional';
+  const branchName = (branch.name || '').trim().toLowerCase();
+  const city = (branch.city || '').trim().toLowerCase();
   const prefix = (branch.code || 'BR').replace(/[^a-zA-Z0-9]/g, '');
 
-  const matches = INITIAL_MULTI_BRANCH_CUSTOMERS.filter(
-    (c) => c.branch === branchName || (city && c.city.toLowerCase() === city.toLowerCase())
-  );
+  const storeCustomers = useQiyamStore.getState().customers || [];
+  const source = storeCustomers.length > 0 ? storeCustomers : INITIAL_MULTI_BRANCH_CUSTOMERS;
+
+  const matches = source.filter((c: any) => {
+    const cBranch = (c.branch || '').toLowerCase();
+    const cTags = Array.isArray(c.tags) ? c.tags.map((t: string) => String(t).toLowerCase()) : [];
+    const cLoc = (c.location || c.address || '').toLowerCase();
+    return (
+      cBranch === branchName ||
+      (cBranch && (cBranch.includes(branchName) || branchName.includes(cBranch))) ||
+      cTags.some((t: string) => t === branchName || t.includes(branchName) || branchName.includes(t)) ||
+      (city.length > 2 && cLoc.includes(city))
+    );
+  });
 
   if (matches.length > 0) {
-    return matches.map((c) => {
-      const initials = c.name
+    return matches.map((c: any) => {
+      const initials = (c.name || 'CU')
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
-        .map((p) => p[0])
+        .map((p: string) => p[0])
         .join('')
         .toUpperCase() || 'CU';
 
       return {
         id: String(c.id),
         name: c.name,
-        phone: c.phone,
-        email: c.email,
+        phone: c.phone || c.phone_number || '',
+        email: c.email || '',
         company: c.company || `${c.name} Enterprise`,
         segment: c.segment || 'Commercial',
-        totalSpent: `₹${(c.total_spent || 28500).toLocaleString()}`,
-        conversationsCount: (c.jobs_count || 2) * 6,
+        totalSpent: `₹${(Number(c.total_spent) || 28500).toLocaleString()}`,
+        conversationsCount: (Number(c.jobs_count) || 2) * 6,
         lastActive: c.last_contact_date || 'Today',
         status: c.status === 'Customer' ? 'Active' : 'Follow-up Due',
         avatarInitials: initials,

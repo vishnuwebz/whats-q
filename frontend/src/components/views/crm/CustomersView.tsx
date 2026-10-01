@@ -27,7 +27,7 @@ import {
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { qiyamApi } from '@/api/qiyamApi';
-import { INITIAL_MULTI_BRANCH_CUSTOMERS } from '@/store/customerSeedData';
+import { INITIAL_MULTI_BRANCH_CUSTOMERS, syncCustomersWithBranches } from '@/store/customerSeedData';
 
 export type CustomerSortOption =
   | 'recent'
@@ -56,7 +56,9 @@ export interface CustomerDirectoryItem {
   phone: string;
   cleanPhone: string;
   location: string;
+  address?: string;
   branch?: string;
+  tags?: string[];
   avatar?: string;
   totalSpent: number;
   jobsCount: number;
@@ -201,32 +203,34 @@ export const CustomersView: React.FC = () => {
     setCurrentPage(1);
   }, [search, categoryFilter, customerBranchFilter, sortBy]);
 
-  // Sync fresh customers from backend on view mount without wiping multi-branch catalog
+  // Ensure all registered branches have customer records, and sync fresh backend records
   useEffect(() => {
+    const state = useQiyamStore.getState();
+    const currentCustomers = state.customers || [];
+    const allBranchesRepresented = (state.branches || []).every((b) =>
+      currentCustomers.some(
+        (c: any) =>
+          c.branch === b.name ||
+          (Array.isArray(c.tags) && c.tags.includes(b.name))
+      )
+    );
+
+    if (!allBranchesRepresented || currentCustomers.length < 500) {
+      const synced = syncCustomersWithBranches(currentCustomers, state.branches);
+      useQiyamStore.setState({ customers: synced });
+    }
+
     qiyamApi
       .fetchCustomers()
       .then((custs) => {
         if (Array.isArray(custs) && custs.length > 0) {
-          useQiyamStore.setState((state) => {
-            const base =
-              state.customers && state.customers.length >= 100
-                ? state.customers
-                : INITIAL_MULTI_BRANCH_CUSTOMERS;
-            const byPhone = new Map<string, any>();
-            base.forEach((c: any) => {
-              const p = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
-              if (p) byPhone.set(p, c);
-            });
-            custs.forEach((c: any) => {
-              const p = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
-              if (p) byPhone.set(p, { ...(byPhone.get(p) || {}), ...c });
-            });
-            return { customers: Array.from(byPhone.values()) };
-          });
+          const current = useQiyamStore.getState();
+          const synced = syncCustomersWithBranches(custs, current.branches);
+          useQiyamStore.setState({ customers: synced });
         }
       })
       .catch((e) => console.warn('[CustomersView] Could not fetch fresh customers:', e));
-  }, []);
+  }, [branches]);
 
   // Primary source of truth: storeCustomers. Secondary: unsaved conversation contacts.
   // Guaranteed UNIQUE and stable keys for React reconciliation.
@@ -271,13 +275,16 @@ export const CustomersView: React.FC = () => {
       const loc = sc.address || sc.location || matchedConv?.location || 'Kozhikode, Kerala';
       const locLower = loc.toLowerCase();
       const resolvedBranch = sc.branch ||
-        (Array.isArray(sc.tags) && sc.tags.find((t: string) => t.includes('Branch') || t === 'Head Office')) ||
-        (locLower.includes('bangalore') ? 'Bangalore Branch' :
-         locLower.includes('kochi') || locLower.includes('kakkanad') || locLower.includes('infopark') ? 'Kochi Branch' :
-         locLower.includes('mumbai') || locLower.includes('bkc') || locLower.includes('bandra') ? 'Mumbai Branch' :
-         locLower.includes('delhi') || locLower.includes('noida') || locLower.includes('gurugram') ? 'Delhi Branch' :
+        (Array.isArray(sc.tags) && sc.tags.find((t: string) => branches.some((b) => b.name.toLowerCase() === String(t).toLowerCase()))) ||
+        branches.find((b) => locLower.includes(b.name.toLowerCase()) || (b.city && locLower.includes(b.city.toLowerCase())))?.name ||
+        (locLower.includes('delhi') ? 'Delhi Branch' :
+         locLower.includes('kashmir') ? 'kashmir' :
          locLower.includes('chennai') ? 'Chennai Branch' :
-         locLower.includes('hyderabad') ? 'Hyderabad Branch' : 'Head Office');
+         locLower.includes('hyderabad') ? 'Hyderabad Branch' :
+         locLower.includes('calicut') ? 'calicut' :
+         locLower.includes('bangalore') ? 'Bangalore Branch' :
+         locLower.includes('kochi') ? 'Kochi Branch' :
+         locLower.includes('mumbai') ? 'Mumbai Branch' : 'Head Office');
 
       list.push({
         id: stableId,
@@ -321,13 +328,16 @@ export const CustomersView: React.FC = () => {
       const uniqueKey = `cust_conv_${stableId}_${cleanPhone || idx}`;
       const cLoc = c.location || 'Kozhikode, Kerala';
       const cLocLower = cLoc.toLowerCase();
-      const resolvedCBranch = (Array.isArray(c.tags) && c.tags.find((t: string) => t.includes('Branch') || t === 'Head Office')) ||
-        (cLocLower.includes('bangalore') ? 'Bangalore Branch' :
-         cLocLower.includes('kochi') || cLocLower.includes('kakkanad') || cLocLower.includes('infopark') ? 'Kochi Branch' :
-         cLocLower.includes('mumbai') || cLocLower.includes('bkc') || cLocLower.includes('bandra') ? 'Mumbai Branch' :
-         cLocLower.includes('delhi') || cLocLower.includes('noida') || cLocLower.includes('gurugram') ? 'Delhi Branch' :
+      const resolvedCBranch = (Array.isArray(c.tags) && c.tags.find((t: string) => branches.some((b) => b.name.toLowerCase() === String(t).toLowerCase()))) ||
+        branches.find((b) => cLocLower.includes(b.name.toLowerCase()) || (b.city && cLocLower.includes(b.city.toLowerCase())))?.name ||
+        (cLocLower.includes('delhi') ? 'Delhi Branch' :
+         cLocLower.includes('kashmir') ? 'kashmir' :
          cLocLower.includes('chennai') ? 'Chennai Branch' :
-         cLocLower.includes('hyderabad') ? 'Hyderabad Branch' : 'Head Office');
+         cLocLower.includes('hyderabad') ? 'Hyderabad Branch' :
+         cLocLower.includes('calicut') ? 'calicut' :
+         cLocLower.includes('bangalore') ? 'Bangalore Branch' :
+         cLocLower.includes('kochi') ? 'Kochi Branch' :
+         cLocLower.includes('mumbai') ? 'Mumbai Branch' : 'Head Office');
 
       list.push({
         id: stableId,
@@ -550,19 +560,30 @@ export const CustomersView: React.FC = () => {
     const result = customers.filter((cust) => {
       // 1. Branch Filter
       if (customerBranchFilter && customerBranchFilter !== 'all') {
-        const target = customerBranchFilter.toLowerCase();
-        const branchMatch = cust.branch && cust.branch.toLowerCase().includes(target);
-        const cityKeyword = target.replace(' branch', '').replace(' head office', 'kozhikode');
-        const locMatch = cust.location && (
-          cust.location.toLowerCase().includes(cityKeyword) ||
-          (target.includes('bangalore') && cust.location.toLowerCase().includes('bangalore')) ||
-          (target.includes('kochi') && (cust.location.toLowerCase().includes('kochi') || cust.location.toLowerCase().includes('kakkanad') || cust.location.toLowerCase().includes('infopark'))) ||
-          (target.includes('head office') && (cust.location.toLowerCase().includes('kozhikode') || cust.location.toLowerCase().includes('koyilandy') || cust.location.toLowerCase().includes('calicut'))) ||
-          (target.includes('mumbai') && (cust.location.toLowerCase().includes('mumbai') || cust.location.toLowerCase().includes('bkc') || cust.location.toLowerCase().includes('bandra'))) ||
-          (target.includes('chennai') && cust.location.toLowerCase().includes('chennai')) ||
-          (target.includes('hyderabad') && cust.location.toLowerCase().includes('hyderabad')) ||
-          (target.includes('delhi') && (cust.location.toLowerCase().includes('delhi') || cust.location.toLowerCase().includes('noida') || cust.location.toLowerCase().includes('gurugram')))
+        const target = customerBranchFilter.trim().toLowerCase();
+        const cBranch = (cust.branch || '').toLowerCase();
+        const cTags = Array.isArray((cust as any).tags) ? (cust as any).tags.map((t: string) => String(t).toLowerCase()) : [];
+        const cLoc = (cust.location || cust.address || '').toLowerCase();
+
+        const branchMatch =
+          cBranch === target ||
+          (cBranch && (cBranch.includes(target) || target.includes(cBranch))) ||
+          cTags.some((t: string) => t === target || t.includes(target) || target.includes(t));
+
+        const cityKeyword = target.replace(' branch', '').replace(' head office', 'kozhikode').trim();
+        const locMatch = cLoc && (
+          (cityKeyword.length > 2 && cLoc.includes(cityKeyword)) ||
+          (target.includes('bangalore') && cLoc.includes('bangalore')) ||
+          (target.includes('kochi') && (cLoc.includes('kochi') || cLoc.includes('kakkanad') || cLoc.includes('infopark'))) ||
+          (target.includes('head office') && (cLoc.includes('kozhikode') || cLoc.includes('koyilandy') || cLoc.includes('calicut'))) ||
+          (target.includes('calicut') && (cLoc.includes('calicut') || cLoc.includes('kozhikode') || cLoc.includes('koyilandy'))) ||
+          (target.includes('kashmir') && (cLoc.includes('kashmir') || cLoc.includes('ladakh') || cLoc.includes('leh'))) ||
+          (target.includes('mumbai') && (cLoc.includes('mumbai') || cLoc.includes('bkc') || cLoc.includes('bandra'))) ||
+          (target.includes('chennai') && cLoc.includes('chennai')) ||
+          (target.includes('hyderabad') && cLoc.includes('hyderabad')) ||
+          (target.includes('delhi') && (cLoc.includes('delhi') || cLoc.includes('noida') || cLoc.includes('gurugram')))
         );
+
         if (!branchMatch && !locMatch) return false;
       }
 
@@ -812,11 +833,21 @@ export const CustomersView: React.FC = () => {
 
                   {branches.map((b) => {
                     const isSelected = customerBranchFilter === b.name;
-                    const bCount = customers.filter(
-                      (c) =>
-                        c.branch === b.name ||
-                        (b.city && c.location.toLowerCase().includes(b.city.toLowerCase()))
-                    ).length;
+                    const bTarget = b.name.trim().toLowerCase();
+                    const bCity = (b.city || '').trim().toLowerCase();
+                    const bCount = customers.filter((c) => {
+                      const cBranch = (c.branch || '').toLowerCase();
+                      const cTags = Array.isArray((c as any).tags)
+                        ? (c as any).tags.map((t: string) => String(t).toLowerCase())
+                        : [];
+                      const cLoc = (c.location || c.address || '').toLowerCase();
+                      return (
+                        cBranch === bTarget ||
+                        (cBranch && (cBranch.includes(bTarget) || bTarget.includes(cBranch))) ||
+                        cTags.some((t: string) => t === bTarget || t.includes(bTarget) || bTarget.includes(t)) ||
+                        (bCity.length > 2 && cLoc.includes(bCity))
+                      );
+                    }).length;
 
                     return (
                       <button
@@ -847,7 +878,7 @@ export const CustomersView: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                            {bCount || b.customers_count || 450}
+                            {bCount}
                           </span>
                           {isSelected && (
                             <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />
