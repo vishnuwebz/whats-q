@@ -165,12 +165,80 @@ export const getBranchActivity = (branch: BranchItem) => {
   ];
 };
 
+export type BranchSubPageId =
+  | 'overview'
+  | 'fleet-network'
+  | 'workforce-roster'
+  | 'customer-analytics'
+  | 'operational-health'
+  | 'documentation';
+
+export const BRANCHES_SUBPAGE_STORAGE_KEY = 'whatsq_branches_active_subpage';
+
+export const normalizeBranchSubPage = (raw: string | null | undefined): BranchSubPageId | null => {
+  if (!raw) return null;
+  const clean = String(raw).toLowerCase().trim();
+  if (['overview', 'main', 'dashboard', 'branches'].includes(clean)) return 'overview';
+  if (['fleet-network', 'fleet', 'network', 'regional-network', 'regional', 'branches-network'].includes(clean)) return 'fleet-network';
+  if (['workforce-roster', 'workforce', 'roster', 'staff', 'employees'].includes(clean)) return 'workforce-roster';
+  if (['customer-analytics', 'customer-reach', 'customers', 'reach', 'clients'].includes(clean)) return 'customer-analytics';
+  if (['operational-health', 'health', 'uptime', 'telemetry', 'active'].includes(clean)) return 'operational-health';
+  if (['documentation', 'docs', 'guide', 'manual'].includes(clean)) return 'documentation';
+  return null;
+};
+
+export const getInitialBranchSubPage = (initialSubPage?: BranchSubPageId): BranchSubPageId => {
+  // 1. Explicit prop (e.g. from dedicated route /branches/docs)
+  const normalizedProp = normalizeBranchSubPage(initialSubPage);
+  if (normalizedProp) return normalizedProp;
+
+  // 2. Check URL pathname & query parameters
+  if (typeof window !== 'undefined') {
+    try {
+      const pathname = window.location.pathname.toLowerCase();
+      if (pathname.includes('/branches/docs') || pathname.includes('/branches/documentation')) {
+        return 'documentation';
+      }
+      if (pathname.includes('/branches/network') || pathname.includes('/branches/fleet')) {
+        return 'fleet-network';
+      }
+      if (pathname.includes('/branches/roster') || pathname.includes('/branches/workforce')) {
+        return 'workforce-roster';
+      }
+      if (pathname.includes('/branches/customers') || pathname.includes('/branches/reach')) {
+        return 'customer-analytics';
+      }
+      if (pathname.includes('/branches/health') || pathname.includes('/branches/uptime')) {
+        return 'operational-health';
+      }
+
+      const url = new URL(window.location.href);
+      const queryParam =
+        url.searchParams.get('sub') ||
+        url.searchParams.get('view') ||
+        url.searchParams.get('tab') ||
+        url.searchParams.get('page');
+      const normalizedQuery = normalizeBranchSubPage(queryParam);
+      if (normalizedQuery) return normalizedQuery;
+
+      // 3. Fallback to persisted localStorage
+      const stored = localStorage.getItem(BRANCHES_SUBPAGE_STORAGE_KEY);
+      const normalizedStored = normalizeBranchSubPage(stored);
+      if (normalizedStored) return normalizedStored;
+    } catch {}
+  }
+
+  // 4. Default to overview
+  return 'overview';
+};
+
 export interface BranchesViewProps {
-  initialSubPage?: 'overview' | 'fleet-network' | 'workforce-roster' | 'customer-analytics' | 'operational-health' | 'documentation';
+  initialSubPage?: BranchSubPageId;
 }
 
 export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) => {
   const {
+    activeTab,
     branches,
     employees,
     customers,
@@ -184,25 +252,63 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
     globalFilter,
   } = useQiyamStore();
 
-  // Sub-pages triggered by Top Shortcuts & Documentation
-  const [activeSubPage, setActiveSubPage] = useState<'overview' | 'fleet-network' | 'workforce-roster' | 'customer-analytics' | 'operational-health' | 'documentation'>(() => {
-    if (initialSubPage) return initialSubPage;
+  // Sub-pages triggered by Top Shortcuts & Documentation with full persistence
+  const [activeSubPage, setActiveSubPage] = useState<BranchSubPageId>(() => getInitialBranchSubPage(initialSubPage));
+
+  const handleSelectSubPage = React.useCallback((subId: BranchSubPageId) => {
+    setActiveSubPage(subId);
     try {
-      const url = new URL(window.location.href);
-      const sub = url.searchParams.get('sub') || url.searchParams.get('view') || url.searchParams.get('tab');
-      if (sub === 'documentation' || sub === 'docs' || window.location.pathname.includes('/branches/docs') || window.location.pathname.includes('/branches/documentation')) {
-        return 'documentation';
-      }
-      if (sub && ['fleet-network', 'workforce-roster', 'customer-analytics', 'operational-health'].includes(sub)) {
-        return sub as any;
+      localStorage.setItem(BRANCHES_SUBPAGE_STORAGE_KEY, subId);
+      if (subId === 'documentation') {
+        if (activeTab !== 'branches-docs') {
+          setActiveTab('branches-docs');
+        }
+        window.history.pushState(null, '', '/branches/docs');
+      } else {
+        if (activeTab !== 'branches') {
+          setActiveTab('branches');
+        }
+        const targetUrl = subId === 'overview' ? '/branches' : `/branches?sub=${subId}`;
+        window.history.pushState(null, '', targetUrl);
       }
     } catch {}
-    return 'overview';
-  });
+  }, [activeTab, setActiveTab]);
+
+  // Listen for browser popstate (back/forward navigation)
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const resolved = getInitialBranchSubPage();
+      if (resolved && resolved !== activeSubPage) {
+        setActiveSubPage(resolved);
+        try {
+          localStorage.setItem(BRANCHES_SUBPAGE_STORAGE_KEY, resolved);
+        } catch {}
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeSubPage]);
+
+  // Keep URL address bar in sync on mount if restored from localStorage without search param
+  React.useEffect(() => {
+    try {
+      const isDocs = window.location.pathname.includes('/branches/docs');
+      const currentUrl = new URL(window.location.href);
+      const currentSub = currentUrl.searchParams.get('sub');
+      if (activeSubPage === 'documentation' && !isDocs) {
+        window.history.replaceState(null, '', '/branches/docs');
+      } else if (activeSubPage !== 'overview' && activeSubPage !== 'documentation' && currentSub !== activeSubPage) {
+        window.history.replaceState(null, '', `/branches?sub=${activeSubPage}`);
+      }
+    } catch {}
+  }, []);
 
   React.useEffect(() => {
     if (initialSubPage && initialSubPage !== activeSubPage) {
       setActiveSubPage(initialSubPage);
+      try {
+        localStorage.setItem(BRANCHES_SUBPAGE_STORAGE_KEY, initialSubPage);
+      } catch {}
     }
   }, [initialSubPage]);
 
@@ -452,14 +558,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
             <button
               key={tab.id}
               type="button"
-              onClick={() => {
-                setActiveSubPage(tab.id as any);
-                if (tab.id === 'documentation') {
-                  try { window.history.pushState(null, '', '/branches/docs'); } catch {}
-                } else {
-                  try { window.history.pushState(null, '', '/branches'); } catch {}
-                }
-              }}
+              onClick={() => handleSelectSubPage(tab.id as BranchSubPageId)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
                 activeSubPage === tab.id
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -493,7 +592,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               {/* Card 1: Total Branches */}
               <div
                 onClick={() => {
-                  setActiveSubPage('fleet-network');
+                  handleSelectSubPage('fleet-network');
                   addToast('Opening Regional Branch Network...', 'info');
                 }}
                 className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5 transition-all hover:shadow-md hover:border-blue-400 cursor-pointer group"
@@ -518,7 +617,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               {/* Card 2: Total Employees */}
               <div
                 onClick={() => {
-                  setActiveSubPage('workforce-roster');
+                  handleSelectSubPage('workforce-roster');
                   addToast('Opening Branch Workforce Roster...', 'info');
                 }}
                 className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5 transition-all hover:shadow-md hover:border-purple-400 cursor-pointer group"
@@ -543,7 +642,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               {/* Card 3: Total Customers */}
               <div
                 onClick={() => {
-                  setActiveSubPage('customer-analytics');
+                  handleSelectSubPage('customer-analytics');
                   addToast('Opening Customer Distribution Analytics...', 'info');
                 }}
                 className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5 transition-all hover:shadow-md hover:border-emerald-400 cursor-pointer group"
@@ -570,7 +669,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               {/* Card 4: Active Branches */}
               <div
                 onClick={() => {
-                  setActiveSubPage('operational-health');
+                  handleSelectSubPage('operational-health');
                   addToast('Opening Operational Health & Uptime Monitor...', 'info');
                 }}
                 className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5 transition-all hover:shadow-md hover:border-rose-400 cursor-pointer group"
@@ -1161,12 +1260,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 <div className="pt-4">
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveSubPage('documentation');
-                      try {
-                        window.history.pushState(null, '', '/branches/docs');
-                      } catch {}
-                    }}
+                    onClick={() => handleSelectSubPage('documentation')}
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 px-3 py-2 rounded-xl transition-colors cursor-pointer"
                   >
                     <span>View Documentation</span>
@@ -1188,7 +1282,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setActiveSubPage('overview')}
+                  onClick={() => handleSelectSubPage('overview')}
                   className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
                   title="Back to Overview"
                 >
@@ -1223,80 +1317,125 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 { state: 'Delhi NCR', count: branches.filter((b) => b.state === 'Delhi').length || 1, cities: 'New Delhi', color: 'border-amber-200 bg-amber-50/50 text-amber-800' },
                 { state: 'Tamil Nadu', count: branches.filter((b) => b.state === 'Tamil Nadu').length || 1, cities: 'Chennai Mount Rd', color: 'border-rose-200 bg-rose-50/50 text-rose-800' },
                 { state: 'Telangana', count: branches.filter((b) => b.state === 'Telangana').length || 1, cities: 'Hyderabad Hitec', color: 'border-indigo-200 bg-indigo-50/50 text-indigo-800' },
-              ].map((reg) => (
-                <div key={reg.state} className={`p-3.5 rounded-2xl border ${reg.color} space-y-1`}>
-                  <div className="text-[10px] uppercase tracking-wider font-bold opacity-75">{reg.state}</div>
-                  <div className="text-xl font-extrabold">{reg.count} <span className="text-xs font-medium">branches</span></div>
-                  <div className="text-[10px] opacity-75 truncate">{reg.cities}</div>
-                </div>
-              ))}
+              ].map((reg) => {
+                const isSelected = selectedStateFilter.toLowerCase() === reg.state.toLowerCase() || (reg.state === 'Delhi NCR' && selectedStateFilter.toLowerCase() === 'delhi');
+                return (
+                  <div
+                    key={reg.state}
+                    onClick={() => {
+                      setSelectedStateFilter((prev) => {
+                        const target = reg.state === 'Delhi NCR' ? 'Delhi' : reg.state;
+                        return prev.toLowerCase() === target.toLowerCase() ? 'all' : target;
+                      });
+                    }}
+                    className={`p-3.5 rounded-2xl border ${reg.color} space-y-1 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xs ${
+                      isSelected ? 'ring-2 ring-emerald-500 shadow-md font-bold' : ''
+                    }`}
+                    title={`Click to filter branches in ${reg.state}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] uppercase tracking-wider font-bold opacity-75">{reg.state}</div>
+                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />}
+                    </div>
+                    <div className="text-xl font-extrabold">{reg.count} <span className="text-xs font-medium">branches</span></div>
+                    <div className="text-[10px] opacity-75 truncate">{reg.cities}</div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Network Table (Image 1 Format) */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden text-xs">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <div className="font-bold text-slate-800">All Network Branches ({branches.length})</div>
-                <div className="text-[11px] text-slate-500">Click any branch name to open complete dossiers</div>
-              </div>
+            {(() => {
+              const filteredFleetBranches = branches.filter((b) => {
+                if (selectedStateFilter === 'all') return true;
+                const filterLower = selectedStateFilter.toLowerCase();
+                const bState = (b.state || '').toLowerCase();
+                if (filterLower === 'delhi' || filterLower === 'delhi ncr') {
+                  return bState.includes('delhi');
+                }
+                return bState.includes(filterLower);
+              });
 
-              <div className="overflow-x-auto scrollbar-thin">
-                <table className="w-full text-left min-w-[760px]">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="py-3 px-4">Branch Name</th>
-                      <th className="py-3 px-4">Code</th>
-                      <th className="py-3 px-4">City / State</th>
-                      <th className="py-3 px-4">Active Automations</th>
-                      <th className="py-3 px-4">Tasks Automated</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Last Activity</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {branches.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-4">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedBranchForDepth(b)}
-                            className="text-left font-bold text-slate-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5"
-                          >
-                            <span>{b.name}</span>
-                            <Eye className="w-3.5 h-3.5 text-slate-400" />
-                          </button>
-                          <div className="text-[10px] text-slate-400 font-medium">{b.branch_type || 'Branch Office'}</div>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-medium text-slate-600">{b.code}</td>
-                        <td className="py-3.5 px-4 font-medium text-slate-800">{b.city}, {b.state}</td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900">{b.automations_count || 18} workflows</td>
-                        <td className="py-3.5 px-4 font-bold text-emerald-600">{b.tasks_automated || 120} tasks</td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] border uppercase ${
-                            b.status?.toLowerCase() === 'active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-100 text-slate-500 border-slate-200'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${b.status?.toLowerCase() === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                            <span>{b.status || 'Active'}</span>
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || 'May 31, 2024 10:30 AM'}</td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedBranchForDepth(b)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
-                          >
-                            Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              return (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden text-xs">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="font-bold text-slate-800">All Network Branches ({filteredFleetBranches.length})</div>
+                      {selectedStateFilter !== 'all' && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStateFilter('all')}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Clear territory filter"
+                        >
+                          <span>Region: {selectedStateFilter}</span>
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500">Click any branch name to open complete dossiers</div>
+                  </div>
+
+                  <div className="overflow-x-auto scrollbar-thin">
+                    <table className="w-full text-left min-w-[760px]">
+                      <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="py-3 px-4">Branch Name</th>
+                          <th className="py-3 px-4">Code</th>
+                          <th className="py-3 px-4">City / State</th>
+                          <th className="py-3 px-4">Active Automations</th>
+                          <th className="py-3 px-4">Tasks Automated</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4">Last Activity</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {filteredFleetBranches.map((b) => (
+                          <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBranchForDepth(b)}
+                                className="text-left font-bold text-slate-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                              >
+                                <span>{b.name}</span>
+                                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                              </button>
+                              <div className="text-[10px] text-slate-400 font-medium">{b.branch_type || 'Branch Office'}</div>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono font-medium text-slate-600">{b.code}</td>
+                            <td className="py-3.5 px-4 font-medium text-slate-800">{b.city}, {b.state}</td>
+                            <td className="py-3.5 px-4 font-bold text-slate-900">{b.automations_count || 18} workflows</td>
+                            <td className="py-3.5 px-4 font-bold text-emerald-600">{b.tasks_automated || 120} tasks</td>
+                            <td className="py-3.5 px-4">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] border uppercase ${
+                                b.status?.toLowerCase() === 'active'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${b.status?.toLowerCase() === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                                <span>{b.status || 'Active'}</span>
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || 'May 31, 2024 10:30 AM'}</td>
+                            <td className="py-3.5 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBranchForDepth(b)}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
+                              >
+                                Details
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1310,7 +1449,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setActiveSubPage('overview')}
+                  onClick={() => handleSelectSubPage('overview')}
                   className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
                   title="Back to Overview"
                 >
@@ -1452,7 +1591,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setActiveSubPage('overview')}
+                  onClick={() => handleSelectSubPage('overview')}
                   className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
                   title="Back to Overview"
                 >
@@ -1539,7 +1678,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setActiveSubPage('overview')}
+                  onClick={() => handleSelectSubPage('overview')}
                   className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
                   title="Back to Overview"
                 >
@@ -1557,7 +1696,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 type="button"
                 onClick={() => {
                   setStatusFilter('active');
-                  setActiveSubPage('overview');
+                  handleSelectSubPage('overview');
                   addToast('Filtered to active branches on dashboard', 'success');
                 }}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -1646,18 +1785,8 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
             ══════════════════════════════════════════════════════ */}
         {activeSubPage === 'documentation' && (
           <BranchDocumentationView
-            onBack={() => {
-              setActiveSubPage('overview');
-              try {
-                window.history.pushState(null, '', '/branches');
-              } catch {}
-            }}
-            onNavigateSubPage={(sub) => {
-              setActiveSubPage(sub);
-              try {
-                window.history.pushState(null, '', '/branches');
-              } catch {}
-            }}
+            onBack={() => handleSelectSubPage('overview')}
+            onNavigateSubPage={(sub) => handleSelectSubPage(sub)}
             onOpenAddBranch={handleOpenAddModal}
           />
         )}
