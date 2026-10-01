@@ -146,6 +146,28 @@ export const ConversationsView: React.FC = () => {
     });
   };
 
+  // Quick Action Chips toolbar collapsed state (persisted in localStorage)
+  const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('whatsq_quick_actions_collapsed');
+      return stored !== null ? stored === 'true' : false; // Default: false (EXPANDED)
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleQuickActions = () => {
+    setIsQuickActionsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('whatsq_quick_actions_collapsed', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   // Suppression / Blocked Warning banner collapsed state (per conversation ID, defaults to false = EXPANDED)
   const [collapsedSuppressionIds, setCollapsedSuppressionIds] = useState<Record<string | number, boolean>>({});
 
@@ -3344,70 +3366,87 @@ export const ConversationsView: React.FC = () => {
               )}
             </div>
 
-              {/* Quick Action Chips Bar */}
-              <div
-                data-draggable-scroll="true"
-                className="px-5 py-2 bg-white border-t border-slate-200/60 flex items-center gap-2 overflow-x-auto scrollbar-hide scrollbar-none no-scrollbar text-xs"
-              >
-                <span className="text-[11px] font-semibold text-slate-400 shrink-0">Quick Actions:</span>
-                <button
-                  onClick={() => {
-                    if (currentSuppression) {
-                      addToast(
-                        `Broadcast templates are restricted for ${currentSuppression.label.toLowerCase()} contacts. Re-subscribe with consent first.`,
-                        'warning'
-                      );
-                      return;
-                    }
-                    setIsTemplateModalOpen(true);
-                  }}
-                  className={`px-2.5 py-1 rounded-full border font-bold whitespace-nowrap text-[11px] flex items-center gap-1 shadow-xs transition-all cursor-pointer ${
-                    currentSuppression
-                      ? 'bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-700'
-                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
-                  }`}
-                  title={currentSuppression ? `Promotional templates restricted: ${currentSuppression.label}` : 'Use WhatsApp Template'}
+              {/* Quick Action Chips Bar (Collapsible to maximize chat space) */}
+              {!isQuickActionsCollapsed && (
+                <div
+                  className="px-3 sm:px-4 py-1.5 bg-white border-t border-slate-200/60 flex items-center justify-between gap-2 text-xs animate-in fade-in duration-150"
                 >
-                  {currentSuppression ? (
-                    <Ban className="w-3 h-3 text-rose-600" />
-                  ) : (
-                    <Sparkles className="w-3 h-3 text-emerald-600" />
-                  )}
-                  <span>{currentSuppression ? `Template Restricted (${currentSuppression.label})` : 'Use WhatsApp Template'}</span>
-                </button>
-                <button
-                  onClick={() => setIsFollowUpModalOpen(true)}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-sky-50 border border-slate-200 text-sky-700 font-medium whitespace-nowrap text-[11px] cursor-pointer flex items-center gap-1"
-                  title="Schedule Follow-up with this customer"
-                >
-                  <Calendar className="w-3 h-3 text-sky-600" />
-                  <span>Follow Up</span>
-                </button>
-                <button
-                  onClick={() => handleQuickAction('Send Quotation')}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-emerald-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
-                >
-                  📄 Send Quotation
-                </button>
-                <button
-                  onClick={() => handleQuickAction('Create Appointment')}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-blue-50 border border-slate-200 text-blue-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
-                >
-                  📅 Create Appointment
-                </button>
-                <button
-                  onClick={() => handleQuickAction('Mark Lead Won')}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-emerald-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
-                >
-                  🏆 Mark Lead Won
-                </button>
-                <button
-                  onClick={() => handleQuickAction('Mark as Resolved')}
-                  className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-medium whitespace-nowrap text-[11px] cursor-pointer"
-                >
-                  ✓ Mark Resolved
-                </button>
-              </div>
+                  <div
+                    data-draggable-scroll="true"
+                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide scrollbar-none no-scrollbar flex-1 min-w-0"
+                  >
+                    <span className="text-[11px] font-semibold text-slate-400 shrink-0">Quick Actions:</span>
+                    <button
+                      onClick={() => {
+                        if (currentSuppression) {
+                          addToast(
+                            `Broadcast templates are restricted for ${currentSuppression.label.toLowerCase()} contacts. Re-subscribe with consent first.`,
+                            'warning'
+                          );
+                          return;
+                        }
+                        setIsTemplateModalOpen(true);
+                      }}
+                      className={`px-2.5 py-1 rounded-full border font-bold whitespace-nowrap text-[11px] flex items-center gap-1 shadow-xs transition-all cursor-pointer ${
+                        currentSuppression
+                          ? 'bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-700'
+                          : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                      }`}
+                      title={currentSuppression ? `Promotional templates restricted: ${currentSuppression.label}` : 'Use WhatsApp Template'}
+                    >
+                      {currentSuppression ? (
+                        <Ban className="w-3 h-3 text-rose-600" />
+                      ) : (
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                      )}
+                      <span>{currentSuppression ? `Template Restricted (${currentSuppression.label})` : 'Use WhatsApp Template'}</span>
+                    </button>
+                    <button
+                      onClick={() => setIsFollowUpModalOpen(true)}
+                      className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-sky-50 border border-slate-200 text-sky-700 font-medium whitespace-nowrap text-[11px] cursor-pointer flex items-center gap-1"
+                      title="Schedule Follow-up with this customer"
+                    >
+                      <Calendar className="w-3 h-3 text-sky-600" />
+                      <span>Follow Up</span>
+                    </button>
+                    <button
+                      onClick={() => handleQuickAction('Send Quotation')}
+                      className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-emerald-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
+                    >
+                      📄 Send Quotation
+                    </button>
+                    <button
+                      onClick={() => handleQuickAction('Create Appointment')}
+                      className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-blue-50 border border-slate-200 text-blue-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
+                    >
+                      📅 Create Appointment
+                    </button>
+                    <button
+                      onClick={() => handleQuickAction('Mark Lead Won')}
+                      className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-emerald-700 font-medium whitespace-nowrap text-[11px] cursor-pointer"
+                    >
+                      🏆 Mark Lead Won
+                    </button>
+                    <button
+                      onClick={() => handleQuickAction('Mark as Resolved')}
+                      className="px-2.5 py-1 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-medium whitespace-nowrap text-[11px] cursor-pointer"
+                    >
+                      ✓ Mark Resolved
+                    </button>
+                  </div>
+
+                  {/* Collapse Button inside Quick Actions row */}
+                  <button
+                    type="button"
+                    onClick={toggleQuickActions}
+                    className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer shrink-0 ml-1"
+                    title="Collapse Quick Actions bar to save space"
+                  >
+                    <span>Collapse</span>
+                    <ChevronUp className="w-3 h-3 text-slate-500" />
+                  </button>
+                </div>
+              )}
 
               {/* Active Outbound WhatsApp Business Line Strip & Multi-Employee Device Switcher */}
               <div className="px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-slate-50 border-t border-emerald-100/90 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700">
@@ -3587,6 +3626,31 @@ export const ConversationsView: React.FC = () => {
                   >
                     <QrCode className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Link New Phone</span>
+                  </button>
+
+                  {/* Collapse / Expand Quick Actions Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={toggleQuickActions}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer border ${
+                      isQuickActionsCollapsed
+                        ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900'
+                    }`}
+                    title={isQuickActionsCollapsed ? "Expand Quick Actions chips" : "Collapse Quick Actions bar to save space"}
+                  >
+                    {isQuickActionsCollapsed ? (
+                      <>
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                        <span>Quick Actions</span>
+                        <ChevronDown className="w-3.5 h-3.5 text-emerald-700" />
+                      </>
+                    ) : (
+                      <>
+                        <span>Collapse</span>
+                        <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
