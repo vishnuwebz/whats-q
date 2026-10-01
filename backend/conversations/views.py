@@ -1211,6 +1211,57 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer = ConversationSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post', 'delete'])
+    def clear_chat(self, request, pk=None):
+        """
+        Clears all message history for a conversation without deleting the conversation/contact itself.
+        Resets last_message, unread_count, and active_workflow so agents/bots can start
+        a completely fresh new conversation from scratch with the same customer.
+        """
+        raw_pk = str(pk).strip()
+        conv = None
+        if raw_pk.isdigit():
+            conv = Conversation.objects.filter(pk=int(raw_pk)).first()
+        if not conv and raw_pk.startswith('conv-') and raw_pk[5:].isdigit():
+            conv = Conversation.objects.filter(pk=int(raw_pk[5:])).first()
+        if not conv:
+            conv = Conversation.objects.filter(contact_name__iexact=raw_pk).first()
+        if not conv:
+            conv = Conversation.objects.filter(phone_number=raw_pk).first()
+        if not conv:
+            digits = re.sub(r'\D', '', raw_pk)
+            if len(digits) >= 7:
+                suffix = digits[-10:] if len(digits) >= 10 else digits
+                conv = Conversation.objects.filter(phone_number__icontains=suffix).first()
+
+        if not conv:
+            return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        msg_count = conv.messages.count()
+        conv.messages.all().delete()
+        conv.last_message = ''
+        conv.unread_count = 0
+        conv.active_workflow = 'Paused'
+        conv.save(update_fields=['last_message', 'unread_count', 'active_workflow'])
+
+        conv_data = ConversationSerializer(conv).data
+
+        try:
+            from core.events import event_bus, emit_event
+            payload = {'id': conv.id, 'contact_name': conv.contact_name, 'messages_cleared': msg_count}
+            event_bus.publish('conversation.cleared', payload)
+            emit_event('conversation.cleared', payload)
+            emit_event('conversation.updated', conv_data)
+        except Exception as e:
+            logger.warning(f"Error publishing conversation.cleared event: {e}")
+
+        logger.info(f"Conversation {conv.id} ({conv.contact_name}) chat history cleared ({msg_count} messages deleted). Ready for fresh start.")
+        return Response({
+            'success': True,
+            'message': f'Chat history with {conv.contact_name} cleared ({msg_count} messages removed). Ready for a fresh start.',
+            'conversation': conv_data
+        }, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['post'])
     def resubscribe(self, request):
         """

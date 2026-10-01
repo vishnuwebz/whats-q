@@ -112,6 +112,15 @@ class RealtimeSyncManager {
         }
       });
 
+      this.eventSource.addEventListener('conversation.cleared', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'conversation.cleared', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing conversation.cleared event:', err);
+        }
+      });
+
       this.eventSource.addEventListener('trash.emptied', (e: any) => {
         try {
           const payload = JSON.parse(e.data);
@@ -377,6 +386,28 @@ class RealtimeSyncManager {
             addDeletedConversationId(id);
             store.refreshConversations();
           }
+        }
+        break;
+      }
+
+      case 'conversation.cleared': {
+        const { id } = event.data || {};
+        if (id) {
+          const strId = String(id);
+          useQiyamStore.setState((state) => ({
+            conversations: state.conversations.map((c) => {
+              if (String(c.id) === strId) {
+                return {
+                  ...c,
+                  messages: [],
+                  last_message: '',
+                  unread_count: 0,
+                  active_workflow: 'Paused',
+                };
+              }
+              return c;
+            }),
+          }));
         }
         break;
       }

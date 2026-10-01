@@ -140,6 +140,16 @@ export const qiyamApi = {
     }
   },
 
+  async clearChat(id: string | number): Promise<any> {
+    try {
+      const res = await apiClient.post(`/conversations/threads/${id}/clear_chat/`, {});
+      return res;
+    } catch (e) {
+      console.warn('Could not clear chat on backend:', e);
+      return null;
+    }
+  },
+
   async fetchDeletedConversations(): Promise<Conversation[]> {
     try {
       const res: any = await apiClient.get('/conversations/threads/deleted_threads/');

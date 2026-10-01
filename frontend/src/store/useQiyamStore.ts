@@ -586,6 +586,7 @@ interface QiyamState {
   deleteConversation: (id: string | number, permanent?: boolean) => Promise<boolean>;
   emptyTrash: () => Promise<boolean>;
   restoreConversation: (id: string | number) => Promise<boolean>;
+  clearConversationChat: (id: string | number) => Promise<boolean>;
   fetchDeletedConversations: () => Promise<void>;
   isSimulatorOpen: boolean;
   setIsSimulatorOpen: (open: boolean) => void;
@@ -3271,6 +3272,40 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       console.warn('Backend restore conversation notice:', e);
       return false;
     }
+  },
+
+  clearConversationChat: async (id: string | number) => {
+    const strId = String(id);
+    let targetContactName = 'Customer';
+
+    set((state) => {
+      const updatedConversations = state.conversations.map((c) => {
+        if (String(c.id) === strId) {
+          targetContactName = c.contact_name || 'Customer';
+          return {
+            ...c,
+            messages: [],
+            last_message: '',
+            unread_count: 0,
+            active_workflow: 'Paused',
+          };
+        }
+        return c;
+      });
+      persistConversations(updatedConversations);
+      return { conversations: updatedConversations };
+    });
+
+    get().addToast(
+      `Chat history with ${targetContactName} cleared! You can now start a fresh conversation from scratch.`,
+      'success'
+    );
+
+    qiyamApi.clearChat(id).catch((e) => {
+      console.warn('Backend clear chat notice:', e);
+    });
+
+    return true;
   },
 
   fetchDeletedConversations: async () => {

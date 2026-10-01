@@ -14,6 +14,7 @@ import {
 import { SendTemplateModal } from './conversations/SendTemplateModal';
 import { CustomerAvatarModal } from './conversations/CustomerAvatarModal';
 import { DeleteConversationModal } from './conversations/DeleteConversationModal';
+import { ClearChatModal } from './conversations/ClearChatModal';
 import { ManualOptOutModal } from './conversations/ManualOptOutModal';
 import { ChatWorkflowModal } from './conversations/ChatWorkflowModal';
 import { LinkEmployeeWhatsAppModal } from './conversations/LinkEmployeeWhatsAppModal';
@@ -44,6 +45,7 @@ export const ConversationsView: React.FC = () => {
     selectedConversationId,
     setSelectedConversationId,
     deleteConversation,
+    clearConversationChat,
     markConversationAsRead,
     sendMessage,
     sendTemplateMessage,
@@ -97,6 +99,7 @@ export const ConversationsView: React.FC = () => {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
   const [isPermanentDelete, setIsPermanentDelete] = useState<boolean>(false);
+  const [conversationToClear, setConversationToClear] = useState<Conversation | null>(null);
   const [isEmptyTrashModalOpen, setIsEmptyTrashModalOpen] = useState<boolean>(false);
   const [isManualOptOutModalOpen, setIsManualOptOutModalOpen] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
@@ -1588,17 +1591,27 @@ export const ConversationsView: React.FC = () => {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => {
-                setConversationToDelete(currentConv);
-                setIsPermanentDelete(false);
-              }}
-              title="Delete this conversation"
-              className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Conversation</span>
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => setConversationToClear(currentConv)}
+                title="Clear complete chat history to start a fresh conversation"
+                className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/90 rounded-xl font-bold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                <span>Clear Complete Chat</span>
+              </button>
+              <button
+                onClick={() => {
+                  setConversationToDelete(currentConv);
+                  setIsPermanentDelete(false);
+                }}
+                title="Move this conversation to Trash"
+                className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Move to Trash</span>
+              </button>
+            </div>
           )}
         </div>
       </>
@@ -2479,6 +2492,22 @@ export const ConversationsView: React.FC = () => {
                                 </div>
                               </button>
 
+                              {!currentConv.is_deleted && (
+                                <button
+                                  onClick={() => {
+                                    setIsHeaderMenuOpen(false);
+                                    setConversationToClear(currentConv);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-amber-800 hover:bg-amber-50 hover:text-amber-900 transition-colors text-left cursor-pointer"
+                                >
+                                  <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold truncate">Clear Complete Chat</p>
+                                    <p className="text-[10px] text-slate-400">Start fresh from scratch</p>
+                                  </div>
+                                </button>
+                              )}
+
                               {currentConv.is_deleted ? (
                                 <>
                                   <button
@@ -2601,16 +2630,26 @@ export const ConversationsView: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setConversationToDelete(currentConv);
-                            setIsPermanentDelete(false);
-                          }}
-                          className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                          title="Move to Trash"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setConversationToClear(currentConv)}
+                            className="p-1.5 sm:p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                            title="Clear Complete Chat (Start Fresh)"
+                            aria-label="Clear Complete Chat"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setConversationToDelete(currentConv);
+                              setIsPermanentDelete(false);
+                            }}
+                            className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                            title="Move to Trash"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
 
                       {/* Minimize Options Button */}
@@ -3003,9 +3042,26 @@ export const ConversationsView: React.FC = () => {
                 )}
 
                 {messageGroups.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 space-y-2">
-                    <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
-                    <p className="text-xs text-slate-500">No messages yet in this conversation.</p>
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                      <Sparkles className="w-7 h-7" />
+                    </div>
+                    <div className="space-y-1 max-w-sm">
+                      <h4 className="text-sm font-bold text-slate-800">Fresh Conversation Ready</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Start a brand new conversation with <span className="font-semibold text-slate-700">{currentConv.contact_name}</span>. Type a message or pick a pre-approved WhatsApp template below.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsTemplateModalOpen(true)}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Send Template</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   messageGroups.map((group) => (
@@ -3993,6 +4049,16 @@ export const ConversationsView: React.FC = () => {
             setIsMobileChatOpen(false);
             setIsCustomerDetailsOpen(false);
           }
+        }}
+      />
+
+      {/* Clear Chat Confirmation Modal */}
+      <ClearChatModal
+        isOpen={Boolean(conversationToClear)}
+        onClose={() => setConversationToClear(null)}
+        conversation={conversationToClear}
+        onConfirmClear={async (id) => {
+          await clearConversationChat(id);
         }}
       />
 
