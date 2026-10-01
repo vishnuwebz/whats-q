@@ -232,13 +232,16 @@ export const getBranchStaff = (branch: BranchItem) => {
 };
 
 export const getBranchWorkflows = (branch: BranchItem) => {
-  return [
+  const targetCount = Math.max(1, Number(branch.automations_count) || 14);
+  const isBranchActive = branch.status?.toLowerCase() !== 'inactive';
+
+  const WORKFLOW_POOL = [
     {
       id: 'wf-1',
       name: 'Regional Inbound Lead Router',
       description: `Auto-routes incoming WhatsApp leads from ${branch.city} to local sales reps`,
       trigger: 'New WhatsApp Message',
-      status: true,
+      status: isBranchActive,
       runs: 142,
       successRate: '99.4%',
     },
@@ -247,7 +250,7 @@ export const getBranchWorkflows = (branch: BranchItem) => {
       name: 'Multilingual Regional Auto-Responder',
       description: `Instant greeting in English & regional language for ${branch.state} timezone`,
       trigger: 'First Contact',
-      status: true,
+      status: isBranchActive,
       runs: 98,
       successRate: '100%',
     },
@@ -256,7 +259,7 @@ export const getBranchWorkflows = (branch: BranchItem) => {
       name: 'High-Priority Service SLA Alert',
       description: `Escalates pending customer queries > 2 hours to ${branch.manager_name || 'Manager'}`,
       trigger: 'SLA Breach (> 2 hrs)',
-      status: true,
+      status: isBranchActive,
       runs: 12,
       successRate: '98.2%',
     },
@@ -265,11 +268,319 @@ export const getBranchWorkflows = (branch: BranchItem) => {
       name: 'UPI Invoice & Payment Reminder Bot',
       description: 'Sends Razorpay link with automated follow-up before job completion',
       trigger: 'Pending Invoice',
-      status: branch.status?.toLowerCase() === 'active',
+      status: isBranchActive,
       runs: 64,
       successRate: '99.1%',
     },
+    {
+      id: 'wf-5',
+      name: 'Appointment & Booking Confirmer',
+      description: `Dispatches calendar invites, GPS pin, and technician WhatsApp contacts for ${branch.city}`,
+      trigger: 'Booking Confirmed',
+      status: isBranchActive,
+      runs: 184,
+      successRate: '99.8%',
+    },
+    {
+      id: 'wf-6',
+      name: 'Post-Service CSAT & Feedback Collector',
+      description: 'Automatically sends satisfaction survey with Google Review link for 5★ ratings',
+      trigger: 'Ticket Closed',
+      status: isBranchActive,
+      runs: 110,
+      successRate: '97.9%',
+    },
+    {
+      id: 'wf-7',
+      name: 'Field Technician GPS Geofence Check-in',
+      description: `Alerts ${branch.city} operations desk when technician arrives within 500m of customer site`,
+      trigger: 'Geofence Entry',
+      status: isBranchActive,
+      runs: 215,
+      successRate: '99.5%',
+    },
+    {
+      id: 'wf-8',
+      name: 'Automated Warranty & AMC Renewal Alert',
+      description: 'Proactively reminds clients 14 days before annual contract expiry with instant renewal link',
+      trigger: 'Contract Due < 14d',
+      status: isBranchActive,
+      runs: 58,
+      successRate: '98.6%',
+    },
+    {
+      id: 'wf-9',
+      name: 'Live Order Dispatch & Delivery Tracker',
+      description: 'Sends real-time delivery tracking link and dispatch driver details via WhatsApp',
+      trigger: 'Out for Delivery',
+      status: isBranchActive,
+      runs: 167,
+      successRate: '99.9%',
+    },
+    {
+      id: 'wf-10',
+      name: 'Off-Hours AI Concierge & Triage',
+      description: `Handles after-hours queries in ${branch.city} and schedules priority callbacks for next morning`,
+      trigger: 'Message Outside Hours',
+      status: isBranchActive,
+      runs: 86,
+      successRate: '99.2%',
+    },
+    {
+      id: 'wf-11',
+      name: 'VIP Customer Priority Queue Router',
+      description: `Bypasses standard bot and instantly connects key account clients to ${branch.manager_name || 'Senior Lead'}`,
+      trigger: 'VIP Contact Tag',
+      status: isBranchActive,
+      runs: 24,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-12',
+      name: 'Bulk Regional Campaign Delivery Engine',
+      description: `Delivers targeted WhatsApp broadcasts for ${branch.state} respecting Meta tier rate limits`,
+      trigger: 'Broadcast Schedule',
+      status: isBranchActive,
+      runs: 320,
+      successRate: '98.9%',
+    },
+    {
+      id: 'wf-13',
+      name: 'Document & KYC Verification Bot',
+      description: 'Collects PDF invoices, GST certificates, and identity documents directly in WhatsApp chat',
+      trigger: 'KYC Required',
+      status: isBranchActive,
+      runs: 73,
+      successRate: '99.0%',
+    },
+    {
+      id: 'wf-14',
+      name: 'Missed Call to WhatsApp Bridge',
+      description: `Automatically converts missed landline/mobile calls to ${branch.city} into interactive chat greetings`,
+      trigger: 'Missed Call Logged',
+      status: isBranchActive,
+      runs: 156,
+      successRate: '99.7%',
+    },
+    {
+      id: 'wf-15',
+      name: 'Emergency Breakdown Escalation Dispatch',
+      description: `Broadcasts immediate high-urgency notifications to all on-duty ${branch.city} technicians`,
+      trigger: 'Emergency Flag',
+      status: isBranchActive,
+      runs: 19,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-16',
+      name: 'Daily Branch Performance & Revenue Digest',
+      description: 'Compiles daily revenue, closed jobs, and SLA score into an evening report for branch leadership',
+      trigger: 'Daily at 07:00 PM',
+      status: isBranchActive,
+      runs: 30,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-17',
+      name: 'Spare Parts Low-Stock Warning Bot',
+      description: `Alerts ${branch.city} storekeeper when essential hardware stock drops below safety minimum`,
+      trigger: 'Stock < Min Level',
+      status: isBranchActive,
+      runs: 41,
+      successRate: '98.5%',
+    },
+    {
+      id: 'wf-18',
+      name: 'Staff Shift Roster & Route Dispatch',
+      description: 'Sends daily job itineraries and territory routes to all branch team members at 8:00 AM',
+      trigger: 'Daily at 08:00 AM',
+      status: isBranchActive,
+      runs: 30,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-19',
+      name: 'Dormant Client Re-engagement Bot',
+      description: 'Reaches out to accounts inactive for > 60 days with personalized promotional revival codes',
+      trigger: 'Inactivity > 60 Days',
+      status: isBranchActive,
+      runs: 92,
+      successRate: '97.8%',
+    },
+    {
+      id: 'wf-20',
+      name: 'Digital Warranty Certificate Generator',
+      description: 'Generates and delivers personalized PDF warranty certificates directly to customer chat',
+      trigger: 'Job Completed & Paid',
+      status: isBranchActive,
+      runs: 135,
+      successRate: '99.6%',
+    },
+    {
+      id: 'wf-21',
+      name: 'Unread Quotation Follow-up Bot',
+      description: 'Sends gentle automated follow-up if price quotation PDF remains unopened after 24 hours',
+      trigger: 'Quote Unread > 24h',
+      status: isBranchActive,
+      runs: 47,
+      successRate: '98.3%',
+    },
+    {
+      id: 'wf-22',
+      name: 'Self-Service Booking Rescheduler',
+      description: 'Allows customers to modify or postpone appointment time slots without agent assistance',
+      trigger: 'Reschedule Keyword',
+      status: isBranchActive,
+      runs: 68,
+      successRate: '99.4%',
+    },
+    {
+      id: 'wf-23',
+      name: 'Regional Festival & Holiday Notifier',
+      description: `Dispatches automated greetings and adjusted holiday timings for ${branch.state} holidays`,
+      trigger: 'Regional Holiday',
+      status: isBranchActive,
+      runs: 280,
+      successRate: '99.9%',
+    },
+    {
+      id: 'wf-24',
+      name: 'Inter-Branch Referral & Transfer Hub',
+      description: `Transfers inquiries between ${branch.city} and other branches preserving complete chat history`,
+      trigger: 'Branch Transfer Tag',
+      status: isBranchActive,
+      runs: 36,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-25',
+      name: 'Technician Expense & Mileage Tracker',
+      description: 'Logs travel receipts and daily fuel mileage submitted by field technicians via WhatsApp photo upload',
+      trigger: 'Expense Photo Sent',
+      status: isBranchActive,
+      runs: 145,
+      successRate: '99.1%',
+    },
+    {
+      id: 'wf-26',
+      name: 'New Customer Welcome Onboarding',
+      description: `3-stage sequence introducing new ${branch.city} clients to their dedicated support rep and helpline`,
+      trigger: 'New Customer Tag',
+      status: isBranchActive,
+      runs: 88,
+      successRate: '99.5%',
+    },
+    {
+      id: 'wf-27',
+      name: 'GST Tax Invoice Delivery Webhook',
+      description: 'Delivers compliant digital tax invoice and payment acknowledgement immediately after settlement',
+      trigger: 'Payment Webhook',
+      status: isBranchActive,
+      runs: 176,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-28',
+      name: 'Negative Sentiment Escalation Interceptor',
+      description: `AI scans incoming chats for dissatisfaction keywords and alerts ${branch.manager_name || 'Manager'} instantly`,
+      trigger: 'Frustration Detected',
+      status: isBranchActive,
+      runs: 15,
+      successRate: '98.0%',
+    },
+    {
+      id: 'wf-29',
+      name: 'Weekly Safety & Compliance Audit Bot',
+      description: 'Prompts branch field team to confirm vehicle maintenance and safety gear compliance each Monday',
+      trigger: 'Weekly on Monday',
+      status: isBranchActive,
+      runs: 4,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-30',
+      name: 'Proactive Annual Maintenance Visit Scheduler',
+      description: 'Automatically schedules periodic preventative checkups without customer having to call in',
+      trigger: 'Quarterly Maintenance',
+      status: isBranchActive,
+      runs: 62,
+      successRate: '99.2%',
+    },
+    {
+      id: 'wf-31',
+      name: 'Google Maps Local Review Booster',
+      description: `Invites verified happy clients in ${branch.city} to leave a 5-star rating on Google Business Profile`,
+      trigger: 'Positive CSAT Received',
+      status: isBranchActive,
+      runs: 94,
+      successRate: '98.7%',
+    },
+    {
+      id: 'wf-32',
+      name: 'End-of-Day Telemetry Cloud Sync',
+      description: 'Audits and archives all branch chat transcripts, contact updates, and audit trails to secure backup',
+      trigger: 'Daily at 11:30 PM',
+      status: isBranchActive,
+      runs: 30,
+      successRate: '100%',
+    },
+    {
+      id: 'wf-33',
+      name: 'Customer Re-order Reminder Bot',
+      description: 'Analyzes past consumption patterns and suggests consumable replacements right before depletion',
+      trigger: 'Re-order Cycle Due',
+      status: isBranchActive,
+      runs: 52,
+      successRate: '98.4%',
+    },
+    {
+      id: 'wf-34',
+      name: 'Service Cancellation Prevention Flow',
+      description: 'Intervenes when customer mentions cancellation, offering discount vouchers or alternate scheduling',
+      trigger: 'Cancel Intent Detected',
+      status: isBranchActive,
+      runs: 28,
+      successRate: '96.4%',
+    },
+    {
+      id: 'wf-35',
+      name: 'Branch Inbound Call Routing Bot',
+      description: `Directs customer callers to IVR or instant WhatsApp self-service menu for ${branch.city} queries`,
+      trigger: 'Inbound SIP Trigger',
+      status: isBranchActive,
+      runs: 114,
+      successRate: '99.6%',
+    },
+    {
+      id: 'wf-36',
+      name: 'Vendor Purchase Order Delivery Webhook',
+      description: `Dispatches confirmed purchase orders to local ${branch.city} suppliers with tracking acknowledgment`,
+      trigger: 'PO Authorized',
+      status: isBranchActive,
+      runs: 37,
+      successRate: '100%',
+    },
   ];
+
+  const workflowList = [];
+  for (let i = 0; i < targetCount; i++) {
+    const template = WORKFLOW_POOL[i % WORKFLOW_POOL.length];
+    if (i >= WORKFLOW_POOL.length) {
+      workflowList.push({
+        ...template,
+        id: `wf-${i + 1}`,
+        name: `${template.name} (Flow ${Math.floor(i / WORKFLOW_POOL.length) + 1})`,
+        runs: Math.max(10, template.runs - (i * 2)),
+      });
+    } else {
+      workflowList.push({
+        ...template,
+        id: `wf-${i + 1}`,
+      });
+    }
+  }
+
+  return workflowList;
 };
 
 export const getBranchActivity = (branch: BranchItem) => {
@@ -284,14 +595,30 @@ export const getBranchActivity = (branch: BranchItem) => {
     },
     {
       id: 'act-2',
+      title: 'Cloud Telemetry Ping Verified',
+      desc: `Latency verified at 42ms response time to ${branch.city} regional edge gateway.`,
+      time: '25m ago',
+      icon: Activity,
+      color: 'text-emerald-500 bg-emerald-50',
+    },
+    {
+      id: 'act-3',
       title: 'New Lead Auto-Assigned',
       desc: `Lead #1048 routed to ${branch.name} sales desk from Meta Click-to-Ad.`,
-      time: '35m ago',
+      time: '45m ago',
       icon: Zap,
       color: 'text-amber-500 bg-amber-50',
     },
     {
-      id: 'act-3',
+      id: 'act-4',
+      title: 'High-Priority SLA Escalation Resolved',
+      desc: `Pending customer inquiry escalated and cleared by ${branch.manager_name || 'Branch Manager'}.`,
+      time: '1h ago',
+      icon: ShieldCheck,
+      color: 'text-indigo-500 bg-indigo-50',
+    },
+    {
+      id: 'act-5',
       title: 'Branch Shift Check-in Completed',
       desc: `${branch.employees_count || 8} staff checked in on time via WhatsApp Biometric GPS.`,
       time: '2h ago',
@@ -299,7 +626,23 @@ export const getBranchActivity = (branch: BranchItem) => {
       color: 'text-emerald-500 bg-emerald-50',
     },
     {
-      id: 'act-4',
+      id: 'act-6',
+      title: 'Automated UPI Invoice Settled',
+      desc: `Payment of ₹4,850 acknowledged with instant Razorpay webhook sync.`,
+      time: '3h ago',
+      icon: CheckCircle,
+      color: 'text-emerald-500 bg-emerald-50',
+    },
+    {
+      id: 'act-7',
+      title: 'Field Route Dispatched',
+      desc: `Daily routing schedule pushed to ${branch.city} on-duty field technician team.`,
+      time: '5h ago',
+      icon: MapPin,
+      color: 'text-blue-500 bg-blue-50',
+    },
+    {
+      id: 'act-8',
       title: 'Regional Revenue Milestone',
       desc: `Branch achieved 94% of monthly target (₹${((branch.customers_count || 450) * 85).toLocaleString()}).`,
       time: 'Yesterday',
@@ -1795,7 +2138,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 <span className="text-emerald-600 font-semibold">Total: {totalCustomersCount.toLocaleString()} Accounts</span>
               </div>
               <div className="space-y-2.5">
-                {branches.slice(0, 5).map((b) => {
+                {branches.map((b) => {
                   const share = Math.round(((b.customers_count || 450) / Math.max(totalCustomersCount, 1)) * 100);
                   return (
                     <div key={b.id} className="space-y-1">
@@ -2225,7 +2568,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="font-bold text-slate-800">Active Automations for {selectedBranchForDepth.name}</div>
-                    <span className="text-emerald-600 font-bold text-xs">{selectedBranchForDepth.automations_count || 18} Active Workflows</span>
+                    <span className="text-emerald-600 font-bold text-xs">{getBranchWorkflows(selectedBranchForDepth).length} Active Workflows</span>
                   </div>
 
                   <div className="space-y-2.5">
@@ -2258,7 +2601,10 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               {/* TAB 4: LIVE ACTIVITY & AUDIT */}
               {depthActiveTab === 'activity' && (
                 <div className="space-y-3">
-                  <div className="font-bold text-slate-800">Recent Branch Activity & System Events</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-slate-800">Recent Branch Activity & System Events</div>
+                    <span className="text-slate-500 font-semibold text-xs">{getBranchActivity(selectedBranchForDepth).length} Events Logged</span>
+                  </div>
                   <div className="space-y-2.5">
                     {getBranchActivity(selectedBranchForDepth).map((act) => (
                       <div key={act.id} className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-start gap-3">
