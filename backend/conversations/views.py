@@ -6,7 +6,7 @@ from django.http import HttpResponse, FileResponse
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
-from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice, BulkCampaign, BulkCampaignLog, SuppressionRecord
+from .models import Conversation, Message, WhatsAppTemplate, MetaWhatsAppConfig, LinkedEmployeeDevice, DeletedDeviceTombstone, BulkCampaign, BulkCampaignLog, SuppressionRecord
 from .meta_service import MetaWhatsAppService
 from .grabber_views import link_grabber_session
 from core.events import emit_event
@@ -2074,30 +2074,77 @@ class LinkedEmployeeDeviceViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         device = self.get_object()
-        phone = getattr(device, 'phone_number', '')
-        token = getattr(device, 'session_token', '')
+        phone = getattr(device, 'phone_number', '') or ''
+        token = getattr(device, 'session_token', '') or ''
+        label = getattr(device, 'device_label', '') or ''
+        phone_digits = re.sub(r'\D', '', str(phone))
+
+        # 1. Permanently record tombstone so neither auto-seed nor inbound webhooks resurrect this line
+        try:
+            if phone_digits and not DeletedDeviceTombstone.objects.filter(phone_digits=phone_digits).exists():
+                DeletedDeviceTombstone.objects.create(
+                    phone_digits=phone_digits,
+                    phone_number=phone,
+                    session_token=token,
+                    device_label=label,
+                )
+            if token and not DeletedDeviceTombstone.objects.filter(session_token=token).exists():
+                DeletedDeviceTombstone.objects.create(
+                    session_token=token,
+                    phone_number=phone,
+                    phone_digits=phone_digits,
+                    device_label=label,
+                )
+        except Exception as e:
+            logger.warning(f"Error saving DeletedDeviceTombstone: {e}")
+
+        # 2. Tell Baileys gateway to disconnect, logout stanza, and DELETE the account
         try:
             if token:
                 call_baileys_gateway(f'/api/accounts/{token}/disconnect', method='POST')
-            if phone:
+                call_baileys_gateway(f'/api/accounts/{token}', method='DELETE')
+            if phone_digits:
+                call_baileys_gateway('/api/disconnect', method='POST', data={'id': phone_digits})
                 call_baileys_gateway('/api/disconnect', method='POST', data={'id': phone})
-            else:
-                call_baileys_gateway('/api/disconnect', method='POST', data={'id': 'all'})
+            
+            # Query all registered gateway accounts and purge any matching phone or token
+            gw_resp = call_baileys_gateway('/api/accounts', method='GET')
+            if gw_resp and isinstance(gw_resp, dict) and 'accounts' in gw_resp:
+                for acc in gw_resp.get('accounts', []):
+                    acc_id = acc.get('id', '')
+                    acc_phone = re.sub(r'\D', '', str(acc.get('phoneNumber', '')))
+                    if (token and acc_id == token) or (phone_digits and acc_phone and (acc_phone.endswith(phone_digits[-10:]) or phone_digits.endswith(acc_phone[-10:]))):
+                        call_baileys_gateway(f'/api/accounts/{acc_id}/disconnect', method='POST')
+                        call_baileys_gateway(f'/api/accounts/{acc_id}', method='DELETE')
         except Exception as e:
-            logger.warning(f"Error disconnecting Baileys session on device deletion: {e}")
+            logger.warning(f"Error disconnecting/deleting Baileys gateway account: {e}")
+
+        # 3. Direct cleanup of store.json if file exists on disk
+        try:
+            store_path = os.path.abspath(os.path.join(settings.BASE_DIR, '..', 'whatsapp_gateway', 'data', 'store.json'))
+            if os.path.exists(store_path):
+                import json
+                with open(store_path, 'r', encoding='utf-8') as f:
+                    store_data = json.load(f)
+                orig_count = len(store_data.get('accounts', []))
+                store_data['accounts'] = [
+                    a for a in store_data.get('accounts', [])
+                    if not (
+                        (token and a.get('id') == token) or
+                        (phone_digits and re.sub(r'\D', '', str(a.get('phoneNumber', ''))).endswith(phone_digits[-10:]))
+                    )
+                ]
+                if len(store_data['accounts']) != orig_count:
+                    with open(store_path, 'w', encoding='utf-8') as f:
+                        json.dump(store_data, f, indent=2)
+                    logger.info("Purged unlinked device from whatsapp_gateway store.json")
+        except Exception as e:
+            logger.warning(f"Fallback store.json cleanup error: {e}")
+
         return super().destroy(request, *args, **kwargs)
 
     def list(self, request, *args, **kwargs):
-        # Auto-seed initial default linked employee device if none exist
-        if not LinkedEmployeeDevice.objects.exists():
-            LinkedEmployeeDevice.objects.create(
-                device_label='Surat Wholesale Line',
-                phone_number='+91 94963 00233',
-                employee_name='Ramesh Kumar (Sales Desk)',
-                status='connected',
-                battery_level=98,
-                is_active=True
-            )
+        # NOTE: Never auto-seed default devices here! When user deletes devices, they must stay deleted permanently.
         return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=['post'])
@@ -2113,6 +2160,19 @@ class LinkedEmployeeDeviceViewSet(viewsets.ModelViewSet):
 
         if not token:
             return Response({'success': False, 'error': 'Token parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Clear any prior tombstone for this device/phone since user is explicitly re-pairing it
+        phone_digits = re.sub(r'\D', '', str(phone))
+        try:
+            if phone_digits:
+                DeletedDeviceTombstone.objects.filter(
+                    models.Q(phone_digits=phone_digits) |
+                    models.Q(phone_digits__endswith=phone_digits[-10:])
+                ).delete()
+            if token:
+                DeletedDeviceTombstone.objects.filter(session_token=token).delete()
+        except Exception:
+            pass
 
         # Store in in-memory session registry for real-time polling
         link_grabber_session(token, phone=phone, device_name=label)
@@ -2988,8 +3048,18 @@ class WhatsAppWebhookView(APIView):
                         if not matched_employee_device and recip_emp_name:
                             matched_employee_device = LinkedEmployeeDevice.objects.filter(employee_name__iexact=recip_emp_name).first()
 
-                        # Auto-seed/sync employee device if arrived from an active employee line
-                        if not matched_employee_device and len(recip_digits) >= 10 and not (biz_digits and recip_digits.endswith(biz_digits)):
+                        # Check tombstone: if explicitly unlinked/deleted by the user, NEVER resurrect!
+                        is_tombstoned = False
+                        if recip_digits and len(recip_digits) >= 10:
+                            is_tombstoned = DeletedDeviceTombstone.objects.filter(
+                                models.Q(phone_digits__endswith=recip_digits[-10:]) |
+                                models.Q(phone_number__icontains=recip_digits[-10:])
+                            ).exists()
+                        if not is_tombstoned and account_token:
+                            is_tombstoned = DeletedDeviceTombstone.objects.filter(session_token=account_token).exists()
+
+                        # Auto-seed/sync employee device only if not explicitly deleted/tombstoned
+                        if not is_tombstoned and not matched_employee_device and len(recip_digits) >= 10 and not (biz_digits and recip_digits.endswith(biz_digits)):
                             matched_employee_device, _ = LinkedEmployeeDevice.objects.update_or_create(
                                 phone_number=f"+{recip_digits}" if not recip_digits.startswith('+') else recip_digits,
                                 defaults={

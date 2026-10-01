@@ -1787,18 +1787,76 @@ const getStoredWalletTransactions = (): MetaWalletTransaction[] => {
   return initialWalletTransactions;
 };
 
-const INITIAL_LINKED_DEVICES: LinkedEmployeeDevice[] = [
-  {
-    id: 1,
-    device_label: 'Surat Wholesale Line',
-    phone_number: '+91 94963 00233',
-    employee_name: 'Ramesh Kumar (Sales Desk)',
-    status: 'connected',
-    battery_level: 98,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
+const DELETED_DEVICES_STORAGE_KEY = 'whatsq_deleted_devices';
+const LINKED_DEVICES_CACHE_KEY = 'whatsq_linked_devices_cache';
+
+export const getDeletedDeviceKeys = (): string[] => {
+  try {
+    const raw = localStorage.getItem(DELETED_DEVICES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const addDeletedDeviceKeys = (keys: (string | number | undefined | null)[]) => {
+  try {
+    const current = getDeletedDeviceKeys();
+    const cleanKeys = keys
+      .filter((k): k is string | number => k !== undefined && k !== null && k !== '')
+      .map((k) => String(k).trim().toLowerCase());
+    const digitsOnly = keys
+      .filter((k): k is string | number => k !== undefined && k !== null && k !== '')
+      .map((k) => String(k).replace(/\D/g, ''))
+      .filter((d) => d.length >= 7);
+    const combined = Array.from(new Set([...current, ...cleanKeys, ...digitsOnly]));
+    localStorage.setItem(DELETED_DEVICES_STORAGE_KEY, JSON.stringify(combined));
+  } catch {}
+};
+
+export const removeDeletedDeviceKey = (key: string | number) => {
+  try {
+    const current = getDeletedDeviceKeys();
+    const str = String(key).trim().toLowerCase();
+    const digits = String(key).replace(/\D/g, '');
+    const updated = current.filter((k) => k !== str && (!digits || (k !== digits && !k.endsWith(digits.slice(-10)))));
+    localStorage.setItem(DELETED_DEVICES_STORAGE_KEY, JSON.stringify(updated));
+  } catch {}
+};
+
+export const isDeviceTombstoned = (dev: Partial<LinkedEmployeeDevice>, deletedKeys: string[]): boolean => {
+  if (!deletedKeys || deletedKeys.length === 0) return false;
+  const idStr = String(dev.id || '').trim().toLowerCase();
+  const phoneDigits = String(dev.phone_number || '').replace(/\D/g, '');
+  const tokenStr = String(dev.session_token || '').trim().toLowerCase();
+
+  return deletedKeys.some((k) => {
+    if (!k) return false;
+    const cleanK = k.toLowerCase();
+    if (idStr && idStr === cleanK) return true;
+    if (tokenStr && tokenStr === cleanK) return true;
+    if (phoneDigits && cleanK.length >= 7) {
+      if (phoneDigits === cleanK || phoneDigits.endsWith(cleanK.slice(-10)) || cleanK.endsWith(phoneDigits.slice(-10))) {
+        return true;
+      }
+    }
+    return false;
+  });
+};
+
+const getInitialLinkedDevices = (): LinkedEmployeeDevice[] => {
+  try {
+    const deleted = getDeletedDeviceKeys();
+    const cached = localStorage.getItem(LINKED_DEVICES_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((d) => !isDeviceTombstoned(d, deleted));
+      }
+    }
+  } catch {}
+  return [];
+};
 
 export const useQiyamStore = create<QiyamState>((set, get) => ({
   activeTab: getInitialActiveTab(),
@@ -2120,15 +2178,20 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
 
-  linkedDevices: INITIAL_LINKED_DEVICES,
+  linkedDevices: getInitialLinkedDevices(),
   activeSenderDeviceId: 'meta_cloud',
   setActiveSenderDeviceId: (id) => set({ activeSenderDeviceId: id }),
 
   fetchLinkedDevices: async () => {
     try {
       const res = await apiClient.get('/conversations/linked-devices/');
-      if (Array.isArray(res) && res.length > 0) {
-        set({ linkedDevices: res });
+      if (Array.isArray(res)) {
+        const deleted = getDeletedDeviceKeys();
+        const filtered = res.filter((d) => !isDeviceTombstoned(d, deleted));
+        set({ linkedDevices: filtered });
+        try {
+          localStorage.setItem(LINKED_DEVICES_CACHE_KEY, JSON.stringify(filtered));
+        } catch {}
       }
     } catch (e) {
       console.warn('Failed to fetch linked devices:', e);
@@ -2136,13 +2199,25 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
   },
 
   linkEmployeeDevice: async (deviceData) => {
+    // If this device was previously tombstoned, clear it from tombstone
+    if (deviceData.phone_number) {
+      removeDeletedDeviceKey(deviceData.phone_number);
+    }
+    if (deviceData.session_token) {
+      removeDeletedDeviceKey(deviceData.session_token);
+    }
+
     try {
       const res = await apiClient.post('/conversations/linked-devices/', deviceData);
       if (res && res.id && res.success !== false) {
-        set((state) => ({
-          linkedDevices: [res, ...state.linkedDevices.filter((d) => d.id !== res.id)],
+        const updated = [res, ...get().linkedDevices.filter((d) => d.id !== res.id)];
+        set({
+          linkedDevices: updated,
           activeSenderDeviceId: res.id,
-        }));
+        });
+        try {
+          localStorage.setItem(LINKED_DEVICES_CACHE_KEY, JSON.stringify(updated));
+        } catch {}
         get().addToast(`WhatsApp device "${res.device_label}" linked successfully!`, 'success');
         return res;
       }
@@ -2160,10 +2235,14 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       created_at: new Date().toISOString(),
       ...deviceData,
     };
-    set((state) => ({
-      linkedDevices: [localDevice, ...state.linkedDevices.filter((d) => d.id !== localDevice.id)],
+    const updated = [localDevice, ...get().linkedDevices.filter((d) => d.id !== localDevice.id)];
+    set({
+      linkedDevices: updated,
       activeSenderDeviceId: localDevice.id,
-    }));
+    });
+    try {
+      localStorage.setItem(LINKED_DEVICES_CACHE_KEY, JSON.stringify(updated));
+    } catch {}
     get().addToast(`WhatsApp device "${localDevice.device_label}" linked successfully!`, 'success');
     return localDevice;
   },
@@ -2172,9 +2251,11 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
     try {
       const res = await apiClient.patch(`/conversations/linked-devices/${deviceId}/`, updates);
       if (res && res.id) {
-        set((state) => ({
-          linkedDevices: state.linkedDevices.map((d) => (String(d.id) === String(deviceId) ? { ...d, ...res } : d)),
-        }));
+        const updated = get().linkedDevices.map((d) => (String(d.id) === String(deviceId) ? { ...d, ...res } : d));
+        set({ linkedDevices: updated });
+        try {
+          localStorage.setItem(LINKED_DEVICES_CACHE_KEY, JSON.stringify(updated));
+        } catch {}
         get().addToast(`Updated line to "${res.device_label || res.employee_name}"`, 'success');
         return res;
       }
@@ -2182,21 +2263,48 @@ export const useQiyamStore = create<QiyamState>((set, get) => ({
       console.warn('Failed to update device via API:', e);
     }
     // Fallback local state update
-    set((state) => ({
-      linkedDevices: state.linkedDevices.map((d) => (String(d.id) === String(deviceId) ? { ...d, ...updates } : d)),
-    }));
+    const updated = get().linkedDevices.map((d) => (String(d.id) === String(deviceId) ? { ...d, ...updates } : d));
+    set({ linkedDevices: updated });
+    try {
+      localStorage.setItem(LINKED_DEVICES_CACHE_KEY, JSON.stringify(updated));
+    } catch {}
     get().addToast('Device updated successfully', 'success');
   },
 
   unlinkEmployeeDevice: async (deviceId) => {
+    const currentDevices = get().linkedDevices;
+    const target = currentDevices.find((d) => String(d.id) === String(deviceId));
+    const phoneDigits = target?.phone_number ? target.phone_number.replace(/\D/g, '') : '';
+    const token = target?.session_token || '';
+
+    // 1. Immediately persist tombstone to localStorage
+    addDeletedDeviceKeys([
+      deviceId,
+      target?.id,
+      target?.phone_number,
+      phoneDigits,
+      phoneDigits.length >= 10 ? phoneDigits.slice(-10) : null,
+      token,
+    ]);
+
+    // 2. Remove immediately from React state and cache
+    const updated = currentDevices.filter((d) => String(d.id) !== String(deviceId));
+    set((state) => ({
+      linkedDevices: updated,
+      activeSenderDeviceId: String(state.activeSenderDeviceId) === String(deviceId) ? 'meta_cloud' : state.activeSenderDeviceId,
+    }));
+    try {
+      localStorage.setItem(LINKED_DEVICES_CACHE_KEY, JSON.stringify(updated));
+    } catch {}
+
+    // 3. Call backend API to delete from DB, trigger Baileys disconnect/delete, and store permanent DB tombstone
     try {
       await apiClient.delete(`/conversations/linked-devices/${deviceId}/`);
-    } catch {}
-    set((state) => ({
-      linkedDevices: state.linkedDevices.filter((d) => String(d.id) !== String(deviceId)),
-      activeSenderDeviceId: state.activeSenderDeviceId === deviceId ? 'meta_cloud' : state.activeSenderDeviceId,
-    }));
-    get().addToast('WhatsApp device unlinked', 'info');
+    } catch (e) {
+      console.warn('API call error unlinking device:', e);
+    }
+
+    get().addToast('WhatsApp phone line unlinked permanently', 'info');
   },
 
   sendConfirmation: null,

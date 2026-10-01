@@ -141,6 +141,23 @@ class LinkedEmployeeDevice(models.Model):
     def __str__(self):
         return f"{self.device_label} ({self.phone_number}) [{self.status}]"
 
+class DeletedDeviceTombstone(models.Model):
+    """
+    Permanent tombstone registry for unlinked/deleted WhatsApp employee lines.
+    Guarantees deleted lines are never resurrected by auto-seeding or incoming webhooks.
+    """
+    phone_number = models.CharField(max_length=50, blank=True, default='', db_index=True)
+    phone_digits = models.CharField(max_length=30, blank=True, default='', db_index=True)
+    session_token = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    device_label = models.CharField(max_length=150, blank=True, default='')
+    deleted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-deleted_at']
+
+    def __str__(self):
+        return f"Deleted Device: {self.phone_number} ({self.session_token})"
+
 class WhatsAppTemplate(models.Model):
     META_CATEGORY_CHOICES = [
         ('MARKETING', 'Marketing'),
