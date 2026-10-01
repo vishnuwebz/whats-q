@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { BranchItem } from '@/types';
@@ -803,6 +803,20 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
   const [selectedBranchForDepth, setSelectedBranchForDepth] = useState<BranchItem | null>(null);
   const [depthActiveTab, setDepthActiveTab] = useState<'overview' | 'staff' | 'automations' | 'activity'>('overview');
 
+  // Real-time synchronization of open depth drawer with store updates
+  useEffect(() => {
+    if (selectedBranchForDepth) {
+      const updated = branches.find(
+        (b) => b.id === selectedBranchForDepth.id || String(b.id) === String(selectedBranchForDepth.id)
+      );
+      if (updated) {
+        setSelectedBranchForDepth(updated);
+      } else {
+        setSelectedBranchForDepth(null);
+      }
+    }
+  }, [branches]);
+
   // Table Columns Mode: 'automation' (matching screenshot) or 'executive'
   const [tableMode, setTableMode] = useState<'automation' | 'executive'>('automation');
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>('all');
@@ -897,6 +911,50 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
   const totalEmployeesCount = branches.reduce((sum, b) => sum + (Number(b.employees_count) || 8), 0);
   const totalCustomersCount = branches.reduce((sum, b) => sum + (Number(b.customers_count) || 450), 0);
   const activeBranchesCount = branches.filter((b) => b.status?.toLowerCase() === 'active').length;
+
+  // Dynamic Regional Breakdown for Fleet Network Subpage
+  const dynamicStateBreakdown = useMemo(() => {
+    const colorCycle = [
+      'border-emerald-200 bg-emerald-50/50 text-emerald-800',
+      'border-blue-200 bg-blue-50/50 text-blue-800',
+      'border-purple-200 bg-purple-50/50 text-purple-800',
+      'border-amber-200 bg-amber-50/50 text-amber-800',
+      'border-rose-200 bg-rose-50/50 text-rose-800',
+      'border-indigo-200 bg-indigo-50/50 text-indigo-800',
+      'border-teal-200 bg-teal-50/50 text-teal-800',
+      'border-cyan-200 bg-cyan-50/50 text-cyan-800',
+    ];
+    const stateColorPreset: Record<string, string> = {
+      'kerala': 'border-emerald-200 bg-emerald-50/50 text-emerald-800',
+      'karnataka': 'border-blue-200 bg-blue-50/50 text-blue-800',
+      'maharashtra': 'border-purple-200 bg-purple-50/50 text-purple-800',
+      'delhi': 'border-amber-200 bg-amber-50/50 text-amber-800',
+      'delhi ncr': 'border-amber-200 bg-amber-50/50 text-amber-800',
+      'tamil nadu': 'border-rose-200 bg-rose-50/50 text-rose-800',
+      'telangana': 'border-indigo-200 bg-indigo-50/50 text-indigo-800',
+    };
+
+    const map: Record<string, { state: string; count: number; cities: string[]; color: string }> = {};
+
+    branches.forEach((b) => {
+      const stateName = (b.state || 'General Territory').trim();
+      const key = stateName.toLowerCase();
+      if (!map[key]) {
+        map[key] = {
+          state: stateName,
+          count: 0,
+          cities: [],
+          color: stateColorPreset[key] || colorCycle[Object.keys(map).length % colorCycle.length],
+        };
+      }
+      map[key].count += 1;
+      if (b.city && !map[key].cities.includes(b.city)) {
+        map[key].cities.push(b.city);
+      }
+    });
+
+    return Object.values(map);
+  }, [branches]);
 
   // Filter & Sort branches
   const filteredBranches = branches
@@ -1221,7 +1279,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                   <div className="text-2xl font-bold text-slate-900 leading-tight">{activeBranchesCount}</div>
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 mt-0.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>100% operational</span>
+                    <span>{totalBranchesCount > 0 ? `${Math.round((activeBranchesCount / totalBranchesCount) * 100)}% operational` : 'Operational'}</span>
                   </div>
                 </div>
               </div>
@@ -1333,25 +1391,39 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                     )}
                   </div>
 
-                  {/* Sort Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextSort: Record<string, typeof sortBy> = {
-                        name: 'employees',
-                        employees: 'customers',
-                        customers: 'code',
-                        code: 'name',
-                      };
-                      setSortBy(nextSort[sortBy]);
-                      addToast(`Sorted by ${nextSort[sortBy]}`, 'info');
-                    }}
-                    className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                    title={`Click to change sorting (current: ${sortBy})`}
-                  >
-                    <ArrowUpDown className="w-3.5 h-3.5" />
-                    <span className="capitalize">Sort: {sortBy}</span>
-                  </button>
+                  {/* Sort Toggle & Direction */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextSort: Record<string, typeof sortBy> = {
+                          name: 'employees',
+                          employees: 'customers',
+                          customers: 'code',
+                          code: 'name',
+                        };
+                        setSortBy(nextSort[sortBy]);
+                        addToast(`Sorted by ${nextSort[sortBy]}`, 'info');
+                      }}
+                      className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title={`Click to change sorting field (current: ${sortBy})`}
+                    >
+                      <ArrowUpDown className="w-3.5 h-3.5" />
+                      <span className="capitalize">Sort: {sortBy}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                        setSortOrder(nextOrder);
+                        addToast(`Order: ${nextOrder === 'asc' ? 'Ascending (A-Z / Low-High)' : 'Descending (Z-A / High-Low)'}`, 'info');
+                      }}
+                      className="px-2 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                      title={`Order: ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}. Click to toggle.`}
+                    >
+                      {sortOrder === 'asc' ? 'ASC ↑' : 'DESC ↓'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1389,7 +1461,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {filteredBranches.map((b, idx) => {
-                      const isMain = b.is_main || b.branch_type === 'Head Office' || idx === 0;
+                      const isMain = Boolean(b.is_main) || b.branch_type === 'Head Office';
                       const branchImage = b.image || BRANCH_IMAGE_PRESETS[idx % BRANCH_IMAGE_PRESETS.length].url;
                       const isTarget = targetHighlightId === b.id || targetHighlightId === b.code || targetHighlightId === b.name;
                       const managerName = b.manager_name || (idx === 0 ? 'Rahul Mehta' : idx === 1 ? 'Suresh S' : 'Aneesh P');
@@ -1520,6 +1592,9 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                                       src={branchImage}
                                       alt={b.name}
                                       className="w-full h-full object-cover transition-transform group-hover/thumb:scale-105"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = BRANCH_IMAGE_PRESETS[0].url;
+                                      }}
                                     />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white">
                                       <Camera className="w-3.5 h-3.5" />
@@ -1626,7 +1701,9 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               {/* Table Footer / Pagination */}
               <div className="p-3 sm:p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                 <div>
-                  Showing 1 to {filteredBranches.length} of {branches.length} branches
+                  {filteredBranches.length === 0
+                    ? 'No branches found matching your search'
+                    : `Showing 1 to ${filteredBranches.length} of ${branches.length} branches`}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -1689,7 +1766,8 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                   <button
                     type="button"
                     onClick={() => {
-                      if (branches[0]) handleOpenEditModal(branches[0]);
+                      const targetBranch = branches.find((b) => b.is_main) || branches[0];
+                      if (targetBranch) handleOpenEditModal(targetBranch);
                       else handleOpenAddModal();
                     }}
                     className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 hover:bg-blue-100/70 text-left transition-all cursor-pointer group"
@@ -1785,23 +1863,14 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
             {/* Regional Territory Breakdown Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {[
-                { state: 'Kerala', count: branches.filter((b) => b.state === 'Kerala').length, cities: 'Kozhikode, Kochi, Thrissur', color: 'border-emerald-200 bg-emerald-50/50 text-emerald-800' },
-                { state: 'Karnataka', count: branches.filter((b) => b.state === 'Karnataka').length || 1, cities: 'Bengaluru Hub', color: 'border-blue-200 bg-blue-50/50 text-blue-800' },
-                { state: 'Maharashtra', count: branches.filter((b) => b.state === 'Maharashtra').length || 1, cities: 'Mumbai BKC', color: 'border-purple-200 bg-purple-50/50 text-purple-800' },
-                { state: 'Delhi NCR', count: branches.filter((b) => b.state === 'Delhi').length || 1, cities: 'New Delhi', color: 'border-amber-200 bg-amber-50/50 text-amber-800' },
-                { state: 'Tamil Nadu', count: branches.filter((b) => b.state === 'Tamil Nadu').length || 1, cities: 'Chennai Mount Rd', color: 'border-rose-200 bg-rose-50/50 text-rose-800' },
-                { state: 'Telangana', count: branches.filter((b) => b.state === 'Telangana').length || 1, cities: 'Hyderabad Hitec', color: 'border-indigo-200 bg-indigo-50/50 text-indigo-800' },
-              ].map((reg) => {
-                const isSelected = selectedStateFilter.toLowerCase() === reg.state.toLowerCase() || (reg.state === 'Delhi NCR' && selectedStateFilter.toLowerCase() === 'delhi');
+              {dynamicStateBreakdown.map((reg) => {
+                const isSelected = selectedStateFilter.toLowerCase() === reg.state.toLowerCase();
+                const cityList = reg.cities.length > 0 ? reg.cities.join(', ') : 'Regional Network';
                 return (
                   <div
                     key={reg.state}
                     onClick={() => {
-                      setSelectedStateFilter((prev) => {
-                        const target = reg.state === 'Delhi NCR' ? 'Delhi' : reg.state;
-                        return prev.toLowerCase() === target.toLowerCase() ? 'all' : target;
-                      });
+                      setSelectedStateFilter((prev) => (prev.toLowerCase() === reg.state.toLowerCase() ? 'all' : reg.state));
                     }}
                     className={`p-3.5 rounded-2xl border ${reg.color} space-y-1 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xs ${
                       isSelected ? 'ring-2 ring-emerald-500 shadow-md font-bold' : ''
@@ -1812,8 +1881,8 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                       <div className="text-[10px] uppercase tracking-wider font-bold opacity-75">{reg.state}</div>
                       {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />}
                     </div>
-                    <div className="text-xl font-extrabold">{reg.count} <span className="text-xs font-medium">branches</span></div>
-                    <div className="text-[10px] opacity-75 truncate">{reg.cities}</div>
+                    <div className="text-xl font-extrabold">{reg.count} <span className="text-xs font-medium">{reg.count === 1 ? 'branch' : 'branches'}</span></div>
+                    <div className="text-[10px] opacity-75 truncate" title={cityList}>{cityList}</div>
                   </div>
                 );
               })}
@@ -1866,59 +1935,74 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {filteredFleetBranches.map((b) => (
-                          <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-3.5 px-4">
+                        {filteredFleetBranches.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-8 text-center text-slate-500">
+                              No branches found in {selectedStateFilter}.{' '}
                               <button
                                 type="button"
-                                onClick={() => setSelectedBranchForDepth(b)}
-                                className="text-left font-bold text-slate-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                                onClick={() => setSelectedStateFilter('all')}
+                                className="text-emerald-600 font-bold hover:underline cursor-pointer ml-1"
                               >
-                                <span>{b.name}</span>
-                                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                View all branches
                               </button>
-                              <div className="text-[10px] text-slate-400 font-medium">{b.branch_type || 'Branch Office'}</div>
                             </td>
-                            <td className="py-3.5 px-4 font-mono font-medium text-slate-600">{b.code}</td>
-                            <td className="py-3.5 px-4 font-medium text-slate-800">{b.city}, {b.state}</td>
-                            <td className="py-3.5 px-4 font-bold text-slate-900">{b.automations_count || 18} workflows</td>
-                            <td className="py-3.5 px-4 font-bold text-emerald-600">{b.tasks_automated || 120} tasks</td>
-                            <td className="py-3.5 px-4">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] border uppercase ${
-                                b.status?.toLowerCase() === 'active'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : 'bg-slate-100 text-slate-500 border-slate-200'
-                              }`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${b.status?.toLowerCase() === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                                <span>{b.status || 'Active'}</span>
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || 'May 31, 2024 10:30 AM'}</td>
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                          </tr>
+                        ) : (
+                          filteredFleetBranches.map((b) => (
+                            <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-3.5 px-4">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedBranchForDepth(b)}
-                                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
+                                  className="text-left font-bold text-slate-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5"
                                 >
-                                  Details
+                                  <span>{b.name}</span>
+                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleOpenActionMenu(e, b)}
-                                  className={`p-1 rounded-lg transition-all cursor-pointer ${
-                                    actionMenuState?.branch.id === b.id
-                                      ? 'bg-slate-900 text-white shadow-xs'
-                                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                                  }`}
-                                  aria-label={`Open actions for ${b.name}`}
-                                >
-                                  <MoreVertical className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                <div className="text-[10px] text-slate-400 font-medium">{b.branch_type || 'Branch Office'}</div>
+                              </td>
+                              <td className="py-3.5 px-4 font-mono font-medium text-slate-600">{b.code}</td>
+                              <td className="py-3.5 px-4 font-medium text-slate-800">{b.city}, {b.state}</td>
+                              <td className="py-3.5 px-4 font-bold text-slate-900">{b.automations_count || 18} workflows</td>
+                              <td className="py-3.5 px-4 font-bold text-emerald-600">{b.tasks_automated || 120} tasks</td>
+                              <td className="py-3.5 px-4">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] border uppercase ${
+                                  b.status?.toLowerCase() === 'active'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${b.status?.toLowerCase() === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                                  <span>{b.status || 'Active'}</span>
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || 'May 31, 2024 10:30 AM'}</td>
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedBranchForDepth(b)}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
+                                  >
+                                    Details
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleOpenActionMenu(e, b)}
+                                    className={`p-1 rounded-lg transition-all cursor-pointer ${
+                                      actionMenuState?.branch.id === b.id
+                                        ? 'bg-slate-900 text-white shadow-xs'
+                                        : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                    aria-label={`Open actions for ${b.name}`}
+                                  >
+                                    <MoreVertical className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -2027,7 +2111,15 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {branches.map((b, idx) => {
-                      const staff = getBranchStaff(b)[0];
+                      const staffList = getBranchStaff(b);
+                      const staff = staffList[0] || {
+                        name: b.manager_name || 'Branch Manager',
+                        role: b.manager_role || 'Operations Lead',
+                        department: 'Management',
+                        phone: b.phone || '+91 495 276 5400',
+                        status: 'On Duty',
+                        rating: 4.8,
+                      };
                       return (
                         <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3.5 px-4 font-bold text-slate-900">
@@ -2054,10 +2146,13 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                           <td className="py-3.5 px-4 text-right">
                             <button
                               type="button"
-                              onClick={() => setSelectedBranchForDepth(b)}
+                              onClick={() => {
+                                setDepthActiveTab('staff');
+                                setSelectedBranchForDepth(b);
+                              }}
                               className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-purple-50 hover:text-purple-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
                             >
-                              View Team
+                              View Team ({staffList.length})
                             </button>
                           </td>
                         </tr>
@@ -2143,7 +2238,14 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                   return (
                     <div key={b.id} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-800">{b.name} ({b.city})</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBranchForDepth(b)}
+                          className="font-bold text-slate-800 hover:text-emerald-600 transition-colors text-left cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>{b.name} ({b.city})</span>
+                          <Eye className="w-3 h-3 text-slate-400" />
+                        </button>
                         <span className="text-slate-500 font-mono">{(b.customers_count || 450).toLocaleString()} clients ({share}%)</span>
                       </div>
                       <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -2242,7 +2344,14 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                       return (
                         <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3.5 px-4 font-bold text-slate-900">
-                            <div>{b.name}</div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBranchForDepth(b)}
+                              className="text-left font-bold text-slate-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                            >
+                              <span>{b.name}</span>
+                              <Eye className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
                             <div className="text-[10px] font-mono text-slate-400">{b.code} • {b.city}</div>
                           </td>
                           <td className="py-3.5 px-4">
@@ -2395,21 +2504,32 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
             <div className="flex border-b border-slate-200 bg-white px-5 pt-2 gap-4">
               {[
                 { id: 'overview', label: 'Overview & Location' },
-                { id: 'staff', label: 'Staff Roster' },
-                { id: 'automations', label: 'Active Workflows' },
-                { id: 'activity', label: 'Live Audit Log' },
+                { id: 'staff', label: 'Staff Roster', count: getBranchStaff(selectedBranchForDepth).length },
+                { id: 'automations', label: 'Active Workflows', count: getBranchWorkflows(selectedBranchForDepth).length },
+                { id: 'activity', label: 'Live Audit Log', count: getBranchActivity(selectedBranchForDepth).length },
               ].map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setDepthActiveTab(t.id as any)}
-                  className={`pb-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+                  className={`pb-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
                     depthActiveTab === t.id
                       ? 'border-emerald-600 text-emerald-700'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  {t.label}
+                  <span>{t.label}</span>
+                  {t.count !== undefined && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        depthActiveTab === t.id
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {t.count}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
