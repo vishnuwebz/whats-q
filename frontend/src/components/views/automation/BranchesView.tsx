@@ -652,6 +652,106 @@ export const getBranchActivity = (branch: BranchItem) => {
   ];
 };
 
+export interface BranchCustomerItem {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  company: string;
+  segment: 'Enterprise VIP' | 'Premium Retainer' | 'Commercial' | 'Retail Client';
+  totalSpent: string;
+  conversationsCount: number;
+  lastActive: string;
+  status: 'Active' | 'Follow-up Due' | 'Contract Renewal';
+  avatarInitials: string;
+}
+
+export const getBranchCustomers = (branch: BranchItem): BranchCustomerItem[] => {
+  const city = branch.city || 'Regional';
+  const prefix = (branch.code || 'BR').replace(/[^a-zA-Z0-9]/g, '');
+
+  return [
+    {
+      id: `${prefix}-CUST-101`,
+      name: `Apex Logistics ${city}`,
+      phone: '+91 98450 12890',
+      email: `operations@apex-${city.toLowerCase().replace(/\s+/g, '')}.in`,
+      company: 'Logistics & Supply Chain Hub',
+      segment: 'Enterprise VIP',
+      totalSpent: '₹1,45,000',
+      conversationsCount: 142,
+      lastActive: '12 mins ago',
+      status: 'Active',
+      avatarInitials: 'AL',
+    },
+    {
+      id: `${prefix}-CUST-102`,
+      name: `Malabar Retail Group`,
+      phone: '+91 97440 88210',
+      email: 'purchasing@malabarretail.com',
+      company: 'Multi-outlet Retail Chain',
+      segment: 'Enterprise VIP',
+      totalSpent: '₹98,200',
+      conversationsCount: 89,
+      lastActive: '45 mins ago',
+      status: 'Active',
+      avatarInitials: 'MR',
+    },
+    {
+      id: `${prefix}-CUST-103`,
+      name: `Horizon Healthcare ${city}`,
+      phone: '+91 94460 33410',
+      email: `admin@horizon-${city.toLowerCase().replace(/\s+/g, '')}.org`,
+      company: 'Healthcare & Diagnostics',
+      segment: 'Premium Retainer',
+      totalSpent: '₹76,500',
+      conversationsCount: 64,
+      lastActive: '2 hours ago',
+      status: 'Active',
+      avatarInitials: 'HH',
+    },
+    {
+      id: `${prefix}-CUST-104`,
+      name: `Zenith Realty Solutions`,
+      phone: '+91 98950 55112',
+      email: 'leads@zenithrealty.co.in',
+      company: 'Commercial Real Estate',
+      segment: 'Premium Retainer',
+      totalSpent: '₹62,000',
+      conversationsCount: 51,
+      lastActive: '4 hours ago',
+      status: 'Follow-up Due',
+      avatarInitials: 'ZR',
+    },
+    {
+      id: `${prefix}-CUST-105`,
+      name: `TechnoPark Digital Labs`,
+      phone: '+91 97470 77334',
+      email: `contact@technopark-${city.toLowerCase().replace(/\s+/g, '')}.io`,
+      company: 'IT Services & Tech Park',
+      segment: 'Commercial',
+      totalSpent: '₹48,900',
+      conversationsCount: 38,
+      lastActive: 'Yesterday 05:20 PM',
+      status: 'Active',
+      avatarInitials: 'TP',
+    },
+    {
+      id: `${prefix}-CUST-106`,
+      name: `Crescent Hospitality & Suites`,
+      phone: '+91 98460 99881',
+      email: 'reservations@crescenthospitality.com',
+      company: 'Hotels & Tourism Group',
+      segment: 'Retail Client',
+      totalSpent: '₹39,400',
+      conversationsCount: 29,
+      lastActive: 'May 30, 2024',
+      status: 'Contract Renewal',
+      avatarInitials: 'CH',
+    },
+  ];
+};
+
 export type BranchSubPageId =
   | 'overview'
   | 'fleet-network'
@@ -801,7 +901,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
   // Branch Depth Details Drawer State
   const [selectedBranchForDepth, setSelectedBranchForDepth] = useState<BranchItem | null>(null);
-  const [depthActiveTab, setDepthActiveTab] = useState<'overview' | 'staff' | 'automations' | 'activity'>('overview');
+  const [depthActiveTab, setDepthActiveTab] = useState<'overview' | 'staff' | 'customers' | 'automations' | 'activity'>('overview');
 
   // Real-time synchronization of open depth drawer with store updates
   useEffect(() => {
@@ -2240,7 +2340,10 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                       <div className="flex items-center justify-between text-xs">
                         <button
                           type="button"
-                          onClick={() => setSelectedBranchForDepth(b)}
+                          onClick={() => {
+                            setDepthActiveTab('customers');
+                            setSelectedBranchForDepth(b);
+                          }}
                           className="font-bold text-slate-800 hover:text-emerald-600 transition-colors text-left cursor-pointer flex items-center gap-1.5"
                         >
                           <span>{b.name} ({b.city})</span>
@@ -2477,42 +2580,85 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
             </div>
 
             {/* 4 Top KPI Tiles */}
-            <div className="grid grid-cols-4 border-b border-slate-200 bg-slate-50/70 p-3 text-center divide-x divide-slate-200/80">
-              <div className="px-2">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Employees</div>
-                <div className="text-base font-extrabold text-slate-800 mt-0.5">{selectedBranchForDepth.employees_count || 8}</div>
-                <div className="text-[10px] text-emerald-600 font-bold">On Duty</div>
-              </div>
-              <div className="px-2">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Customers</div>
-                <div className="text-base font-extrabold text-slate-800 mt-0.5">{(selectedBranchForDepth.customers_count || 450).toLocaleString()}</div>
+            <div className="grid grid-cols-4 border-b border-slate-200 bg-slate-50/70 p-2 sm:p-2.5 text-center divide-x divide-slate-200/80 gap-1">
+              <button
+                type="button"
+                onClick={() => setDepthActiveTab('staff')}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer text-center group ${
+                  depthActiveTab === 'staff'
+                    ? 'bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500 shadow-xs'
+                    : 'hover:bg-white hover:shadow-2xs text-slate-700'
+                }`}
+                title="Click to view Staff Roster for this branch"
+              >
+                <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-slate-600 transition-colors">Employees</div>
+                <div className="text-sm sm:text-base font-extrabold text-slate-800 mt-0.5">{selectedBranchForDepth.employees_count || 8}</div>
+                <div className="text-[10px] text-emerald-600 font-bold flex items-center justify-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>On Duty</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDepthActiveTab('customers')}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer text-center group ${
+                  depthActiveTab === 'customers'
+                    ? 'bg-purple-50 text-purple-800 ring-2 ring-purple-500 shadow-xs'
+                    : 'hover:bg-white hover:shadow-2xs text-slate-700'
+                }`}
+                title="Click to view Customer Accounts & CRM reach for this branch"
+              >
+                <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-slate-600 transition-colors">Customers</div>
+                <div className="text-sm sm:text-base font-extrabold text-slate-800 mt-0.5">{(selectedBranchForDepth.customers_count || 450).toLocaleString()}</div>
                 <div className="text-[10px] text-purple-600 font-bold">Active CRM</div>
-              </div>
-              <div className="px-2">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Workflows</div>
-                <div className="text-base font-extrabold text-slate-800 mt-0.5">{selectedBranchForDepth.automations_count || 18}</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDepthActiveTab('automations')}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer text-center group ${
+                  depthActiveTab === 'automations'
+                    ? 'bg-blue-50 text-blue-800 ring-2 ring-blue-500 shadow-xs'
+                    : 'hover:bg-white hover:shadow-2xs text-slate-700'
+                }`}
+                title="Click to view Active Workflows for this branch"
+              >
+                <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-slate-600 transition-colors">Workflows</div>
+                <div className="text-sm sm:text-base font-extrabold text-slate-800 mt-0.5">{selectedBranchForDepth.automations_count || 18}</div>
                 <div className="text-[10px] text-blue-600 font-bold">Active Flows</div>
-              </div>
-              <div className="px-2">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Tasks Run</div>
-                <div className="text-base font-extrabold text-emerald-600 mt-0.5">{selectedBranchForDepth.tasks_automated || 120}</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDepthActiveTab('activity')}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer text-center group ${
+                  depthActiveTab === 'activity'
+                    ? 'bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500 shadow-xs'
+                    : 'hover:bg-white hover:shadow-2xs text-slate-700'
+                }`}
+                title="Click to view Automated Tasks Run & Audit Log for this branch"
+              >
+                <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-slate-600 transition-colors">Tasks Run</div>
+                <div className="text-sm sm:text-base font-extrabold text-emerald-600 mt-0.5">{selectedBranchForDepth.tasks_automated || 120}</div>
                 <div className="text-[10px] text-slate-500 font-medium">Automated</div>
-              </div>
+              </button>
             </div>
 
             {/* Drawer Tabs Header */}
-            <div className="flex border-b border-slate-200 bg-white px-5 pt-2 gap-4">
+            <div className="flex border-b border-slate-200 bg-white px-5 pt-2 gap-2 sm:gap-4 overflow-x-auto scrollbar-none">
               {[
                 { id: 'overview', label: 'Overview & Location' },
                 { id: 'staff', label: 'Staff Roster', count: getBranchStaff(selectedBranchForDepth).length },
+                { id: 'customers', label: 'Customers CRM', count: selectedBranchForDepth.customers_count || 450 },
                 { id: 'automations', label: 'Active Workflows', count: getBranchWorkflows(selectedBranchForDepth).length },
-                { id: 'activity', label: 'Live Audit Log', count: getBranchActivity(selectedBranchForDepth).length },
+                { id: 'activity', label: 'Tasks & Audit', count: selectedBranchForDepth.tasks_automated || 120 },
               ].map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setDepthActiveTab(t.id as any)}
-                  className={`pb-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  className={`pb-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                     depthActiveTab === t.id
                       ? 'border-emerald-600 text-emerald-700'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -2527,7 +2673,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                           : 'bg-slate-100 text-slate-600'
                       }`}
                     >
-                      {t.count}
+                      {typeof t.count === 'number' && t.count > 999 ? t.count.toLocaleString() : t.count}
                     </span>
                   )}
                 </button>
@@ -2683,7 +2829,113 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 </div>
               )}
 
-              {/* TAB 3: WORKFLOWS & AUTOMATIONS */}
+              {/* TAB 3: CUSTOMERS & CRM REACH */}
+              {depthActiveTab === 'customers' && (
+                <div className="space-y-4">
+                  {/* Top Bar with Action */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-slate-800 text-sm">
+                        Customer Accounts for {selectedBranchForDepth.name}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {(selectedBranchForDepth.customers_count || 450).toLocaleString()} customer contacts active across {selectedBranchForDepth.city} territory.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('crm-customers');
+                        setSelectedBranchForDepth(null);
+                        addToast(`Opening CRM Directory for ${selectedBranchForDepth.name}...`, 'info');
+                      }}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 self-start sm:self-auto"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Open Full CRM</span>
+                    </button>
+                  </div>
+
+                  {/* 4 Mini CRM Stat Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Total Accounts</div>
+                      <div className="text-base font-extrabold text-slate-900 mt-0.5">{(selectedBranchForDepth.customers_count || 450).toLocaleString()}</div>
+                      <div className="text-[10px] text-emerald-600 font-bold">100% Geofenced</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Enterprise VIPs</div>
+                      <div className="text-base font-extrabold text-purple-700 mt-0.5">{Math.round((selectedBranchForDepth.customers_count || 450) * 0.12)}</div>
+                      <div className="text-[10px] text-slate-500 font-medium">Priority SLA</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">WhatsApp Reach</div>
+                      <div className="text-base font-extrabold text-blue-700 mt-0.5">98.4%</div>
+                      <div className="text-[10px] text-slate-500 font-medium">Verified Number</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Avg Monthly LTV</div>
+                      <div className="text-base font-extrabold text-emerald-600 mt-0.5">₹28,500</div>
+                      <div className="text-[10px] text-slate-500 font-medium">Per Service Cycle</div>
+                    </div>
+                  </div>
+
+                  {/* Key Accounts List */}
+                  <div className="space-y-2">
+                    <div className="font-bold text-slate-700 text-xs">
+                      Key Branch Client Accounts
+                    </div>
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                      {getBranchCustomers(selectedBranchForDepth).map((cust) => (
+                        <div key={cust.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                          <div className="flex items-start sm:items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 font-bold flex items-center justify-center text-xs shrink-0">
+                              {cust.avatarInitials}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-900 text-xs">{cust.name}</span>
+                                <span className={`px-2 py-0.2 rounded-md font-bold text-[9px] ${
+                                  cust.segment === 'Enterprise VIP'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : cust.segment === 'Premium Retainer'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {cust.segment}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                {cust.company} • <span className="font-mono">{cust.phone}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                            <div className="text-left sm:text-right">
+                              <div className="font-bold text-slate-800 text-xs">{cust.totalSpent}</div>
+                              <div className="text-[10px] text-slate-400">{cust.conversationsCount} chats • {cust.lastActive}</div>
+                            </div>
+
+                            <a
+                              href={`https://wa.me/${cust.phone.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Start WhatsApp chat"
+                            >
+                              <MessageSquare className="w-3 h-3 text-emerald-600" />
+                              <span>WhatsApp</span>
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: WORKFLOWS & AUTOMATIONS */}
               {depthActiveTab === 'automations' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -2718,28 +2970,62 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 </div>
               )}
 
-              {/* TAB 4: LIVE ACTIVITY & AUDIT */}
+              {/* TAB 5: LIVE ACTIVITY & AUTOMATED TASKS */}
               {depthActiveTab === 'activity' && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-bold text-slate-800">Recent Branch Activity & System Events</div>
-                    <span className="text-slate-500 font-semibold text-xs">{getBranchActivity(selectedBranchForDepth).length} Events Logged</span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {getBranchActivity(selectedBranchForDepth).map((act) => (
-                      <div key={act.id} className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-start gap-3">
-                        <div className={`p-2 rounded-xl shrink-0 ${act.color}`}>
-                          <act.icon className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900">{act.title}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{act.time}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-600 mt-0.5">{act.desc}</p>
-                        </div>
+                <div className="space-y-4">
+                  {/* Automated Tasks & Telemetry Metrics */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-emerald-600" />
+                        <span>Automated Task Engine & Telemetry</span>
                       </div>
-                    ))}
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        Cloud API Active
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <div className="text-[9px] uppercase font-bold text-slate-400">Automated Tasks</div>
+                        <div className="text-base font-extrabold text-emerald-600 mt-0.5">
+                          {selectedBranchForDepth.tasks_automated || 120}
+                        </div>
+                        <div className="text-[9px] text-slate-500 font-medium">This month</div>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <div className="text-[9px] uppercase font-bold text-slate-400">Success Rate</div>
+                        <div className="text-base font-extrabold text-slate-900 mt-0.5">99.8%</div>
+                        <div className="text-[9px] text-emerald-600 font-medium">Zero errors</div>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <div className="text-[9px] uppercase font-bold text-slate-400">Avg Latency</div>
+                        <div className="text-base font-extrabold text-blue-600 mt-0.5">42 ms</div>
+                        <div className="text-[9px] text-slate-500 font-medium">Regional Edge</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-slate-800">Recent Branch Activity & System Events</div>
+                      <span className="text-slate-500 font-semibold text-xs">{getBranchActivity(selectedBranchForDepth).length} Events Logged</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {getBranchActivity(selectedBranchForDepth).map((act) => (
+                        <div key={act.id} className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-start gap-3">
+                          <div className={`p-2 rounded-xl shrink-0 ${act.color}`}>
+                            <act.icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900">{act.title}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">{act.time}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 mt-0.5">{act.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
