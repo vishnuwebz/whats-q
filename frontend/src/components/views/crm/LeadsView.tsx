@@ -591,6 +591,7 @@ export const LeadsView: React.FC = () => {
   // Kanban Horizontal Smooth Scroll & Quick-Jump State
   const kanbanScrollContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScrollingRef = useRef(false);
+  const lastProgrammaticTimeRef = useRef(0);
   const [highlightedColumnId, setHighlightedColumnId] = useState<string | null>(null);
   const [activeScrolledStage, setActiveScrolledStage] = useState<string>('new');
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -620,24 +621,42 @@ export const LeadsView: React.FC = () => {
     setCanScrollLeft(container.scrollLeft > 20);
     setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 20);
 
-    // If scrolling programmatically via a pill click, do not let intermediate scroll events override the active stage!
-    if (isProgrammaticScrollingRef.current) return;
+    // If scrolling programmatically via a pill click or recently jumped, do not let scroll events override the active stage!
+    if (isProgrammaticScrollingRef.current || (Date.now() - lastProgrammaticTimeRef.current < 1500)) return;
 
+    const isAtRightEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 40;
+    const isAtLeftEnd = container.scrollLeft <= 30;
+
+    if (isAtLeftEnd) {
+      setActiveScrolledStage(stages[0]?.id || 'new');
+      return;
+    }
+
+    if (isAtRightEnd) {
+      // If currently selected stage is already one of the visible rightmost stages, preserve it
+      const rightStages = ['won', 'lost', 'negotiation'];
+      if (rightStages.includes(activeScrolledStage)) {
+        return;
+      }
+      setActiveScrolledStage('won');
+      return;
+    }
+
+    // Determine the column closest to the center of the container viewport
     const containerRect = container.getBoundingClientRect();
-    const containerLeft = containerRect.left;
+    const viewportCenter = containerRect.left + containerRect.width / 2;
 
-    let bestStage = 'new';
+    let bestStage = activeScrolledStage;
     let minDistance = Infinity;
 
     stages.forEach((s) => {
       const colEl = document.getElementById(`kanban-col-${s.id}`);
       if (colEl) {
         const colRect = colEl.getBoundingClientRect();
-        // Measure position relative to container's left edge
-        const relLeft = colRect.left - containerLeft;
-        // Column must have its left edge at or past container left edge (with small tolerance)
-        if (relLeft >= -30 && relLeft < minDistance) {
-          minDistance = relLeft;
+        const colCenter = colRect.left + colRect.width / 2;
+        const dist = Math.abs(colCenter - viewportCenter);
+        if (dist < minDistance) {
+          minDistance = dist;
           bestStage = s.id;
         }
       }
@@ -650,6 +669,7 @@ export const LeadsView: React.FC = () => {
     setActiveScrolledStage(stageId);
     setHighlightedColumnId(stageId);
     isProgrammaticScrollingRef.current = true;
+    lastProgrammaticTimeRef.current = Date.now();
 
     const container = kanbanScrollContainerRef.current;
     const colEl = document.getElementById(`kanban-col-${stageId}`);
@@ -662,15 +682,20 @@ export const LeadsView: React.FC = () => {
         behavior: 'smooth',
       });
 
-      // Keep lock active for duration of smooth scroll
+      // Keep lock active for duration of smooth scroll (1000ms), and update arrow states without overriding activeScrolledStage
       setTimeout(() => {
         isProgrammaticScrollingRef.current = false;
-        checkScrollBounds();
-      }, 700);
+        if (kanbanScrollContainerRef.current) {
+          const c = kanbanScrollContainerRef.current;
+          setCanScrollLeft(c.scrollLeft > 20);
+          setCanScrollRight(c.scrollLeft + c.clientWidth < c.scrollWidth - 20);
+        }
+      }, 1000);
 
+      // Keep column card pulse effect for 2.5 seconds
       setTimeout(() => {
         setHighlightedColumnId((prev) => (prev === stageId ? null : prev));
-      }, 1800);
+      }, 2500);
     } else {
       isProgrammaticScrollingRef.current = false;
     }
@@ -952,7 +977,7 @@ export const LeadsView: React.FC = () => {
 
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
               {stages.map((st) => {
-                const isSelected = highlightedColumnId ? highlightedColumnId === st.id : activeScrolledStage === st.id;
+                const isSelected = activeScrolledStage === st.id || highlightedColumnId === st.id;
 
                 return (
                   <button

@@ -288,7 +288,7 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       headers = ['Configuration Setting', 'Value', 'Last Checked'];
       rows = [
         ['Workspace Name', store.workspace?.business_name || 'Qiyam Ventures', dateStr],
-        ['System Version', store.versionInfo?.version || '2.4.51', dateStr],
+        ['System Version', store.versionInfo?.version || '2.4.52', dateStr],
         ['Git Release', store.versionInfo?.current_commit || '62dc507', dateStr],
         ['Auto-Backup Schedule', 'Daily (PostgreSQL Dump)', 'Automated'],
       ];
