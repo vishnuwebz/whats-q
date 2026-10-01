@@ -2635,12 +2635,13 @@ export const ConversationsView: React.FC = () => {
                     </div>
                   ) : (
                     /* ── EXPANDED FULL WARNING BANNER (DEFAULT) ── */
-                    <div className="px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2 rounded-xl bg-rose-100 text-rose-700 mt-0.5 shrink-0">
+                    <div className="px-4 sm:px-5 py-2.5 space-y-2.5">
+                      {/* Top: Full-width Error Notice, Badges & Details */}
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-rose-100 text-rose-700 mt-0.5 shrink-0">
                           <Ban className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs sm:text-sm text-rose-950">
                               {currentSuppression.isBlocked
@@ -2656,16 +2657,17 @@ export const ConversationsView: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-rose-700 mt-0.5 leading-relaxed font-medium">
+                          <p className="text-xs text-rose-700 mt-1 leading-snug font-medium">
                             {currentSuppression.reason}
                           </p>
-                          <div className="text-[10px] text-rose-600/80 font-mono mt-0.5">
+                          <div className="text-[11px] text-rose-600/80 font-mono mt-0.5">
                             Enforced on {currentSuppression.date} • Promotional broadcasts and automated marketing templates are suspended.
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      {/* Underneath: 3 Action Buttons Row */}
+                      <div className="flex items-center gap-2 pt-1.5 border-t border-rose-200/60 flex-wrap">
                         <button
                           type="button"
                           onClick={() => {
@@ -2688,7 +2690,7 @@ export const ConversationsView: React.FC = () => {
                             }
                             setActiveTab('bulk-suppression');
                           }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/60 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
                           title="Open Compliance & Suppression List Hub"
                         >
                           <span>Suppression Hub</span>
@@ -2697,7 +2699,7 @@ export const ConversationsView: React.FC = () => {
                         <button
                           type="button"
                           onClick={toggleSuppressionBanner}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer sm:ml-auto"
                           title="Collapse compliance banner to save space"
                         >
                           <span>Collapse</span>
