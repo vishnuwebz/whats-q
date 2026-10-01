@@ -47,32 +47,39 @@ export const BRANCH_IMAGE_PRESETS = [
 ];
 
 export const getBranchStaff = (branch: BranchItem) => {
-  return [
-    {
-      name: branch.manager_name || 'Rahul Mehta',
-      role: branch.manager_role || 'Branch Manager',
-      department: 'Management',
-      phone: branch.phone || '+91 495 276 5400',
-      email: branch.email || 'manager@qiyamventures.com',
-      status: 'On Duty',
-      rating: 4.9,
-    },
+  const targetCount = Math.max(1, Number(branch.employees_count) || 8);
+  const isBranchActive = branch.status?.toLowerCase() !== 'inactive';
+  const defaultStatus = isBranchActive ? 'On Duty' : 'Off Duty';
+
+  // 1. Manager / Branch Lead
+  const manager = {
+    name: branch.manager_name || 'Rahul Mehta',
+    role: branch.manager_role || 'Branch Manager',
+    department: 'Management',
+    phone: branch.phone || '+91 495 276 5400',
+    email: branch.email || 'manager@qiyamventures.com',
+    status: defaultStatus,
+    rating: 4.9,
+  };
+
+  // 2. Curated Roster Pool of Branch Specialists
+  const ROSTER_POOL = [
     {
       name: 'Anjali Nair',
       role: 'Senior WhatsApp Specialist',
       department: 'Customer Support',
       phone: '+91 98470 11223',
       email: 'anjali.n@qiyamventures.com',
-      status: 'On Duty',
+      status: defaultStatus,
       rating: 4.8,
     },
     {
       name: 'Mohammed Rizwan',
       role: 'Key Account Executive',
-      department: 'Sales',
+      department: 'Sales & Growth',
       phone: '+91 97451 99882',
       email: 'rizwan.m@qiyamventures.com',
-      status: 'On Duty',
+      status: defaultStatus,
       rating: 4.7,
     },
     {
@@ -81,10 +88,147 @@ export const getBranchStaff = (branch: BranchItem) => {
       department: 'Operations',
       phone: '+91 94472 44331',
       email: 'karthik.v@qiyamventures.com',
-      status: 'Available',
+      status: defaultStatus,
       rating: 4.9,
     },
+    {
+      name: 'Sneha Joshi',
+      role: 'WhatsApp Automation Engineer',
+      department: 'Technical Operations',
+      phone: '+91 96789 66771',
+      email: 'sneha.j@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.8,
+    },
+    {
+      name: 'Arjun Das',
+      role: 'Customer Success Manager',
+      department: 'Client Retention',
+      phone: '+91 85471 22330',
+      email: 'arjun.d@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.9,
+    },
+    {
+      name: 'Divya Menon',
+      role: 'Regional Dispatch Coordinator',
+      department: 'Logistics',
+      phone: '+91 91234 56789',
+      email: 'divya.m@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.8,
+    },
+    {
+      name: 'Siddharth Rao',
+      role: 'Billing & Invoicing Specialist',
+      department: 'Finance & Accounts',
+      phone: '+91 98765 12340',
+      email: 'siddharth.r@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.7,
+    },
+    {
+      name: 'Pooja Varma',
+      role: 'Quality Assurance Analyst',
+      department: 'Compliance & QA',
+      phone: '+91 94471 10045',
+      email: 'pooja.v@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.8,
+    },
+    {
+      name: 'Vikram Mehta',
+      role: 'Enterprise Solutions Consultant',
+      department: 'Enterprise Sales',
+      phone: '+91 93345 67890',
+      email: 'vikram.m@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.9,
+    },
+    {
+      name: 'Meera Nambiar',
+      role: 'Live Chat Support Agent',
+      department: 'Customer Support',
+      phone: '+91 92233 44556',
+      email: 'meera.n@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.8,
+    },
+    {
+      name: 'Amit Sharma',
+      role: 'Field Support Technician',
+      department: 'Operations',
+      phone: '+91 90000 11123',
+      email: 'amit.s@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.7,
+    },
+    {
+      name: 'Aisha Fathima',
+      role: 'Digital Engagement Associate',
+      department: 'Marketing',
+      phone: '+91 95566 77889',
+      email: 'aisha.f@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.9,
+    },
+    {
+      name: 'Ramesh Kumar',
+      role: 'Facility Coordinator',
+      department: 'Operations',
+      phone: '+91 91222 33445',
+      email: 'ramesh.k@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.6,
+    },
+    {
+      name: 'Deepak Patel',
+      role: 'Support Desk Specialist',
+      department: 'Customer Support',
+      phone: '+91 96677 88990',
+      email: 'deepak.p@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.8,
+    },
+    {
+      name: 'Nandita Roy',
+      role: 'Operations Supervisor',
+      department: 'Management',
+      phone: '+91 97788 99001',
+      email: 'nandita.r@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.9,
+    },
+    {
+      name: 'Farhan Ali',
+      role: 'Client Relationship Officer',
+      department: 'Sales & Growth',
+      phone: '+91 98899 00112',
+      email: 'farhan.a@qiyamventures.com',
+      status: defaultStatus,
+      rating: 4.8,
+    },
   ];
+
+  if (targetCount <= 1) {
+    return [manager];
+  }
+
+  const staffList = [manager];
+  for (let i = 0; i < targetCount - 1; i++) {
+    const template = ROSTER_POOL[i % ROSTER_POOL.length];
+    if (i >= ROSTER_POOL.length) {
+      staffList.push({
+        ...template,
+        name: `${template.name} ${Math.floor(i / ROSTER_POOL.length) + 1}`,
+        email: `${template.email.replace('@', `${Math.floor(i / ROSTER_POOL.length) + 1}@`)}`,
+      });
+    } else {
+      staffList.push(template);
+    }
+  }
+
+  return staffList;
 };
 
 export const getBranchWorkflows = (branch: BranchItem) => {
