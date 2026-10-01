@@ -2053,7 +2053,6 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
       {editingImageBranch && (
         <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setEditingImageBranch(null)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150"
@@ -2249,7 +2248,6 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
       {isBranchModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setIsBranchModalOpen(false)}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 sm:p-6 space-y-4 text-xs animate-in zoom-in-95 duration-150 max-h-[92dvh] overflow-y-auto"
