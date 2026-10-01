@@ -327,8 +327,56 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
 
-  // Actions menu state (per row)
-  const [activeActionMenuId, setActiveActionMenuId] = useState<string | number | null>(null);
+  // Floating Action Menu state with portal-style fixed positioning
+  const [actionMenuState, setActionMenuState] = useState<{
+    branch: BranchItem;
+    top?: number;
+    bottom?: number;
+    right: number;
+    openUpwards: boolean;
+  } | null>(null);
+
+  const handleOpenActionMenu = (e: React.MouseEvent<HTMLButtonElement>, branch: BranchItem) => {
+    e.stopPropagation();
+    if (actionMenuState?.branch.id === branch.id) {
+      setActionMenuState(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const estimatedHeight = 360; // Full menu height with header & 6 items
+    const openUpwards = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+
+    if (openUpwards) {
+      setActionMenuState({
+        branch,
+        bottom: Math.max(12, window.innerHeight - rect.top + 6),
+        right: Math.max(12, window.innerWidth - rect.right),
+        openUpwards: true,
+      });
+    } else {
+      setActionMenuState({
+        branch,
+        top: Math.max(12, rect.bottom + 6),
+        right: Math.max(12, window.innerWidth - rect.right),
+        openUpwards: false,
+      });
+    }
+  };
+
+  // Close floating action menu on window resize or scroll
+  React.useEffect(() => {
+    if (!actionMenuState) return;
+    const handleClose = () => setActionMenuState(null);
+    window.addEventListener('resize', handleClose);
+    window.addEventListener('scroll', handleClose, true);
+    return () => {
+      window.removeEventListener('resize', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+    };
+  }, [actionMenuState]);
 
   // Edit Image Modal State
   const [editingImageBranch, setEditingImageBranch] = useState<BranchItem | null>(null);
@@ -413,7 +461,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
   // Open Edit Branch Modal
   const handleOpenEditModal = (branch: BranchItem) => {
-    setActiveActionMenuId(null);
+    setActionMenuState(null);
     setEditingBranch(branch);
     setBranchForm({
       name: branch.name,
@@ -435,7 +483,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
   // Open Edit Image Modal
   const handleOpenImageModal = (branch: BranchItem) => {
-    setActiveActionMenuId(null);
+    setActionMenuState(null);
     setEditingImageBranch(branch);
     setPreviewImageUrl(branch.image || BRANCH_IMAGE_PRESETS[0].url);
     setCustomUrlInput(branch.image || '');
@@ -491,7 +539,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
   // Toggle Main Branch
   const handleToggleMainBranch = async (branch: BranchItem) => {
-    setActiveActionMenuId(null);
+    setActionMenuState(null);
     const newStatus = !branch.is_main;
     await updateBranch(branch.id, { is_main: newStatus });
     addToast(`${branch.name} ${newStatus ? 'set as Main Branch' : 'unset from Main Branch'}`, 'success');
@@ -499,7 +547,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
   // Toggle Active/Inactive Status
   const handleToggleStatus = async (branch: BranchItem) => {
-    setActiveActionMenuId(null);
+    setActionMenuState(null);
     const newStatus = branch.status?.toLowerCase() === 'active' ? 'Inactive' : 'Active';
     await updateBranch(branch.id, { status: newStatus });
     addToast(`${branch.name} marked as ${newStatus}`, 'info');
@@ -507,7 +555,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
   // Delete Branch with confirmation
   const handleDeleteBranch = (branch: BranchItem) => {
-    setActiveActionMenuId(null);
+    setActionMenuState(null);
     requestGeneralConfirmation({
       title: 'Remove Branch Location?',
       message: `Are you sure you want to remove the branch "${branch.name}"?`,
@@ -532,7 +580,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
     <div
       className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans"
       onClick={() => {
-        if (activeActionMenuId) setActiveActionMenuId(null);
+        if (actionMenuState) setActionMenuState(null);
         if (isFilterDropdownOpen) setIsFilterDropdownOpen(false);
       }}
     >
@@ -1059,79 +1107,19 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                           )}
 
                           {/* 8. Actions (Common to both modes) */}
-                          <td className="py-3 px-4 text-right relative">
+                          <td className="py-3 px-4 text-right">
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveActionMenuId(activeActionMenuId === b.id ? null : b.id);
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                              title="Actions"
+                              onClick={(e) => handleOpenActionMenu(e, b)}
+                              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                                actionMenuState?.branch.id === b.id
+                                  ? 'bg-slate-900 text-white shadow-xs'
+                                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                              }`}
+                              aria-label={`Open actions for ${b.name}`}
                             >
                               <MoreVertical className="w-4 h-4" />
                             </button>
-
-                            {/* Dropdown Menu */}
-                            {activeActionMenuId === b.id && (
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="absolute right-3 top-full mt-1 z-40 w-48 bg-white rounded-xl shadow-xl border border-slate-200 p-1 animate-in fade-in zoom-in-95 duration-100 text-left"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveActionMenuId(null);
-                                    setSelectedBranchForDepth(b);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>View Depth Details</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenImageModal(b)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                                >
-                                  <Camera className="w-3.5 h-3.5 text-blue-500" />
-                                  <span>Change Photo</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditModal(b)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                                  <span>Edit Details</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleMainBranch(b)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span>{b.is_main ? 'Unset Main Branch' : 'Set as Main Branch'}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleStatus(b)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                                >
-                                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" />
-                                  <span>Toggle Status</span>
-                                </button>
-                                <div className="border-t border-slate-100 my-1" />
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteBranch(b)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete Branch</span>
-                                </button>
-                              </div>
-                            )}
                           </td>
                         </tr>
                       );
@@ -1420,13 +1408,27 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                             </td>
                             <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || 'May 31, 2024 10:30 AM'}</td>
                             <td className="py-3.5 px-4 text-right">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedBranchForDepth(b)}
-                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
-                              >
-                                Details
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedBranchForDepth(b)}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold text-[11px] text-slate-700 transition-colors cursor-pointer"
+                                >
+                                  Details
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleOpenActionMenu(e, b)}
+                                  className={`p-1 rounded-lg transition-all cursor-pointer ${
+                                    actionMenuState?.branch.id === b.id
+                                      ? 'bg-slate-900 text-white shadow-xs'
+                                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                                  }`}
+                                  aria-label={`Open actions for ${b.name}`}
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -2602,6 +2604,224 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. Floating Action Menu Dropdown Portal (Decoupled from table overflow) ── */}
+      {actionMenuState && (
+        <div className="fixed inset-0 z-50 pointer-events-none select-none">
+          {/* Backdrop to dismiss when clicking outside */}
+          <div
+            className="fixed inset-0 pointer-events-auto bg-black/10 backdrop-blur-[0.5px] transition-opacity animate-in fade-in duration-100"
+            onClick={() => setActionMenuState(null)}
+          />
+
+          {/* Menu Card */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              top: actionMenuState.top !== undefined ? `${actionMenuState.top}px` : undefined,
+              bottom: actionMenuState.bottom !== undefined ? `${actionMenuState.bottom}px` : undefined,
+              right: `${actionMenuState.right}px`,
+              maxHeight: 'calc(100vh - 24px)',
+            }}
+            className="fixed pointer-events-auto z-50 w-72 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-slate-200/90 ring-1 ring-slate-900/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-left flex flex-col"
+          >
+            {/* Header: Branch Info Context */}
+            <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/70 border-b border-slate-100 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 shadow-xs flex items-center justify-center">
+                  {actionMenuState.branch.image ? (
+                    <img
+                      src={actionMenuState.branch.image}
+                      alt={actionMenuState.branch.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <Building2 className="w-4 h-4 text-slate-500" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-slate-900 text-xs truncate max-w-[140px]">
+                      {actionMenuState.branch.name}
+                    </span>
+                    {actionMenuState.branch.is_main && (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white font-extrabold text-[9px] uppercase tracking-wide shrink-0">
+                        HQ
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1">
+                    <span className="font-mono text-slate-600 font-semibold">{actionMenuState.branch.code}</span>
+                    <span>•</span>
+                    <span>{actionMenuState.branch.city || 'Regional Office'}</span>
+                  </div>
+                </div>
+              </div>
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase border shrink-0 ${
+                  actionMenuState.branch.status?.toLowerCase() === 'active'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    actionMenuState.branch.status?.toLowerCase() === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                  }`}
+                />
+                <span>{actionMenuState.branch.status || 'Active'}</span>
+              </span>
+            </div>
+
+            {/* Actions List */}
+            <div className="p-1.5 space-y-0.5 overflow-y-auto max-h-[360px] scrollbar-thin">
+              {/* 1. View Depth Details */}
+              <button
+                type="button"
+                onClick={() => {
+                  const b = actionMenuState.branch;
+                  setActionMenuState(null);
+                  setSelectedBranchForDepth(b);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-emerald-50/70 group transition-colors cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-emerald-100/70 transition-all">
+                  <Eye className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-slate-800 group-hover:text-emerald-700 transition-colors">
+                    View Depth Details
+                  </div>
+                  <div className="text-[10px] text-slate-400 group-hover:text-emerald-600/80 transition-colors truncate">
+                    Workforce roster, stats & automations
+                  </div>
+                </div>
+              </button>
+
+              {/* 2. Edit Details */}
+              <button
+                type="button"
+                onClick={() => {
+                  const b = actionMenuState.branch;
+                  handleOpenEditModal(b);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-slate-50 group transition-colors cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-slate-200/70 transition-all">
+                  <Edit3 className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-slate-800 group-hover:text-slate-900 transition-colors">
+                    Edit Details
+                  </div>
+                  <div className="text-[10px] text-slate-400 transition-colors truncate">
+                    Update location, contacts & role
+                  </div>
+                </div>
+              </button>
+
+              {/* 3. Change Photo */}
+              <button
+                type="button"
+                onClick={() => {
+                  const b = actionMenuState.branch;
+                  handleOpenImageModal(b);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-blue-50/70 group transition-colors cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200/80 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-blue-100/70 transition-all">
+                  <Camera className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-slate-800 group-hover:text-blue-700 transition-colors">
+                    Change Photo
+                  </div>
+                  <div className="text-[10px] text-slate-400 group-hover:text-blue-600/80 transition-colors truncate">
+                    Upload image or pick preset
+                  </div>
+                </div>
+              </button>
+
+              <div className="my-1 border-t border-slate-100" />
+
+              {/* 4. Set/Unset Main Branch */}
+              <button
+                type="button"
+                onClick={() => {
+                  const b = actionMenuState.branch;
+                  handleToggleMainBranch(b);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-amber-50/70 group transition-colors cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-amber-100/70 transition-all">
+                  <Building2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-slate-800 group-hover:text-amber-800 transition-colors">
+                    {actionMenuState.branch.is_main ? 'Unset Main Branch' : 'Set as Main Branch'}
+                  </div>
+                  <div className="text-[10px] text-slate-400 group-hover:text-amber-700/80 transition-colors truncate">
+                    {actionMenuState.branch.is_main ? 'Downgrade to regional hub' : 'Designate company headquarters'}
+                  </div>
+                </div>
+              </button>
+
+              {/* 5. Toggle Status */}
+              <button
+                type="button"
+                onClick={() => {
+                  const b = actionMenuState.branch;
+                  handleToggleStatus(b);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-slate-100/70 group transition-colors cursor-pointer"
+              >
+                <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 group-hover:scale-105 transition-all ${
+                  actionMenuState.branch.status?.toLowerCase() === 'active'
+                    ? 'bg-slate-100 border-slate-200 text-slate-600 group-hover:bg-slate-200/70'
+                    : 'bg-emerald-50 border-emerald-200/80 text-emerald-600 group-hover:bg-emerald-100/70'
+                }`}>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-slate-800 group-hover:text-slate-900 transition-colors">
+                    {actionMenuState.branch.status?.toLowerCase() === 'active' ? 'Mark Inactive' : 'Mark Active'}
+                  </div>
+                  <div className="text-[10px] text-slate-400 transition-colors truncate">
+                    {actionMenuState.branch.status?.toLowerCase() === 'active' ? 'Temporarily pause branch' : 'Enable live branch operations'}
+                  </div>
+                </div>
+              </button>
+
+              <div className="my-1 border-t border-slate-100" />
+
+              {/* 6. Delete Branch */}
+              <button
+                type="button"
+                onClick={() => {
+                  const b = actionMenuState.branch;
+                  handleDeleteBranch(b);
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-rose-50 text-rose-600 group transition-colors cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-rose-100/80 transition-all">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-rose-600 group-hover:text-rose-700 transition-colors">
+                    Delete Branch
+                  </div>
+                  <div className="text-[10px] text-rose-400 group-hover:text-rose-500 transition-colors truncate">
+                    Permanently remove from network
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
