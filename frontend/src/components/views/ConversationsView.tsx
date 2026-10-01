@@ -145,6 +145,10 @@ export const ConversationsView: React.FC = () => {
       return next;
     });
   };
+
+  // Suppression / Blocked Warning banner collapsed state (per conversation ID, defaults to false = EXPANDED)
+  const [collapsedSuppressionIds, setCollapsedSuppressionIds] = useState<Record<string | number, boolean>>({});
+
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const [activeFloatingDate, setActiveFloatingDate] = useState<string>('');
@@ -290,6 +294,19 @@ export const ConversationsView: React.FC = () => {
 
     return pool[0] || null;
   }, [allAvailableConvs, activeFilterTab, selectedConversationId, deletedConversations, conversations]);
+
+  const isCurrentSuppressionCollapsed = Boolean(
+    currentConv?.id && collapsedSuppressionIds[currentConv.id]
+  );
+
+  const toggleSuppressionBanner = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!currentConv?.id) return;
+    setCollapsedSuppressionIds((prev) => ({
+      ...prev,
+      [currentConv.id]: !prev[currentConv.id],
+    }));
+  };
 
   const availableStaffList = useMemo(() => {
     if (employees && employees.length > 0) return employees;
@@ -2539,68 +2556,156 @@ export const ConversationsView: React.FC = () => {
                 </div>
               )}
 
-              {/* Suppression / Opt-Out & Blocked Live Compliance Warning Banner */}
+              {/* Suppression / Opt-Out & Blocked Live Compliance Warning Banner (Expandable & Collapsible, Expanded by Default) */}
               {currentSuppression && (
-                <div className="bg-rose-50 border-b border-rose-200/90 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 shadow-2xs">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="p-2 rounded-xl bg-rose-100 text-rose-700 mt-0.5 shrink-0">
-                      <Ban className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-xs sm:text-sm text-rose-950">
-                          {currentSuppression.isBlocked
-                            ? 'Customer Blocked Business Number'
-                            : 'Customer Opted Out (Unsubscribed)'}
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 uppercase tracking-wider">
-                          Compliance Enforced
-                        </span>
-                        {currentSuppression.metaErrorCode && (
-                          <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-white text-rose-800 border border-rose-200">
-                            Meta Error {currentSuppression.metaErrorCode}
+                <div className="bg-rose-50 border-b border-rose-200/90 transition-all duration-200 shrink-0 shadow-2xs">
+                  {isCurrentSuppressionCollapsed ? (
+                    /* ── COLLAPSED COMPACT SINGLE-LINE STRIP ── */
+                    <div className="px-3.5 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs">
+                      {/* Left: Clickable summary to re-expand */}
+                      <button
+                        type="button"
+                        onClick={toggleSuppressionBanner}
+                        className="flex items-center gap-2 min-w-0 hover:opacity-85 transition cursor-pointer text-left group/strip"
+                        title="Click to expand compliance details"
+                      >
+                        <div className="p-1.5 rounded-lg bg-rose-100 text-rose-700 shrink-0">
+                          <Ban className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="font-bold text-rose-950 text-xs truncate group-hover/strip:text-rose-800">
+                            {currentSuppression.isBlocked
+                              ? 'Customer Blocked Business Number'
+                              : 'Customer Opted Out (Unsubscribed)'}
                           </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-rose-700 mt-0.5 leading-relaxed font-medium">
-                        {currentSuppression.reason}
-                      </p>
-                      <div className="text-[10px] text-rose-600/80 font-mono mt-0.5">
-                        Enforced on {currentSuppression.date} • Promotional broadcasts and automated marketing templates are suspended.
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-rose-200 text-rose-900 uppercase tracking-wider shrink-0">
+                            Compliance Enforced
+                          </span>
+                          {currentSuppression.metaErrorCode && (
+                            <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-white text-rose-800 border border-rose-200 shrink-0 hidden md:inline">
+                              Meta Error {currentSuppression.metaErrorCode}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-rose-600/70 font-medium hidden lg:inline">
+                            • Click to expand details
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Right: Quick actions + Expand Button */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentConv) {
+                              removeSuppressionRecord(currentConv.phone_number, currentConv.id);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                          title="Clear suppression with explicit customer opt-in consent"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span className="hidden sm:inline">Re-subscribe</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentConv) {
+                              const cleanPhone = currentConv.phone_number.replace(/\s+/g, '');
+                              setSuppressionSearchQuery(cleanPhone || currentConv.contact_name || '');
+                            }
+                            setActiveTab('bulk-suppression');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-lg text-[11px] font-bold transition cursor-pointer active:scale-95 shadow-2xs"
+                          title="Open Compliance & Suppression List Hub"
+                        >
+                          <span className="hidden md:inline">Suppression Hub</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={toggleSuppressionBanner}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-200 rounded-lg text-[11px] font-bold transition cursor-pointer"
+                          title="Expand compliance banner"
+                        >
+                          <span>Expand</span>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* ── EXPANDED FULL WARNING BANNER (DEFAULT) ── */
+                    <div className="px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="p-2 rounded-xl bg-rose-100 text-rose-700 mt-0.5 shrink-0">
+                          <Ban className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs sm:text-sm text-rose-950">
+                              {currentSuppression.isBlocked
+                                ? 'Customer Blocked Business Number'
+                                : 'Customer Opted Out (Unsubscribed)'}
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 uppercase tracking-wider">
+                              Compliance Enforced
+                            </span>
+                            {currentSuppression.metaErrorCode && (
+                              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-white text-rose-800 border border-rose-200">
+                                Meta Error {currentSuppression.metaErrorCode}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-rose-700 mt-0.5 leading-relaxed font-medium">
+                            {currentSuppression.reason}
+                          </p>
+                          <div className="text-[10px] text-rose-600/80 font-mono mt-0.5">
+                            Enforced on {currentSuppression.date} • Promotional broadcasts and automated marketing templates are suspended.
+                          </div>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (currentConv) {
-                          removeSuppressionRecord(currentConv.phone_number, currentConv.id);
-                        }
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
-                      title="Clear suppression with explicit customer opt-in consent"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Re-subscribe with Consent</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (currentConv) {
-                          const cleanPhone = currentConv.phone_number.replace(/\s+/g, '');
-                          setSuppressionSearchQuery(cleanPhone || currentConv.contact_name || '');
-                        }
-                        setActiveTab('bulk-suppression');
-                      }}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
-                      title="Open Compliance & Suppression List Hub"
-                    >
-                      <span>Suppression Hub</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  </div>
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentConv) {
+                              removeSuppressionRecord(currentConv.phone_number, currentConv.id);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                          title="Clear suppression with explicit customer opt-in consent"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Re-subscribe with Consent</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentConv) {
+                              const cleanPhone = currentConv.phone_number.replace(/\s+/g, '');
+                              setSuppressionSearchQuery(cleanPhone || currentConv.contact_name || '');
+                            }
+                            setActiveTab('bulk-suppression');
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-rose-100/50 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+                          title="Open Compliance & Suppression List Hub"
+                        >
+                          <span>Suppression Hub</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={toggleSuppressionBanner}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                          title="Collapse compliance banner to save space"
+                        >
+                          <span>Collapse</span>
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
