@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Conversation } from '@/types';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
-import { Trash2, X, MessageSquare, ShieldAlert, Loader2 } from 'lucide-react';
+import { Trash2, X, MessageSquare, ShieldAlert, AlertOctagon, Loader2, RotateCcw } from 'lucide-react';
 
 interface DeleteConversationModalProps {
   isOpen: boolean;
   onClose: () => void;
   conversation: Conversation | null;
-  onConfirmDelete: (id: string | number) => Promise<void>;
+  onConfirmDelete: (id: string | number, permanent?: boolean) => Promise<void>;
+  isPermanent?: boolean;
 }
 
 export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = ({
@@ -15,8 +16,15 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
   onClose,
   conversation,
   onConfirmDelete,
+  isPermanent = false,
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPermanentMode, setIsPermanentMode] = useState(isPermanent);
+
+  // Sync mode whenever modal opens or props change
+  useEffect(() => {
+    setIsPermanentMode(Boolean(isPermanent || conversation?.is_deleted));
+  }, [isOpen, isPermanent, conversation?.is_deleted]);
 
   if (!isOpen || !conversation) return null;
 
@@ -28,7 +36,7 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
     // Instantly close modal — 0ms wait for snappy user experience
     onClose();
     // Fire deletion optimistically in background
-    onConfirmDelete(conversation.id).catch((e) => {
+    onConfirmDelete(conversation.id, isPermanentMode).catch((e) => {
       console.error('Failed to delete conversation:', e);
     });
   };
@@ -51,16 +59,24 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
 
         <div className="p-6 sm:p-7">
           {/* Warning Icon Badge */}
-          <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 ring-8 ring-red-50/50 shadow-xs">
+          <div
+            className={`w-14 h-14 rounded-2xl border flex items-center justify-center mx-auto mb-4 ring-8 shadow-xs transition-colors ${
+              isPermanentMode
+                ? 'bg-rose-50 border-rose-200 text-rose-600 ring-rose-50/60'
+                : 'bg-amber-50 border-amber-200 text-amber-600 ring-amber-50/60'
+            }`}
+          >
             <Trash2 className="w-7 h-7 stroke-[2.2]" />
           </div>
 
           <div className="text-center space-y-1.5 mb-5">
             <h3 className="text-base sm:text-lg font-bold text-slate-900">
-              Move to Trash?
+              {isPermanentMode ? 'Delete Permanently?' : 'Move to Trash?'}
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-              Are you sure you want to move this conversation to Trash? You can retrieve it anytime from the Trash tab, or start a new chat with this number.
+              {isPermanentMode
+                ? 'Are you sure you want to permanently delete this chat? All message history will be purged completely and cannot be recovered.'
+                : 'Are you sure you want to move this conversation to Trash? You can retrieve it anytime from the Trash tab.'}
             </p>
           </div>
 
@@ -103,13 +119,25 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
             )}
           </div>
 
-          {/* Safe Archival Notice Banner */}
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs mb-6">
-            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <span className="font-bold">Safe Archival:</span> This conversation will be removed from your active inbox and moved to the Trash tab. All previous messages, timeline history, and media remain safely preserved. You can retrieve it at any time, or starting a new chat with this number will automatically bring it back.
+          {/* Contextual Notice Banner */}
+          {isPermanentMode ? (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50/90 border border-rose-200/90 text-rose-950 text-xs mb-6">
+              <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-bold text-rose-900">Permanent Purge &amp; Fresh Start:</span>{' '}
+                This conversation and its entire chat transcript will be permanently erased. If{' '}
+                <strong>{contactName}</strong> starts to chat again, it will be added as a{' '}
+                <strong>fresh new chat</strong> with zero past messages.
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs mb-6">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-bold">Safe Archival:</span> This conversation will be removed from your active inbox and moved to the Trash tab. All previous messages remain safely preserved. You can retrieve it at any time.
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
@@ -119,27 +147,46 @@ export const DeleteConversationModal: React.FC<DeleteConversationModalProps> = (
               disabled={isDeleting}
               className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
             >
-              Keep Conversation
+              {conversation.is_deleted ? 'Keep in Trash' : 'Keep Conversation'}
             </button>
             <button
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md shadow-red-700/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+              className={`flex-1 py-2.5 px-4 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-[0.98] ${
+                isPermanentMode
+                  ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-700/25'
+                  : 'bg-amber-600 hover:bg-amber-700 shadow-amber-700/25'
+              }`}
             >
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Moving...</span>
+                  <span>{isPermanentMode ? 'Deleting...' : 'Moving...'}</span>
                 </>
               ) : (
                 <>
                   <Trash2 className="w-4 h-4" />
-                  <span>Move to Trash</span>
+                  <span>{isPermanentMode ? 'Delete Permanently' : 'Move to Trash'}</span>
                 </>
               )}
             </button>
           </div>
+
+          {/* Switch Mode Link if in regular Move-to-Trash mode */}
+          {!conversation.is_deleted && !isPermanent && (
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => setIsPermanentMode(!isPermanentMode)}
+                className="text-[11px] text-slate-400 hover:text-rose-600 transition-colors underline cursor-pointer"
+              >
+                {isPermanentMode
+                  ? '← Switch to Move to Trash instead'
+                  : 'Permanently delete this chat instead (skip Trash)'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

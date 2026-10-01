@@ -1,4 +1,4 @@
-import { useQiyamStore, removeDeletedConversationId } from '../store/useQiyamStore';
+import { useQiyamStore, removeDeletedConversationId, addDeletedConversationId } from '../store/useQiyamStore';
 import { mapMessage } from './mappers';
 import { API_BASE } from './client';
 
@@ -100,6 +100,24 @@ class RealtimeSyncManager {
           this.handleEvent(payload);
         } catch (err) {
           console.warn('[RealtimeSync] Error parsing conversation.updated event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('conversation.deleted', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'conversation.deleted', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing conversation.deleted event:', err);
+        }
+      });
+
+      this.eventSource.addEventListener('trash.emptied', (e: any) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleEvent(payload.type ? payload : { type: 'trash.emptied', data: payload.data || payload });
+        } catch (err) {
+          console.warn('[RealtimeSync] Error parsing trash.emptied event:', err);
         }
       });
 
@@ -339,6 +357,35 @@ class RealtimeSyncManager {
             }, event.data.id);
           }
         }
+        break;
+      }
+
+      case 'conversation.deleted': {
+        const { id, permanent } = event.data || {};
+        if (id) {
+          const strId = String(id);
+          if (permanent) {
+            removeDeletedConversationId(id);
+            useQiyamStore.setState((state) => ({
+              conversations: state.conversations.filter((c) => String(c.id) !== strId),
+              deletedConversations: (state.deletedConversations || []).filter((c) => String(c.id) !== strId),
+              selectedConversationId: String(state.selectedConversationId) === strId
+                ? (state.conversations.find((c) => String(c.id) !== strId)?.id ?? '')
+                : state.selectedConversationId,
+            }));
+          } else {
+            addDeletedConversationId(id);
+            store.refreshConversations();
+          }
+        }
+        break;
+      }
+
+      case 'trash.emptied': {
+        useQiyamStore.setState((state) => {
+          (state.deletedConversations || []).forEach((c) => removeDeletedConversationId(c.id));
+          return { deletedConversations: [] };
+        });
         break;
       }
 

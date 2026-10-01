@@ -1099,20 +1099,29 @@ class ConversationViewSet(viewsets.ModelViewSet):
         )
         try:
             conv = None
-            if str(pk).isdigit():
-                conv = Conversation.objects.filter(pk=int(pk)).first()
+            raw_pk = str(pk).strip()
+            if raw_pk.isdigit():
+                conv = Conversation.objects.filter(pk=int(raw_pk)).first()
+            if not conv and raw_pk.startswith('conv-') and raw_pk[5:].isdigit():
+                conv = Conversation.objects.filter(pk=int(raw_pk[5:])).first()
             if not conv:
-                conv = Conversation.objects.filter(contact_name=pk).first()
+                conv = Conversation.objects.filter(contact_name__iexact=raw_pk).first()
             if not conv:
-                conv = Conversation.objects.filter(phone_number=pk).first()
+                conv = Conversation.objects.filter(phone_number=raw_pk).first()
+            if not conv:
+                digits = re.sub(r'\D', '', raw_pk)
+                if len(digits) >= 7:
+                    suffix = digits[-10:] if len(digits) >= 10 else digits
+                    conv = Conversation.objects.filter(phone_number__icontains=suffix).first()
 
             if conv:
                 conv_id = conv.id
                 contact_name = conv.contact_name
+                phone_num = conv.phone_number
                 if permanent:
                     conv.messages.all().delete()
                     conv.delete()
-                    logger.info(f"Conversation {pk} ({contact_name}) permanently purged.")
+                    logger.info(f"Conversation {pk} ({contact_name}, {phone_num}) permanently purged from DB.")
                     msg = f"Conversation with {contact_name} permanently deleted."
                 else:
                     conv.is_deleted = True
@@ -1122,14 +1131,42 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     msg = f"Conversation with {contact_name} moved to trash."
 
                 try:
-                    from core.events import event_bus
-                    event_bus.publish('conversation.deleted', {'id': conv_id, 'contact_name': contact_name, 'permanent': permanent})
-                except Exception:
-                    pass
-                return Response({'success': True, 'message': msg, 'is_deleted': not permanent}, status=status.HTTP_200_OK)
+                    from core.events import event_bus, emit_event
+                    payload = {'id': conv_id, 'contact_name': contact_name, 'phone_number': phone_num, 'permanent': permanent}
+                    event_bus.publish('conversation.deleted', payload)
+                    emit_event('conversation.deleted', payload)
+                except Exception as e:
+                    logger.warning(f"Error publishing conversation.deleted event: {e}")
+
+                return Response({'success': True, 'message': msg, 'is_deleted': not permanent, 'id': conv_id}, status=status.HTTP_200_OK)
             return Response({'success': True, 'message': 'Conversation already removed or not found.'}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Failed to delete conversation {pk}: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post', 'delete'])
+    def empty_trash(self, request):
+        """
+        Permanently purges all soft-deleted conversations in the trash bin.
+        """
+        try:
+            deleted_qs = list(Conversation.objects.filter(is_deleted=True))
+            count = len(deleted_qs)
+            for c in deleted_qs:
+                c.messages.all().delete()
+                c.delete()
+
+            try:
+                from core.events import event_bus, emit_event
+                event_bus.publish('trash.emptied', {'count': count})
+                emit_event('trash.emptied', {'count': count})
+            except Exception:
+                pass
+
+            logger.info(f"All {count} soft-deleted conversations permanently purged from trash.")
+            return Response({'success': True, 'message': f'Trash emptied successfully ({count} conversations purged).', 'count': count}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Failed to empty trash: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'])

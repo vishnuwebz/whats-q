@@ -584,6 +584,7 @@ interface QiyamState {
   markAllConversationsAsRead: () => Promise<void>;
   toggleConversationWorkflow: (conversationId: string | number, isPaused: boolean, workflowName?: string) => Promise<void>;
   deleteConversation: (id: string | number, permanent?: boolean) => Promise<boolean>;
+  emptyTrash: () => Promise<boolean>;
   restoreConversation: (id: string | number) => Promise<boolean>;
   fetchDeletedConversations: () => Promise<void>;
   isSimulatorOpen: boolean;
@@ -3127,43 +3128,101 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   deleteConversation: async (id: string | number, permanent: boolean = false) => {
     const strId = String(id);
-    addDeletedConversationId(id);
 
-    let deletedTarget: Conversation | undefined;
+    let target: Conversation | undefined;
     set((state) => {
-      deletedTarget = state.conversations.find((c) => String(c.id) === strId);
-      if (deletedTarget) {
-        addDeletedConversationId(deletedTarget.id);
+      target =
+        state.conversations.find((c) => String(c.id) === strId) ||
+        (state.deletedConversations || []).find((c) => String(c.id) === strId);
+
+      if (permanent) {
+        removeDeletedConversationId(id);
+        if (target) {
+          removeDeletedConversationId(target.id);
+        }
+        const remainingActive = state.conversations.filter((c) => String(c.id) !== strId);
+        const remainingDeleted = (state.deletedConversations || []).filter((c) => String(c.id) !== strId);
+
+        persistConversations(remainingActive);
+
+        const isCurrentSelected = String(state.selectedConversationId) === strId;
+        const nextSelectedId = isCurrentSelected
+          ? (remainingDeleted[0]?.id ?? remainingActive[0]?.id ?? '')
+          : state.selectedConversationId;
+
+        return {
+          conversations: remainingActive,
+          deletedConversations: remainingDeleted,
+          selectedConversationId: nextSelectedId,
+        };
+      } else {
+        addDeletedConversationId(id);
+        if (target) {
+          addDeletedConversationId(target.id);
+        }
+        const remaining = state.conversations.filter((c) => String(c.id) !== strId);
+        persistConversations(remaining);
+
+        const nextDeleted = target
+          ? [{ ...target, is_deleted: true }, ...(state.deletedConversations || []).filter((c) => String(c.id) !== strId)]
+          : (state.deletedConversations || []);
+
+        const isCurrentDeleted = String(state.selectedConversationId) === strId;
+        const nextSelectedId = isCurrentDeleted
+          ? (remaining[0]?.id ?? '')
+          : state.selectedConversationId;
+
+        return {
+          conversations: remaining,
+          deletedConversations: nextDeleted,
+          selectedConversationId: nextSelectedId,
+        };
       }
-      const remaining = state.conversations.filter(
-        (c) => String(c.id) !== strId
+    });
+
+    const contactName = target?.contact_name || 'Contact';
+    if (permanent) {
+      get().addToast(
+        `Conversation with ${contactName} permanently deleted. If this contact chats again, it will add as a fresh new chat.`,
+        'success'
       );
-      persistConversations(remaining);
+    } else {
+      get().addToast(
+        `Conversation with ${contactName} moved to Trash. You can retrieve it anytime.`,
+        'info'
+      );
+    }
 
-      const nextDeleted = deletedTarget
-        ? [{ ...deletedTarget, is_deleted: true }, ...(state.deletedConversations || []).filter((c) => String(c.id) !== strId)]
-        : (state.deletedConversations || []);
+    qiyamApi.deleteConversation(id, permanent).catch((e) => {
+      console.warn('Backend delete conversation notice:', e);
+    });
 
-      const isCurrentDeleted = String(state.selectedConversationId) === strId;
-      const nextSelectedId = isCurrentDeleted
-        ? (remaining[0]?.id ?? '')
-        : state.selectedConversationId;
+    return true;
+  },
+
+  emptyTrash: async () => {
+    let deletedCount = 0;
+    set((state) => {
+      deletedCount = (state.deletedConversations || []).length;
+      (state.deletedConversations || []).forEach((c) => removeDeletedConversationId(c.id));
+      const isSelectedInTrash = (state.deletedConversations || []).some(
+        (c) => String(c.id) === String(state.selectedConversationId)
+      );
+      const nextSelectedId = isSelectedInTrash ? (state.conversations[0]?.id ?? '') : state.selectedConversationId;
 
       return {
-        conversations: remaining,
-        deletedConversations: nextDeleted,
+        deletedConversations: [],
         selectedConversationId: nextSelectedId,
       };
     });
 
-    const contactName = deletedTarget?.contact_name || 'Contact';
     get().addToast(
-      `Conversation with ${contactName} moved to Trash. You can retrieve it anytime.`,
-      'info'
+      `Trash emptied. ${deletedCount} conversation${deletedCount === 1 ? '' : 's'} purged permanently.`,
+      'success'
     );
 
-    qiyamApi.deleteConversation(id, permanent).catch((e) => {
-      console.warn('Backend delete conversation notice:', e);
+    qiyamApi.emptyTrash().catch((e) => {
+      console.warn('Backend empty trash notice:', e);
     });
 
     return true;

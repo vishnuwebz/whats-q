@@ -78,6 +78,7 @@ export const ConversationsView: React.FC = () => {
     unlinkEmployeeDevice,
     deletedConversations,
     restoreConversation,
+    emptyTrash,
     fetchDeletedConversations,
     employees,
     assignStaffToConversation,
@@ -95,6 +96,8 @@ export const ConversationsView: React.FC = () => {
   const [isLineSelectorOpen, setIsLineSelectorOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+  const [isPermanentDelete, setIsPermanentDelete] = useState<boolean>(false);
+  const [isEmptyTrashModalOpen, setIsEmptyTrashModalOpen] = useState<boolean>(false);
   const [isManualOptOutModalOpen, setIsManualOptOutModalOpen] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isCustomerDetailsOpen, setIsCustomerDetailsOpen] = useState(false);
@@ -1561,19 +1564,35 @@ export const ConversationsView: React.FC = () => {
             Dispatch Job
           </button>
           {currentConv?.is_deleted ? (
-            <button
-              onClick={async () => {
-                if (currentConv) await restoreConversation(currentConv.id);
-              }}
-              title="Retrieve this conversation back to active inbox"
-              className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Retrieve Conversation</span>
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={async () => {
+                  if (currentConv) await restoreConversation(currentConv.id);
+                }}
+                title="Retrieve this conversation back to active inbox"
+                className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Retrieve Conversation</span>
+              </button>
+              <button
+                onClick={() => {
+                  setConversationToDelete(currentConv);
+                  setIsPermanentDelete(true);
+                }}
+                title="Delete this conversation permanently"
+                className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-xl font-bold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Delete Permanently</span>
+              </button>
+            </div>
           ) : (
             <button
-              onClick={() => setConversationToDelete(currentConv)}
+              onClick={() => {
+                setConversationToDelete(currentConv);
+                setIsPermanentDelete(false);
+              }}
               title="Delete this conversation"
               className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 rounded-xl font-semibold text-center text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
@@ -1926,6 +1945,27 @@ export const ConversationsView: React.FC = () => {
             </div>
           )}
 
+          {/* Trash Tab Bulk Action Strip */}
+          {activeFilterTab === 'deleted' && (deletedConversations || []).length > 0 && (
+            <div className="px-3.5 py-1.5 bg-amber-50/90 border-b border-amber-200/80 flex items-center justify-between text-xs animate-in fade-in duration-150 shrink-0">
+              <div className="flex items-center gap-1.5 text-amber-950 font-bold text-[11px]">
+                <Trash2 className="w-3.5 h-3.5 text-amber-700" />
+                <span>
+                  {(deletedConversations || []).length} {(deletedConversations || []).length === 1 ? 'conversation' : 'conversations'} in Trash
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEmptyTrashModalOpen(true)}
+                className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-700 hover:text-rose-900 bg-white hover:bg-rose-50 border border-rose-200/90 px-2 py-0.5 rounded-md transition shadow-2xs cursor-pointer active:scale-95"
+                title="Permanently empty all conversations in trash"
+              >
+                <Trash2 className="w-3 h-3 text-rose-600" />
+                <span>Empty Trash</span>
+              </button>
+            </div>
+          )}
+
           {/* Conversations Scroll List */}
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {filteredConversations.length === 0 ? (
@@ -2072,26 +2112,41 @@ export const ConversationsView: React.FC = () => {
                           </span>
                         )}
                         {conv.is_deleted || activeFilterTab === 'deleted' ? (
-                          <button
-                            type="button"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await restoreConversation(conv.id);
-                            }}
-                            title={`Retrieve conversation with ${conv.contact_name || 'customer'}`}
-                            className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-105 active:scale-95"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                            <span>Retrieve</span>
-                          </button>
+                          <div className="ml-auto flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await restoreConversation(conv.id);
+                              }}
+                              title={`Retrieve conversation with ${conv.contact_name || 'customer'}`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Retrieve</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConversationToDelete(conv);
+                                setIsPermanentDelete(true);
+                              }}
+                              title={`Delete permanently from Trash`}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded border border-transparent hover:border-rose-200 transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setConversationToDelete(conv);
+                              setIsPermanentDelete(false);
                             }}
-                            title={`Delete conversation with ${conv.contact_name || 'customer'}`}
+                            title={`Move conversation with ${conv.contact_name || 'customer'} to Trash`}
                             className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all cursor-pointer shrink-0 ${
                               (conv.unread_count || 0) > 0 ? 'ml-1' : 'ml-auto'
                             }`}
@@ -2425,26 +2480,40 @@ export const ConversationsView: React.FC = () => {
                               </button>
 
                               {currentConv.is_deleted ? (
-                                <button
-                                  onClick={async () => {
-                                    setIsHeaderMenuOpen(false);
-                                    await restoreConversation(currentConv.id);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 transition-colors text-left cursor-pointer"
-                                >
-                                  <RotateCcw className="w-4 h-4 text-emerald-600 shrink-0" />
-                                  <span className="font-semibold">Retrieve Conversation</span>
-                                </button>
+                                <>
+                                  <button
+                                    onClick={async () => {
+                                      setIsHeaderMenuOpen(false);
+                                      await restoreConversation(currentConv.id);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 transition-colors text-left cursor-pointer"
+                                  >
+                                    <RotateCcw className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span className="font-semibold">Retrieve Conversation</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setIsHeaderMenuOpen(false);
+                                      setConversationToDelete(currentConv);
+                                      setIsPermanentDelete(true);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-rose-700 hover:bg-rose-50 transition-colors text-left cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
+                                    <span className="font-semibold">Delete Permanently</span>
+                                  </button>
+                                </>
                               ) : (
                                 <button
                                   onClick={() => {
                                     setIsHeaderMenuOpen(false);
                                     setConversationToDelete(currentConv);
+                                    setIsPermanentDelete(false);
                                   }}
                                   className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
-                                  <span className="font-semibold">Delete Conversation</span>
+                                  <span className="font-semibold">Move to Trash</span>
                                 </button>
                               )}
 
@@ -2508,21 +2577,37 @@ export const ConversationsView: React.FC = () => {
                         <span>Send Quotation</span>
                       </button>
                       {currentConv.is_deleted ? (
-                        <button
-                          onClick={async () => {
-                            await restoreConversation(currentConv.id);
-                          }}
-                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:border-emerald-300 rounded-lg border border-emerald-200 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-                          title="Retrieve conversation back to active inbox"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Retrieve</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={async () => {
+                              await restoreConversation(currentConv.id);
+                            }}
+                            className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:border-emerald-300 rounded-lg border border-emerald-200 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                            title="Retrieve conversation back to active inbox"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Retrieve</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setConversationToDelete(currentConv);
+                              setIsPermanentDelete(true);
+                            }}
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:border-rose-300 rounded-lg border border-rose-200 transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                            title="Delete permanently from Trash"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            <span className="hidden sm:inline">Delete Permanently</span>
+                          </button>
+                        </div>
                       ) : (
                         <button
-                          onClick={() => setConversationToDelete(currentConv)}
+                          onClick={() => {
+                            setConversationToDelete(currentConv);
+                            setIsPermanentDelete(false);
+                          }}
                           className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                          title="Delete Conversation"
+                          title="Move to Trash"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2561,20 +2646,35 @@ export const ConversationsView: React.FC = () => {
                     <div className="min-w-0">
                       <span className="font-bold text-amber-950">This conversation is in Trash.</span>{' '}
                       <span className="text-amber-800 hidden sm:inline">
-                        All previous messages are safely preserved. You can retrieve it anytime to bring it back to your active inbox.
+                        All previous messages are preserved until purged. You can retrieve it anytime, or delete permanently to start fresh next time this contact chats.
                       </span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await restoreConversation(currentConv.id);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Retrieve Conversation</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await restoreConversation(currentConv.id);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+                      title="Retrieve conversation back to active inbox"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Retrieve Conversation</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConversationToDelete(currentConv);
+                        setIsPermanentDelete(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-700 hover:text-rose-800 font-bold text-xs rounded-xl border border-rose-300 shadow-2xs transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+                      title="Permanently delete this conversation and all its messages"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Delete Permanently</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -3878,19 +3978,74 @@ export const ConversationsView: React.FC = () => {
         />
       )}
 
-      {/* Delete Conversation Confirmation Modal with Warning */}
+      {/* Delete Conversation Confirmation Modal (Soft Delete or Permanent) */}
       <DeleteConversationModal
         isOpen={Boolean(conversationToDelete)}
-        onClose={() => setConversationToDelete(null)}
+        onClose={() => {
+          setConversationToDelete(null);
+          setIsPermanentDelete(false);
+        }}
         conversation={conversationToDelete}
-        onConfirmDelete={async (id) => {
-          await deleteConversation(id);
+        isPermanent={isPermanentDelete}
+        onConfirmDelete={async (id, permanent) => {
+          await deleteConversation(id, permanent);
           if (currentConv && String(currentConv.id) === String(id)) {
             setIsMobileChatOpen(false);
             setIsCustomerDetailsOpen(false);
           }
         }}
       />
+
+      {/* Empty Trash Confirmation Modal */}
+      {isEmptyTrashModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 sm:p-7 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-4 ring-8 ring-rose-50/60 shadow-xs">
+              <Trash2 className="w-7 h-7 stroke-[2.2]" />
+            </div>
+
+            <div className="text-center space-y-1.5 mb-5">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                Empty Entire Trash?
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Are you sure you want to permanently delete all {(deletedConversations || []).length} conversations from Trash?
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-rose-50/90 border border-rose-200/90 text-rose-950 text-xs mb-6 flex items-start gap-2.5">
+              <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-bold text-rose-900">Irreversible Action:</span> All messages, attachments, and customer threads in the trash bin will be permanently erased. If any of these contacts message you again, they will start as fresh new chats.
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsEmptyTrashModalOpen(false)}
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsEmptyTrashModalOpen(false);
+                  await emptyTrash();
+                }}
+                className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-700/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Empty Trash</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Manual Opt-Out Confirmation & Warning Modal (Protects against accidental taps) */}
       {currentConv && (

@@ -130,6 +130,16 @@ export const qiyamApi = {
     }
   },
 
+  async emptyTrash(): Promise<boolean> {
+    try {
+      await apiClient.post('/conversations/threads/empty_trash/', {});
+      return true;
+    } catch (e) {
+      console.warn('Could not empty trash on backend:', e);
+      return false;
+    }
+  },
+
   async fetchDeletedConversations(): Promise<Conversation[]> {
     try {
       const res: any = await apiClient.get('/conversations/threads/deleted_threads/');
