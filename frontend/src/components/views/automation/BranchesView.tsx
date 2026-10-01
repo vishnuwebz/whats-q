@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { BranchItem } from '@/types';
+import { INITIAL_MULTI_BRANCH_CUSTOMERS } from '@/store/customerSeedData';
 import {
   Building2, Users, UserCheck, MapPin, Search, Filter, ArrowUpDown,
   MoreVertical, Plus, CheckCircle2, Clock, X, Camera, Upload,
   Image as ImageIcon, Trash2, Edit3, Settings, BarChart3, HelpCircle,
-  TrendingUp, Check, RefreshCw, ChevronRight, SlidersHorizontal,
+  TrendingUp, Check, RefreshCw, ChevronRight, ChevronLeft, SlidersHorizontal,
   ArrowLeft, Phone, Mail, Globe, ExternalLink, ShieldCheck, Zap,
   Activity, Award, UserPlus, MessageSquare, AlertCircle, Eye,
   Sparkles, CheckCircle, Smartphone, BookOpen
@@ -667,8 +668,39 @@ export interface BranchCustomerItem {
 }
 
 export const getBranchCustomers = (branch: BranchItem): BranchCustomerItem[] => {
+  const branchName = branch.name || '';
   const city = branch.city || 'Regional';
   const prefix = (branch.code || 'BR').replace(/[^a-zA-Z0-9]/g, '');
+
+  const matches = INITIAL_MULTI_BRANCH_CUSTOMERS.filter(
+    (c) => c.branch === branchName || (city && c.city.toLowerCase() === city.toLowerCase())
+  );
+
+  if (matches.length > 0) {
+    return matches.map((c) => {
+      const initials = c.name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0])
+        .join('')
+        .toUpperCase() || 'CU';
+
+      return {
+        id: String(c.id),
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        company: c.company || `${c.name} Enterprise`,
+        segment: c.segment || 'Commercial',
+        totalSpent: `₹${(c.total_spent || 28500).toLocaleString()}`,
+        conversationsCount: (c.jobs_count || 2) * 6,
+        lastActive: c.last_contact_date || 'Today',
+        status: c.status === 'Customer' ? 'Active' : 'Follow-up Due',
+        avatarInitials: initials,
+      };
+    });
+  }
 
   return [
     {
@@ -837,6 +869,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
     setActiveTab,
     targetHighlightId,
     globalFilter,
+    setCustomerBranchFilter,
   } = useQiyamStore();
 
   // Sub-pages triggered by Top Shortcuts & Documentation with full persistence
@@ -902,6 +935,8 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
   // Branch Depth Details Drawer State
   const [selectedBranchForDepth, setSelectedBranchForDepth] = useState<BranchItem | null>(null);
   const [depthActiveTab, setDepthActiveTab] = useState<'overview' | 'staff' | 'customers' | 'automations' | 'activity'>('overview');
+  const [drawerCustomerSearch, setDrawerCustomerSearch] = useState('');
+  const [drawerCustomerPage, setDrawerCustomerPage] = useState(1);
 
   // Real-time synchronization of open depth drawer with store updates
   useEffect(() => {
@@ -2292,8 +2327,9 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               <button
                 type="button"
                 onClick={() => {
+                  setCustomerBranchFilter(null);
                   setActiveTab('crm-customers');
-                  addToast('Opening CRM Customers...', 'info');
+                  addToast(`Opening Full CRM Directory (${totalCustomersCount.toLocaleString()} accounts across all branches)...`, 'info');
                 }}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
@@ -2830,110 +2866,190 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
               )}
 
               {/* TAB 3: CUSTOMERS & CRM REACH */}
-              {depthActiveTab === 'customers' && (
-                <div className="space-y-4">
-                  {/* Top Bar with Action */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="font-bold text-slate-800 text-sm">
-                        Customer Accounts for {selectedBranchForDepth.name}
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {(selectedBranchForDepth.customers_count || 450).toLocaleString()} customer contacts active across {selectedBranchForDepth.city} territory.
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('crm-customers');
-                        setSelectedBranchForDepth(null);
-                        addToast(`Opening CRM Directory for ${selectedBranchForDepth.name}...`, 'info');
-                      }}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 self-start sm:self-auto"
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Open Full CRM</span>
-                    </button>
-                  </div>
+              {depthActiveTab === 'customers' && (() => {
+                const allBranchCustomers = getBranchCustomers(selectedBranchForDepth);
+                const qClean = drawerCustomerSearch.trim().toLowerCase();
+                const filteredBranchCustomers = qClean
+                  ? allBranchCustomers.filter(
+                      (c) =>
+                        c.name.toLowerCase().includes(qClean) ||
+                        c.company.toLowerCase().includes(qClean) ||
+                        c.phone.replace(/\D/g, '').includes(qClean.replace(/\D/g, ''))
+                    )
+                  : allBranchCustomers;
+                const drawerPageSize = 8;
+                const totalDrawerPages = Math.max(1, Math.ceil(filteredBranchCustomers.length / drawerPageSize));
+                const paginatedBranchCustomers = filteredBranchCustomers.slice(
+                  (drawerCustomerPage - 1) * drawerPageSize,
+                  drawerCustomerPage * drawerPageSize
+                );
 
-                  {/* 4 Mini CRM Stat Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Total Accounts</div>
-                      <div className="text-base font-extrabold text-slate-900 mt-0.5">{(selectedBranchForDepth.customers_count || 450).toLocaleString()}</div>
-                      <div className="text-[10px] text-emerald-600 font-bold">100% Geofenced</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Enterprise VIPs</div>
-                      <div className="text-base font-extrabold text-purple-700 mt-0.5">{Math.round((selectedBranchForDepth.customers_count || 450) * 0.12)}</div>
-                      <div className="text-[10px] text-slate-500 font-medium">Priority SLA</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="text-[10px] uppercase font-bold text-slate-400">WhatsApp Reach</div>
-                      <div className="text-base font-extrabold text-blue-700 mt-0.5">98.4%</div>
-                      <div className="text-[10px] text-slate-500 font-medium">Verified Number</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Avg Monthly LTV</div>
-                      <div className="text-base font-extrabold text-emerald-600 mt-0.5">₹28,500</div>
-                      <div className="text-[10px] text-slate-500 font-medium">Per Service Cycle</div>
-                    </div>
-                  </div>
-
-                  {/* Key Accounts List */}
-                  <div className="space-y-2">
-                    <div className="font-bold text-slate-700 text-xs">
-                      Key Branch Client Accounts
-                    </div>
-                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
-                      {getBranchCustomers(selectedBranchForDepth).map((cust) => (
-                        <div key={cust.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
-                          <div className="flex items-start sm:items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 font-bold flex items-center justify-center text-xs shrink-0">
-                              {cust.avatarInitials}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-900 text-xs">{cust.name}</span>
-                                <span className={`px-2 py-0.2 rounded-md font-bold text-[9px] ${
-                                  cust.segment === 'Enterprise VIP'
-                                    ? 'bg-purple-100 text-purple-800'
-                                    : cust.segment === 'Premium Retainer'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-slate-100 text-slate-700'
-                                }`}>
-                                  {cust.segment}
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">
-                                {cust.company} • <span className="font-mono">{cust.phone}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
-                            <div className="text-left sm:text-right">
-                              <div className="font-bold text-slate-800 text-xs">{cust.totalSpent}</div>
-                              <div className="text-[10px] text-slate-400">{cust.conversationsCount} chats • {cust.lastActive}</div>
-                            </div>
-
-                            <a
-                              href={`https://wa.me/${cust.phone.replace(/[^0-9]/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
-                              title="Start WhatsApp chat"
-                            >
-                              <MessageSquare className="w-3 h-3 text-emerald-600" />
-                              <span>WhatsApp</span>
-                            </a>
-                          </div>
+                return (
+                  <div className="space-y-4">
+                    {/* Top Bar with Action */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-slate-800 text-sm">
+                          Customer Accounts for {selectedBranchForDepth.name}
                         </div>
-                      ))}
+                        <div className="text-[11px] text-slate-500">
+                          {(selectedBranchForDepth.customers_count || 450).toLocaleString()} customer contacts active across {selectedBranchForDepth.city} territory.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomerBranchFilter(selectedBranchForDepth.name);
+                          setActiveTab('crm-customers');
+                          setSelectedBranchForDepth(null);
+                          addToast(`Opening Full CRM for ${selectedBranchForDepth.name} (${(selectedBranchForDepth.customers_count || 450).toLocaleString()} accounts)...`, 'info');
+                        }}
+                        className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 self-start sm:self-auto transition"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Open Full CRM</span>
+                      </button>
+                    </div>
+
+                    {/* 4 Mini CRM Stat Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Total Accounts</div>
+                        <div className="text-base font-extrabold text-slate-900 mt-0.5">{(selectedBranchForDepth.customers_count || 450).toLocaleString()}</div>
+                        <div className="text-[10px] text-emerald-600 font-bold">100% Geofenced</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Enterprise VIPs</div>
+                        <div className="text-base font-extrabold text-purple-700 mt-0.5">{Math.round((selectedBranchForDepth.customers_count || 450) * 0.12)}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">Priority SLA</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">WhatsApp Reach</div>
+                        <div className="text-base font-extrabold text-blue-700 mt-0.5">98.4%</div>
+                        <div className="text-[10px] text-slate-500 font-medium">Verified Number</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Avg Monthly LTV</div>
+                        <div className="text-base font-extrabold text-emerald-600 mt-0.5">₹28,500</div>
+                        <div className="text-[10px] text-slate-500 font-medium">Per Service Cycle</div>
+                      </div>
+                    </div>
+
+                    {/* Search inside drawer */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={drawerCustomerSearch}
+                        onChange={(e) => {
+                          setDrawerCustomerSearch(e.target.value);
+                          setDrawerCustomerPage(1);
+                        }}
+                        placeholder={`Search ${allBranchCustomers.length} accounts in ${selectedBranchForDepth.city}...`}
+                        className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:bg-white"
+                      />
+                      {drawerCustomerSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrawerCustomerSearch('');
+                            setDrawerCustomerPage(1);
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Key Accounts List Header with Pagination Info */}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="font-bold text-slate-700 text-xs">
+                        Accounts Directory ({filteredBranchCustomers.length})
+                      </div>
+                      {filteredBranchCustomers.length > drawerPageSize && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={drawerCustomerPage === 1}
+                            onClick={() => setDrawerCustomerPage((p) => Math.max(1, p - 1))}
+                            className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-[11px] font-bold cursor-pointer transition flex items-center gap-0.5"
+                          >
+                            <ChevronLeft className="w-3 h-3" />
+                            <span>Prev</span>
+                          </button>
+                          <span className="font-bold text-slate-600 text-[11px]">
+                            {drawerCustomerPage} / {totalDrawerPages}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={drawerCustomerPage >= totalDrawerPages}
+                            onClick={() => setDrawerCustomerPage((p) => Math.min(totalDrawerPages, p + 1))}
+                            className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-[11px] font-bold cursor-pointer transition flex items-center gap-0.5"
+                          >
+                            <span>Next</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Customer Cards */}
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                      {paginatedBranchCustomers.length === 0 ? (
+                        <div className="p-8 text-center text-slate-400 text-xs">
+                          No client accounts matching &quot;{drawerCustomerSearch}&quot;
+                        </div>
+                      ) : (
+                        paginatedBranchCustomers.map((cust) => (
+                          <div key={cust.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                            <div className="flex items-start sm:items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 font-bold flex items-center justify-center text-xs shrink-0">
+                                {cust.avatarInitials}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 text-xs">{cust.name}</span>
+                                  <span className={`px-2 py-0.2 rounded-md font-bold text-[9px] ${
+                                    cust.segment === 'Enterprise VIP'
+                                      ? 'bg-purple-100 text-purple-800'
+                                      : cust.segment === 'Premium Retainer'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-slate-100 text-slate-700'
+                                  }`}>
+                                    {cust.segment}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                  {cust.company} • <span className="font-mono">{cust.phone}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                              <div className="text-left sm:text-right">
+                                <div className="font-bold text-slate-800 text-xs">{cust.totalSpent}</div>
+                                <div className="text-[10px] text-slate-400">{cust.conversationsCount} chats • {cust.lastActive}</div>
+                              </div>
+
+                              <a
+                                href={`https://wa.me/${cust.phone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                                title="Start WhatsApp chat"
+                              >
+                                <MessageSquare className="w-3 h-3 text-emerald-600" />
+                                <span>WhatsApp</span>
+                              </a>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB 4: WORKFLOWS & AUTOMATIONS */}
               {depthActiveTab === 'automations' && (

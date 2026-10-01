@@ -18,11 +18,16 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
+  Building2,
+  MapPin,
+  ArrowLeft,
   AlertTriangle,
 } from 'lucide-react';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { qiyamApi } from '@/api/qiyamApi';
+import { INITIAL_MULTI_BRANCH_CUSTOMERS } from '@/store/customerSeedData';
 
 export type CustomerSortOption =
   | 'recent'
@@ -47,9 +52,11 @@ export interface CustomerDirectoryItem {
   source: 'customer' | 'conversation';
   conversationId?: string | number;
   name: string;
+  company?: string;
   phone: string;
   cleanPhone: string;
   location: string;
+  branch?: string;
   avatar?: string;
   totalSpent: number;
   jobsCount: number;
@@ -58,6 +65,53 @@ export interface CustomerDirectoryItem {
   createdAtNum: number;
   rawId: number;
 }
+
+const renderPaginationNumbers = (
+  current: number,
+  total: number,
+  onSelect: (page: number) => void
+) => {
+  if (total <= 1) return null;
+  const pages: (number | string)[] = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (current > 3) pages.push('ellipsis-start');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+    if (current < total - 2) pages.push('ellipsis-end');
+    if (!pages.includes(total)) pages.push(total);
+  }
+
+  return pages.map((p, idx) => {
+    if (typeof p === 'string') {
+      return (
+        <span key={`ellipsis-${idx}`} className="px-1 py-1 text-slate-400 font-bold select-none text-xs">
+          ...
+        </span>
+      );
+    }
+    const isActive = p === current;
+    return (
+      <button
+        key={`page-${p}`}
+        type="button"
+        onClick={() => onSelect(p as number)}
+        className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition cursor-pointer ${
+          isActive
+            ? 'bg-emerald-600 text-white shadow-2xs'
+            : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+        }`}
+      >
+        {p}
+      </button>
+    );
+  });
+};
 
 export const CustomersView: React.FC = () => {
   const {
@@ -70,6 +124,9 @@ export const CustomersView: React.FC = () => {
     setSelectedConversationId,
     addToast,
     globalFilter,
+    customerBranchFilter,
+    setCustomerBranchFilter,
+    branches,
   } = useQiyamStore();
 
   const [search, setSearch] = useState('');
@@ -77,6 +134,10 @@ export const CustomersView: React.FC = () => {
   const [sortBy, setSortBy] = useState<CustomerSortOption>('recent');
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+  const branchDropdownRef = useRef<HTMLDivElement>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form, setForm] = useState({
@@ -117,28 +178,51 @@ export const CustomersView: React.FC = () => {
     phone: string;
   } | null>(null);
 
-  // Close sort dropdown when clicking outside
+  // Close sort and branch dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target as Node)) {
         setIsSortDropdownOpen(false);
       }
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target as Node)) {
+        setIsBranchDropdownOpen(false);
+      }
     };
-    if (isSortDropdownOpen) {
+    if (isSortDropdownOpen || isBranchDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSortDropdownOpen]);
+  }, [isSortDropdownOpen, isBranchDropdownOpen]);
 
-  // Sync fresh customers from backend on view mount
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter, customerBranchFilter, sortBy]);
+
+  // Sync fresh customers from backend on view mount without wiping multi-branch catalog
   useEffect(() => {
     qiyamApi
       .fetchCustomers()
       .then((custs) => {
         if (Array.isArray(custs) && custs.length > 0) {
-          useQiyamStore.setState({ customers: custs });
+          useQiyamStore.setState((state) => {
+            const base =
+              state.customers && state.customers.length >= 100
+                ? state.customers
+                : INITIAL_MULTI_BRANCH_CUSTOMERS;
+            const byPhone = new Map<string, any>();
+            base.forEach((c: any) => {
+              const p = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
+              if (p) byPhone.set(p, c);
+            });
+            custs.forEach((c: any) => {
+              const p = String(c.phone || c.phone_number || '').replace(/\D/g, '').slice(-10);
+              if (p) byPhone.set(p, { ...(byPhone.get(p) || {}), ...c });
+            });
+            return { customers: Array.from(byPhone.values()) };
+          });
         }
       })
       .catch((e) => console.warn('[CustomersView] Could not fetch fresh customers:', e));
@@ -184,6 +268,16 @@ export const CustomersView: React.FC = () => {
 
       const stableId = sc.id ?? `sc_${cleanPhone || idx}`;
       const uniqueKey = `cust_sc_${stableId}_${cleanPhone || idx}`;
+      const loc = sc.address || sc.location || matchedConv?.location || 'Kozhikode, Kerala';
+      const locLower = loc.toLowerCase();
+      const resolvedBranch = sc.branch ||
+        (Array.isArray(sc.tags) && sc.tags.find((t: string) => t.includes('Branch') || t === 'Head Office')) ||
+        (locLower.includes('bangalore') ? 'Bangalore Branch' :
+         locLower.includes('kochi') || locLower.includes('kakkanad') || locLower.includes('infopark') ? 'Kochi Branch' :
+         locLower.includes('mumbai') || locLower.includes('bkc') || locLower.includes('bandra') ? 'Mumbai Branch' :
+         locLower.includes('delhi') || locLower.includes('noida') || locLower.includes('gurugram') ? 'Delhi Branch' :
+         locLower.includes('chennai') ? 'Chennai Branch' :
+         locLower.includes('hyderabad') ? 'Hyderabad Branch' : 'Head Office');
 
       list.push({
         id: stableId,
@@ -191,9 +285,11 @@ export const CustomersView: React.FC = () => {
         source: 'customer',
         conversationId: matchedConv?.id,
         name: sc.name || sc.contact_name || matchedConv?.contact_name || 'Unnamed',
+        company: sc.company,
         phone: rawPhone || matchedConv?.phone_number || '',
         cleanPhone,
-        location: sc.address || sc.location || matchedConv?.location || 'Kozhikode, Kerala',
+        location: loc,
+        branch: resolvedBranch,
         avatar: sc.avatar || matchedConv?.avatar,
         totalSpent:
           Number(sc.total_spent || sc.total_spend || 0) ||
@@ -223,6 +319,15 @@ export const CustomersView: React.FC = () => {
 
       const stableId = c.id ?? `conv_${cleanPhone || idx}`;
       const uniqueKey = `cust_conv_${stableId}_${cleanPhone || idx}`;
+      const cLoc = c.location || 'Kozhikode, Kerala';
+      const cLocLower = cLoc.toLowerCase();
+      const resolvedCBranch = (Array.isArray(c.tags) && c.tags.find((t: string) => t.includes('Branch') || t === 'Head Office')) ||
+        (cLocLower.includes('bangalore') ? 'Bangalore Branch' :
+         cLocLower.includes('kochi') || cLocLower.includes('kakkanad') || cLocLower.includes('infopark') ? 'Kochi Branch' :
+         cLocLower.includes('mumbai') || cLocLower.includes('bkc') || cLocLower.includes('bandra') ? 'Mumbai Branch' :
+         cLocLower.includes('delhi') || cLocLower.includes('noida') || cLocLower.includes('gurugram') ? 'Delhi Branch' :
+         cLocLower.includes('chennai') ? 'Chennai Branch' :
+         cLocLower.includes('hyderabad') ? 'Hyderabad Branch' : 'Head Office');
 
       list.push({
         id: stableId,
@@ -230,9 +335,11 @@ export const CustomersView: React.FC = () => {
         source: 'conversation',
         conversationId: c.id,
         name: c.contact_name || 'Unnamed',
+        company: (c as any).company,
         phone: c.phone_number || '',
         cleanPhone,
-        location: c.location || 'Kozhikode, Kerala',
+        location: cLoc,
+        branch: resolvedCBranch,
         avatar: c.avatar,
         totalSpent: (c.estimated_value || 2800) * 2,
         jobsCount: 1,
@@ -441,17 +548,35 @@ export const CustomersView: React.FC = () => {
     const cleanQ = q.replace(/\D/g, '');
 
     const result = customers.filter((cust) => {
-      // 1. Category Filter
+      // 1. Branch Filter
+      if (customerBranchFilter && customerBranchFilter !== 'all') {
+        const target = customerBranchFilter.toLowerCase();
+        const branchMatch = cust.branch && cust.branch.toLowerCase().includes(target);
+        const cityKeyword = target.replace(' branch', '').replace(' head office', 'kozhikode');
+        const locMatch = cust.location && (
+          cust.location.toLowerCase().includes(cityKeyword) ||
+          (target.includes('bangalore') && cust.location.toLowerCase().includes('bangalore')) ||
+          (target.includes('kochi') && (cust.location.toLowerCase().includes('kochi') || cust.location.toLowerCase().includes('kakkanad') || cust.location.toLowerCase().includes('infopark'))) ||
+          (target.includes('head office') && (cust.location.toLowerCase().includes('kozhikode') || cust.location.toLowerCase().includes('koyilandy') || cust.location.toLowerCase().includes('calicut'))) ||
+          (target.includes('mumbai') && (cust.location.toLowerCase().includes('mumbai') || cust.location.toLowerCase().includes('bkc') || cust.location.toLowerCase().includes('bandra'))) ||
+          (target.includes('chennai') && cust.location.toLowerCase().includes('chennai')) ||
+          (target.includes('hyderabad') && cust.location.toLowerCase().includes('hyderabad')) ||
+          (target.includes('delhi') && (cust.location.toLowerCase().includes('delhi') || cust.location.toLowerCase().includes('noida') || cust.location.toLowerCase().includes('gurugram')))
+        );
+        if (!branchMatch && !locMatch) return false;
+      }
+
+      // 2. Category Filter
       if (categoryFilter !== 'all' && cust.status !== categoryFilter) return false;
 
-      // 2. Global status filter (if any)
+      // 3. Global status filter (if any)
       if (globalFilter.status && globalFilter.status !== 'all') {
         if (globalFilter.status === 'open' && cust.status !== 'Hot Lead' && cust.status !== 'Lead')
           return false;
         if (globalFilter.status === 'completed' && cust.status !== 'Customer') return false;
       }
 
-      // 3. Search query matching across name, location, status, raw phone and stripped digits
+      // 4. Search query matching across name, location, status, raw phone and stripped digits
       if (q) {
         const nameMatch = cust.name.toLowerCase().includes(q);
         const locMatch = cust.location.toLowerCase().includes(q);
@@ -494,14 +619,40 @@ export const CustomersView: React.FC = () => {
           return 0;
       }
     });
-  }, [customers, categoryFilter, globalFilter, search, sortBy]);
+  }, [customers, categoryFilter, globalFilter, search, sortBy, customerBranchFilter]);
 
-  const totalLifetimeRev = customers.reduce((acc, c) => acc + (Number(c.totalSpent) || 0), 0);
-  const totalFulfilledJobs = customers.reduce((acc, c) => acc + (Number(c.jobsCount) || 0), 0);
-  const verifiedCount = customers.filter((c) => c.status === 'Customer').length;
-  const leadsCount = customers.filter((c) => c.status === 'Lead').length;
-  const hotLeadsCount = customers.filter((c) => c.status === 'Hot Lead').length;
-  const vendorsCount = customers.filter((c) => c.status === 'Vendor').length;
+  // Scoped customers represent either all customers or customers in the currently selected branch
+  const scopedCustomers = useMemo(() => {
+    if (!customerBranchFilter || customerBranchFilter === 'all') return customers;
+    const target = customerBranchFilter.toLowerCase();
+    const cityKeyword = target.replace(' branch', '').replace(' head office', 'kozhikode');
+    return customers.filter((cust) => {
+      const branchMatch = cust.branch && cust.branch.toLowerCase().includes(target);
+      const locMatch = cust.location && (
+        cust.location.toLowerCase().includes(cityKeyword) ||
+        (target.includes('bangalore') && cust.location.toLowerCase().includes('bangalore')) ||
+        (target.includes('kochi') && (cust.location.toLowerCase().includes('kochi') || cust.location.toLowerCase().includes('kakkanad') || cust.location.toLowerCase().includes('infopark'))) ||
+        (target.includes('head office') && (cust.location.toLowerCase().includes('kozhikode') || cust.location.toLowerCase().includes('koyilandy') || cust.location.toLowerCase().includes('calicut'))) ||
+        (target.includes('mumbai') && (cust.location.toLowerCase().includes('mumbai') || cust.location.toLowerCase().includes('bkc') || cust.location.toLowerCase().includes('bandra'))) ||
+        (target.includes('chennai') && cust.location.toLowerCase().includes('chennai')) ||
+        (target.includes('hyderabad') && cust.location.toLowerCase().includes('hyderabad')) ||
+        (target.includes('delhi') && (cust.location.toLowerCase().includes('delhi') || cust.location.toLowerCase().includes('noida') || cust.location.toLowerCase().includes('gurugram')))
+      );
+      return branchMatch || locMatch;
+    });
+  }, [customers, customerBranchFilter]);
+
+  const totalLifetimeRev = scopedCustomers.reduce((acc, c) => acc + (Number(c.totalSpent) || 0), 0);
+  const totalFulfilledJobs = scopedCustomers.reduce((acc, c) => acc + (Number(c.jobsCount) || 0), 0);
+  const verifiedCount = scopedCustomers.filter((c) => c.status === 'Customer').length;
+  const leadsCount = scopedCustomers.filter((c) => c.status === 'Lead').length;
+  const hotLeadsCount = scopedCustomers.filter((c) => c.status === 'Hot Lead').length;
+  const vendorsCount = scopedCustomers.filter((c) => c.status === 'Vendor').length;
+
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, currentPage, pageSize]);
 
   const getBadgeStyle = (status: string) => {
     switch (status) {
@@ -549,8 +700,12 @@ export const CustomersView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-xs">
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Total Contacts</div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{customers.length}</div>
-            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">360 Directory profiles</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{scopedCustomers.length}</div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">
+              {customerBranchFilter && customerBranchFilter !== 'all'
+                ? `${customerBranchFilter} territory`
+                : '360 Directory profiles'}
+            </div>
           </div>
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-slate-500 font-semibold text-[11px] sm:text-xs">Verified Customers</div>
@@ -576,7 +731,7 @@ export const CustomersView: React.FC = () => {
 
         {/* Search, Sort & Filter Toolbar */}
         <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 text-xs">
-          <div className="flex flex-1 items-center gap-2 max-w-full lg:max-w-xl">
+          <div className="flex flex-1 items-center gap-2 max-w-full lg:max-w-2xl">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -593,6 +748,115 @@ export const CustomersView: React.FC = () => {
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
+              )}
+            </div>
+
+            {/* Branch Selector Dropdown */}
+            <div className="relative shrink-0" ref={branchDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsBranchDropdownOpen((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl font-semibold transition cursor-pointer text-xs ${
+                  customerBranchFilter && customerBranchFilter !== 'all'
+                    ? 'bg-purple-50 border-purple-300 text-purple-800'
+                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                }`}
+                title="Filter by Branch / Territory"
+              >
+                <Building2
+                  className={`w-3.5 h-3.5 ${
+                    customerBranchFilter && customerBranchFilter !== 'all'
+                      ? 'text-purple-600'
+                      : 'text-slate-500'
+                  }`}
+                />
+                <span className="hidden sm:inline">
+                  {customerBranchFilter && customerBranchFilter !== 'all'
+                    ? customerBranchFilter
+                    : 'All Branches'}
+                </span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                    isBranchDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isBranchDropdownOpen && (
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 z-40 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Select Territory / Branch
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerBranchFilter(null);
+                      setIsBranchDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition cursor-pointer ${
+                      !customerBranchFilter || customerBranchFilter === 'all'
+                        ? 'bg-emerald-50 text-emerald-800 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                      <span>All Branches ({customers.length})</span>
+                    </div>
+                    {(!customerBranchFilter || customerBranchFilter === 'all') && (
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    )}
+                  </button>
+
+                  <div className="my-1 border-t border-slate-100" />
+
+                  {branches.map((b) => {
+                    const isSelected = customerBranchFilter === b.name;
+                    const bCount = customers.filter(
+                      (c) =>
+                        c.branch === b.name ||
+                        (b.city && c.location.toLowerCase().includes(b.city.toLowerCase()))
+                    ).length;
+
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => {
+                          setCustomerBranchFilter(b.name);
+                          setIsBranchDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-purple-50 text-purple-800 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 font-medium'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPin
+                            className={`w-3.5 h-3.5 ${
+                              isSelected ? 'text-purple-600' : 'text-slate-400'
+                            }`}
+                          />
+                          <div>
+                            <div>{b.name}</div>
+                            <div className="text-[10px] text-slate-400 font-normal">
+                              {b.city}, {b.state}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                            {bCount || b.customers_count || 450}
+                          </span>
+                          {isSelected && (
+                            <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
@@ -650,14 +914,14 @@ export const CustomersView: React.FC = () => {
             </div>
 
             <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] hidden sm:inline">
-              {filteredCustomers.length} of {customers.length}
+              {filteredCustomers.length} of {scopedCustomers.length}
             </span>
           </div>
 
           {/* Category Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 lg:pb-0">
             {[
-              { id: 'all', label: `All (${customers.length})` },
+              { id: 'all', label: `All (${scopedCustomers.length})` },
               { id: 'Customer', label: `Customers (${verifiedCount})` },
               { id: 'Lead', label: `Leads (${leadsCount})` },
               { id: 'Hot Lead', label: `Hot Leads (${hotLeadsCount})` },
@@ -677,6 +941,46 @@ export const CustomersView: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Active Branch Filter Banner */}
+        {customerBranchFilter && customerBranchFilter !== 'all' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-50 via-indigo-50/40 to-purple-50 border border-purple-200 rounded-2xl text-xs text-purple-900 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="font-extrabold text-purple-950">
+                  Viewing {customerBranchFilter} Accounts
+                </div>
+                <div className="text-[11px] text-purple-700">
+                  Showing <strong>{filteredCustomers.length}</strong> active customer accounts in territory.
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('branches');
+                  addToast(`Returning to Branches view...`, 'info');
+                }}
+                className="px-2.5 py-1 bg-white hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-xl text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                <span>Branch Hub</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomerBranchFilter(null)}
+                className="px-2.5 py-1 bg-purple-200 hover:bg-purple-300 text-purple-900 rounded-xl text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+              >
+                <X className="w-3 h-3" />
+                <span>Show All Branches</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Customers Table */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-xs">
@@ -748,7 +1052,7 @@ export const CustomersView: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((cust) => (
+                  paginatedCustomers.map((cust) => (
                     <tr key={cust.uniqueKey} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
@@ -762,12 +1066,25 @@ export const CustomersView: React.FC = () => {
                           />
                           <div>
                             <span className="font-bold text-slate-900 block">{cust.name}</span>
+                            {cust.company && cust.company !== cust.name && (
+                              <span className="text-[10px] text-slate-500 block truncate max-w-[200px]">
+                                {cust.company}
+                              </span>
+                            )}
                             <span className="text-[10px] text-slate-400">{cust.lastSeen}</span>
                           </div>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-600">{cust.phone}</td>
-                      <td className="py-3.5 px-4 text-slate-500">{cust.location}</td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        <div className="font-medium text-slate-800">{cust.location}</div>
+                        {cust.branch && (
+                          <div className="text-[10px] text-purple-700 font-bold inline-flex items-center gap-1 mt-0.5 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-100">
+                            <Building2 className="w-2.5 h-2.5" />
+                            <span>{cust.branch}</span>
+                          </div>
+                        )}
+                      </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">{cust.jobsCount} completed</td>
                       <td className="py-3.5 px-4 font-bold text-emerald-600">₹{cust.totalSpent.toLocaleString()}</td>
                       <td className="py-3.5 px-4">
@@ -807,6 +1124,75 @@ export const CustomersView: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredCustomers.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 border-t border-slate-200 text-xs select-none">
+              <div className="flex items-center gap-3 text-slate-500 font-medium">
+                <span>
+                  Showing <strong className="text-slate-800">{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+                  <strong className="text-slate-800">
+                    {Math.min(currentPage * pageSize, filteredCustomers.length)}
+                  </strong>{' '}
+                  of <strong className="text-slate-800">{filteredCustomers.length}</strong> accounts
+                </span>
+                <div className="hidden sm:flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                  <span className="text-[11px] text-slate-400">Rows:</span>
+                  {[25, 50, 100].map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => {
+                        setPageSize(size);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition ${
+                        pageSize === size
+                          ? 'bg-slate-900 text-white shadow-2xs'
+                          : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 flex items-center gap-1 cursor-pointer transition text-xs"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {renderPaginationNumbers(
+                    currentPage,
+                    Math.ceil(filteredCustomers.length / pageSize),
+                    setCurrentPage
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={currentPage >= Math.ceil(filteredCustomers.length / pageSize)}
+                  onClick={() =>
+                    setCurrentPage((p) =>
+                      Math.min(Math.ceil(filteredCustomers.length / pageSize), p + 1)
+                    )
+                  }
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 flex items-center gap-1 cursor-pointer transition text-xs"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

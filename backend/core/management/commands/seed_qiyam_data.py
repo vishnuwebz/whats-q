@@ -604,6 +604,24 @@ class Command(BaseCommand):
         for f in followups_data:
             FollowUp.objects.create(**f)
 
+        Customer.objects.all().delete()
+        customers_seed = [
+            {'name': 'Bangalore IT Park Tech Desk', 'phone': '+91 98450 10001', 'email': 'support@bangaloreitpark.com', 'address': 'Indiranagar, Bangalore, Karnataka - 560038 [Bangalore Branch]', 'total_spent': 84500.0, 'jobs_count': 14, 'tags': ['Customer', 'Bangalore Branch', 'Enterprise VIP'], 'notes': 'Multi-building facility contract.'},
+            {'name': 'Koramangala Ventures HQ', 'phone': '+91 98450 10002', 'email': 'facilities@koramangalaventures.in', 'address': 'Koramangala, Bangalore, Karnataka - 560034 [Bangalore Branch]', 'total_spent': 45200.0, 'jobs_count': 9, 'tags': ['Customer', 'Bangalore Branch', 'Premium Retainer'], 'notes': 'Commercial HVAC retainer.'},
+            {'name': 'Whitefield Tech Innovators', 'phone': '+91 98450 10003', 'email': 'admin@whitefieldtech.com', 'address': 'Whitefield, Bangalore, Karnataka - 560066 [Bangalore Branch]', 'total_spent': 62000.0, 'jobs_count': 11, 'tags': ['Hot Lead', 'Bangalore Branch', 'Commercial'], 'notes': 'Campus air quality installation.'},
+            {'name': 'HSR Layout Business Hub', 'phone': '+91 98450 10004', 'email': 'ops@hsrhub.com', 'address': 'HSR Layout, Bangalore, Karnataka - 560102 [Bangalore Branch]', 'total_spent': 31000.0, 'jobs_count': 6, 'tags': ['Customer', 'Bangalore Branch', 'Commercial'], 'notes': 'Bi-monthly preventive maintenance.'},
+            {'name': 'Aster MIMS Specialty Hospital', 'phone': '+91 98470 12345', 'email': 'facilities@astermims.com', 'address': 'Mini Bypass Road, Govindapuram, Kozhikode, Kerala - 673016 [Head Office]', 'total_spent': 112000.0, 'jobs_count': 22, 'tags': ['Customer', 'Head Office', 'Enterprise VIP'], 'notes': 'Hospital critical zone HVAC maintenance.'},
+            {'name': 'Malabar Gold & Diamonds Corporate', 'phone': '+91 97456 78901', 'email': 'procurement@malabargold.com', 'address': 'Ram Mohan Road, Kozhikode, Kerala - 673004 [Head Office]', 'total_spent': 95000.0, 'jobs_count': 18, 'tags': ['Customer', 'Head Office', 'Enterprise VIP'], 'notes': 'Pan-outlet AMC contract.'},
+            {'name': 'Infopark Kochi Technology Suites', 'phone': '+91 98460 20001', 'email': 'admin@infoparktech.in', 'address': 'Kakkanad, Kochi, Kerala - 682042 [Kochi Branch]', 'total_spent': 78000.0, 'jobs_count': 15, 'tags': ['Customer', 'Kochi Branch', 'Enterprise VIP'], 'notes': 'Tech park server room refrigeration.'},
+            {'name': 'Lulu Cyber Tower Corporate', 'phone': '+91 98460 20002', 'email': 'ops@lulucyber.com', 'address': 'Edappally, Kochi, Kerala - 682024 [Kochi Branch]', 'total_spent': 54000.0, 'jobs_count': 10, 'tags': ['Customer', 'Kochi Branch', 'Premium Retainer'], 'notes': 'Retail showroom maintenance.'},
+            {'name': 'BKC Capital Towers', 'phone': '+91 98200 30001', 'email': 'desk@bkctowers.com', 'address': 'Bandra Kurla Complex, Mumbai, Maharashtra - 400051 [Mumbai Branch]', 'total_spent': 125000.0, 'jobs_count': 24, 'tags': ['Customer', 'Mumbai Branch', 'Enterprise VIP'], 'notes': 'Corporate headquarters central HVAC.'},
+            {'name': 'Tidel Park Chennai Center', 'phone': '+91 98400 40001', 'email': 'contact@tidelchennai.com', 'address': 'Taramani, Chennai, Tamil Nadu - 600113 [Chennai Branch]', 'total_spent': 49000.0, 'jobs_count': 8, 'tags': ['Customer', 'Chennai Branch', 'Commercial'], 'notes': 'IT corridor operations.'},
+            {'name': 'HITEC City Tech Park', 'phone': '+91 98490 50001', 'email': 'support@hiteccitytech.com', 'address': 'Madhapur, Hyderabad, Telangana - 500081 [Hyderabad Branch]', 'total_spent': 58000.0, 'jobs_count': 12, 'tags': ['Customer', 'Hyderabad Branch', 'Enterprise VIP'], 'notes': 'Data center cooling audit.'},
+            {'name': 'Connaught Place Commercial Plaza', 'phone': '+91 98100 60001', 'email': 'admin@cpcommercial.com', 'address': 'Connaught Place, New Delhi, Delhi - 110001 [Delhi Branch]', 'total_spent': 37000.0, 'jobs_count': 7, 'tags': ['Customer', 'Delhi Branch', 'Commercial'], 'notes': 'Central commercial showroom servicing.'},
+        ]
+        for c in customers_seed:
+            Customer.objects.create(**c)
+
         # 7. Operations: Jobs & Appointments & Employees
         Job.objects.all().delete()
         jobs_data = [

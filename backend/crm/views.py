@@ -334,6 +334,19 @@ class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-id')
     serializer_class = CustomerSerializer
 
+    def get_queryset(self):
+        qs = Customer.objects.all().order_by('-id')
+        branch = self.request.query_params.get('branch')
+        city = self.request.query_params.get('city')
+        search = self.request.query_params.get('search')
+        if branch and branch != 'all':
+            qs = qs.filter(Q(tags__icontains=branch) | Q(address__icontains=branch))
+        if city and city != 'all':
+            qs = qs.filter(address__icontains=city)
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(phone__icontains=search) | Q(address__icontains=search))
+        return qs
+
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
 

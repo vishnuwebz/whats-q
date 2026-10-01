@@ -75,9 +75,10 @@ import {
   INITIAL_ACCOUNTS,
   INITIAL_TASKS,
   INITIAL_ROUTES,
-  INITIAL_FOLLOWUPS
+  INITIAL_FOLLOWUPS,
 } from './initialDatasets';
 import { INITIAL_TEMPLATES } from './initialTemplates';
+import { INITIAL_MULTI_BRANCH_CUSTOMERS } from './customerSeedData';
 
 const CONVERSATIONS_CACHE_KEY = 'whatsq_cached_conversations';
 
@@ -795,9 +796,11 @@ interface QiyamState {
   globalDateRange: string;
   globalDateInterval: { start: string; end: string } | null;
   setGlobalDateRange: (range: string, interval?: { start: string; end: string } | null) => void;
-  globalFilter: { status?: string; priority?: string; assignedTo?: string; query?: string };
-  setGlobalFilter: (filter: Partial<{ status?: string; priority?: string; assignedTo?: string; query?: string }>) => void;
+  globalFilter: { status?: string; priority?: string; assignedTo?: string; query?: string; branch?: string };
+  setGlobalFilter: (filter: Partial<{ status?: string; priority?: string; assignedTo?: string; query?: string; branch?: string }>) => void;
   resetGlobalFilter: () => void;
+  customerBranchFilter: string | null;
+  setCustomerBranchFilter: (branch: string | null) => void;
 
   targetHighlightId: string | number | null;
   setTargetHighlightId: (id: string | number | null) => void;
@@ -3365,12 +3368,14 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     set({ globalDateRange: range, globalDateInterval: resolvedInterval });
     get().addToast(`Date range set to ${range}`, 'info');
   },
-  globalFilter: { status: 'all', priority: 'all', assignedTo: 'all', query: '' },
+  globalFilter: { status: 'all', priority: 'all', assignedTo: 'all', query: '', branch: 'all' },
   setGlobalFilter: (filter) => set((state) => ({ globalFilter: { ...state.globalFilter, ...filter } })),
   resetGlobalFilter: () => {
-    set({ globalFilter: { status: 'all', priority: 'all', assignedTo: 'all', query: '' } });
+    set({ globalFilter: { status: 'all', priority: 'all', assignedTo: 'all', query: '', branch: 'all' }, customerBranchFilter: null });
     get().addToast('Filter cleared', 'info');
   },
+  customerBranchFilter: null,
+  setCustomerBranchFilter: (branch) => set({ customerBranchFilter: branch }),
 
   targetHighlightId: null,
   setTargetHighlightId: (id) => set({ targetHighlightId: id }),
@@ -3462,7 +3467,10 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   trashLeads: getStoredCache('trashLeads', []),
   deals: getStoredCache('deals', INITIAL_DEALS),
   followups: getStoredCache('followups', INITIAL_FOLLOWUPS),
-  customers: getStoredCache('customers', []),
+  customers: (() => {
+    const cached = getStoredCache('customers', []);
+    return Array.isArray(cached) && cached.length >= 100 ? cached : INITIAL_MULTI_BRANCH_CUSTOMERS;
+  })(),
   jobs: getStoredCache('jobs', INITIAL_JOBS),
   appointments: INITIAL_APPOINTMENTS,
   employees: getStoredCache('employees', INITIAL_EMPLOYEES),

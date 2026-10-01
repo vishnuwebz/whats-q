@@ -51,9 +51,19 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       break;
     }
     case 'crm-customers': {
-      headers = ['ID', 'Customer Name', 'Phone', 'Location', 'Category', 'Last Seen'];
-      rows = (store.conversations || []).map((c: any) => [
-        c.id, c.contact_name, c.phone_number, c.location || 'Kozhikode, Kerala', c.category, c.last_contact_date
+      headers = ['ID', 'Customer Name', 'Company', 'Branch', 'City', 'Phone', 'Category', 'Segment', 'Lifetime Spend', 'Completed Jobs'];
+      const customerList = (store.customers && store.customers.length > 0) ? store.customers : (store.conversations || []);
+      rows = customerList.map((c: any) => [
+        c.id,
+        c.name || c.contact_name,
+        c.company || '-',
+        c.branch || 'Head Office (Kozhikode)',
+        c.city || c.location || 'Kozhikode, Kerala',
+        c.phone || c.phone_number,
+        c.category || 'Customer',
+        c.segment || 'Commercial',
+        c.lifetime_spend !== undefined ? `₹${Number(c.lifetime_spend).toLocaleString()}` : '-',
+        c.completed_jobs ?? '-',
       ]);
       break;
     }
@@ -288,7 +298,7 @@ export function exportTableToCsv(tab: TabType, store: any): { success: boolean; 
       headers = ['Configuration Setting', 'Value', 'Last Checked'];
       rows = [
         ['Workspace Name', store.workspace?.business_name || 'Qiyam Ventures', dateStr],
-        ['System Version', store.versionInfo?.version || '2.4.58', dateStr],
+        ['System Version', store.versionInfo?.version || '2.4.59', dateStr],
         ['Git Release', store.versionInfo?.current_commit || '62dc507', dateStr],
         ['Auto-Backup Schedule', 'Daily (PostgreSQL Dump)', 'Automated'],
       ];

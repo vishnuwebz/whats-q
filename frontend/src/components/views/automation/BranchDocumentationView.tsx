@@ -161,7 +161,7 @@ export function resolveTargetBranch(inboundLead: { pincode?: string; coordinates
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Multi-Tenant Enterprise SOP
               </span>
-              <span className="text-[11px] text-slate-400 font-medium">Updated v2.4.58</span>
+              <span className="text-[11px] text-slate-400 font-medium">Updated v2.4.59</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
               Branch Management & Regional Configuration
