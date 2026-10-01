@@ -183,8 +183,6 @@ class MessageSerializer(serializers.ModelSerializer):
                 ret['audioUrl'] = audio_url
                 ret['audioDuration'] = rc.get('duration') or rc.get('audioDuration') or 4
                 ret['waveform'] = rc.get('waveform')
-        elif ret.get('text') and ('🎙️' in ret['text'] or 'voice note' in ret['text'].lower()):
-            ret['isVoiceNote'] = True
         return ret
 
 def process_outbound_voice_payload(audio_base64: str) -> dict:
@@ -244,6 +242,19 @@ def process_outbound_voice_payload(audio_base64: str) -> dict:
                     final_bytes = f.read()
                 final_filename = ogg_filename
                 final_mime = 'audio/ogg'
+
+                # Also generate universal .mp3 sibling for maximum browser playback compatibility
+                mp3_path = os.path.join(media_dir, f"vn_{ts}.mp3")
+                try:
+                    subprocess.run(
+                        [ffmpeg_bin, '-y', '-i', ogg_path, '-c:a', 'libmp3lame', '-b:a', '64k', mp3_path],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        timeout=10
+                    )
+                except Exception:
+                    pass
+
                 try:
                     os.remove(raw_path)
                 except Exception:
@@ -505,6 +516,8 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
     step_name = 'Inbound Received'
 
     # Voice Note Inbound Detection
+    # Do NOT send automated bot text replies to incoming voice notes.
+    # Incoming voice messages must remain clean for agent listening and reply without automated duplicates.
     is_voice_note = (
         '🎙️' in text_body or
         'voice note' in lower_text or
@@ -512,24 +525,10 @@ def evaluate_workflow_response(text_body, conv, cust_name, service_name, booking
         lower_text == '🎙️ voice note'
     )
     if is_voice_note:
-        srv_mention = f" regarding *{service_name}* (Booking {booking_id})" if has_booking else ""
-        reply_text = (
-            f"🎙️ *Voice Note Received*\n\n"
-            f"Hi {cust_name}, thank you! We have received your voice note{srv_mention}.\n\n"
-            f"Our team at {company_name} is listening to your audio message and will reply to you promptly."
-        )
-        rich_card = {
-            'type': 'agent_handover',
-            'title': 'Voice Note Received',
-            'agent': technician_name,
-            'phone': tech_phone,
-            'status': 'Voice Message Under Review',
-            'actionText': 'Listening to Audio'
-        }
-        conv.status = 'in_progress'
+        conv.status = 'open'
         conv.lead_stage = 'Voice Note Received'
-        step_name = 'Voice Note Handover'
-        return reply_text, rich_card, step_name
+        step_name = 'Voice Note Received'
+        return '', None, step_name
 
     # 2. Check Working Hours (Outside Active Hours Away Message)
     try:
@@ -3108,7 +3107,7 @@ class WhatsAppWebhookView(APIView):
                             text_body = msg.get('image', {}).get('caption') or '📷 Photo'
                         elif msg_type in ['audio', 'voice']:
                             audio_meta = msg.get('audio') or msg.get('voice') or {}
-                            voice_id = audio_meta.get('id', '')
+                            voice_id = audio_meta.get('id', '') or msg.get('id', '')
                             voice_mime = audio_meta.get('mime_type', 'audio/ogg')
                             voice_dur = int(audio_meta.get('duration', 4) or 4)
                             text_body = f"🎙️ Voice note ({voice_dur}s)" if voice_dur else '🎙️ Voice note'
@@ -3761,58 +3760,59 @@ class WhatsAppWebhookView(APIView):
                                 est_val_num=est_val_num
                             )
 
-                            # 3. Dispatch to WhatsApp via Meta Cloud API
-                            meta_bot_msg_id = ''
-                            if config.connection_status == 'connected' and config.access_token and config.phone_number_id:
-                                meta_reply_res = MetaWhatsAppService.send_whatsapp_text(
-                                    phone_number_id=config.phone_number_id,
-                                    access_token=config.access_token,
-                                    to_phone=clean_sender,
+                            # 3. Dispatch to WhatsApp via Meta Cloud API (Only if non-empty reply_text)
+                            if reply_text and reply_text.strip():
+                                meta_bot_msg_id = ''
+                                if config.connection_status == 'connected' and config.access_token and config.phone_number_id:
+                                    meta_reply_res = MetaWhatsAppService.send_whatsapp_text(
+                                        phone_number_id=config.phone_number_id,
+                                        access_token=config.access_token,
+                                        to_phone=clean_sender,
+                                        text=reply_text,
+                                        api_version=config.api_version
+                                    )
+                                    if meta_reply_res.get('success'):
+                                        meta_bot_msg_id = meta_reply_res.get('message_id', '')
+                                        logger.info(f"[Meta Webhook Auto-Reply] Sent to {clean_sender}: {meta_bot_msg_id}")
+                                    else:
+                                        logger.warning(f"[Meta Webhook Auto-Reply] Meta send failed: {meta_reply_res.get('error')}")
+
+                                # 4. Save Bot Message in DB & Stream via SSE
+                                bot_msg = Message.objects.create(
+                                    conversation=conv,
+                                    sender='bot',
+                                    sender_name='WhatsQ AI Assistant',
                                     text=reply_text,
-                                    api_version=config.api_version
+                                    timestamp=now_time,
+                                    status='sent' if meta_bot_msg_id else 'delivered',
+                                    meta_message_id=meta_bot_msg_id,
+                                    rich_card=rich_card
                                 )
-                                if meta_reply_res.get('success'):
-                                    meta_bot_msg_id = meta_reply_res.get('message_id', '')
-                                    logger.info(f"[Meta Webhook Auto-Reply] Sent to {clean_sender}: {meta_bot_msg_id}")
-                                else:
-                                    logger.warning(f"[Meta Webhook Auto-Reply] Meta send failed: {meta_reply_res.get('error')}")
 
-                            # 4. Save Bot Message in DB & Stream via SSE
-                            bot_msg = Message.objects.create(
-                                conversation=conv,
-                                sender='bot',
-                                sender_name='WhatsQ AI Assistant',
-                                text=reply_text,
-                                timestamp=now_time,
-                                status='sent' if meta_bot_msg_id else 'delivered',
-                                meta_message_id=meta_bot_msg_id,
-                                rich_card=rich_card
-                            )
+                                conv.last_contact_date = now_full
+                                conv.save()
 
-                            conv.last_contact_date = now_full
-                            conv.save()
-
-                            bot_msg_payload = MessageSerializer(bot_msg).data
-                            emit_event('message.created', {
-                                'conversation_id': conv.id,
-                                'message': bot_msg_payload
-                            })
-                            emit_event('conversation.updated', {
-                                'id': conv.id,
-                                'last_message': reply_text,
-                                'last_contact_date': now_full,
-                                'unread_count': conv.unread_count
-                            })
-                            emit_event('notification.new', {
-                                'id': int(time.time() * 1000),
-                                'title': f"WhatsQ Auto-Reply to {cust_name}",
-                                'text': reply_text[:80],
-                                'time': 'Just now',
-                                'unread': True,
-                                'target': 'conversations',
-                                'itemId': conv.id,
-                                'itemType': 'conversation'
-                            })
+                                bot_msg_payload = MessageSerializer(bot_msg).data
+                                emit_event('message.created', {
+                                    'conversation_id': conv.id,
+                                    'message': bot_msg_payload
+                                })
+                                emit_event('conversation.updated', {
+                                    'id': conv.id,
+                                    'last_message': reply_text,
+                                    'last_contact_date': now_full,
+                                    'unread_count': conv.unread_count
+                                })
+                                emit_event('notification.new', {
+                                    'id': int(time.time() * 1000),
+                                    'title': f"WhatsQ Auto-Reply to {cust_name}",
+                                    'text': reply_text[:80],
+                                    'time': 'Just now',
+                                    'unread': True,
+                                    'target': 'conversations',
+                                    'itemId': conv.id,
+                                    'itemType': 'conversation'
+                                })
 
                     # Message status updates (sent, delivered, read, failed)
                     statuses = value.get('statuses', [])
@@ -4199,44 +4199,45 @@ class SimulateWhatsAppMessageView(APIView):
             est_val_num=est_val_num
         )
 
-        bot_msg = Message.objects.create(
-            conversation=conv,
-            sender='bot',
-            sender_name='Qiyam AI Assistant',
-            text=reply_text,
-            timestamp=now_time,
-            status='delivered',
-            rich_card=rich_card
-        )
-
-        conv.last_contact_date = now_full
-        conv.status = 'in_progress'
-        conv.save()
-
         user_msg_data = MessageSerializer(user_msg).data
-        bot_msg_data = MessageSerializer(bot_msg).data
-
         emit_event('message.created', {
             'conversation_id': conv.id,
             'message': user_msg_data
         })
-        emit_event('message.created', {
-            'conversation_id': conv.id,
-            'message': bot_msg_data
-        })
-        emit_event('conversation.updated', {
-            'id': conv.id,
-            'contact_name': conv.contact_name,
-            'phone_number': conv.phone_number,
-            'last_message': reply_text,
-            'last_contact_date': now_full,
-            'unread_count': conv.unread_count,
-            'active_line_device': getattr(conv, 'active_line_device', ''),
-            'active_line_phone': getattr(conv, 'active_line_phone', ''),
-            'active_employee_name': getattr(conv, 'active_employee_name', ''),
-            'active_line_type': getattr(conv, 'active_line_type', 'meta_cloud'),
-            'lead_owner': conv.lead_owner,
-        })
+
+        if reply_text and reply_text.strip():
+            bot_msg = Message.objects.create(
+                conversation=conv,
+                sender='bot',
+                sender_name='Qiyam AI Assistant',
+                text=reply_text,
+                timestamp=now_time,
+                status='delivered',
+                rich_card=rich_card
+            )
+
+            conv.last_contact_date = now_full
+            conv.status = 'in_progress'
+            conv.save()
+
+            bot_msg_data = MessageSerializer(bot_msg).data
+            emit_event('message.created', {
+                'conversation_id': conv.id,
+                'message': bot_msg_data
+            })
+            emit_event('conversation.updated', {
+                'id': conv.id,
+                'contact_name': conv.contact_name,
+                'phone_number': conv.phone_number,
+                'last_message': reply_text,
+                'last_contact_date': now_full,
+                'unread_count': conv.unread_count,
+                'active_line_device': getattr(conv, 'active_line_device', ''),
+                'active_line_phone': getattr(conv, 'active_line_phone', ''),
+                'active_employee_name': getattr(conv, 'active_employee_name', ''),
+                'active_line_type': getattr(conv, 'active_line_type', 'meta_cloud'),
+                'lead_owner': conv.lead_owner,
+            })
         emit_event('notification.new', {
             'id': int(time.time() * 1000),
             'title': f"Live Simulator: {conv.contact_name}",
@@ -4542,6 +4543,8 @@ class StartWhatsAppChatView(APIView):
 class WhatsAppMediaProxyView(APIView):
     """
     Proxies and streams WhatsApp voice notes and media from Meta Cloud API or local disk cache.
+    Implements HTTP Range support (RFC 7233) via FileResponse for seekable audio playback.
+    Prefers universal MP3 format with OGG Opus fallback for 100% browser compatibility.
     Endpoint: GET /api/conversations/media/<str:media_id>/
     """
     authentication_classes = []
@@ -4555,27 +4558,58 @@ class WhatsAppMediaProxyView(APIView):
         safe_media_id = re.sub(r'[^a-zA-Z0-9_\-]', '', str(media_id))
         media_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes')
         os.makedirs(media_dir, exist_ok=True)
-        cached_file = os.path.join(media_dir, f"{safe_media_id}.ogg")
 
-        if os.path.exists(cached_file) and os.path.getsize(cached_file) > 0:
-            with open(cached_file, 'rb') as f:
-                content = f.read()
-            resp = HttpResponse(content, content_type='audio/ogg')
-            resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+        ogg_path = os.path.join(media_dir, f"{safe_media_id}.ogg")
+        mp3_path = os.path.join(media_dir, f"{safe_media_id}.mp3")
+
+        # 1. Prefer MP3 if already generated
+        if os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 0:
+            resp = FileResponse(open(mp3_path, 'rb'), content_type='audio/mpeg')
+            resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.mp3"'
+            resp['Accept-Ranges'] = 'bytes'
+            resp['Access-Control-Allow-Origin'] = '*'
+            resp['Access-Control-Allow-Headers'] = 'Range, Content-Type, Authorization'
             return resp
 
-        # Check alternative formats if previously saved
-        for ext in ['.webm', '.mp4', '.m4a', '.mp3', '.ogg']:
+        # 2. If OGG exists, transcode to MP3 on-demand via ffmpeg for maximum browser compatibility
+        if os.path.exists(ogg_path) and os.path.getsize(ogg_path) > 0:
+            try:
+                subprocess.run(
+                    ['ffmpeg', '-y', '-i', ogg_path, '-c:a', 'libmp3lame', '-b:a', '64k', mp3_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=10
+                )
+                if os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 0:
+                    resp = FileResponse(open(mp3_path, 'rb'), content_type='audio/mpeg')
+                    resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.mp3"'
+                    resp['Accept-Ranges'] = 'bytes'
+                    resp['Access-Control-Allow-Origin'] = '*'
+                    resp['Access-Control-Allow-Headers'] = 'Range, Content-Type, Authorization'
+                    return resp
+            except Exception as ffmpeg_err:
+                logger.warning(f"[WhatsAppMediaProxyView] ffmpeg conversion warning: {ffmpeg_err}")
+
+            resp = FileResponse(open(ogg_path, 'rb'), content_type='audio/ogg; codecs=opus')
+            resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+            resp['Accept-Ranges'] = 'bytes'
+            resp['Access-Control-Allow-Origin'] = '*'
+            resp['Access-Control-Allow-Headers'] = 'Range, Content-Type, Authorization'
+            return resp
+
+        # 3. Check alternative formats if previously saved
+        for ext in ['.webm', '.mp4', '.m4a']:
             alt_path = os.path.join(media_dir, f"{safe_media_id}{ext}")
             if os.path.exists(alt_path) and os.path.getsize(alt_path) > 0:
-                mime = 'audio/webm' if ext == '.webm' else ('audio/mp4' if ext in ['.mp4', '.m4a'] else ('audio/mpeg' if ext == '.mp3' else 'audio/ogg'))
-                with open(alt_path, 'rb') as f:
-                    content = f.read()
-                resp = HttpResponse(content, content_type=mime)
+                mime = 'audio/webm' if ext == '.webm' else 'audio/mp4'
+                resp = FileResponse(open(alt_path, 'rb'), content_type=mime)
                 resp['Content-Disposition'] = f'inline; filename="{safe_media_id}{ext}"'
+                resp['Accept-Ranges'] = 'bytes'
+                resp['Access-Control-Allow-Origin'] = '*'
+                resp['Access-Control-Allow-Headers'] = 'Range, Content-Type, Authorization'
                 return resp
 
-        # Download on-demand from Meta Cloud API
+        # 4. Download on-demand from Meta Cloud API
         config = MetaWhatsAppConfig.objects.first()
         if not config or not config.access_token:
             return Response({'error': 'Meta WhatsApp Cloud API token not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -4583,21 +4617,29 @@ class WhatsAppMediaProxyView(APIView):
         download_res = MetaWhatsAppService.download_whatsapp_media(
             media_id=safe_media_id,
             access_token=config.access_token,
-            save_path=cached_file,
+            save_path=ogg_path,
             api_version=config.api_version
         )
 
         if download_res.get('success'):
-            content_type = download_res.get('mime_type') or 'audio/ogg'
-            if os.path.exists(cached_file):
-                with open(cached_file, 'rb') as f:
-                    content = f.read()
-                resp = HttpResponse(content, content_type=content_type)
+            if os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 0:
+                resp = FileResponse(open(mp3_path, 'rb'), content_type='audio/mpeg')
+                resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.mp3"'
+                resp['Accept-Ranges'] = 'bytes'
+                resp['Access-Control-Allow-Origin'] = '*'
+                resp['Access-Control-Allow-Headers'] = 'Range, Content-Type, Authorization'
+                return resp
+            if os.path.exists(ogg_path) and os.path.getsize(ogg_path) > 0:
+                resp = FileResponse(open(ogg_path, 'rb'), content_type='audio/ogg; codecs=opus')
                 resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+                resp['Accept-Ranges'] = 'bytes'
+                resp['Access-Control-Allow-Origin'] = '*'
+                resp['Access-Control-Allow-Headers'] = 'Range, Content-Type, Authorization'
                 return resp
             elif download_res.get('data'):
-                resp = HttpResponse(download_res['data'], content_type=content_type)
+                resp = HttpResponse(download_res['data'], content_type='audio/ogg; codecs=opus')
                 resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'
+                resp['Access-Control-Allow-Origin'] = '*'
                 return resp
 
         return Response({

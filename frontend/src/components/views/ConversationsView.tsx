@@ -3110,12 +3110,19 @@ export const ConversationsView: React.FC = () => {
                           msg.text.toLowerCase().includes('quotation') ||
                           msg.richCard?.type === 'quotation';
 
-                        const isTemplateMessage = !isCustomer && (
+                        const isVoiceMsg = Boolean(
+                          msg.isVoiceNote ||
+                          msg.richCard?.type === 'voice_note' ||
+                          Boolean(msg.audioUrl) ||
+                          Boolean((msg.richCard as any)?.audioUrl)
+                        );
+
+                        const isTemplateMessage = !isVoiceMsg && !isCustomer && (
                           isBot ||
                           Boolean(msg.isTemplate) ||
                           Boolean(msg.senderName?.toLowerCase().includes('template')) ||
                           isQuotation ||
-                          Boolean(msg.richCard) ||
+                          Boolean(msg.richCard && msg.richCard.type !== 'voice_note') ||
                           msg.text.includes('📋') ||
                           msg.text.includes('Valid Until:') ||
                           msg.text.toLowerCase().includes('booking confirmation') ||
@@ -3346,14 +3353,7 @@ export const ConversationsView: React.FC = () => {
                                 </div>
                               )}
                               {(() => {
-                                const isVoice = Boolean(
-                                  msg.isVoiceNote ||
-                                  msg.richCard?.type === 'voice_note' ||
-                                  msg.audioUrl ||
-                                  msg.text?.includes('Voice Note') ||
-                                  msg.text?.includes('Voice note') ||
-                                  msg.text?.includes('🎙️')
-                                );
+                                const isVoice = isVoiceMsg;
 
                                 if (isVoice) {
                                   let durationVal = msg.audioDuration || (msg.richCard as any)?.duration;

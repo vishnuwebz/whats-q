@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Mic } from 'lucide-react';
+import { Play, Pause, Mic, Volume2 } from 'lucide-react';
 
 interface VoiceNotePlayerProps {
   audioUrl?: string;
@@ -30,15 +30,31 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   const [playbackRate, setPlaybackRate] = useState<1 | 1.5 | 2>(1);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [actualDuration, setActualDuration] = useState<number | null>(null);
+  const [audioError, setAudioError] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const synthNodesRef = useRef<{ osc?: OscillatorNode; gain?: GainNode; filter?: BiquadFilterNode } | null>(null);
+  const webAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const synthNodesRef = useRef<{ osc1?: OscillatorNode; osc2?: OscillatorNode; gain?: GainNode; filter?: BiquadFilterNode } | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
 
-  // Normalize waveform bars to 28 bars
+  // Normalize audio URL for browser playback (absolute path / origin)
+  const resolvedAudioUrl = React.useMemo(() => {
+    if (!audioUrl) return undefined;
+    const trimmed = String(audioUrl).trim();
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    if (typeof window !== 'undefined' && trimmed.startsWith('/')) {
+      return `${window.location.origin}${trimmed}`;
+    }
+    return trimmed;
+  }, [audioUrl]);
+
+  // Normalize waveform bars to 30 bars
   const bars = React.useMemo(() => {
     const raw = waveform && waveform.length > 0 ? waveform : DEFAULT_WAVEFORM;
     const targetCount = 30;
@@ -46,7 +62,6 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     for (let i = 0; i < targetCount; i++) {
       const idx = Math.floor((i / targetCount) * raw.length);
       const val = raw[idx] ?? 40;
-      // Clamp between 15% and 100% height
       result.push(Math.max(15, Math.min(100, val)));
     }
     return result;
@@ -54,11 +69,71 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
 
   const totalDuration = Math.max(1, actualDuration || duration || 4);
 
-  // Web Audio Synthetic Voice Generator fallback
+  // Stop Web Audio playback if active
+  const stopWebAudio = () => {
+    if (webAudioSourceRef.current) {
+      try {
+        webAudioSourceRef.current.stop();
+        webAudioSourceRef.current.disconnect();
+      } catch {}
+      webAudioSourceRef.current = null;
+    }
+  };
+
+  // High-fidelity Web Audio API decoder fallback (plays decoded audio buffer directly through speakers)
+  const playViaWebAudio = async (url: string, offsetSec: number): Promise<boolean> => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) return false;
+      const arrayBuffer = await res.arrayBuffer();
+      const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+      stopWebAudio();
+
+      const source = ctx.createBufferSource();
+      source.buffer = decodedBuffer;
+      source.playbackRate.value = playbackRate;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 1.0;
+
+      source.connect(gain);
+      gain.connect(ctx.destination);
+
+      const dur = Math.round(decodedBuffer.duration);
+      if (dur > 0) setActualDuration(dur);
+
+      source.start(0, Math.min(offsetSec, decodedBuffer.duration));
+      webAudioSourceRef.current = source;
+
+      source.onended = () => {
+        setIsPlaying(false);
+        setPlaybackTime(0);
+        pausedTimeRef.current = 0;
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      };
+
+      return true;
+    } catch (e) {
+      console.warn('[VoiceNotePlayer] WebAudio direct decode error, falling back:', e);
+      return false;
+    }
+  };
+
+  // Audible synthetic voice melody fallback when no audio file is available
   const startSyntheticAudio = (fromOffset: number) => {
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!audioCtxRef.current) {
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
         audioCtxRef.current = new AudioCtx();
       }
       const ctx = audioCtxRef.current;
@@ -66,32 +141,41 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         ctx.resume();
       }
 
-      const osc = ctx.createOscillator();
+      stopSyntheticAudio();
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
       const filter = ctx.createBiquadFilter();
 
-      // Vocal formant filter simulation
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(450, ctx.currentTime);
-      filter.Q.setValueAtTime(3.0, ctx.currentTime);
+      // Vocal formant frequencies (speech-like harmonics)
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1400, ctx.currentTime);
 
-      // Pitch variation like human speech
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(175, ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(220, ctx.currentTime + 0.3);
-      osc.frequency.linearRampToValueAtTime(160, ctx.currentTime + 0.7);
-      osc.frequency.linearRampToValueAtTime(190, ctx.currentTime + 1.2);
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(260, ctx.currentTime);
+      osc1.frequency.linearRampToValueAtTime(320, ctx.currentTime + 0.4);
+      osc1.frequency.linearRampToValueAtTime(240, ctx.currentTime + 0.9);
+      osc1.frequency.linearRampToValueAtTime(290, ctx.currentTime + 1.6);
 
-      // Volume envelope
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(520, ctx.currentTime);
+      osc2.frequency.linearRampToValueAtTime(640, ctx.currentTime + 0.4);
+      osc2.frequency.linearRampToValueAtTime(480, ctx.currentTime + 0.9);
+      osc2.frequency.linearRampToValueAtTime(580, ctx.currentTime + 1.6);
+
+      // Comfortable, clearly audible listening level
       gain.gain.setValueAtTime(0.001, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.05);
 
-      osc.connect(filter);
+      osc1.connect(filter);
+      osc2.connect(filter);
       filter.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start();
-      synthNodesRef.current = { osc, gain, filter };
+      osc1.start();
+      osc2.start();
+      synthNodesRef.current = { osc1, osc2, gain, filter };
     } catch {
       // AudioContext unavailable
     }
@@ -103,8 +187,10 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         synthNodesRef.current.gain.gain.linearRampToValueAtTime(0.0001, audioCtxRef.current.currentTime + 0.05);
         setTimeout(() => {
           try {
-            synthNodesRef.current?.osc?.stop();
-            synthNodesRef.current?.osc?.disconnect();
+            synthNodesRef.current?.osc1?.stop();
+            synthNodesRef.current?.osc2?.stop();
+            synthNodesRef.current?.osc1?.disconnect();
+            synthNodesRef.current?.osc2?.disconnect();
           } catch {}
           synthNodesRef.current = null;
         }, 60);
@@ -114,16 +200,16 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     }
   };
 
-  const handleTogglePlay = () => {
+  const handleTogglePlay = async () => {
     if (isPlaying) {
       // Pause
       setIsPlaying(false);
       pausedTimeRef.current = playbackTime;
       if (audioRef.current) {
         audioRef.current.pause();
-      } else {
-        stopSyntheticAudio();
       }
+      stopWebAudio();
+      stopSyntheticAudio();
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     } else {
       // Play
@@ -135,28 +221,49 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       pausedTimeRef.current = offset;
       startTimeRef.current = performance.now() - (offset / playbackRate) * 1000;
 
-      if (audioUrl && audioRef.current) {
-        audioRef.current.playbackRate = playbackRate;
-        audioRef.current.currentTime = offset;
-        audioRef.current.play().catch(() => {
-          // If browser audio blocked or url broken, use synth
+      let playedViaNative = false;
+
+      if (resolvedAudioUrl && audioRef.current && !audioError) {
+        try {
+          audioRef.current.volume = 1.0;
+          audioRef.current.playbackRate = playbackRate;
+          audioRef.current.currentTime = offset;
+          await audioRef.current.play();
+          playedViaNative = true;
+        } catch {
+          // Native HTML5 audio failed (e.g. codecs/CORS), attempt Web Audio API decoder
+          const webAudioSuccess = await playViaWebAudio(resolvedAudioUrl, offset);
+          if (!webAudioSuccess) {
+            startSyntheticAudio(offset);
+          }
+        }
+      } else if (resolvedAudioUrl) {
+        const webAudioSuccess = await playViaWebAudio(resolvedAudioUrl, offset);
+        if (!webAudioSuccess) {
           startSyntheticAudio(offset);
-        });
+        }
       } else {
         startSyntheticAudio(offset);
       }
 
-      // Smooth Animation loop for progress
+      // Smooth Animation loop for progress bar
       const tick = (now: number) => {
-        const elapsedSec = ((now - startTimeRef.current) / 1000) * playbackRate;
-        if (elapsedSec >= totalDuration) {
+        let currentPos = 0;
+        if (audioRef.current && playedViaNative && !audioRef.current.paused) {
+          currentPos = audioRef.current.currentTime;
+        } else {
+          currentPos = ((now - startTimeRef.current) / 1000) * playbackRate;
+        }
+
+        if (currentPos >= totalDuration) {
           setIsPlaying(false);
           setPlaybackTime(0);
           pausedTimeRef.current = 0;
           if (audioRef.current) audioRef.current.pause();
+          stopWebAudio();
           stopSyntheticAudio();
         } else {
-          setPlaybackTime(elapsedSec);
+          setPlaybackTime(currentPos);
           animFrameRef.current = requestAnimationFrame(tick);
         }
       };
@@ -170,6 +277,9 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     setPlaybackRate(nextRate);
     if (audioRef.current) {
       audioRef.current.playbackRate = nextRate;
+    }
+    if (webAudioSourceRef.current) {
+      try { webAudioSourceRef.current.playbackRate.value = nextRate; } catch {}
     }
     if (isPlaying) {
       startTimeRef.current = performance.now() - (playbackTime / nextRate) * 1000;
@@ -187,7 +297,12 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     pausedTimeRef.current = newTime;
 
     if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
+      try {
+        audioRef.current.currentTime = newTime;
+      } catch {}
+    }
+    if (webAudioSourceRef.current && isPlaying && resolvedAudioUrl) {
+      playViaWebAudio(resolvedAudioUrl, newTime);
     }
     if (isPlaying) {
       startTimeRef.current = performance.now() - (newTime / playbackRate) * 1000;
@@ -197,6 +312,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      stopWebAudio();
       stopSyntheticAudio();
       if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
         try {
@@ -217,16 +333,28 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
 
   return (
     <div className="w-full max-w-[320px] select-none py-1">
-      {/* Hidden real HTML5 audio tag if audioUrl provided */}
-      {audioUrl && (
+      {/* HTML5 audio tag for direct hardware playback with range seeking */}
+      {resolvedAudioUrl && (
         <audio
           ref={audioRef}
-          src={audioUrl}
-          preload="metadata"
+          src={resolvedAudioUrl}
+          preload="auto"
+          crossOrigin="anonymous"
           onLoadedMetadata={(e) => {
             const d = e.currentTarget.duration;
             if (d && !isNaN(d) && isFinite(d) && d > 0) {
               setActualDuration(Math.round(d));
+            }
+          }}
+          onTimeUpdate={(e) => {
+            if (isPlaying) {
+              setPlaybackTime(e.currentTarget.currentTime);
+            }
+          }}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => {
+            if (isPlaying && audioRef.current?.paused) {
+              setIsPlaying(false);
             }
           }}
           onEnded={() => {
@@ -234,6 +362,9 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
             setPlaybackTime(0);
             pausedTimeRef.current = 0;
             if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+          }}
+          onError={() => {
+            setAudioError(true);
           }}
         />
       )}

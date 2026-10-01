@@ -7,6 +7,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 import { metaCloudApiEngine } from './metaCloudApiEngine.js';
 import { getDb, saveDb } from './db.js';
@@ -659,6 +660,49 @@ export class BaileysEngine {
             ? 'document'
             : 'text';
 
+          const mediaId = msg.key.id || `baileys-${Date.now()}`;
+          let audioMeta = null;
+
+          if (innerMsg.audioMessage) {
+            const audioSeconds = Number(innerMsg.audioMessage.seconds) || 4;
+            const audioMime = innerMsg.audioMessage.mimetype || 'audio/ogg; codecs=opus';
+            audioMeta = {
+              id: mediaId,
+              duration: audioSeconds,
+              mime_type: audioMime,
+            };
+
+            // Download audio buffer asynchronously and save to disk
+            (async () => {
+              try {
+                const buffer = await downloadMediaMessage(
+                  msg,
+                  'buffer',
+                  {},
+                  { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage }
+                );
+                if (buffer && buffer.length > 0) {
+                  const mediaDir = path.resolve(__dirname, '../../backend/media/voice_notes');
+                  if (!fs.existsSync(mediaDir)) {
+                    fs.mkdirSync(mediaDir, { recursive: true });
+                  }
+                  const safeId = mediaId.replace(/[^a-zA-Z0-9_\-]/g, '');
+                  const oggPath = path.join(mediaDir, `${safeId}.ogg`);
+                  const mp3Path = path.join(mediaDir, `${safeId}.mp3`);
+                  fs.writeFileSync(oggPath, buffer);
+
+                  // Transcode to mp3 if ffmpeg is available
+                  try {
+                    const { exec } = await import('child_process');
+                    exec(`ffmpeg -y -i "${oggPath}" -c:a libmp3lame -b:a 64k "${mp3Path}"`);
+                  } catch {}
+                }
+              } catch (dlErr) {
+                console.warn('[Baileys Engine] Voice message download warning:', dlErr.message);
+              }
+            })();
+          }
+
           console.log(`[Baileys Engine] ${isFromMe ? '📤 Outbound (from mobile phone)' : '📩 Inbound (customer reply)'}: Customer ${customerPhone} <-> Employee ${employeeName} (${employeePhone}): "${text}"`);
 
           const incomingPayload = {
@@ -716,9 +760,10 @@ export class BaileysEngine {
                       messages: [{
                         from: isFromMe ? (employeePhone.replace(/[^\d]/g, '') || accountId) : rawCustomer,
                         to: isFromMe ? rawCustomer : (employeePhone.replace(/[^\d]/g, '') || ''),
-                        id: msg.key.id || `baileys-${Date.now()}`,
+                        id: mediaId,
                         type: msgType,
                         text: { body: text },
+                        audio: audioMeta,
                         from_me: isFromMe,
                         customer_phone: customerPhone,
                         customer_jid: customerJid,

@@ -625,12 +625,14 @@ class MetaWhatsAppService:
         """
         Downloads a media file (voice note, image, document) from Meta Cloud API.
         Step 1: GET /{MEDIA_ID} to obtain download URL.
-        Step 2: GET {download_url} with Authorization: Bearer {access_token} to get binary bytes.
+        Step 2: GET {download_url} with Authorization: Bearer {access_token} and User-Agent to get binary bytes.
+        Automatically converts .ogg voice notes to .mp3 using ffmpeg for 100% universal browser playback.
         """
         version = api_version or cls.DEFAULT_API_VERSION
         url = f"{cls.GRAPH_BASE_URL}/{version}/{media_id.strip()}"
         headers = {
-            "Authorization": f"Bearer {access_token.strip()}"
+            "Authorization": f"Bearer {access_token.strip()}",
+            "User-Agent": "curl/7.64.1"
         }
 
         try:
@@ -646,8 +648,12 @@ class MetaWhatsAppService:
             if not download_url:
                 return {"success": False, "error": "No download URL returned by Meta"}
 
-            # Step 2: Download binary data
-            bin_resp = requests.get(download_url, headers=headers, timeout=30)
+            # Step 2: Download binary data (Meta CDN requires User-Agent header)
+            bin_headers = {
+                "Authorization": f"Bearer {access_token.strip()}",
+                "User-Agent": "curl/7.64.1"
+            }
+            bin_resp = requests.get(download_url, headers=bin_headers, timeout=30)
             if bin_resp.status_code != 200:
                 return {"success": False, "error": f"Failed to download media binary from Meta (HTTP {bin_resp.status_code})"}
 
@@ -655,9 +661,23 @@ class MetaWhatsAppService:
 
             if save_path:
                 import os
+                import subprocess
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 with open(save_path, 'wb') as f:
                     f.write(audio_data)
+
+                # Transcode .ogg to .mp3 if ffmpeg is available
+                if save_path.lower().endswith('.ogg'):
+                    mp3_path = save_path[:-4] + '.mp3'
+                    try:
+                        subprocess.run(
+                            ['ffmpeg', '-y', '-i', save_path, '-c:a', 'libmp3lame', '-b:a', '64k', mp3_path],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            timeout=10
+                        )
+                    except Exception as ffmpeg_err:
+                        logger.warning(f"[download_whatsapp_media] ffmpeg transcoding error: {ffmpeg_err}")
 
             return {
                 "success": True,
