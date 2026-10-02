@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight,
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown,
   Check, X, ArrowRight, Clock, ChevronsLeft, ChevronsRight, RotateCcw
 } from 'lucide-react';
 
@@ -146,20 +146,40 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     setViewYear((y) => y + 1);
   };
 
+  // Active selection target: 'start' | 'end'
+  const [activeTarget, setActiveTarget] = useState<'start' | 'end'>('start');
+  const [showMonthSelect, setShowMonthSelect] = useState(false);
+  const [fromInputText, setFromInputText] = useState(startDate);
+  const [toInputText, setToInputText] = useState(endDate);
+
+  useEffect(() => {
+    setFromInputText(startDate);
+  }, [startDate]);
+
+  useEffect(() => {
+    setToInputText(endDate);
+  }, [endDate]);
+
   // Generate calendar days for viewYear & viewMonth
   const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long' });
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
 
+  const shortMonthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
   const handleDayClick = (dayStr: string) => {
     setActivePreset('Custom Range');
-    if (!startDate || (startDate && endDate)) {
-      // First click: select start date
+    if (activeTarget === 'start') {
       setStartDate(dayStr);
-      setEndDate('');
-    } else if (startDate && !endDate) {
-      // Second click: select end date
+      if (endDate && dayStr > endDate) {
+        setEndDate(dayStr);
+      }
+      setActiveTarget('end');
+    } else {
       if (dayStr < startDate) {
         setEndDate(startDate);
         setStartDate(dayStr);
@@ -199,6 +219,38 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     }
   };
 
+  const formatDateDisplay = (d: string) => {
+    if (!d) return 'Select Date';
+    try {
+      const parts = d.split('-');
+      if (parts.length === 3) {
+        const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+      }
+      return d;
+    } catch {
+      return d;
+    }
+  };
+
+  const formatWeekday = (d: string) => {
+    if (!d) return '';
+    try {
+      const parts = d.split('-');
+      if (parts.length === 3) {
+        const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-US', { weekday: 'long' });
+        }
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  };
+
   const handleApply = () => {
     const finalEnd = endDate || startDate;
     const finalStart = startDate <= finalEnd ? startDate : finalEnd;
@@ -230,6 +282,73 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       label: 'All Time',
     });
     onClose();
+  };
+
+  const handleQuickToday = () => {
+    setActivePreset('Custom Range');
+    setStartDate(todayStr);
+    setEndDate(todayStr);
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+    setActiveTarget('end');
+  };
+
+  const handleQuickThisMonth = () => {
+    setActivePreset('This Month');
+    setStartDate(monthStartStr);
+    setEndDate(monthEndStr);
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+    setActiveTarget('start');
+  };
+
+  const handleQuickClear = () => {
+    setActivePreset('Custom Range');
+    setStartDate(todayStr);
+    setEndDate('');
+    setActiveTarget('start');
+  };
+
+  const handleManualDateChange = (val: string, target: 'start' | 'end') => {
+    if (target === 'start') {
+      setFromInputText(val);
+    } else {
+      setToInputText(val);
+    }
+
+    // Try parsing YYYY-MM-DD or DD-MM-YYYY
+    const trimmed = val.trim();
+    const isoMatch = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    let parsed: string | null = null;
+    if (isoMatch) {
+      const [_, y, m, d] = isoMatch;
+      parsed = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    } else {
+      const dmyMatch = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (dmyMatch) {
+        const [_, d, m, y] = dmyMatch;
+        parsed = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+    }
+
+    if (parsed) {
+      setActivePreset('Custom Range');
+      if (target === 'start') {
+        setStartDate(parsed);
+        const [y, m] = parsed.split('-').map(Number);
+        if (y && m) {
+          setViewYear(y);
+          setViewMonth(m - 1);
+        }
+      } else {
+        setEndDate(parsed);
+        const [y, m] = parsed.split('-').map(Number);
+        if (y && m) {
+          setViewYear(y);
+          setViewMonth(m - 1);
+        }
+      }
+    }
   };
 
   return (
@@ -270,7 +389,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
           </div>
 
           <div className="hidden md:block pt-4 border-t border-slate-200 text-[11px] text-slate-500">
-            Select a preset or click custom dates on the calendar to filter records on the current page.
+            Click on From or To date cards to switch selection, or click directly on the calendar days below.
           </div>
         </div>
 
@@ -284,57 +403,125 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* From - To Date Inputs */}
-          <div className="grid grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-            <div>
-              <label className="block text-[10px] font-bold uppercase text-slate-500 tracking-wider mb-1">
-                From Date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setStartDate(val);
-                  setActivePreset('Custom Range');
-                  if (val) {
-                    const [y, m] = val.split('-').map(Number);
-                    if (y && m) {
-                      setViewYear(y);
-                      setViewMonth(m - 1);
-                    }
+          {/* Custom Modern From - To Range Cards (Zero Native Browser UI) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+            {/* FROM DATE CARD */}
+            <div
+              onClick={() => {
+                setActiveTarget('start');
+                if (startDate) {
+                  const [y, m] = startDate.split('-').map(Number);
+                  if (y && m) {
+                    setViewYear(y);
+                    setViewMonth(m - 1);
                   }
-                }}
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
-              />
+                }
+              }}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer relative ${
+                activeTarget === 'start'
+                  ? 'bg-white border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                  : 'bg-white/70 border-slate-200 hover:border-slate-300 hover:bg-white'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  From Date
+                </span>
+                {activeTarget === 'start' ? (
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Active Pick
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-medium text-slate-400">Click to set</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-slate-900 tracking-tight">
+                  {formatDateDisplay(startDate)}
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 font-mono">
+                  {startDate}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5 font-medium">
+                <span>{formatWeekday(startDate) || 'Start date'}</span>
+                <input
+                  type="text"
+                  value={fromInputText}
+                  placeholder="YYYY-MM-DD"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTarget('start');
+                  }}
+                  onChange={(e) => handleManualDateChange(e.target.value, 'start')}
+                  className="w-20 text-[10px] font-mono text-right bg-transparent text-slate-500 hover:text-slate-800 focus:outline-none focus:text-emerald-700"
+                  title="Manual input (YYYY-MM-DD or DD-MM-YYYY)"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase text-slate-500 tracking-wider mb-1">
-                To Date
-              </label>
-              <input
-                type="date"
-                value={endDate || startDate}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setEndDate(val);
-                  setActivePreset('Custom Range');
-                  if (val) {
-                    const [y, m] = val.split('-').map(Number);
-                    if (y && m) {
-                      setViewYear(y);
-                      setViewMonth(m - 1);
-                    }
+
+            {/* TO DATE CARD */}
+            <div
+              onClick={() => {
+                setActiveTarget('end');
+                const targetDate = endDate || startDate;
+                if (targetDate) {
+                  const [y, m] = targetDate.split('-').map(Number);
+                  if (y && m) {
+                    setViewYear(y);
+                    setViewMonth(m - 1);
                   }
-                }}
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
-              />
+                }
+              }}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer relative ${
+                activeTarget === 'end'
+                  ? 'bg-white border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                  : 'bg-white/70 border-slate-200 hover:border-slate-300 hover:bg-white'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+                  To Date
+                </span>
+                {activeTarget === 'end' ? (
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Active Pick
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-medium text-slate-400">Click to set</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-slate-900 tracking-tight">
+                  {formatDateDisplay(endDate || startDate)}
+                </span>
+                <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded-md border border-teal-100 font-mono">
+                  {endDate || startDate}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5 font-medium">
+                <span>{formatWeekday(endDate || startDate) || 'End date'}</span>
+                <input
+                  type="text"
+                  value={toInputText}
+                  placeholder="YYYY-MM-DD"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTarget('end');
+                  }}
+                  onChange={(e) => handleManualDateChange(e.target.value, 'end')}
+                  className="w-20 text-[10px] font-mono text-right bg-transparent text-slate-500 hover:text-slate-800 focus:outline-none focus:text-emerald-700"
+                  title="Manual input (YYYY-MM-DD or DD-MM-YYYY)"
+                />
+              </div>
             </div>
           </div>
 
@@ -345,38 +532,45 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
               <div className="flex items-center gap-1">
                 <button
                   onClick={handlePrevYear}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
                   title="Previous Year"
                 >
                   <ChevronsLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handlePrevMonth}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition cursor-pointer"
                   title="Previous Month"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 font-bold text-slate-800 text-sm">
+              {/* Month/Year Header Button with Dropdown Indicator */}
+              <button
+                type="button"
+                onClick={() => setShowMonthSelect(!showMonthSelect)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl hover:bg-slate-100 text-slate-800 font-bold text-xs transition cursor-pointer"
+                title="Click to quickly pick month or year"
+              >
                 <span>{monthName}</span>
                 <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-xs">
                   {viewYear}
                 </span>
-              </div>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showMonthSelect ? 'rotate-180 text-emerald-600' : ''}`} />
+              </button>
 
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleNextMonth}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition cursor-pointer"
                   title="Next Month"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleNextYear}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
                   title="Next Year"
                 >
                   <ChevronsRight className="w-4 h-4" />
@@ -384,60 +578,160 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
               </div>
             </div>
 
-            {/* Days of week header */}
-            <div className="grid grid-cols-7 text-center font-bold text-[10px] text-slate-400 uppercase tracking-wider py-1 border-b border-slate-100">
-              <span>Su</span>
-              <span>Mo</span>
-              <span>Tu</span>
-              <span>We</span>
-              <span>Th</span>
-              <span>Fr</span>
-              <span>Sa</span>
-            </div>
-
-            {/* Day Cells Grid */}
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {/* Previous month leading days */}
-              {Array.from({ length: firstDayOfWeek }).map((_, i) => {
-                const dayNum = daysInPrevMonth - firstDayOfWeek + i + 1;
-                return (
-                  <div key={`prev-${i}`} className="py-2 text-slate-300 select-none text-[11px]">
-                    {dayNum}
+            {/* Quick Month / Year Picker Matrix */}
+            {showMonthSelect ? (
+              <div className="py-2 px-1 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 animate-in fade-in duration-100">
+                <div className="flex items-center justify-between pb-1 px-1 border-b border-slate-200/60">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Select Month & Year
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setViewYear((y) => y - 1)}
+                      className="px-2 py-0.5 hover:bg-slate-200 rounded text-slate-600 hover:text-slate-900 text-[10px] font-bold cursor-pointer"
+                    >
+                      -1 Y
+                    </button>
+                    <span className="font-bold text-slate-900 text-xs px-1.5">{viewYear}</span>
+                    <button
+                      type="button"
+                      onClick={() => setViewYear((y) => y + 1)}
+                      className="px-2 py-0.5 hover:bg-slate-200 rounded text-slate-600 hover:text-slate-900 text-[10px] font-bold cursor-pointer"
+                    >
+                      +1 Y
+                    </button>
                   </div>
-                );
-              })}
+                </div>
 
-              {/* Current month days */}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const dayNum = i + 1;
-                const mStr = String(viewMonth + 1).padStart(2, '0');
-                const dStr = String(dayNum).padStart(2, '0');
-                const dayDateStr = `${viewYear}-${mStr}-${dStr}`;
+                <div className="grid grid-cols-4 gap-1.5">
+                  {shortMonthNames.map((mName, mIdx) => {
+                    const isCurrent = mIdx === viewMonth;
+                    return (
+                      <button
+                        key={mName}
+                        type="button"
+                        onClick={() => {
+                          setViewMonth(mIdx);
+                          setShowMonthSelect(false);
+                        }}
+                        className={`py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-center ${
+                          isCurrent
+                            ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/60'
+                        }`}
+                      >
+                        {mName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Days of week header */}
+                <div className="grid grid-cols-7 text-center font-bold text-[10px] text-slate-400 uppercase tracking-wider py-1 border-b border-slate-100">
+                  <span>Su</span>
+                  <span>Mo</span>
+                  <span>Tu</span>
+                  <span>We</span>
+                  <span>Th</span>
+                  <span>Fr</span>
+                  <span>Sa</span>
+                </div>
 
-                const isSelected = isDaySelected(dayDateStr);
-                const inRange = isDayInRange(dayDateStr);
-                const isStart = dayDateStr === startDate;
-                const isEnd = dayDateStr === endDate;
+                {/* Day Cells Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {/* Previous month leading days */}
+                  {Array.from({ length: firstDayOfWeek }).map((_, i) => {
+                    const dayNum = daysInPrevMonth - firstDayOfWeek + i + 1;
+                    const prevM = viewMonth === 0 ? 12 : viewMonth;
+                    const prevY = viewMonth === 0 ? viewYear - 1 : viewYear;
+                    const targetStr = `${prevY}-${String(prevM).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    return (
+                      <button
+                        key={`prev-${i}`}
+                        type="button"
+                        onClick={() => {
+                          handlePrevMonth();
+                          handleDayClick(targetStr);
+                        }}
+                        className="py-1.5 text-slate-300 hover:text-slate-500 rounded-lg transition text-[11px] cursor-pointer"
+                        title={`Go to ${targetStr}`}
+                      >
+                        {dayNum}
+                      </button>
+                    );
+                  })}
 
-                return (
-                  <button
-                    key={dayDateStr}
-                    type="button"
-                    onClick={() => handleDayClick(dayDateStr)}
-                    onMouseEnter={() => setHoverDate(dayDateStr)}
-                    className={`h-8 rounded-lg text-xs font-semibold transition relative cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white font-bold shadow-xs z-10 scale-105'
-                        : inRange
-                        ? 'bg-emerald-50 text-emerald-900 rounded-none'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    } ${isStart ? 'rounded-l-lg' : ''} ${isEnd ? 'rounded-r-lg' : ''}`}
-                  >
-                    <span>{dayNum}</span>
-                  </button>
-                );
-              })}
-            </div>
+                  {/* Current month days */}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const dayNum = i + 1;
+                    const mStr = String(viewMonth + 1).padStart(2, '0');
+                    const dStr = String(dayNum).padStart(2, '0');
+                    const dayDateStr = `${viewYear}-${mStr}-${dStr}`;
+
+                    const isSelected = isDaySelected(dayDateStr);
+                    const inRange = isDayInRange(dayDateStr);
+                    const isStart = dayDateStr === startDate;
+                    const isEnd = dayDateStr === endDate;
+                    const isToday = dayDateStr === todayStr;
+
+                    return (
+                      <button
+                        key={dayDateStr}
+                        type="button"
+                        onClick={() => handleDayClick(dayDateStr)}
+                        onMouseEnter={() => setHoverDate(dayDateStr)}
+                        className={`h-8 rounded-lg text-xs font-semibold transition relative cursor-pointer flex flex-col items-center justify-center ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white font-bold shadow-xs z-10 scale-105'
+                            : inRange
+                            ? 'bg-emerald-100/70 text-emerald-950 rounded-none font-bold'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        } ${isStart ? 'rounded-l-lg' : ''} ${isEnd ? 'rounded-r-lg' : ''}`}
+                      >
+                        <span>{dayNum}</span>
+                        {isToday && !isSelected && (
+                          <span className="w-1 h-1 rounded-full bg-emerald-600 mt-0.5"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Quick Shortcuts Bar below Calendar */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleQuickClear}
+                      className="px-2 py-0.5 text-slate-400 hover:text-slate-700 font-semibold rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuickToday}
+                      className="px-2 py-0.5 text-emerald-700 hover:text-emerald-800 font-bold rounded-lg hover:bg-emerald-50 transition cursor-pointer"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuickThisMonth}
+                      className="px-2 py-0.5 text-slate-600 hover:text-slate-900 font-semibold rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      This Month
+                    </button>
+                  </div>
+
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {activeTarget === 'start' ? 'Next click: From Date' : 'Next click: To Date'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Active Range Summary */}

@@ -61,6 +61,7 @@ import {
 import { PlatformTenant, PlatformAuditLog, PlatformPlanTier, TenantSidebarModule, TenantFeatureConfig } from '@/types';
 import { SidebarToggle } from '../../layout/SidebarToggle';
 import { CountryPhoneInput } from '../../common/CountryPhoneInput';
+import { ModernDatePicker } from '../../common/ModernDatePicker';
 import { apiClient } from '@/api/client';
 import {
   MODULE_PRICING_CATALOG,
@@ -2881,12 +2882,10 @@ export const SuperAdminView: React.FC = () => {
 
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700">Next Upcoming Due Date:</label>
-                <input
-                  type="date"
-                  required
+                <ModernDatePicker
                   value={paymentForm.nextDueDate}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, nextDueDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs"
+                  onChange={(dateStr) => setPaymentForm({ ...paymentForm, nextDueDate: dateStr })}
+                  placeholder="Select next due date"
                 />
               </div>
 

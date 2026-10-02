@@ -6,6 +6,7 @@ import {
   Search, Filter, User, AlertCircle, FileText, Check,
   X, ChevronRight, MessageSquare
 } from 'lucide-react';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 
 interface LeaveRequest {
   id: string | number;
@@ -430,22 +431,20 @@ export const EmployeeLeavesView: React.FC = () => {
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    required
+                  <ModernDatePicker
                     value={newLeave.start_date}
-                    onChange={(e) => setNewLeave({ ...newLeave, start_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    onChange={(dateStr) => setNewLeave({ ...newLeave, start_date: dateStr })}
+                    placeholder="Select start date"
                   />
                 </div>
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">End Date</label>
-                  <input
-                    type="date"
-                    required
+                  <ModernDatePicker
                     value={newLeave.end_date}
-                    onChange={(e) => setNewLeave({ ...newLeave, end_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    onChange={(dateStr) => setNewLeave({ ...newLeave, end_date: dateStr })}
+                    placeholder="Select end date"
+                    minDate={newLeave.start_date}
+                    align="right"
                   />
                 </div>
               </div>

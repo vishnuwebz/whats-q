@@ -25,6 +25,7 @@ import { VoiceNotePlayer } from './conversations/VoiceNotePlayer';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
 import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { DraggableScrollRow } from '@/components/common/DraggableScrollRow';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 import { Conversation, LinkedEmployeeDevice } from '@/types';
 import { apiClient } from '@/api/client';
 import {
@@ -1969,20 +1970,22 @@ export const ConversationsView: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-[10px] text-slate-400 block mb-0.5">From</span>
-                      <input
-                        type="date"
+                      <ModernDatePicker
                         value={filterCustomStart}
-                        onChange={(e) => setFilterCustomStart(e.target.value)}
-                        className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        onChange={(val) => setFilterCustomStart(val)}
+                        placeholder="Start date"
+                        compact
                       />
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block mb-0.5">To</span>
-                      <input
-                        type="date"
+                      <ModernDatePicker
                         value={filterCustomEnd}
-                        onChange={(e) => setFilterCustomEnd(e.target.value)}
-                        className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        onChange={(val) => setFilterCustomEnd(val)}
+                        placeholder="End date"
+                        minDate={filterCustomStart}
+                        compact
+                        align="right"
                       />
                     </div>
                   </div>

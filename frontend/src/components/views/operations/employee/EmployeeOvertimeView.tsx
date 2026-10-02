@@ -5,6 +5,7 @@ import {
   Timer, Clock, IndianRupee, CheckCircle2, Plus,
   Search, Filter, Check, X, Calendar, AlertCircle
 } from 'lucide-react';
+import { ModernDatePicker } from '@/components/common/ModernDatePicker';
 
 interface OvertimeRecord {
   id: string | number;
@@ -368,12 +369,10 @@ export const EmployeeOvertimeView: React.FC = () => {
 
               <div>
                 <label className="block text-slate-600 font-semibold mb-1">Overtime Duty Date *</label>
-                <input
-                  type="date"
-                  required
+                <ModernDatePicker
                   value={otForm.date_str}
-                  onChange={(e) => setOtForm({ ...otForm, date_str: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  onChange={(dateStr) => setOtForm({ ...otForm, date_str: dateStr })}
+                  placeholder="Select overtime date"
                 />
               </div>
 
