@@ -400,6 +400,7 @@ export interface Job {
   date_str: string;
   time_str: string;
   assigned_to: string;
+  assigned_phone?: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
   priority: 'high' | 'medium' | 'low';
   location: string;
