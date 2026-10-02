@@ -4246,7 +4246,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
               active_line_type: res.active_line_type || c.active_line_type,
               lead_owner: res.lead_owner || c.lead_owner,
               messages: c.messages.map((m) =>
-                m.id === tempId ? { ...m, id: res.id, status: res.status || 'sent' } : m
+                m.id === tempId ? {
+                  ...m,
+                  id: res.id,
+                  status: res.status || 'sent',
+                  audioUrl: res.audioUrl || res.rich_card?.audioUrl || m.audioUrl,
+                  richCard: res.rich_card ? { ...m.richCard, ...res.rich_card } : m.richCard,
+                } : m
               ),
             };
           }),

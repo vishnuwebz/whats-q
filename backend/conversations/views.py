@@ -213,7 +213,21 @@ def process_outbound_voice_payload(audio_base64: str) -> dict:
     media_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes')
     os.makedirs(media_dir, exist_ok=True)
     ts = int(time.time() * 1000)
-    raw_path = os.path.join(media_dir, f"raw_{ts}.webm")
+
+    # Detect container format from magic bytes
+    ext = '.webm'
+    final_mime = 'audio/webm'
+    if raw_bytes.startswith(b'RIFF'):
+        ext = '.wav'
+        final_mime = 'audio/wav'
+    elif raw_bytes.startswith(b'OggS'):
+        ext = '.ogg'
+        final_mime = 'audio/ogg'
+    elif raw_bytes.startswith(b'\xff\xfb') or raw_bytes.startswith(b'ID3'):
+        ext = '.mp3'
+        final_mime = 'audio/mpeg'
+
+    raw_path = os.path.join(media_dir, f"raw_{ts}{ext}")
     ogg_filename = f"vn_{ts}.ogg"
     ogg_path = os.path.join(media_dir, ogg_filename)
 
@@ -221,9 +235,20 @@ def process_outbound_voice_payload(audio_base64: str) -> dict:
         f.write(raw_bytes)
 
     ffmpeg_bin = shutil.which('ffmpeg')
+    if not ffmpeg_bin:
+        known_ffmpeg_paths = [
+            r"C:\ffmpeg\ffmpeg-2025-10-30-git-00c23bafb0-full_build\bin\ffmpeg.exe",
+            r"C:\ffmpeg\ffmpeg-2025-10-30-git-00c23bafb0-full_build\bin\ffmpeg.EXE",
+            r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+            r"C:\ffmpeg\bin\ffmpeg.exe",
+        ]
+        for p in known_ffmpeg_paths:
+            if os.path.exists(p):
+                ffmpeg_bin = p
+                break
+
     final_bytes = raw_bytes
-    final_filename = f"raw_{ts}.webm"
-    final_mime = 'audio/webm'
+    final_filename = f"raw_{ts}{ext}"
 
     if ffmpeg_bin:
         try:
@@ -268,6 +293,7 @@ def process_outbound_voice_payload(audio_base64: str) -> dict:
         'file_path': ogg_path if final_filename.endswith('.ogg') else raw_path,
         'mime_type': final_mime
     }
+
 
 class WhatsAppTemplateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -1693,12 +1719,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 remote_id = ''
                 final_status = 'sent'
 
+                is_voice = bool(rc and isinstance(rc, dict) and (rc.get('type') == 'voice_note' or rc.get('is_voice') or rc.get('isVoiceNote'))) or bool(v_info and (v_info.get('audio_bytes') or v_info.get('file_path')))
+                audio_url = rc.get('audioUrl') if (rc and isinstance(rc, dict)) else None
+
+                # Ensure v_info has audio_bytes loaded from disk if available
+                if is_voice and v_info and not v_info.get('audio_bytes') and v_info.get('file_path') and os.path.exists(v_info['file_path']):
+                    try:
+                        with open(v_info['file_path'], 'rb') as vf:
+                            v_info['audio_bytes'] = vf.read()
+                    except Exception as vf_err:
+                        logger.warning(f"Failed to read voice bytes from {v_info['file_path']}: {vf_err}")
+
                 if not emp_device:
                     cfg = MetaWhatsAppConfig.objects.first()
                     if cfg and cfg.access_token and cfg.phone_number_id and cfg.connection_status == 'connected':
-                        is_voice = bool(rc and isinstance(rc, dict) and (rc.get('type') == 'voice_note' or rc.get('is_voice')))
-                        audio_url = rc.get('audioUrl') if (rc and isinstance(rc, dict)) else None
-
                         m_res = None
                         # 1. If voice_info has audio bytes, upload directly to Meta Media API
                         if is_voice and v_info and v_info.get('audio_bytes'):
@@ -1749,12 +1783,23 @@ class ConversationViewSet(viewsets.ModelViewSet):
                             logger.warning(f"[Meta Cloud API] Async dispatch failed: {m_res.get('error')}")
                 else:
                     clean_recipient = re.sub(r'[^\d]', '', phone or '')
-                    baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data={
+                    baileys_payload = {
                         'accountId': dev_acc_id,
                         'senderPhone': dev_phone or '',
                         'recipientPhone': clean_recipient,
                         'messageText': msg_text,
-                    })
+                    }
+                    if is_voice:
+                        baileys_payload['isVoice'] = True
+                        baileys_payload['mediaType'] = 'audio'
+                        if v_info and v_info.get('file_path'):
+                            baileys_payload['mediaUrl'] = v_info['file_path']
+                        elif audio_url:
+                            baileys_payload['mediaUrl'] = audio_url
+                        if v_info and v_info.get('audio_bytes'):
+                            baileys_payload['audioBase64'] = base64.b64encode(v_info['audio_bytes']).decode('utf-8')
+
+                    baileys_res = call_baileys_gateway('/api/messages/send-direct', method='POST', data=baileys_payload, timeout=15)
                     if baileys_res.get('success'):
                         res_obj = baileys_res.get('result', {})
                         remote_id = res_obj.get('messageId') or f"wa-emp-{dev_pk}-{int(time.time() * 1000)}"
@@ -1762,6 +1807,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     else:
                         remote_id = f"wa-emp-{dev_pk}-{int(time.time() * 1000)}"
                         final_status = 'sent'
+
 
                 if remote_id or final_status:
                     Message.objects.filter(id=message_id).update(
@@ -4554,8 +4600,9 @@ class WhatsAppMediaProxyView(APIView):
         if not media_id:
             return Response({'error': 'media_id required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Sanitize media_id to alphanumeric, dashes, and underscores
-        safe_media_id = re.sub(r'[^a-zA-Z0-9_\-]', '', str(media_id))
+        # Strip trailing extension first (.ogg, .mp3, etc.) so safe_media_id is the clean stem
+        clean_media_id = re.sub(r'\.(ogg|mp3|webm|wav|mp4|m4a)$', '', str(media_id), flags=re.IGNORECASE)
+        safe_media_id = re.sub(r'[^a-zA-Z0-9_\-]', '', clean_media_id)
         media_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes')
         os.makedirs(media_dir, exist_ok=True)
 
@@ -4573,9 +4620,21 @@ class WhatsAppMediaProxyView(APIView):
 
         # 2. If OGG exists, transcode to MP3 on-demand via ffmpeg for maximum browser compatibility
         if os.path.exists(ogg_path) and os.path.getsize(ogg_path) > 0:
+            ffmpeg_bin = shutil.which('ffmpeg')
+            if not ffmpeg_bin:
+                known_ffmpeg_paths = [
+                    r"C:\ffmpeg\ffmpeg-2025-10-30-git-00c23bafb0-full_build\bin\ffmpeg.exe",
+                    r"C:\ffmpeg\ffmpeg-2025-10-30-git-00c23bafb0-full_build\bin\ffmpeg.EXE",
+                    r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+                    r"C:\ffmpeg\bin\ffmpeg.exe",
+                ]
+                for p in known_ffmpeg_paths:
+                    if os.path.exists(p):
+                        ffmpeg_bin = p
+                        break
             try:
                 subprocess.run(
-                    ['ffmpeg', '-y', '-i', ogg_path, '-c:a', 'libmp3lame', '-b:a', '64k', mp3_path],
+                    [ffmpeg_bin or 'ffmpeg', '-y', '-i', ogg_path, '-c:a', 'libmp3lame', '-b:a', '64k', mp3_path],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     timeout=10
@@ -4589,6 +4648,7 @@ class WhatsAppMediaProxyView(APIView):
                     return resp
             except Exception as ffmpeg_err:
                 logger.warning(f"[WhatsAppMediaProxyView] ffmpeg conversion warning: {ffmpeg_err}")
+
 
             resp = FileResponse(open(ogg_path, 'rb'), content_type='audio/ogg; codecs=opus')
             resp['Content-Disposition'] = f'inline; filename="{safe_media_id}.ogg"'

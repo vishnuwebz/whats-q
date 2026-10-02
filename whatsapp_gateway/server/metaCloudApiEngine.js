@@ -136,9 +136,9 @@ export class MetaCloudApiEngine {
         },
       };
     }
-    // 2. Media Message Payload (Image, Document, Video)
+    // 2. Media Message Payload (Image, Document, Video, Audio)
     else if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
-      const typeKey = effectiveMediaType === 'document' ? 'document' : effectiveMediaType === 'video' ? 'video' : 'image';
+      const typeKey = effectiveMediaType === 'document' ? 'document' : effectiveMediaType === 'video' ? 'video' : effectiveMediaType === 'audio' ? 'audio' : 'image';
       payload = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
@@ -146,7 +146,7 @@ export class MetaCloudApiEngine {
         type: typeKey,
         [typeKey]: {
           link: mediaUrl,
-          caption: messageText || undefined,
+          ...(typeKey !== 'audio' ? { caption: messageText || undefined } : {}),
           ...(typeKey === 'document' ? { filename: mediaName || 'Document.pdf' } : {}),
         },
       };

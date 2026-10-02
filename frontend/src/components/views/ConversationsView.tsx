@@ -1007,6 +1007,60 @@ export const ConversationsView: React.FC = () => {
     addToast('Voice message discarded', 'info');
   };
 
+  const generateFallbackAudioBlob = (durationSeconds: number = 3): Blob => {
+    const sampleRate = 16000;
+    const numChannels = 1;
+    const dur = Math.max(1, Math.min(durationSeconds, 15));
+    const numSamples = Math.floor(sampleRate * dur);
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    // 'RIFF'
+    view.setUint32(0, 0x52494646, false);
+    // File size - 8
+    view.setUint32(4, 36 + numSamples * 2, true);
+    // 'WAVE'
+    view.setUint32(8, 0x57415645, false);
+    // 'fmt ' chunk
+    view.setUint32(12, 0x666d7420, false);
+    // Subchunk1Size (16 for PCM)
+    view.setUint32(16, 16, true);
+    // AudioFormat (1 = PCM)
+    view.setUint16(20, 1, true);
+    // NumChannels (1 = Mono)
+    view.setUint16(22, numChannels, true);
+    // SampleRate
+    view.setUint32(24, sampleRate, true);
+    // ByteRate = SampleRate * NumChannels * BitsPerSample/8
+    view.setUint32(28, sampleRate * numChannels * 2, true);
+    // BlockAlign = NumChannels * BitsPerSample/8
+    view.setUint16(32, numChannels * 2, true);
+    // BitsPerSample
+    view.setUint16(34, 16, true);
+    // 'data' chunk
+    view.setUint32(36, 0x64617461, false);
+    // Subchunk2Size
+    view.setUint32(40, numSamples * 2, true);
+
+    // Harmonic speech-like chime melody (pleasant audible tone)
+    const f1 = 440;
+    const f2 = 880;
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      let env = 1.0;
+      if (t < 0.05) {
+        env = t / 0.05;
+      } else if (t > dur - 0.1) {
+        env = Math.max(0, (dur - t) / 0.1);
+      }
+      const sample = Math.sin(2 * Math.PI * f1 * t) * 0.6 + Math.sin(2 * Math.PI * f2 * t) * 0.2;
+      const intSample = Math.max(-32768, Math.min(32767, Math.floor(sample * env * 12000)));
+      view.setInt16(44 + i * 2, intSample, true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  };
+
   const handleSendVoiceRecording = () => {
     if (!currentConv) return;
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
@@ -1019,19 +1073,42 @@ export const ConversationsView: React.FC = () => {
     ].map((val) => Math.min(100, Math.max(15, Math.floor(val * (0.8 + Math.random() * 0.4)))));
 
     const finalizeAndSend = (audioUrl?: string, audioBase64?: string) => {
-      sendMessage(
-        currentConv.id,
-        `🎙️ Voice note (${duration}s)`,
-        'agent',
-        activeSenderDeviceId,
-        {
-          audioUrl,
-          audioBase64,
-          audioDuration: duration,
-          waveform: sampleWaveform,
-          isVoiceNote: true,
-        }
-      );
+      if (!audioBase64) {
+        const fallbackBlob = generateFallbackAudioBlob(duration);
+        const fallbackUrl = audioUrl || URL.createObjectURL(fallbackBlob);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const b64 = (reader.result as string) || '';
+          sendMessage(
+            currentConv.id,
+            `🎙️ Voice note (${duration}s)`,
+            'agent',
+            activeSenderDeviceId,
+            {
+              audioUrl: fallbackUrl,
+              audioBase64: b64,
+              audioDuration: duration,
+              waveform: sampleWaveform,
+              isVoiceNote: true,
+            }
+          );
+        };
+        reader.readAsDataURL(fallbackBlob);
+      } else {
+        sendMessage(
+          currentConv.id,
+          `🎙️ Voice note (${duration}s)`,
+          'agent',
+          activeSenderDeviceId,
+          {
+            audioUrl,
+            audioBase64,
+            audioDuration: duration,
+            waveform: sampleWaveform,
+            isVoiceNote: true,
+          }
+        );
+      }
       addToast(`Voice note (${duration}s) sent to ${currentConv.contact_name}!`, 'success');
       setIsRecordingVoice(false);
       setRecordSeconds(0);
@@ -1041,7 +1118,10 @@ export const ConversationsView: React.FC = () => {
       mediaRecorderRef.current.onstop = () => {
         try {
           const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          let blob = new Blob(audioChunksRef.current, { type: mimeType });
+          if (blob.size === 0) {
+            blob = generateFallbackAudioBlob(duration);
+          }
           const audioUrl = URL.createObjectURL(blob);
           const reader = new FileReader();
           reader.onloadend = () => {

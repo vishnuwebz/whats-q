@@ -322,7 +322,7 @@ app.post('/api/campaigns/:id/pause', (req, res) => {
 
 // 4. Direct WhatsApp Message Send API (Dual Engine: Meta Cloud API + Baileys Socket)
 app.post('/api/messages/send-direct', async (req, res) => {
-  const { accountId, recipientPhone, messageText, buttons, mediaUrl, mediaName, mediaType, senderPhone } = req.body;
+  const { accountId, recipientPhone, messageText, buttons, mediaUrl, mediaName, mediaType, senderPhone, isVoice, audioBase64 } = req.body;
   const db = getDb();
   const targetAcc = (db.accounts || []).find((a) => a.id === accountId);
   const isMetaRequested =
@@ -346,7 +346,7 @@ app.post('/api/messages/send-direct', async (req, res) => {
         messageText,
         buttons,
         mediaUrl,
-        mediaType || 'image',
+        mediaType || (isVoice ? 'audio' : 'image'),
         mediaName
       );
       return res.json({ success: true, result, channel: 'meta_cloud_api' });
@@ -365,8 +365,10 @@ app.post('/api/messages/send-direct', async (req, res) => {
       buttons,
       mediaUrl,
       mediaName,
-      mediaType || 'image',
-      senderPhone || null
+      mediaType || (isVoice ? 'audio' : 'image'),
+      senderPhone || null,
+      Boolean(isVoice),
+      audioBase64 || null
     );
     res.json({ success: true, result, channel: 'baileys_socket' });
   } catch (err) {
@@ -383,7 +385,7 @@ app.post('/api/messages/send-direct', async (req, res) => {
           messageText,
           buttons,
           mediaUrl,
-          mediaType || 'image',
+          mediaType || (isVoice ? 'audio' : 'image'),
           mediaName
         );
         return res.json({ success: true, result: metaResult, channel: 'meta_cloud_api' });
@@ -394,6 +396,7 @@ app.post('/api/messages/send-direct', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
 
 // 5. Delivery Logs & Telemetry API
 app.get('/api/campaigns/logs', (req, res) => {

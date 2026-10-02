@@ -930,7 +930,7 @@ export class BaileysEngine {
    * 2. If Meta Cloud API is configured -> sends via Meta Graph API.
    * 3. If in test/development mode with no active socket -> logs delivery clearly and returns detailed payload.
    */
-  async sendMessage(accountId, recipientPhone, text, buttons = [], mediaUrl = null, mediaName = null, mediaType = 'image', senderPhone = null) {
+  async sendMessage(accountId, recipientPhone, text, buttons = [], mediaUrl = null, mediaName = null, mediaType = 'image', senderPhone = null, isVoice = false, audioBase64 = null) {
     const normalizedPhone = normalizeWhatsAppNumber(recipientPhone);
     if (!normalizedPhone || normalizedPhone.length < 10) {
       throw new Error(`Invalid recipient phone number: "${recipientPhone}". Please enter a valid 10-digit mobile number.`);
@@ -1036,7 +1036,55 @@ export class BaileysEngine {
             `━━━━━━━━━━━━━━━━━━`;
         }
 
-        if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
+        if (isVoice || mediaType === 'audio') {
+          let audioBuffer = null;
+          if (audioBase64) {
+            const cleanB64 = audioBase64.includes(',') ? audioBase64.split(',')[1] : audioBase64;
+            try {
+              audioBuffer = Buffer.from(cleanB64, 'base64');
+            } catch (b64Err) {
+              console.warn('[Baileys Engine] Failed to decode audioBase64:', b64Err.message);
+            }
+          }
+
+          if (!audioBuffer && mediaUrl) {
+            if (fs.existsSync(mediaUrl)) {
+              audioBuffer = fs.readFileSync(mediaUrl);
+            } else {
+              const candidatePaths = [
+                path.resolve(__dirname, '../../backend', mediaUrl.replace(/^\/+/, '')),
+                path.resolve(__dirname, '../../backend/media', mediaUrl.replace(/^\/?media\/?/, '')),
+              ];
+              for (const cp of candidatePaths) {
+                if (fs.existsSync(cp)) {
+                  audioBuffer = fs.readFileSync(cp);
+                  break;
+                }
+              }
+            }
+          }
+
+          if (audioBuffer && audioBuffer.length > 0) {
+            console.log(`[Baileys Engine] 🎙️ Dispatching native WhatsApp voice note (${audioBuffer.length} bytes, ptt=true) to ${jid}...`);
+            sentResult = await targetSession.sock.sendMessage(jid, {
+              audio: audioBuffer,
+              mimetype: 'audio/ogg; codecs=opus',
+              ptt: true,
+            });
+          } else if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
+            console.log(`[Baileys Engine] 🎙️ Dispatching WhatsApp voice note via remote URL (${mediaUrl}) to ${jid}...`);
+            sentResult = await targetSession.sock.sendMessage(jid, {
+              audio: { url: mediaUrl },
+              mimetype: 'audio/ogg; codecs=opus',
+              ptt: true,
+            });
+          } else {
+            console.warn('[Baileys Engine] Voice requested but no audioBuffer or URL could be resolved. Falling back to text.');
+            sentResult = await targetSession.sock.sendMessage(jid, {
+              text: finalMessageText || '🎙️ Voice note',
+            });
+          }
+        } else if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
           sentResult = await targetSession.sock.sendMessage(jid, {
             image: { url: mediaUrl },
             caption: finalMessageText,

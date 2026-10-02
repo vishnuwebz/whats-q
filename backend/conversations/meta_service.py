@@ -594,7 +594,8 @@ class MetaWhatsAppService:
         version = api_version or cls.DEFAULT_API_VERSION
         url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/media"
         headers = {
-            "Authorization": f"Bearer {access_token.strip()}"
+            "Authorization": f"Bearer {access_token.strip()}",
+            "User-Agent": "curl/7.64.1"
         }
 
         # Meta accepts audio/ogg, audio/mp4, audio/aac, audio/amr, audio/mpeg
