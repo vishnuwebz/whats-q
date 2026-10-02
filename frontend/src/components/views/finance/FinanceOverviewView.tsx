@@ -7,16 +7,31 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { exportTableToCsv } from '@/utils/exportCsv';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const FinanceOverviewView: React.FC = () => {
   const store = useQiyamStore();
-  const { transactions, invoices, expenses, accounts, addToast, setActiveTab } = store;
+  const { transactions, invoices, expenses, accounts, addToast, setActiveTab, globalDateInterval } = store;
 
-  const totalRevenue = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0) || 2485320;
+  const hasDateFilter = Boolean(globalDateInterval?.start || globalDateInterval?.end);
+
+  const activeInvoices = hasDateFilter
+    ? invoices.filter(i => isDateWithinInterval(i.due_date || i.invoice_date || (i as any).date, globalDateInterval))
+    : invoices;
+
+  const activeExpenses = hasDateFilter
+    ? (expenses || []).filter(e => isDateWithinInterval(e.date_str || (e as any).date || (e as any).created_at, globalDateInterval))
+    : (expenses || []);
+
+  const activeTransactions = hasDateFilter
+    ? transactions.filter(t => isDateWithinInterval(t.date_str || (t as any).date || (t as any).created_at, globalDateInterval))
+    : transactions;
+
+  const totalRevenue = activeInvoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0) || (hasDateFilter ? 0 : 2485320);
   const totalExpenses =
-    expenses && expenses.length > 0
-      ? expenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0)
-      : transactions.filter((t) => t.tx_type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0) || 1355130;
+    activeExpenses.length > 0
+      ? activeExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0)
+      : activeTransactions.filter((t) => t.tx_type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0) || (hasDateFilter ? 0 : 1355130);
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '45.5';
   const liquidCash =
@@ -60,7 +75,7 @@ export const FinanceOverviewView: React.FC = () => {
             <div className="text-xl sm:text-2xl font-black text-slate-900">₹{totalRevenue.toLocaleString()}</div>
             <div className="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>{invoices.length} invoices billed</span>
+              <span>{activeInvoices.length} invoices billed</span>
             </div>
           </div>
 

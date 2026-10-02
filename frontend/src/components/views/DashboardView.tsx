@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { queryAIEngine, generateExecutiveGreeting } from '@/utils/aiQueryEngine';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -25,6 +26,7 @@ export const DashboardView: React.FC = () => {
     transactions,
     addToast,
     setIsSimulatorOpen,
+    globalDateInterval,
   } = useQiyamStore();
 
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
@@ -234,20 +236,33 @@ export const DashboardView: React.FC = () => {
   }, [leads, jobs, invoices, appointments]);
 
   const kpis = React.useMemo(() => {
-    const totalRev = invoices.reduce((acc, i) => acc + (Number(i.paid_amount) || 0), 0) || 86400;
-    const leadsCount = leads.length;
-    const appointmentsCount = appointments.length;
-    const jobsCompletedCount = jobs.filter((j) => j.status === 'completed').length;
-    const pendingPayments = invoices
+    const scopedInvoices = globalDateInterval
+      ? invoices.filter((i) => isDateWithinInterval(i.due_date || i.invoice_date || (i as any).date, globalDateInterval))
+      : invoices;
+    const scopedLeads = globalDateInterval
+      ? leads.filter((l) => isDateWithinInterval(l.created_at_str || (l as any).created_at, globalDateInterval))
+      : leads;
+    const scopedAppointments = globalDateInterval
+      ? appointments.filter((a) => isDateWithinInterval(a.date_str, globalDateInterval))
+      : appointments;
+    const scopedJobs = globalDateInterval
+      ? jobs.filter((j) => isDateWithinInterval(j.date_str, globalDateInterval))
+      : jobs;
+
+    const totalRev = scopedInvoices.reduce((acc, i) => acc + (Number(i.paid_amount) || 0), 0) || (globalDateInterval && scopedInvoices.length === 0 ? 0 : 86400);
+    const leadsCount = scopedLeads.length;
+    const appointmentsCount = scopedAppointments.length;
+    const jobsCompletedCount = scopedJobs.filter((j) => j.status === 'completed').length;
+    const pendingPayments = scopedInvoices
       .filter((i) => i.status === 'sent' || i.status === 'partial_paid' || i.status === 'overdue')
-      .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0) || 19400;
-    const hotLeadsCount = leads.filter((l) => l.stage === 'new' || l.stage === 'contacted').length;
-    const overdueJobsCount = jobs.filter((j) => j.status === 'overdue').length;
-    const overdueInvoices = invoices.filter((i) => i.status === 'overdue');
+      .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0) || (globalDateInterval && scopedInvoices.length === 0 ? 0 : 19400);
+    const hotLeadsCount = scopedLeads.filter((l) => l.stage === 'new' || l.stage === 'contacted').length;
+    const overdueJobsCount = scopedJobs.filter((j) => j.status === 'overdue').length;
+    const overdueInvoices = scopedInvoices.filter((i) => i.status === 'overdue');
     const overdueInvoicesAmount = overdueInvoices.reduce(
       (acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)),
       0
-    ) || 18400;
+    ) || (globalDateInterval && overdueInvoices.length === 0 ? 0 : 18400);
 
     return {
       totalRev,
@@ -257,10 +272,10 @@ export const DashboardView: React.FC = () => {
       pendingPayments,
       hotLeadsCount,
       overdueJobsCount,
-      overdueInvoicesCount: overdueInvoices.length || 2,
+      overdueInvoicesCount: overdueInvoices.length,
       overdueInvoicesAmount,
     };
-  }, [invoices, leads, appointments, jobs]);
+  }, [invoices, leads, appointments, jobs, globalDateInterval]);
 
   return (
     <div ref={dashboardRootRef} className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto overflow-x-hidden font-sans">

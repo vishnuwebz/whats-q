@@ -3,9 +3,10 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Wallet, Search, Filter, ArrowUpRight, CheckCircle2, QrCode, Copy, Download, Share2, X } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const PaymentsView: React.FC = () => {
-  const { transactions, addToast, setActiveTab, openConversationForContact } = useQiyamStore();
+  const { transactions, addToast, setActiveTab, openConversationForContact, globalDateInterval } = useQiyamStore();
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [qrForm, setQrForm] = useState({
     amount: 3500,
@@ -21,8 +22,11 @@ export const PaymentsView: React.FC = () => {
     addToast('UPI payment link copied to clipboard!', 'success');
   };
 
-  const incomeTx = transactions.filter((t) => t.tx_type === 'income');
-  const totalReceipts = incomeTx.reduce((acc, t) => acc + (Number(t.amount) || 0), 0) || 2485320;
+  const dateScopedTransactions = transactions.filter((t) =>
+    isDateWithinInterval(t.date_str || (t as any).date || (t as any).created_at, globalDateInterval)
+  );
+  const incomeTx = dateScopedTransactions.filter((t) => t.tx_type === 'income');
+  const totalReceipts = incomeTx.reduce((acc, t) => acc + (Number(t.amount) || 0), 0) || (dateScopedTransactions.length === 0 ? 0 : 2485320);
 
   const paymentMethodData = React.useMemo(() => {
     const map: Record<string, number> = {};
@@ -110,7 +114,7 @@ export const PaymentsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {transactions.map((tx) => (
+                {dateScopedTransactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{tx.reference_id}</td>
                     <td className="py-3.5 px-4 font-bold text-slate-900">{tx.party}</td>

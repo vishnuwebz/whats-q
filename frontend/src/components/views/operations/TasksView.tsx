@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Task } from '@/types';
 import { exportTableToCsv } from '@/utils/exportCsv';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 type StatusFilter = 'all' | 'in_progress' | 'pending' | 'completed' | 'overdue';
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
@@ -69,6 +70,7 @@ export const TasksView: React.FC = () => {
     employees,
     jobs,
     globalFilter,
+    globalDateInterval,
   } = store;
 
   // Local View States
@@ -390,6 +392,10 @@ export const TasksView: React.FC = () => {
   const filteredTasks = useMemo(() => {
     return tasks
       .filter((t) => {
+        // Date Interval filter
+        const taskDate = t.due_date || (t as any).created_at;
+        if (!isDateWithinInterval(taskDate, globalDateInterval)) return false;
+
         // Tab Status filter
         if (activeTab === 'overdue') {
           if (!isTaskOverdue(t)) return false;
@@ -444,7 +450,7 @@ export const TasksView: React.FC = () => {
         }
         return String(a.due_date).localeCompare(String(b.due_date));
       });
-  }, [tasks, activeTab, priorityFilter, assigneeFilter, searchQuery, sortBy, globalFilter]);
+  }, [tasks, activeTab, priorityFilter, assigneeFilter, searchQuery, sortBy, globalFilter, globalDateInterval]);
 
   // Unique assignees for filter dropdown
   const uniqueAssignees = useMemo(() => {

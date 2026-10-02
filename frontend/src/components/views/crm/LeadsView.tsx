@@ -535,17 +535,9 @@ export const LeadsView: React.FC = () => {
     if (globalFilter.assignedTo && globalFilter.assignedTo !== 'all' && l.owner !== globalFilter.assignedTo) {
       return false;
     }
-    if (!isDateWithinInterval(l.created_at_str, globalDateInterval)) {
-      // Do not hide newly arrived leads, today's leads, or new stage inquiries
-      const isNewOrToday =
-        l.stage === 'new' ||
-        l.created_at_str?.toLowerCase().includes('today') ||
-        l.last_contact_str?.toLowerCase().includes('today') ||
-        l.last_contact_str?.toLowerCase().includes('just now') ||
-        (l.created_at_str && l.created_at_str.includes(new Date().getFullYear().toString()));
-      if (!isNewOrToday) {
-        return false;
-      }
+    const leadDate = l.created_at_str || (l as any).created_at || l.last_contact_str;
+    if (!isDateWithinInterval(leadDate, globalDateInterval)) {
+      return false;
     }
     if (!effectiveSearch) return true;
     const q = effectiveSearch.toLowerCase();

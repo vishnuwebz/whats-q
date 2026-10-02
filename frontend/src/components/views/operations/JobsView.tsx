@@ -281,10 +281,11 @@ export const JobsView: React.FC = () => {
     );
   };
 
-  const scheduledCount = jobs.filter((j) => j.status === 'scheduled').length;
-  const inProgressCount = jobs.filter((j) => j.status === 'in_progress').length;
-  const completedCount = jobs.filter((j) => j.status === 'completed').length;
-  const overdueCount = jobs.filter((j) => j.status === 'overdue').length;
+  const listForCounts = globalDateInterval ? jobs.filter((j) => isDateWithinInterval(j.date_str, globalDateInterval)) : jobs;
+  const scheduledCount = listForCounts.filter((j) => j.status === 'scheduled').length;
+  const inProgressCount = listForCounts.filter((j) => j.status === 'in_progress').length;
+  const completedCount = listForCounts.filter((j) => j.status === 'completed').length;
+  const overdueCount = listForCounts.filter((j) => j.status === 'overdue').length;
 
   const onDutyTechs = employees.filter((e) => e.status === 'on_duty' || e.status === 'active').length;
   const totalTechs = employees.length;
@@ -307,7 +308,7 @@ export const JobsView: React.FC = () => {
               activeStatus === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            All Jobs ({jobs.length})
+            All Jobs ({listForCounts.length})
           </button>
           <button
             onClick={() => setActiveStatus('scheduled')}

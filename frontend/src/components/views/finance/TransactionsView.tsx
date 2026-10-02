@@ -3,9 +3,10 @@ import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { ReceiptText, Search, Filter, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, X, Wallet } from 'lucide-react';
 import { INITIAL_ACCOUNTS } from '@/store/initialDatasets';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const TransactionsView: React.FC = () => {
-  const { transactions, accounts, addTransaction, addToast, globalFilter, targetHighlightId, setActiveTab } = useQiyamStore();
+  const { transactions, accounts, addTransaction, addToast, globalFilter, targetHighlightId, setActiveTab, globalDateInterval } = useQiyamStore();
   const [filterType, setFilterType] = useState<string>('all');
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -46,6 +47,7 @@ export const TransactionsView: React.FC = () => {
   }, [dynamicAccounts, txForm.account]);
 
   const filtered = transactions.filter((t) => {
+    if (!isDateWithinInterval(t.date_str || (t as any).date || (t as any).created_at, globalDateInterval)) return false;
     if (filterType !== 'all' && t.tx_type !== filterType) return false;
     if (accountFilter !== 'all' && t.account !== accountFilter) return false;
     if (globalFilter.status && globalFilter.status !== 'all') {
@@ -100,15 +102,16 @@ export const TransactionsView: React.FC = () => {
     });
   };
 
-  const incomeCount = transactions.filter((t) => t.tx_type === 'income').length;
-  const expenseCount = transactions.filter((t) => t.tx_type === 'expense').length;
-  const transferCount = transactions.filter((t) => t.tx_type === 'transfer').length;
-  const refundCount = transactions.filter((t) => t.tx_type === 'refund').length;
+  const listForCounts = globalDateInterval ? filtered : transactions;
+  const incomeCount = listForCounts.filter((t) => t.tx_type === 'income').length;
+  const expenseCount = listForCounts.filter((t) => t.tx_type === 'expense').length;
+  const transferCount = listForCounts.filter((t) => t.tx_type === 'transfer').length;
+  const refundCount = listForCounts.filter((t) => t.tx_type === 'refund').length;
 
-  const totalIncome = transactions
+  const totalIncome = listForCounts
     .filter((t) => t.tx_type === 'income')
     .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-  const totalExpense = transactions
+  const totalExpense = listForCounts
     .filter((t) => t.tx_type === 'expense' || t.tx_type === 'refund')
     .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
   const netCashFlow = totalIncome - totalExpense;

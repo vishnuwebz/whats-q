@@ -133,7 +133,7 @@ export const DealsView: React.FC = () => {
       {/* Kanban Pipeline */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-5 md:p-6 flex gap-3 sm:gap-4 items-stretch scrollbar-thin min-h-0">
         {stages.map((stage) => {
-          const stageDeals = deals.filter((d) => d.stage === stage.id);
+          const stageDeals = filteredDeals.filter((d) => d.stage === stage.id);
           const stageAmount = stageDeals.reduce((a, b) => a + b.amount, 0);
 
           return (

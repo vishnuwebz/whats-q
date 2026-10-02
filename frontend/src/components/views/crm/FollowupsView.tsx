@@ -9,6 +9,7 @@ import {
   LayoutGrid, List, Table, ArrowUpDown, ChevronDown
 } from 'lucide-react';
 import { ScheduleFollowUpModal } from '@/components/crm/ScheduleFollowUpModal';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const FollowupsView: React.FC = () => {
   const {
@@ -19,6 +20,7 @@ export const FollowupsView: React.FC = () => {
     addToast,
     openConversationForContact,
     globalFilter,
+    globalDateInterval,
     targetHighlightId
   } = useQiyamStore();
 
@@ -162,6 +164,10 @@ export const FollowupsView: React.FC = () => {
     const list = followups.filter((f) => {
       const effStatus = getEffectiveStatus(f);
 
+      // Date Interval filter
+      const fuDate = f.due_date || (f as any).scheduled_date || (f as any).date;
+      if (!isDateWithinInterval(fuDate, globalDateInterval)) return false;
+
       // Status Tab filter
       if (activeTabFilter !== 'all' && effStatus !== activeTabFilter) return false;
 
@@ -227,7 +233,7 @@ export const FollowupsView: React.FC = () => {
       }
       return 0;
     });
-  }, [followups, activeTabFilter, globalFilter, search, todayStr, sortBy]);
+  }, [followups, activeTabFilter, globalFilter, search, todayStr, sortBy, globalDateInterval]);
 
   // Open Edit Modal
   const handleOpenEdit = (item: FollowUp) => {

@@ -235,6 +235,9 @@ Please feel free to ask if you have any questions or require an itemized breakdo
   const effectiveSearch = search || globalFilter.query || '';
 
   const filtered = invoices.filter((inv) => {
+    const invDate = inv.invoice_date || inv.due_date || (inv as any).date;
+    if (!isDateWithinInterval(invDate, globalDateInterval)) return false;
+
     if (filterStatus !== 'all') {
       if (inv.status !== filterStatus) return false;
     } else if (globalFilter.status && globalFilter.status !== 'all') {
@@ -259,18 +262,19 @@ Please feel free to ask if you have any questions or require an itemized breakdo
   });
 
   const kpis = React.useMemo(() => {
-    const totalInvoiced = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
-    const totalCollected = invoices.reduce((acc, i) => acc + (Number(i.paid_amount) || 0), 0);
-    const totalOutstanding = invoices
+    const list = globalDateInterval ? filtered : invoices;
+    const totalInvoiced = list.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+    const totalCollected = list.reduce((acc, i) => acc + (Number(i.paid_amount) || 0), 0);
+    const totalOutstanding = list
       .filter((i) => i.status === 'sent' || i.status === 'partial_paid' || i.status === 'draft')
       .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0);
-    const totalOverdue = invoices
+    const totalOverdue = list
       .filter((i) => i.status === 'overdue')
       .reduce((acc, i) => acc + Math.max(0, (Number(i.amount) || 0) - (Number(i.paid_amount) || 0)), 0);
-    const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
-    const partialCount = invoices.filter((i) => i.status === 'partial_paid').length;
-    const paidCount = invoices.filter((i) => i.status === 'paid').length;
-    const sentCount = invoices.filter((i) => i.status === 'sent').length;
+    const overdueCount = list.filter((i) => i.status === 'overdue').length;
+    const partialCount = list.filter((i) => i.status === 'partial_paid').length;
+    const paidCount = list.filter((i) => i.status === 'paid').length;
+    const sentCount = list.filter((i) => i.status === 'sent').length;
     const collectionRate = totalInvoiced > 0 ? ((totalCollected / totalInvoiced) * 100).toFixed(1) : '0';
 
     return {
@@ -283,9 +287,9 @@ Please feel free to ask if you have any questions or require an itemized breakdo
       paidCount,
       sentCount,
       collectionRate,
-      totalCount: invoices.length,
+      totalCount: list.length,
     };
-  }, [invoices]);
+  }, [invoices, filtered, globalDateInterval]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full w-full max-w-full overflow-y-auto font-sans">

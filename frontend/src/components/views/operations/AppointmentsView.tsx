@@ -217,15 +217,16 @@ export const AppointmentsView: React.FC = () => {
     return true;
   });
 
-  const totalBookings = appointments.length;
-  const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length;
-  const upcomingCount = appointments.filter((a) => a.status === 'upcoming').length;
-  const completedCount = appointments.filter((a) => a.status === 'completed').length;
-  const advanceCollected = appointments.reduce(
+  const listForCounts = globalDateInterval ? appointments.filter((a) => isDateWithinInterval(a.date_str, globalDateInterval)) : appointments;
+  const totalBookings = listForCounts.length;
+  const confirmedCount = listForCounts.filter((a) => a.status === 'confirmed').length;
+  const upcomingCount = listForCounts.filter((a) => a.status === 'upcoming').length;
+  const completedCount = listForCounts.filter((a) => a.status === 'completed').length;
+  const advanceCollected = listForCounts.reduce(
     (acc, a) => acc + (a.payment_status === 'advance_paid' || a.status === 'confirmed' ? (Number(a.advance) || 0) : 0),
     0
   );
-  const awaitingAdvanceCount = appointments.filter(
+  const awaitingAdvanceCount = listForCounts.filter(
     (a) => a.payment_status !== 'advance_paid' && a.status !== 'cancelled' && a.status !== 'completed'
   ).length;
 

@@ -28,6 +28,7 @@ import { CustomerAvatar } from '@/components/common/CustomerAvatar';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
 import { qiyamApi } from '@/api/qiyamApi';
 import { INITIAL_MULTI_BRANCH_CUSTOMERS, syncCustomersWithBranches } from '@/store/customerSeedData';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export type CustomerSortOption =
   | 'recent'
@@ -128,6 +129,7 @@ export const CustomersView: React.FC = () => {
     globalFilter,
     customerBranchFilter,
     setCustomerBranchFilter,
+    globalDateInterval,
     branches,
   } = useQiyamStore();
 
@@ -558,6 +560,10 @@ export const CustomersView: React.FC = () => {
     const cleanQ = q.replace(/\D/g, '');
 
     const result = customers.filter((cust) => {
+      // 0. Date Interval Filter
+      const custDate = cust.createdAtNum || cust.lastSeen || (cust as any).createdOn || (cust as any).createdAt;
+      if (!isDateWithinInterval(custDate, globalDateInterval)) return false;
+
       // 1. Branch Filter
       if (customerBranchFilter && customerBranchFilter !== 'all') {
         const target = customerBranchFilter.trim().toLowerCase();
@@ -640,7 +646,7 @@ export const CustomersView: React.FC = () => {
           return 0;
       }
     });
-  }, [customers, categoryFilter, globalFilter, search, sortBy, customerBranchFilter]);
+  }, [customers, categoryFilter, globalFilter, search, sortBy, customerBranchFilter, globalDateInterval]);
 
   // Scoped customers represent either all customers or customers in the currently selected branch
   const scopedCustomers = useMemo(() => {

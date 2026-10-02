@@ -30,6 +30,7 @@ import {
 import { Expense } from '@/types';
 import { exportTableToCsv } from '@/utils/exportCsv';
 import { INITIAL_EXPENSES } from '@/store/initialDatasets';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 // Custom Official Payment Voucher Icon with Indian Rupee (₹) Symbol
 const ReceiptRupee: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
@@ -100,6 +101,7 @@ export const ExpensesView: React.FC = () => {
     deleteExpense,
     addToast,
     globalFilter,
+    globalDateInterval,
     openPdfEditor,
   } = store;
 
@@ -198,6 +200,9 @@ export const ExpensesView: React.FC = () => {
     const effectiveSearch = (searchQuery || globalFilter.query || '').trim().toLowerCase();
 
     const result = expenses.filter((exp) => {
+      // 0. Date Interval Filter
+      if (!isDateWithinInterval(exp.date_str || (exp as any).date || (exp as any).created_at, globalDateInterval)) return false;
+
       // 1. Status Filter
       if (filterStatus !== 'all') {
         if (exp.status !== filterStatus) return false;
@@ -254,7 +259,7 @@ export const ExpensesView: React.FC = () => {
       // default: newest first
       return Number(b.id) - Number(a.id);
     });
-  }, [expenses, filterStatus, filterCategory, filterPaymentMode, searchQuery, globalFilter.query, globalFilter.status, sortBy]);
+  }, [expenses, filterStatus, filterCategory, filterPaymentMode, searchQuery, globalFilter.query, globalFilter.status, sortBy, globalDateInterval]);
 
   // Open Create Modal
   const handleOpenCreateModal = () => {

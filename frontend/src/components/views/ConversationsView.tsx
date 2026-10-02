@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 import {
   Search, Filter, Phone, MoreVertical, Send, Paperclip,
   Smile, Mic, CheckCheck, Clock, UserCheck,
@@ -86,6 +87,7 @@ export const ConversationsView: React.FC = () => {
     assignStaffToConversation,
     addEmployee,
     refreshConversations,
+    globalDateInterval,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam' | 'deleted'>('all');
@@ -825,6 +827,11 @@ export const ConversationsView: React.FC = () => {
       const lastMsg = (c.messages && c.messages.length > 0) ? c.messages[c.messages.length - 1] : null;
       const convDate = lastMsg ? getMessageDateObj(lastMsg, c) : (parseAnyDate(c.last_contact_date) || new Date());
       const now = new Date();
+
+      // Global Header Date Range Filter
+      if (globalDateInterval && !isDateWithinInterval(convDate, globalDateInterval)) {
+        return false;
+      }
 
       // Date Preset Filter
       if (filterDatePreset !== 'all') {

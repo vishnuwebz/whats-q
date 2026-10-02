@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Check, X, ArrowRight, Clock
+  Check, X, ArrowRight, Clock, ChevronsLeft, ChevronsRight, RotateCcw
 } from 'lucide-react';
 
 export interface DateRangeValue {
@@ -25,32 +25,67 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   onApply,
   title = 'Select Date Range',
 }) => {
-  // Default to May 2024 to match the demo workspace time anchor
   const initialStart = value?.startDate || '2024-05-01';
   const initialEnd = value?.endDate || '2024-05-31';
 
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
-  const [activePreset, setActivePreset] = useState<string>(value?.label || 'This Month (May 2024)');
+  const [activePreset, setActivePreset] = useState<string>(value?.label || 'Demo Period (May 2024)');
 
   // Calendar view navigation (Year and Month)
-  const [viewYear, setViewYear] = useState(2024);
-  const [viewMonth, setViewMonth] = useState(4); // 0-indexed (4 = May)
+  const [viewYear, setViewYear] = useState(() => {
+    const parsed = Number(initialStart.slice(0, 4));
+    return isNaN(parsed) || parsed < 2000 ? 2024 : parsed;
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    const parsed = Number(initialStart.slice(5, 7));
+    return isNaN(parsed) || parsed < 1 ? 4 : parsed - 1; // 0-indexed
+  });
 
   // Range selection state (click 1 = start, click 2 = end)
   const [hoverDate, setHoverDate] = useState<string | null>(null);
 
+  // Sync state whenever modal opens or value changes
+  useEffect(() => {
+    if (isOpen) {
+      const s = value?.startDate || '2024-05-01';
+      const e = value?.endDate || '2024-05-31';
+      setStartDate(s);
+      setEndDate(e);
+      setActivePreset(value?.label || 'Custom Range');
+
+      const parts = s.split('-');
+      if (parts.length >= 2) {
+        const y = Number(parts[0]);
+        const m = Number(parts[1]);
+        if (y >= 2000 && m >= 1 && m <= 12) {
+          setViewYear(y);
+          setViewMonth(m - 1);
+        }
+      }
+    }
+  }, [isOpen, value?.startDate, value?.endDate, value?.label]);
+
   if (!isOpen) return null;
+
+  const now = new Date();
+  const getPad = (n: number) => String(n).padStart(2, '0');
+  const formatYMD = (d: Date) => `${d.getFullYear()}-${getPad(d.getMonth() + 1)}-${getPad(d.getDate())}`;
+
+  const todayStr = formatYMD(now);
+  const yestStr = formatYMD(new Date(now.getTime() - 86400000));
+  const weekStartStr = formatYMD(new Date(now.getTime() - 7 * 86400000));
+  const monthStartStr = `${now.getFullYear()}-${getPad(now.getMonth() + 1)}-01`;
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthEndStr = `${now.getFullYear()}-${getPad(now.getMonth() + 1)}-${getPad(lastDayOfMonth)}`;
 
   const presets = [
     { label: 'All Time', start: '2020-01-01', end: '2030-12-31' },
-    { label: 'Today', start: '2024-05-31', end: '2024-05-31' },
-    { label: 'Yesterday', start: '2024-05-30', end: '2024-05-30' },
-    { label: 'This Week', start: '2024-05-26', end: '2024-05-31' },
-    { label: 'This Month (May 2024)', start: '2024-05-01', end: '2024-05-31' },
-    { label: 'Last Month (April 2024)', start: '2024-04-01', end: '2024-04-30' },
-    { label: 'Last 30 Days', start: '2024-05-01', end: '2024-05-31' },
-    { label: 'Year to Date (2024)', start: '2024-01-01', end: '2024-05-31' },
+    { label: 'Demo Period (May 2024)', start: '2024-05-01', end: '2024-05-31' },
+    { label: 'Today', start: todayStr, end: todayStr },
+    { label: 'Yesterday', start: yestStr, end: yestStr },
+    { label: 'Last 7 Days', start: weekStartStr, end: todayStr },
+    { label: 'This Month', start: monthStartStr, end: monthEndStr },
     { label: 'Custom Range', start: startDate, end: endDate },
   ];
 
@@ -59,8 +94,10 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     setStartDate(p.start);
     setEndDate(p.end);
     const [y, m] = p.start.split('-').map(Number);
-    setViewYear(y);
-    setViewMonth(m - 1);
+    if (y && m) {
+      setViewYear(y);
+      setViewMonth(m - 1);
+    }
   };
 
   const handlePrevMonth = () => {
@@ -79,6 +116,14 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     } else {
       setViewMonth((m) => m + 1);
     }
+  };
+
+  const handlePrevYear = () => {
+    setViewYear((y) => y - 1);
+  };
+
+  const handleNextYear = () => {
+    setViewYear((y) => y + 1);
   };
 
   // Generate calendar days for viewYear & viewMonth
@@ -139,15 +184,30 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     const finalStart = startDate <= finalEnd ? startDate : finalEnd;
     const finalEndDate = startDate <= finalEnd ? finalEnd : startDate;
 
-    const label =
-      activePreset !== 'Custom Range'
-        ? activePreset
-        : `${formatDateHuman(finalStart)} – ${formatDateHuman(finalEndDate)}`;
+    const isAllTime = activePreset === 'All Time' || (finalStart <= '2020-01-01' && finalEndDate >= '2030-12-31');
+
+    const label = isAllTime
+      ? 'All Time'
+      : activePreset !== 'Custom Range'
+      ? activePreset
+      : `${formatDateHuman(finalStart)} – ${formatDateHuman(finalEndDate)}`;
 
     onApply({
       startDate: finalStart,
       endDate: finalEndDate,
       label,
+    });
+    onClose();
+  };
+
+  const handleResetAllTime = () => {
+    setActivePreset('All Time');
+    setStartDate('2020-01-01');
+    setEndDate('2030-12-31');
+    onApply({
+      startDate: '2020-01-01',
+      endDate: '2030-12-31',
+      label: 'All Time',
     });
     onClose();
   };
@@ -190,7 +250,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
           </div>
 
           <div className="hidden md:block pt-4 border-t border-slate-200 text-[11px] text-slate-500">
-            Select a preset or click custom dates on the calendar to filter records.
+            Select a preset or click custom dates on the calendar to filter records on the current page.
           </div>
         </div>
 
@@ -220,8 +280,16 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
                 type="date"
                 value={startDate}
                 onChange={(e) => {
-                  setStartDate(e.target.value);
+                  const val = e.target.value;
+                  setStartDate(val);
                   setActivePreset('Custom Range');
+                  if (val) {
+                    const [y, m] = val.split('-').map(Number);
+                    if (y && m) {
+                      setViewYear(y);
+                      setViewMonth(m - 1);
+                    }
+                  }
                 }}
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
               />
@@ -234,8 +302,16 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
                 type="date"
                 value={endDate || startDate}
                 onChange={(e) => {
-                  setEndDate(e.target.value);
+                  const val = e.target.value;
+                  setEndDate(val);
                   setActivePreset('Custom Range');
+                  if (val) {
+                    const [y, m] = val.split('-').map(Number);
+                    if (y && m) {
+                      setViewYear(y);
+                      setViewMonth(m - 1);
+                    }
+                  }
                 }}
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
               />
@@ -244,25 +320,48 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
 
           {/* Visual Interactive Month Calendar */}
           <div className="space-y-2">
-            {/* Month Navigation */}
+            {/* Month & Year Navigation */}
             <div className="flex items-center justify-between px-1">
-              <button
-                onClick={handlePrevMonth}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
-                title="Previous Month"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="font-bold text-slate-800 text-sm">
-                {monthName} {viewYear}
-              </span>
-              <button
-                onClick={handleNextMonth}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
-                title="Next Month"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handlePrevYear}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                  title="Previous Year"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
+                  title="Previous Month"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 font-bold text-slate-800 text-sm">
+                <span>{monthName}</span>
+                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-xs">
+                  {viewYear}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition"
+                  title="Next Month"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleNextYear}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                  title="Next Year"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Days of week header */}
@@ -339,21 +438,32 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
+              onClick={handleResetAllTime}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-semibold rounded-xl text-xs transition cursor-pointer"
+              title="Show all records across all time"
             >
-              Cancel
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Show All Time</span>
             </button>
-            <button
-              type="button"
-              onClick={handleApply}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
-            >
-              Apply Filter
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApply}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+              >
+                Apply Filter
+              </button>
+            </div>
           </div>
         </div>
       </div>

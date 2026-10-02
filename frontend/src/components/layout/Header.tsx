@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import {
-  Search, Calendar, Filter, Download, Plus, Bell, HelpCircle,
+  Search, Calendar, Download, Plus, Bell, HelpCircle,
   X, Check, ExternalLink, Sparkles, MessageSquare, AlertCircle, ArrowRight,
   PanelLeftClose, PanelLeftOpen, Menu, RefreshCw
 } from 'lucide-react';
 import { OmniSearchModal } from './OmniSearchModal';
-import { UniversalFilterPopover } from './UniversalFilterPopover';
 import { NotificationDropdown } from './NotificationDropdown';
 import { exportTableToCsv } from '@/utils/exportCsv';
 import { ModernDateRangePicker, DateRangeValue } from '@/components/common/ModernDateRangePicker';
@@ -49,7 +48,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSyncingManual, setIsSyncingManual] = useState(false);
 
@@ -60,11 +58,6 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadNotifsCount = React.useMemo(() => {
     return Array.isArray(notifications) ? notifications.filter((n) => n && n.unread).length : 0;
   }, [notifications]);
-  const isFilterActive =
-    (globalFilter.status && globalFilter.status !== 'all') ||
-    (globalFilter.priority && globalFilter.priority !== 'all') ||
-    (globalFilter.assignedTo && globalFilter.assignedTo !== 'all') ||
-    Boolean(globalFilter.query);
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const notifAnchorRef = React.useRef<HTMLDivElement>(null);
@@ -133,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className={`bg-white border-b border-slate-200/80 px-3 sm:px-5 py-2.5 flex items-center gap-3 sticky top-0 ${isNotifOpen || isFilterOpen ? 'z-50' : 'z-30'} shadow-[0_1px_2px_rgba(0,0,0,0.02)]`}>
+      <header className={`bg-white border-b border-slate-200/80 px-3 sm:px-5 py-2.5 flex items-center gap-3 sticky top-0 ${isNotifOpen ? 'z-50' : 'z-30'} shadow-[0_1px_2px_rgba(0,0,0,0.02)]`}>
         {/* ── LEFT: Always visible — toggle + title + subtitle ── */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Mobile hamburger */}
@@ -265,46 +258,33 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Date Range */}
-          <div className="relative shrink-0">
+          {/* Date Range Filter */}
+          <div className="relative shrink-0 flex items-center">
             <button
               onClick={() => setIsDateOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 transition-all cursor-pointer whitespace-nowrap"
-              title="Filter by custom date range"
+              className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                store.globalDateInterval
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold shadow-2xs hover:bg-emerald-100/80'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+              }`}
+              title="Filter records on this page by date range"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>{globalDateRange}</span>
+              {store.globalDateInterval && <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse ml-0.5" />}
             </button>
-          </div>
-
-          {/* Filter */}
-          <div className="relative shrink-0 flex items-center">
-            <button
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-all cursor-pointer relative whitespace-nowrap ${
-                isFilterActive
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold shadow-2xs'
-                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-              }`}
-              title="Filter records on this page"
-            >
-              <Filter className={`w-3.5 h-3.5 shrink-0 ${isFilterActive ? 'text-emerald-600' : 'text-slate-500'}`} />
-              <span>Filter</span>
-              {isFilterActive && <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />}
-            </button>
-            {isFilterActive && (
+            {store.globalDateInterval && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  store.resetGlobalFilter();
+                  setGlobalDateRange('All Time', null);
                 }}
                 className="ml-1 p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                title="Clear active page filter"
+                title="Reset date filter to All Time"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            <UniversalFilterPopover isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} pageTitle={title} />
           </div>
 
           {/* Export */}
@@ -401,7 +381,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1.5 font-medium">
                   <div>• <strong>Omni Search:</strong> Press <kbd className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">Ctrl + /</kbd> anywhere to search all records.</div>
                   <div>• <strong>Real Export:</strong> Click "Export" to download a CSV file of any page.</div>
-                  <div>• <strong>Page Filters:</strong> Click "Filter" to filter by status or priority.</div>
+                  <div>• <strong>Date Range:</strong> Click the date range button to filter records on the current page.</div>
                   <div>• <strong>Simulate Messages:</strong> Launch WhatsApp Simulator from Conversations or Sidebar.</div>
                   <div>• <strong>Automation Builder:</strong> Navigate to Automation → Workflow Builder.</div>
                 </div>
@@ -440,14 +420,15 @@ export const Header: React.FC<HeaderProps> = ({
         isOpen={isDateOpen}
         onClose={() => setIsDateOpen(false)}
         value={{
-          startDate: '2024-05-01',
-          endDate: '2024-05-31',
+          startDate: store.globalDateInterval?.start || '2024-05-01',
+          endDate: store.globalDateInterval?.end || '2024-05-31',
           label: globalDateRange,
         }}
         onApply={(range) => {
+          const isAllTime = range.label === 'All Time' || (range.startDate <= '2020-01-01' && range.endDate >= '2030-12-31');
           setGlobalDateRange(
             range.label || `${range.startDate} – ${range.endDate}`,
-            range.startDate && range.endDate ? { start: range.startDate, end: range.endDate } : null
+            isAllTime ? null : { start: range.startDate, end: range.endDate }
           );
         }}
         title="Filter Workspace by Date Range"

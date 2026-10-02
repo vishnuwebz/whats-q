@@ -100,12 +100,15 @@ export const AttendanceView: React.FC = () => {
   const recordsInDateRange = useMemo(() => {
     return allRecords.filter((rec) => {
       const recordDate = (rec as any).date || '2024-05-31';
+      if (globalDateInterval) {
+        return recordDate >= globalDateInterval.start && recordDate <= globalDateInterval.end;
+      }
       return (
         (!dateRange.startDate || recordDate >= dateRange.startDate) &&
         (!dateRange.endDate || recordDate <= dateRange.endDate)
       );
     });
-  }, [allRecords, dateRange]);
+  }, [allRecords, dateRange, globalDateInterval]);
 
   const presentCount = recordsInDateRange.filter((r) => r.status === 'present').length;
   const lateCount = recordsInDateRange.filter((r) => r.status === 'late').length;

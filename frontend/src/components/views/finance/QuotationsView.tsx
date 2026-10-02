@@ -10,6 +10,7 @@ import {
   ChevronRight, RefreshCw, Layers, PenTool
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
+import { isDateWithinInterval } from '@/utils/dateFilter';
 
 export const QuotationsView: React.FC = () => {
   const {
@@ -24,6 +25,7 @@ export const QuotationsView: React.FC = () => {
     openConversationForContact,
     targetHighlightId,
     globalFilter,
+    globalDateInterval,
     openPdfEditor,
   } = useQiyamStore();
 
@@ -277,6 +279,10 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
 
   const filtered = useMemo(() => {
     return quotations.filter((quo) => {
+      // 0. Date Interval Filter
+      const qDate = quo.quotation_date || quo.valid_until || (quo as any).created_at;
+      if (!isDateWithinInterval(qDate, globalDateInterval)) return false;
+
       // 1. Status Filter: Tab selection takes primary precedence
       if (filterStatus !== 'all') {
         if (quo.status !== filterStatus) return false;
@@ -307,21 +313,22 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
 
       return true;
     });
-  }, [quotations, filterStatus, effectiveSearch, globalFilter.status]);
+  }, [quotations, filterStatus, effectiveSearch, globalFilter.status, globalDateInterval]);
 
   // KPI Metrics Calculation
   const kpis = useMemo(() => {
-    const totalQuotedValue = quotations.reduce((acc, q) => acc + (Number(q.amount) || 0), 0);
-    const convertedQuotes = quotations.filter((q) => q.status === 'converted');
-    const acceptedQuotes = quotations.filter((q) => q.status === 'accepted');
-    const pendingQuotes = quotations.filter((q) => q.status === 'sent' || q.status === 'viewed');
-    const draftQuotes = quotations.filter((q) => q.status === 'draft');
-    const expiredQuotes = quotations.filter((q) => q.status === 'expired');
+    const list = globalDateInterval ? filtered : quotations;
+    const totalQuotedValue = list.reduce((acc, q) => acc + (Number(q.amount) || 0), 0);
+    const convertedQuotes = list.filter((q) => q.status === 'converted');
+    const acceptedQuotes = list.filter((q) => q.status === 'accepted');
+    const pendingQuotes = list.filter((q) => q.status === 'sent' || q.status === 'viewed');
+    const draftQuotes = list.filter((q) => q.status === 'draft');
+    const expiredQuotes = list.filter((q) => q.status === 'expired');
 
     const totalConvertedValue = convertedQuotes.reduce((acc, q) => acc + (Number(q.amount) || 0), 0);
     const totalPendingValue = pendingQuotes.reduce((acc, q) => acc + (Number(q.amount) || 0), 0);
 
-    const decisiveCount = convertedQuotes.length + acceptedQuotes.length + quotations.filter((q) => q.status === 'rejected').length;
+    const decisiveCount = convertedQuotes.length + acceptedQuotes.length + list.filter((q) => q.status === 'rejected').length;
     const acceptanceRate = decisiveCount > 0
       ? (((convertedQuotes.length + acceptedQuotes.length) / decisiveCount) * 100).toFixed(1)
       : '72.5';
