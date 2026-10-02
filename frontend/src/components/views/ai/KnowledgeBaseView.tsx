@@ -515,7 +515,7 @@ export const KnowledgeBaseView: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Commercial AC Maintenance Rate Card 2024"
+                  placeholder="e.g. Commercial AC Maintenance Rate Card 2026"
                   value={docForm.title}
                   onChange={(e) => setDocForm({ ...docForm, title: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-purple-500 outline-none text-slate-800"

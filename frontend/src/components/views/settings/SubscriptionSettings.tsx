@@ -481,17 +481,17 @@ export const SubscriptionSettings: React.FC = () => {
                 <div className="p-3 bg-white flex items-center justify-between hover:bg-slate-50 transition-colors">
                   <div>
                     <div className="font-bold text-slate-900 flex items-center gap-2">
-                      <span>SUB-2024-11</span>
+                      <span>SUB-2026-10</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
                         Paid
                       </span>
                     </div>
-                    <div className="text-slate-500 text-[11px]">Nov 30, 2024 • Annual Enterprise License Renewal</div>
+                    <div className="text-slate-500 text-[11px]">Oct 01, 2026 • Annual Enterprise License Renewal</div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-slate-900 text-sm">₹1,79,988</span>
                     <button
-                      onClick={() => handleDownloadSubscriptionReceipt('SUB-2024-11', 'November 30, 2024', '₹1,79,988')}
+                      onClick={() => handleDownloadSubscriptionReceipt('SUB-2026-10', 'October 01, 2026', '₹1,79,988')}
                       className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />

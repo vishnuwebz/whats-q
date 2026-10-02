@@ -310,7 +310,7 @@ export const TaxUpdateModal: React.FC<Props> = ({
                     placeholder="62000"
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-[10px] text-slate-400">Annual projected tax payable for FY 2024-25</p>
+                  <p className="text-[10px] text-slate-400">Annual projected tax payable for FY 2026-27</p>
                 </div>
 
                 <div className="p-2.5 bg-blue-100/40 rounded-xl border border-blue-200 text-[11px] text-blue-900 flex items-center justify-between">

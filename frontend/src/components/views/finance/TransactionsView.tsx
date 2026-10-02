@@ -415,7 +415,7 @@ export const TransactionsView: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. AC Installation Invoice #INV-2024-001 Settlement"
+                    placeholder="e.g. AC Installation Invoice #INV-2026-001 Settlement"
                     value={txForm.description}
                     onChange={(e) => setTxForm({ ...txForm, description: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 outline-none text-sm sm:text-xs text-slate-800"

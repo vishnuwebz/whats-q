@@ -420,8 +420,8 @@ export const Header: React.FC<HeaderProps> = ({
         isOpen={isDateOpen}
         onClose={() => setIsDateOpen(false)}
         value={{
-          startDate: store.globalDateInterval?.start || '2024-05-01',
-          endDate: store.globalDateInterval?.end || '2024-05-31',
+          startDate: store.globalDateInterval?.start || '2026-10-01',
+          endDate: store.globalDateInterval?.end || '2026-10-31',
           label: globalDateRange,
         }}
         onApply={(range) => {

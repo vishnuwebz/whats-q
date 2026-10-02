@@ -94,8 +94,8 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     lead_owner: 'Ramesh Kumar',
     lead_stage: 'Appointment Booked',
     source: 'WhatsApp',
-    first_contact_date: 'May 12, 2024 10:30 AM',
-    last_contact_date: 'May 12, 2024 10:32 AM',
+    first_contact_date: 'Oct 01, 2026 10:30 AM',
+    last_contact_date: 'Oct 02, 2026 10:32 AM',
     location: 'Koyilandy, Kerala',
     language: 'English',
     tags: ['AC Service', 'High Value'],
@@ -199,8 +199,8 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     lead_owner: 'Amit Sharma',
     lead_stage: 'Appointment Confirmed',
     source: 'WhatsApp',
-    first_contact_date: 'May 10, 2024 09:15 AM',
-    last_contact_date: 'May 12, 2024 09:30 AM',
+    first_contact_date: 'Oct 01, 2026 09:15 AM',
+    last_contact_date: 'Oct 02, 2026 09:30 AM',
     location: 'Kozhikode, Kerala',
     language: 'English',
     tags: ['AC Installation', 'VIP'],
@@ -211,7 +211,7 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     last_seen: 'Online',
     messages: [
       { id: 'vm1', sender: 'customer', text: 'Hi, I need installation done for my new 1.5 Ton AC.', timestamp: '09:15 AM', status: 'read' },
-      { id: 'vm2', sender: 'agent', senderName: 'Rahul Mehta', text: 'Hello Mr. Vikram Mehta! We have technician Amit Sharma available on May 12 at 10:30 AM.', timestamp: '09:20 AM', status: 'read' },
+      { id: 'vm2', sender: 'agent', senderName: 'Rahul Mehta', text: 'Hello Mr. Vikram Mehta! We have technician Amit Sharma available on Oct 02 at 10:30 AM.', timestamp: '09:20 AM', status: 'read' },
       { id: 'vm3', sender: 'customer', text: 'Perfect, lock that slot please.', timestamp: '09:25 AM', status: 'delivered' },
       { id: 'vm4', sender: 'customer', text: 'Slot locked! Advance payment of ₹360 received with thanks.', timestamp: '09:30 AM', status: 'delivered' }
     ]
@@ -227,12 +227,12 @@ const DEFAULT_SEED_CONVERSATIONS: Conversation[] = [
     lead_owner: 'Neha Patel',
     lead_stage: 'Appointment Confirmed',
     source: 'WhatsApp Web',
-    first_contact_date: 'May 11, 2024 11:00 AM',
-    last_contact_date: 'May 12, 2024 10:24 AM',
+    first_contact_date: 'Oct 01, 2026 11:00 AM',
+    last_contact_date: 'Oct 02, 2026 10:24 AM',
     location: 'Ramanattukara, Kerala',
     language: 'English',
     tags: ['Cleaning', 'Residential'],
-    notes: 'Full home deep cleaning scheduled for May 13 at 09:00 AM.',
+    notes: 'Full home deep cleaning scheduled for Oct 03 at 09:00 AM.',
     service_needed: 'Deep Cleaning (Full Home)',
     estimated_value: 4500,
     is_online: false,
@@ -934,7 +934,7 @@ interface QiyamState {
 
 const INITIAL_NOTIFICATIONS: QNotification[] = [
   { id: 1, title: 'New Booking from Amit Verma', text: 'AC Repair in Koyilandy scheduled for tomorrow 10:00 AM.', time: '2m ago', unread: true, target: 'conversations', itemId: 1, itemType: 'conversation', severity: 'info', category: 'messages' },
-  { id: 2, title: 'UPI Payment Received ₹2,800', text: 'Priya Sharma completed 30% advance via GPay.', time: '15m ago', unread: true, target: 'finance-invoices', itemId: 'INV-2024-0183', itemType: 'invoice', severity: 'success', category: 'finance' },
+  { id: 2, title: 'UPI Payment Received ₹2,800', text: 'Priya Sharma completed 30% advance via GPay.', time: '15m ago', unread: true, target: 'finance-invoices', itemId: 'INV-2026-0183', itemType: 'invoice', severity: 'success', category: 'finance' },
   { id: 3, title: 'Overdue Job Flagged', text: 'Job #JOB-1024 delayed near Beach Road. Assign Amit Sharma.', time: '30m ago', unread: true, target: 'ops-jobs', itemId: 'JOB-1024', itemType: 'job', severity: 'error', category: 'alerts' },
   { id: 4, title: 'AI Route RTE-001 Ready', text: '12-stop GPS optimized route created for Ramesh Kumar.', time: '1h ago', unread: true, target: 'ops-routes', itemId: 'RTE-001', itemType: 'route', severity: 'ai', category: 'operations' },
   { id: 5, title: 'New WhatsApp Click-to-Ad Lead', text: 'Inquiry from +91 90000 11123 for AC Installation.', time: '2h ago', unread: true, target: 'crm-leads', itemId: 1, itemType: 'lead', severity: 'info', category: 'messages' },
@@ -1028,7 +1028,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     phone: '+91 90000 11123',
     service: 'AC Installation (1.5 Ton Inverter AC)',
     employee: 'Amit Sharma',
-    date_str: 'May 12, 2024',
+    date_str: 'Oct 02, 2026',
     time_str: '10:30 AM',
     status: 'confirmed',
     duration: '2h 00m',
@@ -1046,7 +1046,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     phone: '+91 98765 43210',
     service: 'AC Repair (Gas Leakage)',
     employee: 'Priya Sharma',
-    date_str: 'May 12, 2024',
+    date_str: 'Oct 02, 2026',
     time_str: '12:00 PM',
     status: 'upcoming',
     duration: '1h 30m',
@@ -1064,7 +1064,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     phone: '+91 89213 56789',
     service: 'Deep Cleaning (Full Home)',
     employee: 'Neha Patel',
-    date_str: 'May 13, 2024',
+    date_str: 'Oct 03, 2026',
     time_str: '09:00 AM',
     status: 'confirmed',
     duration: '3h 00m',
@@ -1084,7 +1084,7 @@ const DEFAULT_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     category: 'Standard Rates',
     content: 'Routine AC filter cleaning: ₹650. Deep foam jet chemical service: ₹1,450. Complete indoor and outdoor unit overhaul: ₹2,200. Gas top-up (R32 / R410A): ₹1,800 to ₹2,800 depending on pressure deficiency.',
     status: 'published',
-    last_updated: 'May 31, 2024',
+    last_updated: 'Oct 02, 2026',
     author: 'Rahul Mehta (Ops Lead)',
     views: 142,
     helpful_percent: 98,
@@ -1095,7 +1095,7 @@ const DEFAULT_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     category: 'Service Policy',
     content: 'All spare parts replaced by certified Qiyam technicians carry a 90-day comprehensive replacement warranty. In case of recurring cooling issues within 14 days of servicing, a free technician re-visit is dispatched automatically within 4 business hours.',
     status: 'published',
-    last_updated: 'May 28, 2024',
+    last_updated: 'Oct 01, 2026',
     author: 'Compliance Team',
     views: 98,
     helpful_percent: 100,
@@ -1106,7 +1106,7 @@ const DEFAULT_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     category: 'Operations',
     content: 'For server rooms, commercial clinics, and VIP residential accounts reporting total cooling outage, dispatch priority is set to CRITICAL. Nearest technician within 5km is automatically re-routed via route optimization.',
     status: 'published',
-    last_updated: 'May 25, 2024',
+    last_updated: 'Sep 29, 2026',
     author: 'Field Ops Lead',
     views: 76,
     helpful_percent: 94,
@@ -1117,7 +1117,7 @@ const DEFAULT_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     category: 'Technical SOPs',
     content: 'Technicians must perform soap bubble and electronic halogen sniff tests at all flared copper joints before charging refrigerant. Vacuuming down to 500 microns with a 2-stage rotary pump is mandatory.',
     status: 'published',
-    last_updated: 'May 20, 2024',
+    last_updated: 'Sep 25, 2026',
     author: 'Technical Training Cell',
     views: 115,
     helpful_percent: 96,
@@ -1128,7 +1128,7 @@ const DEFAULT_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     category: 'Standard Rates',
     content: 'Corporate multi-split contracts exceeding 10 units qualify for a 15% fleet discount. Standard payment terms are Net 15 days from official GST invoice generation. UPI and NEFT accounts are provided on invoice footer.',
     status: 'published',
-    last_updated: 'May 18, 2024',
+    last_updated: 'Sep 20, 2026',
     author: 'Finance & Billing',
     views: 64,
     helpful_percent: 92,
@@ -1139,7 +1139,7 @@ const DEFAULT_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     category: 'Service Policy',
     content: 'Any complaint logged via WhatsApp with severity level 1 triggers immediate notification to the Branch Operations Director. If a customer is unsatisfied with repair quality, full service labor charges are refunded via Razorpay UPI within 24 hours.',
     status: 'published',
-    last_updated: 'May 15, 2024',
+    last_updated: 'Sep 18, 2026',
     author: 'Customer Experience Head',
     views: 89,
     helpful_percent: 97,
@@ -1163,7 +1163,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Active',
     automations_count: 32,
     tasks_automated: 256,
-    last_activity: 'May 31, 2024 10:30 AM',
+    last_activity: 'Oct 02, 2026 10:30 AM',
     phone: '+91 495 276 5400',
     email: 'headoffice@qiyamventures.com',
     address: 'Qiyam Corporate Center, Beach Road, Kozhikode, Kerala - 673001',
@@ -1185,7 +1185,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Active',
     automations_count: 24,
     tasks_automated: 210,
-    last_activity: 'May 31, 2024 09:15 AM',
+    last_activity: 'Oct 02, 2026 09:15 AM',
     phone: '+91 484 290 8120',
     email: 'kochi@qiyamventures.com',
     address: 'Infopark Phase 1, Kakkanad, Kochi, Kerala - 682016',
@@ -1207,7 +1207,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Active',
     automations_count: 18,
     tasks_automated: 178,
-    last_activity: 'May 31, 2024 08:45 AM',
+    last_activity: 'Oct 02, 2026 08:45 AM',
     phone: '+91 80 4120 7890',
     email: 'bangalore@qiyamventures.com',
     address: 'Prestige Meridian, MG Road, Bengaluru, Karnataka - 560001',
@@ -1229,7 +1229,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Active',
     automations_count: 20,
     tasks_automated: 192,
-    last_activity: 'May 31, 2024 08:20 AM',
+    last_activity: 'Oct 02, 2026 08:20 AM',
     phone: '+91 22 6670 9900',
     email: 'mumbai@qiyamventures.com',
     address: 'Bandra Kurla Complex, Bandra East, Mumbai, Maharashtra - 400051',
@@ -1251,7 +1251,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Inactive',
     automations_count: 10,
     tasks_automated: 68,
-    last_activity: 'May 28, 2024 04:10 PM',
+    last_activity: 'Sep 28, 2026 04:10 PM',
     phone: '+91 11 2334 5678',
     email: 'delhi@qiyamventures.com',
     address: 'Connaught Place, Central Circle, New Delhi, Delhi - 110001',
@@ -1273,7 +1273,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Active',
     automations_count: 14,
     tasks_automated: 112,
-    last_activity: 'May 31, 2024 07:40 AM',
+    last_activity: 'Oct 02, 2026 07:40 AM',
     phone: '+91 44 2852 3410',
     email: 'chennai@qiyamventures.com',
     address: 'Mount Road, Anna Salai, Chennai, Tamil Nadu - 600002',
@@ -1295,7 +1295,7 @@ const INITIAL_BRANCHES: BranchItem[] = [
     status: 'Active',
     automations_count: 12,
     tasks_automated: 96,
-    last_activity: 'May 31, 2024 07:05 AM',
+    last_activity: 'Oct 02, 2026 07:05 AM',
     phone: '+91 40 4012 3344',
     email: 'hyderabad@qiyamventures.com',
     address: 'Cyber Gateway, Hitec City, Hyderabad, Telangana - 500081',
@@ -1310,7 +1310,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'Communication',
     description: 'Official Meta WhatsApp Business API for automated broadcasts and inbox messaging',
     status: 'connected',
-    connected_on: 'May 28, 2024',
+    connected_on: 'Oct 01, 2026',
     automations_enabled: 12,
     icon_slug: 'whatsapp',
     config: {
@@ -1329,7 +1329,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'Productivity',
     description: 'Gmail, Google Drive, Calendar sync and document automation',
     status: 'connected',
-    connected_on: 'May 28, 2024',
+    connected_on: 'Sep 28, 2026',
     automations_enabled: 4,
     icon_slug: 'google',
     config: {
@@ -1347,7 +1347,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'Communication',
     description: 'Internal team notifications, job completion alerts, and escalation channels',
     status: 'connected',
-    connected_on: 'May 24, 2024',
+    connected_on: 'Sep 25, 2026',
     automations_enabled: 3,
     icon_slug: 'slack',
     config: {
@@ -1365,7 +1365,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'CRM',
     description: 'Bidirectional contact, deal and lead synchronization',
     status: 'connected',
-    connected_on: 'May 20, 2024',
+    connected_on: 'Sep 20, 2026',
     automations_enabled: 2,
     icon_slug: 'zoho',
     config: {
@@ -1383,7 +1383,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'Accounting & Finance',
     description: 'Automated ledger synchronization and invoice tax tracking',
     status: 'partially_connected',
-    connected_on: 'May 18, 2024',
+    connected_on: 'Sep 18, 2026',
     automations_enabled: 1,
     icon_slug: 'quickbooks',
     config: {
@@ -1400,7 +1400,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'E-Commerce',
     description: 'E-commerce store orders, cart abandonment notifications, and catalog sync',
     status: 'partially_connected',
-    connected_on: 'May 10, 2024',
+    connected_on: 'Sep 15, 2026',
     automations_enabled: 2,
     icon_slug: 'shopify',
     config: {
@@ -1417,7 +1417,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'Payments',
     description: 'Instant UPI payment links, QR codes and payment confirmation webhooks',
     status: 'connected',
-    connected_on: 'May 15, 2024',
+    connected_on: 'Oct 01, 2026',
     automations_enabled: 3,
     icon_slug: 'razorpay',
     config: {
@@ -1436,7 +1436,7 @@ export const INITIAL_INTEGRATIONS: IntegrationItem[] = [
     category: 'E-Commerce',
     description: 'WordPress WooCommerce store order alerts, status tracking, cart recovery and catalog sync',
     status: 'partially_connected',
-    connected_on: 'May 12, 2024',
+    connected_on: 'Oct 02, 2026',
     automations_enabled: 3,
     icon_slug: 'woocommerce',
     config: {
@@ -3462,8 +3462,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
   },
 
-  globalDateRange: 'May 1 – May 31, 2024',
-  globalDateInterval: { start: '2024-05-01', end: '2024-05-31' },
+  globalDateRange: 'October 2026',
+  globalDateInterval: { start: '2026-10-01', end: '2026-10-31' },
   setGlobalDateRange: (range, interval) => {
     let resolvedInterval = interval;
     if (resolvedInterval === undefined) {
@@ -7010,7 +7010,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       probability: Number(newDeal.probability) || 60,
       deal_owner: newDeal.deal_owner || 'Rahul Mehta',
       source: newDeal.source || 'Direct Referral',
-      expected_close_date: newDeal.expected_close_date || 'May 31, 2024',
+      expected_close_date: newDeal.expected_close_date || 'Oct 31, 2026',
       tags: newDeal.tags || ['Enterprise'],
       notes: newDeal.notes || '',
       ...newDeal,
@@ -7093,15 +7093,15 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   addInvoice: async (newInv) => {
     const nextId = get().invoices.length + 1;
-    const invNum = newInv.invoice_number || `INV-2024-${String(187 + nextId).padStart(4, '0')}`;
+    const invNum = newInv.invoice_number || `INV-2026-${String(187 + nextId).padStart(4, '0')}`;
     const item: Invoice = {
       id: nextId,
       invoice_number: invNum,
       customer_name: newInv.customer_name || 'Customer Name',
       customer_email: newInv.customer_email || 'customer@gmail.com',
       customer_phone: newInv.customer_phone || '+91 98765 43210',
-      invoice_date: newInv.invoice_date || 'May 28, 2024',
-      due_date: newInv.due_date || 'June 05, 2024',
+      invoice_date: newInv.invoice_date || 'Oct 02, 2026',
+      due_date: newInv.due_date || 'Oct 16, 2026',
       amount: Number(newInv.amount) || 4500,
       status: newInv.status || 'sent',
       paid_amount: Number(newInv.paid_amount) || 0,
@@ -7126,15 +7126,15 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
   addQuotation: async (newQuo) => {
     const nextId = get().quotations.length + 1;
-    const quoNum = newQuo.quotation_number || `QUO-2024-${String(42 + nextId).padStart(4, '0')}`;
+    const quoNum = newQuo.quotation_number || `QUO-2026-${String(42 + nextId).padStart(4, '0')}`;
     const item: Quotation = {
       id: nextId,
       quotation_number: quoNum,
       customer_name: newQuo.customer_name || 'Customer Name',
       customer_email: newQuo.customer_email || 'customer@gmail.com',
       customer_phone: newQuo.customer_phone || '+91 98765 43210',
-      quotation_date: newQuo.quotation_date || 'May 31, 2024',
-      valid_until: newQuo.valid_until || 'June 15, 2024',
+      quotation_date: newQuo.quotation_date || 'Oct 02, 2026',
+      valid_until: newQuo.valid_until || 'Oct 17, 2026',
       amount: Number(newQuo.amount) || 0,
       subtotal: Number(newQuo.subtotal) || Number(newQuo.amount) || 0,
       tax_amount: Number(newQuo.tax_amount) || 0,
@@ -7198,7 +7198,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     if (!quo) throw new Error('Quotation not found');
 
     const nextId = get().invoices.length + 1;
-    const invNum = `INV-2024-${String(187 + nextId).padStart(4, '0')}`;
+    const invNum = `INV-2026-${String(187 + nextId).padStart(4, '0')}`;
     const newInvoice: Invoice = {
       id: nextId,
       invoice_number: invNum,
@@ -7854,7 +7854,7 @@ Please reply to this chat if you have any questions or need to reschedule. Our t
       payment_mode: exp.payment_mode || 'UPI',
       project: exp.project || 'General Operations',
       status: exp.status || 'paid',
-      reference_no: exp.reference_no || `EXP-2024-${String(100 + nextId).padStart(4, '0')}`,
+      reference_no: exp.reference_no || `EXP-2026-${String(100 + nextId).padStart(4, '0')}`,
       notes: exp.notes || '',
       ...exp,
     };

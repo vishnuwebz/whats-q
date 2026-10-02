@@ -12,24 +12,24 @@ import { ModernDateRangePicker, DateRangeValue } from '@/components/common/Moder
 
 // Fallback presentation demo dataset (18 employees, 15 present, 2 late, 1 absent)
 const DEFAULT_ATTENDANCE_RECORDS: (AttendanceRecord & { date: string })[] = [
-  { id: '1', employee_id_str: 'EMP-001', employee_name: 'Amit Sharma', department: 'AC Services', shift: '9:00 AM - 6:00 PM', check_in: '8:58 AM', check_out: '', work_hours: '8h 58m', status: 'present', location: 'Kozhikode, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-31' },
-  { id: '2', employee_id_str: 'EMP-002', employee_name: 'Priya Sharma', department: 'Customer Support', shift: '9:00 AM - 6:00 PM', check_in: '9:02 AM', check_out: '', work_hours: '8h 54m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Chrome)', date: '2024-05-31' },
-  { id: '3', employee_id_str: 'EMP-003', employee_name: 'Rahul Singh', department: 'Plumbing Services', shift: '9:00 AM - 6:00 PM', check_in: '8:50 AM', check_out: '', work_hours: '9h 05m', status: 'present', location: 'Vadakara, Kerala', device: 'WhatsApp Geo-Punch (iOS)', date: '2024-05-31' },
-  { id: '4', employee_id_str: 'EMP-004', employee_name: 'Neha Patel', department: 'Housekeeping Lead', shift: '9:00 AM - 6:00 PM', check_in: '-', check_out: '', work_hours: '0h 00m', status: 'absent', location: 'Kozhikode, Kerala', device: 'Leave Portal (Approved)', date: '2024-05-31' },
-  { id: '5', employee_id_str: 'EMP-005', employee_name: 'Arjun Nair', department: 'Electrical Services', shift: '9:00 AM - 6:00 PM', check_in: '9:00 AM', check_out: '', work_hours: '8h 56m', status: 'present', location: 'Ramanattukara, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-31' },
-  { id: '6', employee_id_str: 'EMP-006', employee_name: 'Sneha Joshi', department: 'Operations Lead', shift: '9:00 AM - 6:00 PM', check_in: '8:45 AM', check_out: '', work_hours: '9h 10m', status: 'present', location: 'Kozhikode Office', device: 'Desktop Punch (MacOS)', date: '2024-05-31' },
-  { id: '7', employee_id_str: 'EMP-007', employee_name: 'Vikram Mehta', department: 'HVAC Field Tech', shift: '9:00 AM - 6:00 PM', check_in: '9:18 AM', check_out: '', work_hours: '8h 38m', status: 'late', location: 'Kozhikode, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-31' },
-  { id: '8', employee_id_str: 'EMP-008', employee_name: 'Mohammed Farooq', department: 'Fleet Logistics', shift: '8:30 AM - 5:30 PM', check_in: '8:28 AM', check_out: '', work_hours: '9h 02m', status: 'present', location: 'Feroke Hub', device: 'GPS Biometric Terminal', date: '2024-05-31' },
-  { id: '9', employee_id_str: 'EMP-009', employee_name: 'Ananya Sen', department: 'Client Success', shift: '9:00 AM - 6:00 PM', check_in: '8:59 AM', check_out: '', work_hours: '8h 57m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Windows)', date: '2024-05-31' },
-  { id: '10', employee_id_str: 'EMP-010', employee_name: 'Rohan Kulkarni', department: 'AC Field Tech', shift: '9:00 AM - 6:00 PM', check_in: '9:22 AM', check_out: '', work_hours: '8h 34m', status: 'late', location: 'Pantheeramkavu, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-31' },
-  { id: '11', employee_id_str: 'EMP-011', employee_name: 'Divya Krishnan', department: 'Dispatch Coordination', shift: '9:00 AM - 6:00 PM', check_in: '8:55 AM', check_out: '', work_hours: '9h 01m', status: 'present', location: 'Kozhikode Office', device: 'Desktop App (Chrome)', date: '2024-05-30' },
-  { id: '12', employee_id_str: 'EMP-012', employee_name: 'Faizan Ali', department: 'Inventory & Parts', shift: '9:00 AM - 6:00 PM', check_in: '8:50 AM', check_out: '', work_hours: '9h 06m', status: 'present', location: 'Central Warehouse', device: 'Barcode Scanner Terminal', date: '2024-05-30' },
-  { id: '13', employee_id_str: 'EMP-013', employee_name: 'Shilpa Menon', department: 'Finance & Billing', shift: '9:30 AM - 6:30 PM', check_in: '9:28 AM', check_out: '', work_hours: '8h 52m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Windows)', date: '2024-05-30' },
-  { id: '14', employee_id_str: 'EMP-014', employee_name: 'Harish Varma', department: 'Plumbing Services', shift: '9:00 AM - 6:00 PM', check_in: '9:01 AM', check_out: '', work_hours: '8h 55m', status: 'present', location: 'Mavoor Road', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-30' },
-  { id: '15', employee_id_str: 'EMP-015', employee_name: 'Kavita Nair', department: 'QA & Compliance', shift: '9:00 AM - 6:00 PM', check_in: '8:54 AM', check_out: '', work_hours: '9h 02m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Geo-Punch (iOS)', date: '2024-05-29' },
-  { id: '16', employee_id_str: 'EMP-016', employee_name: 'Karthik Ram', department: 'Electrical Field Tech', shift: '9:00 AM - 6:00 PM', check_in: '8:57 AM', check_out: '', work_hours: '8h 59m', status: 'present', location: 'Palazhi, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-29' },
-  { id: '17', employee_id_str: 'EMP-017', employee_name: 'Manju Swamy', department: 'Appliance Repair', shift: '9:00 AM - 6:00 PM', check_in: '9:03 AM', check_out: '', work_hours: '8h 53m', status: 'present', location: 'Beypore, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2024-05-28' },
-  { id: '18', employee_id_str: 'EMP-018', employee_name: 'Zoya Khan', department: 'Customer Support', shift: '9:00 AM - 6:00 PM', check_in: '8:56 AM', check_out: '', work_hours: '9h 00m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Chrome)', date: '2024-05-28' },
+  { id: '1', employee_id_str: 'EMP-001', employee_name: 'Amit Sharma', department: 'AC Services', shift: '9:00 AM - 6:00 PM', check_in: '8:58 AM', check_out: '', work_hours: '8h 58m', status: 'present', location: 'Kozhikode, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2026-10-02' },
+  { id: '2', employee_id_str: 'EMP-002', employee_name: 'Priya Sharma', department: 'Customer Support', shift: '9:00 AM - 6:00 PM', check_in: '9:02 AM', check_out: '', work_hours: '8h 54m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Chrome)', date: '2026-10-02' },
+  { id: '3', employee_id_str: 'EMP-003', employee_name: 'Rahul Singh', department: 'Plumbing Services', shift: '9:00 AM - 6:00 PM', check_in: '8:50 AM', check_out: '', work_hours: '9h 05m', status: 'present', location: 'Vadakara, Kerala', device: 'WhatsApp Geo-Punch (iOS)', date: '2026-10-02' },
+  { id: '4', employee_id_str: 'EMP-004', employee_name: 'Neha Patel', department: 'Housekeeping Lead', shift: '9:00 AM - 6:00 PM', check_in: '-', check_out: '', work_hours: '0h 00m', status: 'absent', location: 'Kozhikode, Kerala', device: 'Leave Portal (Approved)', date: '2026-10-02' },
+  { id: '5', employee_id_str: 'EMP-005', employee_name: 'Arjun Nair', department: 'Electrical Services', shift: '9:00 AM - 6:00 PM', check_in: '9:00 AM', check_out: '', work_hours: '8h 56m', status: 'present', location: 'Ramanattukara, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2026-10-02' },
+  { id: '6', employee_id_str: 'EMP-006', employee_name: 'Sneha Joshi', department: 'Operations Lead', shift: '9:00 AM - 6:00 PM', check_in: '8:45 AM', check_out: '', work_hours: '9h 10m', status: 'present', location: 'Kozhikode Office', device: 'Desktop Punch (MacOS)', date: '2026-10-02' },
+  { id: '7', employee_id_str: 'EMP-007', employee_name: 'Vikram Mehta', department: 'HVAC Field Tech', shift: '9:00 AM - 6:00 PM', check_in: '9:18 AM', check_out: '', work_hours: '8h 38m', status: 'late', location: 'Kozhikode, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2026-10-02' },
+  { id: '8', employee_id_str: 'EMP-008', employee_name: 'Mohammed Farooq', department: 'Fleet Logistics', shift: '8:30 AM - 5:30 PM', check_in: '8:28 AM', check_out: '', work_hours: '9h 02m', status: 'present', location: 'Feroke Hub', device: 'GPS Biometric Terminal', date: '2026-10-02' },
+  { id: '9', employee_id_str: 'EMP-009', employee_name: 'Ananya Sen', department: 'Client Success', shift: '9:00 AM - 6:00 PM', check_in: '8:59 AM', check_out: '', work_hours: '8h 57m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Windows)', date: '2026-10-02' },
+  { id: '10', employee_id_str: 'EMP-010', employee_name: 'Rohan Kulkarni', department: 'AC Field Tech', shift: '9:00 AM - 6:00 PM', check_in: '9:22 AM', check_out: '', work_hours: '8h 34m', status: 'late', location: 'Pantheeramkavu, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2026-10-02' },
+  { id: '11', employee_id_str: 'EMP-011', employee_name: 'Divya Krishnan', department: 'Dispatch Coordination', shift: '9:00 AM - 6:00 PM', check_in: '8:55 AM', check_out: '', work_hours: '9h 01m', status: 'present', location: 'Kozhikode Office', device: 'Desktop App (Chrome)', date: '2026-10-01' },
+  { id: '12', employee_id_str: 'EMP-012', employee_name: 'Faizan Ali', department: 'Inventory & Parts', shift: '9:00 AM - 6:00 PM', check_in: '8:50 AM', check_out: '', work_hours: '9h 06m', status: 'present', location: 'Central Warehouse', device: 'Barcode Scanner Terminal', date: '2026-10-01' },
+  { id: '13', employee_id_str: 'EMP-013', employee_name: 'Shilpa Menon', department: 'Finance & Billing', shift: '9:30 AM - 6:30 PM', check_in: '9:28 AM', check_out: '', work_hours: '8h 52m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Windows)', date: '2026-10-01' },
+  { id: '14', employee_id_str: 'EMP-014', employee_name: 'Harish Varma', department: 'Plumbing Services', shift: '9:00 AM - 6:00 PM', check_in: '9:01 AM', check_out: '', work_hours: '8h 55m', status: 'present', location: 'Mavoor Road', device: 'WhatsApp Geo-Punch (Android)', date: '2026-10-01' },
+  { id: '15', employee_id_str: 'EMP-015', employee_name: 'Kavita Nair', department: 'QA & Compliance', shift: '9:00 AM - 6:00 PM', check_in: '8:54 AM', check_out: '', work_hours: '9h 02m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Geo-Punch (iOS)', date: '2026-09-30' },
+  { id: '16', employee_id_str: 'EMP-016', employee_name: 'Karthik Ram', department: 'Electrical Field Tech', shift: '9:00 AM - 6:00 PM', check_in: '8:57 AM', check_out: '', work_hours: '8h 59m', status: 'present', location: 'Palazhi, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2026-09-30' },
+  { id: '17', employee_id_str: 'EMP-017', employee_name: 'Manju Swamy', department: 'Appliance Repair', shift: '9:00 AM - 6:00 PM', check_in: '9:03 AM', check_out: '', work_hours: '8h 53m', status: 'present', location: 'Beypore, Kerala', device: 'WhatsApp Geo-Punch (Android)', date: '2026-09-29' },
+  { id: '18', employee_id_str: 'EMP-018', employee_name: 'Zoya Khan', department: 'Customer Support', shift: '9:00 AM - 6:00 PM', check_in: '8:56 AM', check_out: '', work_hours: '9h 00m', status: 'present', location: 'Kozhikode Office', device: 'WhatsApp Web (Chrome)', date: '2026-09-29' },
 ];
 
 export const AttendanceView: React.FC = () => {
@@ -41,7 +41,7 @@ export const AttendanceView: React.FC = () => {
     return attendance && attendance.length > 0
       ? attendance.map((a, i) => ({
           ...a,
-          date: (a as any).date || (i < 10 ? '2024-05-31' : i < 14 ? '2024-05-30' : '2024-05-29'),
+          date: (a as any).date || (i < 10 ? '2026-10-02' : i < 14 ? '2026-10-01' : '2026-09-30'),
         }))
       : DEFAULT_ATTENDANCE_RECORDS;
   }, [attendance]);
@@ -55,9 +55,9 @@ export const AttendanceView: React.FC = () => {
   // Modern Date Range state
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeValue>({
-    startDate: '2024-05-01',
-    endDate: '2024-05-31',
-    label: 'May 1 – May 31, 2024',
+    startDate: '2026-10-01',
+    endDate: '2026-10-31',
+    label: 'October 2026',
   });
 
   const filteredRecords = useMemo(() => {
@@ -85,7 +85,7 @@ export const AttendanceView: React.FC = () => {
       }
 
       // 3. Date Range Filter
-      const recordDate = (rec as any).date || '2024-05-31';
+      const recordDate = (rec as any).date || '2026-10-02';
       if (globalDateInterval) {
         if (recordDate < globalDateInterval.start || recordDate > globalDateInterval.end) return false;
       } else if (dateRange.startDate && dateRange.endDate) {
@@ -99,7 +99,7 @@ export const AttendanceView: React.FC = () => {
   // Dynamic counts within selected date range
   const recordsInDateRange = useMemo(() => {
     return allRecords.filter((rec) => {
-      const recordDate = (rec as any).date || '2024-05-31';
+      const recordDate = (rec as any).date || '2026-10-02';
       if (globalDateInterval) {
         return recordDate >= globalDateInterval.start && recordDate <= globalDateInterval.end;
       }
@@ -297,7 +297,7 @@ export const AttendanceView: React.FC = () => {
                         </td>
 
                         <td className="py-3 px-4 text-slate-600 font-mono text-[11px] whitespace-nowrap">
-                          {(rec as any).date || '2024-05-31'}
+                          {(rec as any).date || '2026-10-02'}
                         </td>
 
                         <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">{rec.shift}</td>

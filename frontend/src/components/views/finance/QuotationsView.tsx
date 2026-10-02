@@ -354,7 +354,7 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
   };
 
   // Create Form State
-  const [formNumber, setFormNumber] = useState(`QUO-2024-${String(43 + quotations.length).padStart(4, '0')}`);
+  const [formNumber, setFormNumber] = useState(`QUO-2026-${String(43 + quotations.length).padStart(4, '0')}`);
   const [formCustomerName, setFormCustomerName] = useState('');
   const [formCustomerPhone, setFormCustomerPhone] = useState('+91 ');
   const [formCustomerEmail, setFormCustomerEmail] = useState('');
@@ -507,7 +507,7 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
 
   const openCreateModal = () => {
     setEditingQuotation(null);
-    setFormNumber(`QUO-2024-${String(43 + quotations.length).padStart(4, '0')}`);
+    setFormNumber(`QUO-2026-${String(43 + quotations.length).padStart(4, '0')}`);
     setFormCustomerName('');
     setFormCustomerPhone('+91 ');
     setFormCustomerEmail('');
@@ -1235,7 +1235,7 @@ Please reply *CONFIRM* to accept this quotation or message us if you need any ad
                     value={formValidUntil}
                     onChange={(e) => setFormValidUntil(e.target.value)}
                     required
-                    placeholder="e.g. June 30, 2024"
+                    placeholder="e.g. October 31, 2026"
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>

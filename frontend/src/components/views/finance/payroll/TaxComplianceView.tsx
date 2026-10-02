@@ -48,11 +48,11 @@ export const getDocuments = (record: EmployeeTaxCompliance): ComplianceDocumentI
   return [
     {
       id: `${record.id}-doc-1`,
-      name: 'Form 16 (FY 2023-24)',
+      name: 'Form 16 (FY 2025-26)',
       category: 'Tax Certificate',
       description: 'Part A & Part B digitally signed',
       status: 'Verified',
-      uploaded_at: '01 May 2024',
+      uploaded_at: '01 Oct 2026',
       file_size: '2.4 MB',
     },
     {
@@ -61,7 +61,7 @@ export const getDocuments = (record: EmployeeTaxCompliance): ComplianceDocumentI
       category: 'KYC & Identity',
       description: 'e-KYC verified via NSDL',
       status: record.status === 'Compliant' ? 'Verified' : 'Pending',
-      uploaded_at: '15 Jan 2024',
+      uploaded_at: '15 Jan 2026',
       file_size: '1.1 MB',
     },
     {
@@ -70,7 +70,7 @@ export const getDocuments = (record: EmployeeTaxCompliance): ComplianceDocumentI
       category: 'Declaration',
       description: '80C, 80D, HRA proof submitted',
       status: record.status === 'Compliant' ? 'Verified' : 'Pending',
-      uploaded_at: '10 Apr 2024',
+      uploaded_at: '10 Apr 2026',
       file_size: '3.8 MB',
     },
   ];
@@ -82,22 +82,22 @@ export const getHistory = (record: EmployeeTaxCompliance): ComplianceHistoryItem
     {
       id: `${record.id}-hist-1`,
       title: `Tax Regime Selected: ${record.tds_regime || 'New Regime'}`,
-      description: 'Opted on 01 Apr 2024 by employee',
-      date: '01 Apr 2024',
+      description: 'Opted on 01 Apr 2026 by employee',
+      date: '01 Apr 2026',
       type: 'regime',
     },
     {
       id: `${record.id}-hist-2`,
       title: 'EPFO UAN Linked & Seeded',
-      description: 'Verified with Aadhaar OTP on 15 Jan 2024',
-      date: '15 Jan 2024',
+      description: 'Verified with Aadhaar OTP on 15 Jan 2026',
+      date: '15 Jan 2026',
       type: 'pf',
     },
     {
       id: `${record.id}-hist-3`,
-      title: 'Form 24Q Q4 Return Filed',
+      title: 'Form 24Q Q2 Return Filed',
       description: 'TDS deducted successfully remitted to Traces',
-      date: '10 May 2024',
+      date: '02 Oct 2026',
       type: 'return',
     },
   ];
@@ -332,11 +332,11 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
     <div class="meta-grid">
       <div class="meta-box">
         <div class="meta-label">Assessment Year</div>
-        <div class="bold">2024-2025</div>
+        <div class="bold">2026-2027</div>
       </div>
       <div class="meta-box">
         <div class="meta-label">Period with Employer</div>
-        <div class="bold">01-Apr-2023 to 31-Mar-2024</div>
+        <div class="bold">01-Apr-2025 to 31-Mar-2026</div>
       </div>
     </div>
 
@@ -392,13 +392,13 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
     </table>
 
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 11px; margin-top: 16px;">
-      <strong>Verification Statement:</strong> I, Finance Controller, on behalf of Qiyam Business Solutions LLP, certify that a sum of ₹${annualTds.toLocaleString()} has been deducted and credited to the Central Government Account through Challan Ref CALQ/2024/Q4.
+      <strong>Verification Statement:</strong> I, Finance Controller, on behalf of Qiyam Business Solutions LLP, certify that a sum of ₹${annualTds.toLocaleString()} has been deducted and credited to the Central Government Account through Challan Ref CALQ/2026/Q2.
     </div>
 
     <div class="seal-box">
       <div>
         <div class="bold">Place: Kozhikode</div>
-        <div>Date: 15-May-2024</div>
+        <div>Date: 02-Oct-2026</div>
         <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Digitally signed using ITD USB Token</div>
       </div>
       <div style="text-align: right;">
@@ -456,8 +456,8 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
       <div class="meta-box">
         <div class="meta-label">Employer & Financial Year</div>
         <div class="bold">QIYAM BUSINESS SOLUTIONS LLP</div>
-        <div>Financial Year: <strong>2023-2024</strong></div>
-        <div style="margin-top: 4px;">Assessment Year: <strong>2024-2025</strong></div>
+        <div>Financial Year: <strong>2025-2026</strong></div>
+        <div style="margin-top: 4px;">Assessment Year: <strong>2026-2027</strong></div>
       </div>
     </div>
 
@@ -514,7 +514,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
 
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 24px; border-top: 1px solid #cbd5e1; font-size: 11px;">
       <div>
-        <div class="bold">Date: 12-Apr-2024</div>
+        <div class="bold">Date: 02-Oct-2026</div>
         <div>Place: Kozhikode</div>
       </div>
       <div style="text-align: right;">
@@ -1113,7 +1113,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                           <span>Last Verified</span>
                           <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-emerald-500 transition-opacity" />
                         </span>
-                        <span className="font-medium text-slate-900">{selectedRecord.last_updated || '01 May 2024'}</span>
+                        <span className="font-medium text-slate-900">{selectedRecord.last_updated || '02 Oct 2026'}</span>
                       </div>
                     </div>
                   </div>
@@ -1784,11 +1784,11 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                         <span className="text-slate-500 text-[10px] block">Assessment Year</span>
-                        <span className="font-bold text-slate-900">2024-2025</span>
+                        <span className="font-bold text-slate-900">2026-2027</span>
                       </div>
                       <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                         <span className="text-slate-500 text-[10px] block">Period Covered</span>
-                        <span className="font-bold text-slate-900">01-Apr-2023 to 31-Mar-2024</span>
+                        <span className="font-bold text-slate-900">01-Apr-2025 to 31-Mar-2026</span>
                       </div>
                     </div>
 
@@ -1822,7 +1822,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                             <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-800">₹3,37,600</td>
                           </tr>
                           <tr className="bg-slate-50 font-bold text-slate-900">
-                            <td className="py-2.5 px-3">6. Total Tax Deducted & Deposited (FY 2023-24)</td>
+                            <td className="py-2.5 px-3">6. Total Tax Deducted & Deposited (FY 2025-26)</td>
                             <td className="py-2.5 px-3 text-right font-mono text-emerald-700">
                               ₹{((previewDoc.record.monthly_tds || 6500) * 12).toLocaleString()}
                             </td>
@@ -1834,7 +1834,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-200 text-[11px]">
                       <div>
                         <div className="font-bold text-slate-800">Qiyam Payroll Finance Division</div>
-                        <div className="text-slate-400">Challan Ref: CALQ/2024/Q4-NSDL-VERIFIED</div>
+                        <div className="text-slate-400">Challan Ref: CALQ/2026/Q2-NSDL-VERIFIED</div>
                       </div>
                       <div className="border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-center text-[10px]">
                         ✓ DIGITALLY SIGNED CERTIFICATE
@@ -1864,7 +1864,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Employer & Fiscal Period</span>
                         <div className="font-bold text-slate-900">QIYAM BUSINESS SOLUTIONS LLP</div>
-                        <div className="text-[11px] text-slate-500">FY: 2023-2024 • AY: 2024-2025</div>
+                        <div className="text-[11px] text-slate-500">FY: 2025-2026 • AY: 2026-2027</div>
                         <div className="text-[11px] text-slate-700 font-semibold">Regime: {previewDoc.record.tds_regime || 'New Regime'}</div>
                       </div>
                     </div>
@@ -1917,7 +1917,7 @@ export const TaxComplianceView: React.FC<Props> = ({ records, onUpdateRecord }) 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-200 text-[11px]">
                       <div>
                         <div className="font-bold text-slate-800">Submitted by: {previewDoc.record.employee_name}</div>
-                        <div className="text-slate-400">e-Signature Timestamp: 12 Apr 2024, 11:42 IST</div>
+                        <div className="text-slate-400">e-Signature Timestamp: 02 Oct 2026, 11:42 IST</div>
                       </div>
                       <div className="border border-purple-300 bg-purple-50 text-purple-800 font-bold px-3 py-1.5 rounded-lg text-center text-[10px]">
                         ✓ DECLARATION LOCKED & VERIFIED

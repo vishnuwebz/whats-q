@@ -27,7 +27,7 @@ const INITIAL_REVIEWS: StaffReview[] = [
     service: 'AC Deep Clean & Gas Refill',
     rating: 5.0,
     review_text: 'Arrived exactly at 10:00 AM. Very polite technician and cleaned the room completely after servicing the AC. Cooling is super fast now!',
-    date_str: '30 May 2024',
+    date_str: '02 Oct 2026',
     review_type: 'customer',
   },
   {
@@ -38,7 +38,7 @@ const INITIAL_REVIEWS: StaffReview[] = [
     service: 'Monthly Team Leadership Review',
     rating: 4.9,
     review_text: 'Led the Kozhikode AC service team with 99% on-time resolution rate this month. Excellent coordination on WhatsApp.',
-    date_str: '29 May 2024',
+    date_str: '01 Oct 2026',
     review_type: 'manager',
   },
   {
@@ -49,7 +49,7 @@ const INITIAL_REVIEWS: StaffReview[] = [
     service: 'Bathroom Pipeline Leakage Repair',
     rating: 4.8,
     review_text: 'Solved emergency pipe leak within 45 minutes in Vadakara. Very fair spare parts pricing and prompt work.',
-    date_str: '28 May 2024',
+    date_str: '30 Sep 2026',
     review_type: 'customer',
   },
   {
@@ -60,7 +60,7 @@ const INITIAL_REVIEWS: StaffReview[] = [
     service: 'Main MCB & Inverter Wiring Fix',
     rating: 4.7,
     review_text: 'Quickly identified short circuit in the electrical panel. Safe and clean work.',
-    date_str: '27 May 2024',
+    date_str: '29 Sep 2026',
     review_type: 'customer',
   },
 ];

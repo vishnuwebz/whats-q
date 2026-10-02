@@ -45,7 +45,7 @@ export const NewOffCycleModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
     const runNum = Math.floor(Math.random() * 900) + 100;
     const newOffCycle: OffCyclePaymentItem = {
       id: Date.now(),
-      run_id: `OC-2024-${runNum}`,
+      run_id: `OC-2026-${runNum}`,
       employee_name: employeeName,
       employee_id: employeeId,
       department,

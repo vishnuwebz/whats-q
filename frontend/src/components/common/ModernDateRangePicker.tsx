@@ -25,21 +25,40 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   onApply,
   title = 'Select Date Range',
 }) => {
-  const initialStart = value?.startDate || '2024-05-01';
-  const initialEnd = value?.endDate || '2024-05-31';
+  const now = new Date();
+  const getPad = (n: number) => String(n).padStart(2, '0');
+  const formatYMD = (d: Date) => `${d.getFullYear()}-${getPad(d.getMonth() + 1)}-${getPad(d.getDate())}`;
+
+  const todayStr = formatYMD(now);
+  const yestStr = formatYMD(new Date(now.getTime() - 86400000));
+  const weekStartStr = formatYMD(new Date(now.getTime() - 7 * 86400000));
+  const month30StartStr = formatYMD(new Date(now.getTime() - 30 * 86400000));
+  const monthStartStr = `${now.getFullYear()}-${getPad(now.getMonth() + 1)}-01`;
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthEndStr = `${now.getFullYear()}-${getPad(now.getMonth() + 1)}-${getPad(lastDayOfMonth)}`;
+
+  const isAllTimeVal = !value?.startDate || value.startDate <= '2020-01-01';
+  const initialStart = value?.startDate || monthStartStr;
+  const initialEnd = value?.endDate || monthEndStr;
 
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
-  const [activePreset, setActivePreset] = useState<string>(value?.label || 'Demo Period (May 2024)');
+  const [activePreset, setActivePreset] = useState<string>(value?.label || (isAllTimeVal ? 'All Time' : 'This Month'));
 
-  // Calendar view navigation (Year and Month)
+  // Calendar view navigation (Year and Month) defaults to real current year & month (e.g. Oct 2026)
   const [viewYear, setViewYear] = useState(() => {
-    const parsed = Number(initialStart.slice(0, 4));
-    return isNaN(parsed) || parsed < 2000 ? 2024 : parsed;
+    if (!isAllTimeVal && value?.startDate) {
+      const parsed = Number(value.startDate.slice(0, 4));
+      if (!isNaN(parsed) && parsed >= 2020 && parsed <= 2030) return parsed;
+    }
+    return now.getFullYear();
   });
   const [viewMonth, setViewMonth] = useState(() => {
-    const parsed = Number(initialStart.slice(5, 7));
-    return isNaN(parsed) || parsed < 1 ? 4 : parsed - 1; // 0-indexed
+    if (!isAllTimeVal && value?.startDate) {
+      const parsed = Number(value.startDate.slice(5, 7));
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 12) return parsed - 1;
+    }
+    return now.getMonth();
   });
 
   // Range selection state (click 1 = start, click 2 = end)
@@ -48,44 +67,40 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   // Sync state whenever modal opens or value changes
   useEffect(() => {
     if (isOpen) {
-      const s = value?.startDate || '2024-05-01';
-      const e = value?.endDate || '2024-05-31';
+      const allTime = !value?.startDate || value.startDate <= '2020-01-01';
+      const s = value?.startDate || monthStartStr;
+      const e = value?.endDate || monthEndStr;
       setStartDate(s);
       setEndDate(e);
-      setActivePreset(value?.label || 'Custom Range');
+      setActivePreset(value?.label || (allTime ? 'All Time' : 'This Month'));
 
-      const parts = s.split('-');
-      if (parts.length >= 2) {
-        const y = Number(parts[0]);
-        const m = Number(parts[1]);
-        if (y >= 2000 && m >= 1 && m <= 12) {
-          setViewYear(y);
-          setViewMonth(m - 1);
+      if (!allTime && s) {
+        const parts = s.split('-');
+        if (parts.length >= 2) {
+          const y = Number(parts[0]);
+          const m = Number(parts[1]);
+          if (y >= 2020 && y <= 2030 && m >= 1 && m <= 12) {
+            setViewYear(y);
+            setViewMonth(m - 1);
+            return;
+          }
         }
       }
+      // For All Time or no start date, always default calendar view to current month (October 2026)
+      setViewYear(now.getFullYear());
+      setViewMonth(now.getMonth());
     }
   }, [isOpen, value?.startDate, value?.endDate, value?.label]);
 
   if (!isOpen) return null;
 
-  const now = new Date();
-  const getPad = (n: number) => String(n).padStart(2, '0');
-  const formatYMD = (d: Date) => `${d.getFullYear()}-${getPad(d.getMonth() + 1)}-${getPad(d.getDate())}`;
-
-  const todayStr = formatYMD(now);
-  const yestStr = formatYMD(new Date(now.getTime() - 86400000));
-  const weekStartStr = formatYMD(new Date(now.getTime() - 7 * 86400000));
-  const monthStartStr = `${now.getFullYear()}-${getPad(now.getMonth() + 1)}-01`;
-  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const monthEndStr = `${now.getFullYear()}-${getPad(now.getMonth() + 1)}-${getPad(lastDayOfMonth)}`;
-
   const presets = [
     { label: 'All Time', start: '2020-01-01', end: '2030-12-31' },
-    { label: 'Demo Period (May 2024)', start: '2024-05-01', end: '2024-05-31' },
+    { label: 'This Month', start: monthStartStr, end: monthEndStr },
     { label: 'Today', start: todayStr, end: todayStr },
     { label: 'Yesterday', start: yestStr, end: yestStr },
     { label: 'Last 7 Days', start: weekStartStr, end: todayStr },
-    { label: 'This Month', start: monthStartStr, end: monthEndStr },
+    { label: 'Last 30 Days', start: month30StartStr, end: todayStr },
     { label: 'Custom Range', start: startDate, end: endDate },
   ];
 
@@ -93,10 +108,15 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     setActivePreset(p.label);
     setStartDate(p.start);
     setEndDate(p.end);
-    const [y, m] = p.start.split('-').map(Number);
-    if (y && m) {
-      setViewYear(y);
-      setViewMonth(m - 1);
+    if (p.label === 'All Time') {
+      setViewYear(now.getFullYear());
+      setViewMonth(now.getMonth());
+    } else {
+      const [y, m] = p.start.split('-').map(Number);
+      if (y && m) {
+        setViewYear(y);
+        setViewMonth(m - 1);
+      }
     }
   };
 

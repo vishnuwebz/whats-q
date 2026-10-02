@@ -15,7 +15,7 @@ import {
 import { exportTableToCsv } from '@/utils/exportCsv';
 
 type ReportTab = 'pnl' | 'balance_sheet' | 'cash_flow' | 'ar_aging' | 'branches';
-type PeriodType = 'may_2024' | 'apr_2024' | 'q1_2024' | 'fy_2024';
+type PeriodType = 'oct_2026' | 'sep_2026' | 'q3_2026' | 'fy_2026';
 
 interface LedgerItem {
   code: string;
@@ -40,7 +40,7 @@ export const ReportsView: React.FC = () => {
   } = store;
 
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('pnl');
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('may_2024');
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('oct_2026');
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [selectedLedgerItem, setSelectedLedgerItem] = useState<LedgerItem | null>(null);
@@ -82,7 +82,7 @@ export const ReportsView: React.FC = () => {
             <div class="header">
               <div>
                 <div class="title">QIYAM VENTURES — FINANCIAL AUDIT STATEMENT</div>
-                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Executive Operating Review • Statement Period: May 2024</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Executive Operating Review • Statement Period: October 2026</div>
               </div>
               <div style="text-align: right;">
                 <span class="badge">AUDITED & CERTIFIED</span>
@@ -109,12 +109,12 @@ export const ReportsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr><td>December 2023</td><td style="text-align: right;">₹16,80,000</td><td style="text-align: right;">₹10,40,000</td><td style="text-align: right;">₹6,40,000</td><td style="text-align: right;">38.1%</td></tr>
-                <tr><td>January 2024</td><td style="text-align: right;">₹18,20,000</td><td style="text-align: right;">₹11,10,000</td><td style="text-align: right;">₹7,10,000</td><td style="text-align: right;">39.0%</td></tr>
-                <tr><td>February 2024</td><td style="text-align: right;">₹19,50,000</td><td style="text-align: right;">₹11,80,000</td><td style="text-align: right;">₹7,70,000</td><td style="text-align: right;">39.5%</td></tr>
-                <tr><td>March 2024</td><td style="text-align: right;">₹21,20,000</td><td style="text-align: right;">₹12,20,000</td><td style="text-align: right;">₹9,00,000</td><td style="text-align: right;">42.5%</td></tr>
-                <tr><td>April 2024</td><td style="text-align: right;">₹21,75,000</td><td style="text-align: right;">₹12,60,000</td><td style="text-align: right;">₹9,15,000</td><td style="text-align: right;">42.1%</td></tr>
-                <tr style="font-weight: 700; background: #f8fafc;"><td>May 2024 (Current)</td><td style="text-align: right; color: #059669;">₹24,85,320</td><td style="text-align: right; color: #ef4444;">₹13,55,130</td><td style="text-align: right; color: #0284c7;">₹11,30,190</td><td style="text-align: right;">45.5%</td></tr>
+                <tr><td>May 2026</td><td style="text-align: right;">₹16,80,000</td><td style="text-align: right;">₹10,40,000</td><td style="text-align: right;">₹6,40,000</td><td style="text-align: right;">38.1%</td></tr>
+                <tr><td>June 2026</td><td style="text-align: right;">₹18,20,000</td><td style="text-align: right;">₹11,10,000</td><td style="text-align: right;">₹7,10,000</td><td style="text-align: right;">39.0%</td></tr>
+                <tr><td>July 2026</td><td style="text-align: right;">₹19,50,000</td><td style="text-align: right;">₹11,80,000</td><td style="text-align: right;">₹7,70,000</td><td style="text-align: right;">39.5%</td></tr>
+                <tr><td>August 2026</td><td style="text-align: right;">₹21,20,000</td><td style="text-align: right;">₹12,20,000</td><td style="text-align: right;">₹9,00,000</td><td style="text-align: right;">42.5%</td></tr>
+                <tr><td>September 2026</td><td style="text-align: right;">₹21,75,000</td><td style="text-align: right;">₹12,60,000</td><td style="text-align: right;">₹9,15,000</td><td style="text-align: right;">42.1%</td></tr>
+                <tr style="font-weight: 700; background: #f8fafc;"><td>October 2026 (Current)</td><td style="text-align: right; color: #059669;">₹24,85,320</td><td style="text-align: right; color: #ef4444;">₹13,55,130</td><td style="text-align: right; color: #0284c7;">₹11,30,190</td><td style="text-align: right;">45.5%</td></tr>
               </tbody>
             </table>
 
@@ -136,12 +136,12 @@ export const ReportsView: React.FC = () => {
 
   // 6-Month Comparative Performance Data for Recharts
   const monthlyComparativeData = [
-    { month: 'Dec 23', revenue: 1680000, expenses: 1040000, ebitda: 640000, margin: 38.1 },
-    { month: 'Jan 24', revenue: 1820000, expenses: 1110000, ebitda: 710000, margin: 39.0 },
-    { month: 'Feb 24', revenue: 1950000, expenses: 1180000, ebitda: 770000, margin: 39.5 },
-    { month: 'Mar 24', revenue: 2120000, expenses: 1220000, ebitda: 900000, margin: 42.5 },
-    { month: 'Apr 24', revenue: 2175000, expenses: 1260000, ebitda: 915000, margin: 42.1 },
-    { month: 'May 24', revenue: 2485320, expenses: 1355130, ebitda: 1130190, margin: 45.5 },
+    { month: 'May 26', revenue: 1680000, expenses: 1040000, ebitda: 640000, margin: 38.1 },
+    { month: 'Jun 26', revenue: 1820000, expenses: 1110000, ebitda: 710000, margin: 39.0 },
+    { month: 'Jul 26', revenue: 1950000, expenses: 1180000, ebitda: 770000, margin: 39.5 },
+    { month: 'Aug 26', revenue: 2120000, expenses: 1220000, ebitda: 900000, margin: 42.5 },
+    { month: 'Sep 26', revenue: 2175000, expenses: 1260000, ebitda: 915000, margin: 42.1 },
+    { month: 'Oct 26', revenue: 2485320, expenses: 1355130, ebitda: 1130190, margin: 45.5 },
   ];
 
   // Cash Runway Projection Data
@@ -155,62 +155,62 @@ export const ReportsView: React.FC = () => {
   // AR Aging Records
   const arAgingRecords = [
     {
-      invoice_number: 'INV-2024-0183',
+      invoice_number: 'INV-2026-0183',
       customer_name: 'Priya Sharma',
       phone: '+91 89213 56789',
       service: 'Commercial AMC & Deep Clean',
       amount: 32000,
       paid: 0,
-      due_date: 'May 10, 2024',
-      days_overdue: 21,
-      bucket: '61-90',
-      risk: 'high',
+      due_date: 'Oct 02, 2026',
+      days_overdue: 0,
+      bucket: '0-30',
+      risk: 'medium',
     },
     {
-      invoice_number: 'INV-2024-0182',
+      invoice_number: 'INV-2026-0182',
       customer_name: 'Rahul Singh',
       phone: '+91 98764 11122',
       service: 'Full House Electrical Wiring',
       amount: 7600,
       paid: 0,
-      due_date: 'May 20, 2024',
-      days_overdue: 11,
-      bucket: '31-60',
+      due_date: 'Sep 25, 2026',
+      days_overdue: 7,
+      bucket: '0-30',
       risk: 'medium',
     },
     {
-      invoice_number: 'INV-2024-0184',
+      invoice_number: 'INV-2026-0184',
       customer_name: 'Zoho Corp Hub',
       phone: '+91 80 4120 7890',
       service: 'Quarterly AC Ducting Service',
       amount: 4200,
       paid: 2100,
-      due_date: 'May 28, 2024',
-      days_overdue: 3,
+      due_date: 'Sep 20, 2026',
+      days_overdue: 12,
       bucket: '0-30',
       risk: 'low',
     },
     {
-      invoice_number: 'INV-2024-0187',
+      invoice_number: 'INV-2026-0187',
       customer_name: 'Vikram Mehta',
       phone: '+91 90000 11123',
       service: '1.5 Ton Inverter AC Installation',
       amount: 1200,
       paid: 360,
-      due_date: 'May 29, 2024',
-      days_overdue: 2,
+      due_date: 'Sep 15, 2026',
+      days_overdue: 17,
       bucket: '0-30',
       risk: 'low',
     },
     {
-      invoice_number: 'INV-2024-0188',
+      invoice_number: 'INV-2026-0188',
       customer_name: 'Sneha Joshi',
       phone: '+91 96789 66771',
       service: 'Pest Control Sanitization',
       amount: 2000,
       paid: 0,
-      due_date: 'May 30, 2024',
-      days_overdue: 1,
+      due_date: 'Sep 10, 2026',
+      days_overdue: 22,
       bucket: '0-30',
       risk: 'low',
     },
@@ -346,10 +346,10 @@ Please ignore this message if you have already completed the transfer. If you re
               <span>Period:</span>
             </span>
             {[
-              { id: 'may_2024', label: 'May 2024 (Current)' },
-              { id: 'apr_2024', label: 'April 2024' },
-              { id: 'q1_2024', label: 'Q1 2024 (Jan - Mar)' },
-              { id: 'fy_2024', label: 'FY 2023-24' },
+              { id: 'oct_2026', label: 'October 2026 (Current)' },
+              { id: 'sep_2026', label: 'September 2026' },
+              { id: 'q3_2026', label: 'Q3 2026 (Jul - Sep)' },
+              { id: 'fy_2026', label: 'FY 2026-27' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -392,7 +392,7 @@ Please ignore this message if you have already completed the transfer. If you re
                   type: 'financial_report',
                   title: 'Executive Financial Audit Statement',
                   recipientName: 'Board of Directors & Stakeholders',
-                  dateStr: 'May 2024',
+                  dateStr: 'October 2026',
                   amount: 2485320,
                   items: [
                     { description: 'Gross Revenue (Operations & Field Services)', qty: 1, unitPrice: 2485320, amount: 2485320 },
@@ -559,13 +559,13 @@ Please ignore this message if you have already completed the transfer. If you re
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-slate-900">Profit & Loss Statement (May 2024)</h3>
+                    <h3 className="font-bold text-base text-slate-900">Profit & Loss Statement (October 2026)</h3>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
                       Audited
                     </span>
                   </div>
                   <p className="text-slate-500 text-[11px] mt-0.5">
-                    Period: May 01, 2024 – May 31, 2024 • CoolFix Services Ltd. • Accrual Accounting
+                    Period: October 01, 2026 – October 31, 2026 • CoolFix Services Ltd. • Accrual Accounting
                   </p>
                 </div>
                 <button
@@ -768,7 +768,7 @@ Please ignore this message if you have already completed the transfer. If you re
                     <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                       6-Month Revenue vs Expense Trend
                     </h4>
-                    <p className="text-[11px] text-slate-500">Dec 2023 – May 2024</p>
+                    <p className="text-[11px] text-slate-500">May 2026 – October 2026</p>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                     +14.2% MoM
@@ -873,7 +873,7 @@ Please ignore this message if you have already completed the transfer. If you re
                   </span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-0.5">
-                  As of May 31, 2024 • CoolFix Services Ltd. • Consolidated All Entities
+                  As of October 02, 2026 • CoolFix Services Ltd. • Consolidated All Entities
                 </p>
               </div>
               <button
@@ -1027,7 +1027,7 @@ Please ignore this message if you have already completed the transfer. If you re
               <div className="lg:col-span-7 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div>
-                    <h3 className="font-bold text-base text-slate-900">Cash Flow Statement (May 2024)</h3>
+                    <h3 className="font-bold text-base text-slate-900">Cash Flow Statement (October 2026)</h3>
                     <p className="text-slate-500 text-[11px]">Direct Cash Inflows & Outflows</p>
                   </div>
                   <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
@@ -1037,7 +1037,7 @@ Please ignore this message if you have already completed the transfer. If you re
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 px-3 bg-slate-50 rounded-xl font-bold">
-                    <span>Cash Balance at Beginning of Period (May 01):</span>
+                    <span>Cash Balance at Beginning of Period (October 01):</span>
                     <span className="font-mono text-slate-900">₹37,32,460</span>
                   </div>
 
@@ -1456,7 +1456,7 @@ Please ignore this message if you have already completed the transfer. If you re
                     type: 'financial_report',
                     title: 'Executive Financial Audit Statement',
                     recipientName: 'Board of Directors & Stakeholders',
-                    dateStr: 'May 2024',
+                    dateStr: 'October 2026',
                     amount: 2485320,
                     items: [
                       { description: 'Gross Revenue (Operations & Field Services)', qty: 1, unitPrice: 2485320, amount: 2485320 },

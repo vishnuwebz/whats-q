@@ -148,7 +148,7 @@ export const ExpensesView: React.FC = () => {
     payment_mode: 'UPI',
     project: 'Field Operations',
     status: 'paid',
-    reference_no: `EXP-2024-${String(100 + expenses.length + 1).padStart(4, '0')}`,
+    reference_no: `EXP-2026-${String(100 + expenses.length + 1).padStart(4, '0')}`,
     notes: '',
   });
 
@@ -272,7 +272,7 @@ export const ExpensesView: React.FC = () => {
       payment_mode: 'UPI',
       project: 'Field Operations',
       status: 'paid',
-      reference_no: `EXP-2024-${String(100 + expenses.length + 1).padStart(4, '0')}`,
+      reference_no: `EXP-2026-${String(100 + expenses.length + 1).padStart(4, '0')}`,
       notes: '',
     });
     setIsCreateModalOpen(true);
@@ -290,7 +290,7 @@ export const ExpensesView: React.FC = () => {
       payment_mode: exp.payment_mode || 'UPI',
       project: exp.project || '',
       status: exp.status || 'paid',
-      reference_no: exp.reference_no || `EXP-2024-${String(exp.id).padStart(4, '0')}`,
+      reference_no: exp.reference_no || `EXP-2026-${String(exp.id).padStart(4, '0')}`,
       notes: exp.notes || '',
     });
     setIsEditModalOpen(true);
@@ -453,7 +453,7 @@ export const ExpensesView: React.FC = () => {
             </div>
             <div style="text-align: right;">
               <h2 style="margin: 0; font-size: 18px; color: #0f172a;">OFFICIAL PAYMENT VOUCHER</h2>
-              <div style="font-weight: 700; color: #ef4444; font-size: 13px; margin: 4px 0;">#${exp.reference_no || `EXP-2024-${exp.id}`}</div>
+              <div style="font-weight: 700; color: #ef4444; font-size: 13px; margin: 4px 0;">#${exp.reference_no || `EXP-2026-${exp.id}`}</div>
               <div class="badge ${exp.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${exp.status === 'paid' ? 'PAID / DISBURSED' : 'PENDING APPROVAL'}</div>
             </div>
           </div>
@@ -1170,7 +1170,7 @@ export const ExpensesView: React.FC = () => {
                     type="text"
                     value={form.date_str}
                     onChange={(e) => setForm({ ...form, date_str: e.target.value })}
-                    placeholder="e.g. May 31, 2024"
+                    placeholder="e.g. October 02, 2026"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                   />
                 </div>
@@ -1184,7 +1184,7 @@ export const ExpensesView: React.FC = () => {
                     type="text"
                     value={form.reference_no}
                     onChange={(e) => setForm({ ...form, reference_no: e.target.value })}
-                    placeholder="e.g. EXP-2024-0089"
+                    placeholder="e.g. EXP-2026-0089"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-xs outline-none focus:ring-1 focus:ring-red-500"
                   />
                 </div>

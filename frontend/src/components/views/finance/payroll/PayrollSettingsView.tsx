@@ -881,7 +881,7 @@ export const PayrollSettingsView: React.FC<Props> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">Default Tax Regime</h3>
-                  <p className="text-[10px] text-slate-400">Finance Act 2024-26 Rules</p>
+                  <p className="text-[10px] text-slate-400">Finance Act 2026 Rules</p>
                 </div>
               </div>
 

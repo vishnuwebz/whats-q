@@ -52,11 +52,11 @@ export const ManageComplianceDocModal: React.FC<Props> = ({
     const existingDocs: ComplianceDocumentItem[] = record.documents ? [...record.documents] : [
       {
         id: `${record.id}-doc-1`,
-        name: 'Form 16 (FY 2023-24)',
+        name: 'Form 16 (FY 2025-26)',
         category: 'Tax Certificate',
         description: 'Part A & Part B digitally signed',
         status: 'Verified',
-        uploaded_at: '01 May 2024',
+        uploaded_at: '01 Oct 2026',
         file_size: '2.4 MB',
       },
       {
@@ -65,7 +65,7 @@ export const ManageComplianceDocModal: React.FC<Props> = ({
         category: 'KYC & Identity',
         description: 'e-KYC verified via NSDL',
         status: record.status === 'Compliant' ? 'Verified' : 'Pending',
-        uploaded_at: '15 Jan 2024',
+        uploaded_at: '15 Jan 2026',
         file_size: '1.1 MB',
       },
       {
@@ -74,7 +74,7 @@ export const ManageComplianceDocModal: React.FC<Props> = ({
         category: 'Declaration',
         description: '80C, 80D, HRA proof submitted',
         status: record.status === 'Compliant' ? 'Verified' : 'Pending',
-        uploaded_at: '10 Apr 2024',
+        uploaded_at: '10 Apr 2026',
         file_size: '3.8 MB',
       },
     ];
@@ -164,7 +164,7 @@ export const ManageComplianceDocModal: React.FC<Props> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Form 16 (FY 2024-25), HRA Rent Agreement..."
+              placeholder="e.g. Form 16 (FY 2026-27), HRA Rent Agreement..."
               className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -218,7 +218,7 @@ export const ManageComplianceDocModal: React.FC<Props> = ({
                 type="text"
                 value={uploadedAt}
                 onChange={(e) => setUploadedAt(e.target.value)}
-                placeholder="e.g. 01 May 2024"
+                placeholder="e.g. 01 Oct 2026"
                 className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono"
               />
             </div>

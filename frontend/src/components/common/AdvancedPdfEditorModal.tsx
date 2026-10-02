@@ -1854,8 +1854,8 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     JSON.stringify({
                       type: 'invoice',
                       title: 'Tax Invoice & GST Bill',
-                      referenceNumber: 'INV-2024-0521',
-                      invoiceNumber: 'INV-2024-0521',
+                      referenceNumber: 'INV-2026-0521',
+                      invoiceNumber: 'INV-2026-0521',
                       subject: 'TAX INVOICE - COMMERCIAL SERVICES',
                       bodyContent:
                         'Invoice for Air Conditioning Maintenance & System Overhaul. Payment terms: 100% advance or same-day UPI transfer upon job completion.',
@@ -1867,8 +1867,8 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     ...doc,
                     type: 'invoice',
                     title: 'Tax Invoice & GST Bill',
-                    referenceNumber: 'INV-2024-0521',
-                    invoiceNumber: 'INV-2024-0521',
+                    referenceNumber: 'INV-2026-0521',
+                    invoiceNumber: 'INV-2026-0521',
                     subject: 'TAX INVOICE - COMMERCIAL SERVICES',
                     bodyContent:
                       'Invoice for Air Conditioning Maintenance & System Overhaul. Payment terms: 100% advance or same-day UPI transfer upon job completion.',
@@ -1887,8 +1887,8 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     JSON.stringify({
                       type: 'quotation',
                       title: 'Commercial Quotation',
-                      referenceNumber: 'QUO-2024-0112',
-                      invoiceNumber: 'QUO-2024-0112',
+                      referenceNumber: 'QUO-2026-0112',
+                      invoiceNumber: 'QUO-2026-0112',
                       subject: 'ESTIMATE & PRICE QUOTATION',
                       bodyContent:
                         'Formal proposal and quotation for annual MEP facilities maintenance, parts replacement warranty, and priority 24/7 breakdown support.',
@@ -1900,8 +1900,8 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     ...doc,
                     type: 'quotation',
                     title: 'Commercial Quotation',
-                    referenceNumber: 'QUO-2024-0112',
-                    invoiceNumber: 'QUO-2024-0112',
+                    referenceNumber: 'QUO-2026-0112',
+                    invoiceNumber: 'QUO-2026-0112',
                     subject: 'ESTIMATE & PRICE QUOTATION',
                     bodyContent:
                       'Formal proposal and quotation for annual MEP facilities maintenance, parts replacement warranty, and priority 24/7 breakdown support.',
@@ -1982,7 +1982,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     JSON.stringify({
                       type: 'financial_report',
                       title: 'Executive Financial Audit Statement',
-                      referenceNumber: 'AUD-2024-Q2',
+                      referenceNumber: 'AUD-2026-Q3',
                       amount: 2485320,
                       subject: 'QUARTERLY FINANCIAL AUDIT & RECONCILIATION',
                       bodyContent:
@@ -1995,7 +1995,7 @@ const AdvancedPdfEditorContent: React.FC<{ initialDoc: PdfEditorDocument }> = ({
                     ...doc,
                     type: 'financial_report',
                     title: 'Executive Financial Audit Statement',
-                    referenceNumber: 'AUD-2024-Q2',
+                    referenceNumber: 'AUD-2026-Q3',
                     amount: 2485320,
                     subject: 'QUARTERLY FINANCIAL AUDIT & RECONCILIATION',
                     bodyContent:

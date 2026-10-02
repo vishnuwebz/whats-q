@@ -31,7 +31,7 @@ export const RouteOptimizationView: React.FC = () => {
       driver_name: 'Rahul Mehta',
       phone: '+91 94963 00233',
       vehicle: 'KL 11 AB 1234',
-      date_str: 'May 1 – May 31, 2024',
+      date_str: 'October 1 – October 31, 2026',
       status: 'in_progress',
       stops_count: 12,
       completed_stops: 9,

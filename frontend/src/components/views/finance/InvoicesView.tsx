@@ -78,12 +78,12 @@ Please feel free to ask if you have any questions or require an itemized breakdo
   };
 
   const [createForm, setCreateForm] = useState({
-    invoice_number: `INV-2024-${String(187 + invoices.length).padStart(4, '0')}`,
+    invoice_number: `INV-2026-${String(187 + invoices.length).padStart(4, '0')}`,
     customer_name: '',
     customer_phone: '',
     customer_email: '',
     amount: 4500,
-    due_date: 'June 05, 2024',
+    due_date: 'October 15, 2026',
     status: 'sent' as Invoice['status'],
     payment_method: 'UPI (GPay)',
   });
@@ -110,12 +110,12 @@ Please feel free to ask if you have any questions or require an itemized breakdo
     setSelectedInvoice(created);
     setIsCreateModalOpen(false);
     setCreateForm({
-      invoice_number: `INV-2024-${String(188 + invoices.length).padStart(4, '0')}`,
+      invoice_number: `INV-2026-${String(188 + invoices.length).padStart(4, '0')}`,
       customer_name: '',
       customer_phone: '',
       customer_email: '',
       amount: 4500,
-      due_date: 'June 05, 2024',
+      due_date: 'October 15, 2026',
       status: 'sent',
       payment_method: 'UPI (GPay)',
     });
@@ -187,7 +187,7 @@ Please feel free to ask if you have any questions or require an itemized breakdo
               <div style="font-size: 13px; color: #475569;">${inv.customer_email || 'client@qiyamventures.com'}</div>
             </div>
             <div style="text-align: right;">
-              <div><strong>Invoice Date:</strong> ${inv.invoice_date || 'May 12, 2024'}</div>
+              <div><strong>Invoice Date:</strong> ${inv.invoice_date || 'October 02, 2026'}</div>
               <div><strong>Payment Due:</strong> ${inv.due_date}</div>
               <div><strong>Payment Mode:</strong> ${inv.payment_method}</div>
             </div>

@@ -126,7 +126,7 @@ export const WhatsAppTemplatePreviewModal: React.FC<WhatsAppTemplatePreviewModal
     bodyRaw = bodyRaw
       .replace(/\{\{1\}\}/g, 'Vikram Mehta')
       .replace(/\{\{2\}\}/g, 'AC Deep Cleaning')
-      .replace(/\{\{3\}\}/g, 'May 13, 2024')
+      .replace(/\{\{3\}\}/g, 'October 03, 2026')
       .replace(/\{\{4\}\}/g, '10:30 AM')
       .replace(/\{\{5\}\}/g, 'Ramesh Kumar')
       .replace(/\{\{6\}\}/g, '₹2,800');

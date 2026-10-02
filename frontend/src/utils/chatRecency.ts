@@ -123,7 +123,7 @@ export function parseAnyDate(raw?: string | null): Date | null {
   if (monthDayMatch) {
     const month = monthDayMatch[1];
     const day = monthDayMatch[2];
-    const year = monthDayMatch[3] || '2024';
+    const year = monthDayMatch[3] || String(new Date().getFullYear());
     const timeStr = monthDayMatch[4] ? ` ${monthDayMatch[4]}:${monthDayMatch[5]} ${monthDayMatch[6] || ''}` : ' 10:30 AM';
     const fallbackDate = Date.parse(`${month} ${day}, ${year}${timeStr}`);
     if (!isNaN(fallbackDate)) {

@@ -119,7 +119,7 @@ export const FinanceOverviewView: React.FC = () => {
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Income vs Expense Comparison (2024)</h3>
+              <h3 className="text-sm font-bold text-slate-900">Income vs Expense Comparison (2026)</h3>
               <p className="text-xs text-slate-500">Monthly breakdown of billed revenue vs operating expenses</p>
             </div>
             <div className="flex items-center gap-2">

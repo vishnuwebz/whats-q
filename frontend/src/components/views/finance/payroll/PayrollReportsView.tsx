@@ -20,7 +20,7 @@ export const PayrollReportsView: React.FC<Props> = ({
 }) => {
   const [reportsList, setReportsList] = useState<PayrollReportItem[]>(initialReports);
   const [trendRange, setTrendRange] = useState<'Last 6 Months' | 'Last 3 Months' | 'Last 12 Months'>('Last 6 Months');
-  const [selectedMonth, setSelectedMonth] = useState('May 2024');
+  const [selectedMonth, setSelectedMonth] = useState('October 2026');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
   const [selectedEmployee, setSelectedEmployee] = useState('All Employees');
   const [selectedReportType, setSelectedReportType] = useState('All Report Types');
@@ -352,11 +352,11 @@ export const PayrollReportsView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Payroll Cost Distribution (May 2024) */}
+        {/* Payroll Cost Distribution (October 2026) */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-900">Payroll Cost Distribution (May 2024)</h3>
+              <h3 className="text-base font-bold text-slate-900">Payroll Cost Distribution (October 2026)</h3>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -431,11 +431,11 @@ export const PayrollReportsView: React.FC<Props> = ({
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="bg-transparent outline-none cursor-pointer pr-2"
           >
-            <option value="May 2024">May 2024</option>
-            <option value="Apr 2024">Apr 2024</option>
-            <option value="Mar 2024">Mar 2024</option>
-            <option value="Feb 2024">Feb 2024</option>
-            <option value="Jan 2024">Jan 2024</option>
+            <option value="October 2026">October 2026</option>
+            <option value="September 2026">September 2026</option>
+            <option value="August 2026">August 2026</option>
+            <option value="July 2026">July 2026</option>
+            <option value="June 2026">June 2026</option>
           </select>
         </div>
 

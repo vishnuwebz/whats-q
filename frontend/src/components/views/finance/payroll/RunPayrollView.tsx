@@ -73,7 +73,7 @@ export const RunPayrollView: React.FC<Props> = ({
   }, []);
 
   // Scope filter bar states
-  const [selectedMonth, setSelectedMonth] = useState('September 2026');
+  const [selectedMonth, setSelectedMonth] = useState('October 2026');
   const [selectedGroup, setSelectedGroup] = useState('All Groups');
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [selectedType, setSelectedType] = useState('All Types');
@@ -715,10 +715,10 @@ export const RunPayrollView: React.FC<Props> = ({
                     onChange={(e) => setSelectedMonth(e.target.value)}
                     className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
                   >
+                    <option>October 2026</option>
                     <option>September 2026</option>
                     <option>August 2026</option>
                     <option>July 2026</option>
-                    <option>May 2024</option>
                   </select>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>

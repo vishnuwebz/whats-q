@@ -16,58 +16,58 @@ import {
 export const INITIAL_PAYROLL_RUNS: PayrollRunItem[] = [
   {
     id: 1,
-    month: 'May 2024',
+    month: 'October 2026',
     employees_count: 32,
     gross_amount: 1245000,
     deductions: 182500,
     net_amount: 1062500,
     payment_status: 'Processing',
-    processed_on: '30 May 2024',
-    notes: 'May 2024 monthly salary cycle under processing.',
+    processed_on: '02 Oct 2026',
+    notes: 'October 2026 monthly salary cycle under processing.',
   },
   {
     id: 2,
-    month: 'Apr 2024',
+    month: 'September 2026',
     employees_count: 32,
     gross_amount: 1180000,
     deductions: 175200,
     net_amount: 1004800,
     payment_status: 'Paid',
-    processed_on: '30 Apr 2024',
+    processed_on: '30 Sep 2026',
     notes: 'Disbursed via HDFC NEFT/RTGS batch.',
   },
   {
     id: 3,
-    month: 'Mar 2024',
+    month: 'August 2026',
     employees_count: 31,
     gross_amount: 1120500,
     deductions: 168300,
     net_amount: 952200,
     payment_status: 'Paid',
-    processed_on: '28 Mar 2024',
+    processed_on: '31 Aug 2026',
     notes: 'Early salary credit due to holiday.',
   },
   {
     id: 4,
-    month: 'Feb 2024',
+    month: 'July 2026',
     employees_count: 31,
     gross_amount: 1095000,
     deductions: 162400,
     net_amount: 932600,
     payment_status: 'Paid',
-    processed_on: '28 Feb 2024',
-    notes: 'February 28-day cycle with full incentives.',
+    processed_on: '31 Jul 2026',
+    notes: 'July cycle with full incentives.',
   },
   {
     id: 5,
-    month: 'Jan 2024',
+    month: 'June 2026',
     employees_count: 30,
     gross_amount: 1040000,
     deductions: 156000,
     net_amount: 884000,
     payment_status: 'Paid',
-    processed_on: '31 Jan 2024',
-    notes: 'New Year cycle processed.',
+    processed_on: '30 Jun 2026',
+    notes: 'Mid-year cycle processed.',
   },
 ];
 
@@ -181,18 +181,18 @@ export const INITIAL_SALARY_STRUCTURES: SalaryStructure[] = [
 // 3. EMPLOYEE SALARY ASSIGNMENTS (Image 2)
 // ==========================================
 export const INITIAL_EMPLOYEE_ASSIGNMENTS: EmployeeSalaryAssignment[] = [
-  { id: 1, employee_name: 'Amit Sharma', employee_id: 'EMP001', department: 'Operations', salary_structure: 'Operations Standard', current_ctc: 42000, effective_from: '01 Jan 2024', status: 'Active' },
-  { id: 2, employee_name: 'Rahul Singh', employee_id: 'EMP002', department: 'Sales', salary_structure: 'Sales Incentive Based', current_ctc: 48000, effective_from: '01 Feb 2024', status: 'Active' },
-  { id: 3, employee_name: 'Priya Mehta', employee_id: 'EMP003', department: 'Marketing', salary_structure: 'Marketing Standard', current_ctc: 36000, effective_from: '01 Jan 2024', status: 'Active' },
-  { id: 4, employee_name: 'Vikram Kumar', employee_id: 'EMP004', department: 'Technology', salary_structure: 'Technology Premium', current_ctc: 55000, effective_from: '01 Mar 2024', status: 'Active' },
-  { id: 5, employee_name: 'Nazia A', employee_id: 'EMP005', department: 'HR', salary_structure: 'HR & Admin', current_ctc: 32000, effective_from: '01 Jan 2024', status: 'Active' },
-  { id: 6, employee_name: 'Sameer K', employee_id: 'EMP006', department: 'Finance', salary_structure: 'Management', current_ctc: 55000, effective_from: '01 Jan 2024', status: 'Active' },
-  { id: 7, employee_name: 'Devika L', employee_id: 'EMP007', department: 'Operations', salary_structure: 'Operations Standard', current_ctc: 38000, effective_from: '15 Jan 2024', status: 'Active' },
-  { id: 8, employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', salary_structure: 'Sales Incentive Based', current_ctc: 45000, effective_from: '01 Feb 2024', status: 'Active' },
-  { id: 9, employee_name: 'Sana N', employee_id: 'EMP009', department: 'Marketing', salary_structure: 'Marketing Standard', current_ctc: 41000, effective_from: '01 Feb 2024', status: 'Active' },
-  { id: 10, employee_name: 'Arjun R', employee_id: 'EMP010', department: 'Technology', salary_structure: 'Technology Premium', current_ctc: 49000, effective_from: '01 Feb 2024', status: 'Active' },
-  { id: 11, employee_name: 'Kavita Pillai', employee_id: 'EMP011', department: 'Operations', salary_structure: 'Operations Standard', current_ctc: 34000, effective_from: '01 Mar 2024', status: 'Active' },
-  { id: 12, employee_name: 'Rohan Nambiar', employee_id: 'EMP012', department: 'Sales', salary_structure: 'Sales Incentive Based', current_ctc: 42000, effective_from: '01 Feb 2024', status: 'Active' },
+  { id: 1, employee_name: 'Amit Sharma', employee_id: 'EMP001', department: 'Operations', salary_structure: 'Operations Standard', current_ctc: 42000, effective_from: '01 Jan 2026', status: 'Active' },
+  { id: 2, employee_name: 'Rahul Singh', employee_id: 'EMP002', department: 'Sales', salary_structure: 'Sales Incentive Based', current_ctc: 48000, effective_from: '01 Feb 2026', status: 'Active' },
+  { id: 3, employee_name: 'Priya Mehta', employee_id: 'EMP003', department: 'Marketing', salary_structure: 'Marketing Standard', current_ctc: 36000, effective_from: '01 Jan 2026', status: 'Active' },
+  { id: 4, employee_name: 'Vikram Kumar', employee_id: 'EMP004', department: 'Technology', salary_structure: 'Technology Premium', current_ctc: 55000, effective_from: '01 Mar 2026', status: 'Active' },
+  { id: 5, employee_name: 'Nazia A', employee_id: 'EMP005', department: 'HR', salary_structure: 'HR & Admin', current_ctc: 32000, effective_from: '01 Jan 2026', status: 'Active' },
+  { id: 6, employee_name: 'Sameer K', employee_id: 'EMP006', department: 'Finance', salary_structure: 'Management', current_ctc: 55000, effective_from: '01 Jan 2026', status: 'Active' },
+  { id: 7, employee_name: 'Devika L', employee_id: 'EMP007', department: 'Operations', salary_structure: 'Operations Standard', current_ctc: 38000, effective_from: '15 Jan 2026', status: 'Active' },
+  { id: 8, employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', salary_structure: 'Sales Incentive Based', current_ctc: 45000, effective_from: '01 Feb 2026', status: 'Active' },
+  { id: 9, employee_name: 'Sana N', employee_id: 'EMP009', department: 'Marketing', salary_structure: 'Marketing Standard', current_ctc: 41000, effective_from: '01 Feb 2026', status: 'Active' },
+  { id: 10, employee_name: 'Arjun R', employee_id: 'EMP010', department: 'Technology', salary_structure: 'Technology Premium', current_ctc: 49000, effective_from: '01 Feb 2026', status: 'Active' },
+  { id: 11, employee_name: 'Kavita Pillai', employee_id: 'EMP011', department: 'Operations', salary_structure: 'Operations Standard', current_ctc: 34000, effective_from: '01 Mar 2026', status: 'Active' },
+  { id: 12, employee_name: 'Rohan Nambiar', employee_id: 'EMP012', department: 'Sales', salary_structure: 'Sales Incentive Based', current_ctc: 42000, effective_from: '01 Feb 2026', status: 'Active' },
 ];
 
 // ==========================================
@@ -237,59 +237,59 @@ export const INITIAL_EMPLOYEE_SALARY_DETAILS: EmployeeSalaryDetail[] = [
 // 5. REIMBURSEMENTS (Image 5)
 // ==========================================
 export const INITIAL_REIMBURSEMENTS: ReimbursementItem[] = [
-  { id: 1, employee_name: 'Amit Sharma', employee_id: 'EMP001', purpose: 'Client Meeting', category: 'Travel', amount: 3250, submitted_on: '12 May 2024', status: 'Pending', notes: 'Fuel and toll charges for Koyilandy commercial HVAC survey.' },
-  { id: 2, employee_name: 'Rahul Singh', employee_id: 'EMP002', purpose: 'Work from Home Internet', category: 'Internet', amount: 1200, submitted_on: '10 May 2024', status: 'Approved', notes: 'Monthly broadband invoice attached.' },
-  { id: 3, employee_name: 'Priya Mehta', employee_id: 'EMP003', purpose: 'Team Lunch', category: 'Food', amount: 2450, submitted_on: '08 May 2024', status: 'Pending', notes: 'Quarterly review lunch with marketing crew.' },
-  { id: 4, employee_name: 'Vikram Kumar', employee_id: 'EMP004', purpose: 'Product Demo Travel', category: 'Travel', amount: 5800, submitted_on: '06 May 2024', status: 'Approved', notes: 'Flight and taxi fares to Cochin tech expo.' },
-  { id: 5, employee_name: 'Nazia A', employee_id: 'EMP005', purpose: 'Office Supplies', category: 'Stationery', amount: 1750, submitted_on: '03 May 2024', status: 'Rejected', notes: 'Duplicate receipt found for printing toner.' },
-  { id: 6, employee_name: 'Sameer K', employee_id: 'EMP006', purpose: 'Conference Fee', category: 'Training', amount: 12000, submitted_on: '02 May 2024', status: 'Approved', notes: 'GST & Corporate Tax compliance summit pass.' },
-  { id: 7, employee_name: 'Devika L', employee_id: 'EMP007', purpose: 'Fuel Reimbursement', category: 'Transport', amount: 4200, submitted_on: '29 Apr 2024', status: 'Pending', notes: 'Inter-branch visits Calicut to Vadakara.' },
-  { id: 8, employee_name: 'Irshad Rahman', employee_id: 'EMP008', purpose: 'Software Subscription', category: 'Software', amount: 6500, submitted_on: '28 Apr 2024', status: 'Approved', notes: 'Annual sales outreach tooling license.' },
-  { id: 9, employee_name: 'Sana N', employee_id: 'EMP009', purpose: 'Client Entertainment', category: 'Food', amount: 3600, submitted_on: '25 Apr 2024', status: 'Rejected', notes: 'Outside authorized company policy threshold.' },
-  { id: 10, employee_name: 'Arjun R', employee_id: 'EMP010', purpose: 'Mobile Bill', category: 'Communication', amount: 950, submitted_on: '22 Apr 2024', status: 'Approved', notes: 'On-call technical support phone bill.' },
+  { id: 1, employee_name: 'Amit Sharma', employee_id: 'EMP001', purpose: 'Client Meeting', category: 'Travel', amount: 3250, submitted_on: '02 Oct 2026', status: 'Pending', notes: 'Fuel and toll charges for Koyilandy commercial HVAC survey.' },
+  { id: 2, employee_name: 'Rahul Singh', employee_id: 'EMP002', purpose: 'Work from Home Internet', category: 'Internet', amount: 1200, submitted_on: '01 Oct 2026', status: 'Approved', notes: 'Monthly broadband invoice attached.' },
+  { id: 3, employee_name: 'Priya Mehta', employee_id: 'EMP003', purpose: 'Team Lunch', category: 'Food', amount: 2450, submitted_on: '30 Sep 2026', status: 'Pending', notes: 'Quarterly review lunch with marketing crew.' },
+  { id: 4, employee_name: 'Vikram Kumar', employee_id: 'EMP004', purpose: 'Product Demo Travel', category: 'Travel', amount: 5800, submitted_on: '28 Sep 2026', status: 'Approved', notes: 'Flight and taxi fares to Cochin tech expo.' },
+  { id: 5, employee_name: 'Nazia A', employee_id: 'EMP005', purpose: 'Office Supplies', category: 'Stationery', amount: 1750, submitted_on: '26 Sep 2026', status: 'Rejected', notes: 'Duplicate receipt found for printing toner.' },
+  { id: 6, employee_name: 'Sameer K', employee_id: 'EMP006', purpose: 'Conference Fee', category: 'Training', amount: 12000, submitted_on: '24 Sep 2026', status: 'Approved', notes: 'GST & Corporate Tax compliance summit pass.' },
+  { id: 7, employee_name: 'Devika L', employee_id: 'EMP007', purpose: 'Fuel Reimbursement', category: 'Transport', amount: 4200, submitted_on: '22 Sep 2026', status: 'Pending', notes: 'Inter-branch visits Calicut to Vadakara.' },
+  { id: 8, employee_name: 'Irshad Rahman', employee_id: 'EMP008', purpose: 'Software Subscription', category: 'Software', amount: 6500, submitted_on: '20 Sep 2026', status: 'Approved', notes: 'Annual sales outreach tooling license.' },
+  { id: 9, employee_name: 'Sana N', employee_id: 'EMP009', purpose: 'Client Entertainment', category: 'Food', amount: 3600, submitted_on: '18 Sep 2026', status: 'Rejected', notes: 'Outside authorized company policy threshold.' },
+  { id: 10, employee_name: 'Arjun R', employee_id: 'EMP010', purpose: 'Mobile Bill', category: 'Communication', amount: 950, submitted_on: '15 Sep 2026', status: 'Approved', notes: 'On-call technical support phone bill.' },
 ];
 
 // ==========================================
 // 6. TAX & COMPLIANCE (Image 6)
 // ==========================================
 export const INITIAL_TAX_COMPLIANCE: EmployeeTaxCompliance[] = [
-  { id: 1, employee_name: 'Amit Sharma', employee_id: 'EMP001', department: 'Operations', tds: true, pf: true, esi: false, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 62000, monthly_tds: 5166, pf_number: '1002 3456 7891', pt_number: 'KL/PT/1234501', last_updated: '01 May 2024' },
-  { id: 2, employee_name: 'Rahul Singh', employee_id: 'EMP002', department: 'Sales', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 48000, monthly_tds: 4000, pf_number: '1002 3456 7892', esi_number: '4400 1234 5671', pt_number: 'KL/PT/1234502', last_updated: '01 May 2024' },
-  { id: 3, employee_name: 'Priya Mehta', employee_id: 'EMP003', department: 'Marketing', tds: true, pf: true, esi: false, pt: true, status: 'Compliant', tds_regime: 'Old Regime', estimated_annual_tax: 72000, monthly_tds: 6000, pf_number: '1002 3456 7893', pt_number: 'KL/PT/1234503', last_updated: '01 May 2024' },
-  { id: 4, employee_name: 'Vikram Kumar', employee_id: 'EMP004', department: 'Technology', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 78000, monthly_tds: 6500, pf_number: '1002 3456 7890', esi_number: '4400 1234 5678', pt_number: 'KL/PT/1234567', last_updated: '01 May 2024' },
-  { id: 5, employee_name: 'Nazia A', employee_id: 'EMP005', department: 'HR', tds: false, pf: true, esi: false, pt: true, status: 'Pending', tds_regime: 'New Regime', estimated_annual_tax: 0, monthly_tds: 0, pf_number: '1002 3456 7895', pt_number: 'KL/PT/1234505', last_updated: '28 Apr 2024' },
-  { id: 6, employee_name: 'Sameer K', employee_id: 'EMP006', department: 'Finance', tds: true, pf: true, esi: false, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 96000, monthly_tds: 8000, pf_number: '1002 3456 7896', pt_number: 'KL/PT/1234506', last_updated: '01 May 2024' },
-  { id: 7, employee_name: 'Devika L', employee_id: 'EMP007', department: 'Operations', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 54000, monthly_tds: 4500, pf_number: '1002 3456 7897', esi_number: '4400 1234 5672', pt_number: 'KL/PT/1234507', last_updated: '01 May 2024' },
-  { id: 8, employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 68000, monthly_tds: 5666, pf_number: '1002 3456 7898', esi_number: '4400 1234 5673', pt_number: 'KL/PT/1234508', last_updated: '01 May 2024' },
-  { id: 9, employee_name: 'Sana N', employee_id: 'EMP009', department: 'Marketing', tds: false, pf: true, esi: false, pt: true, status: 'Pending', tds_regime: 'New Regime', estimated_annual_tax: 0, monthly_tds: 0, pf_number: '1002 3456 7899', pt_number: 'KL/PT/1234509', last_updated: '26 Apr 2024' },
-  { id: 10, employee_name: 'Arjun R', employee_id: 'EMP010', department: 'Technology', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 74000, monthly_tds: 6166, pf_number: '1002 3456 7900', esi_number: '4400 1234 5674', pt_number: 'KL/PT/1234510', last_updated: '01 May 2024' },
+  { id: 1, employee_name: 'Amit Sharma', employee_id: 'EMP001', department: 'Operations', tds: true, pf: true, esi: false, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 62000, monthly_tds: 5166, pf_number: '1002 3456 7891', pt_number: 'KL/PT/1234501', last_updated: '01 Oct 2026' },
+  { id: 2, employee_name: 'Rahul Singh', employee_id: 'EMP002', department: 'Sales', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 48000, monthly_tds: 4000, pf_number: '1002 3456 7892', esi_number: '4400 1234 5671', pt_number: 'KL/PT/1234502', last_updated: '01 Oct 2026' },
+  { id: 3, employee_name: 'Priya Mehta', employee_id: 'EMP003', department: 'Marketing', tds: true, pf: true, esi: false, pt: true, status: 'Compliant', tds_regime: 'Old Regime', estimated_annual_tax: 72000, monthly_tds: 6000, pf_number: '1002 3456 7893', pt_number: 'KL/PT/1234503', last_updated: '01 Oct 2026' },
+  { id: 4, employee_name: 'Vikram Kumar', employee_id: 'EMP004', department: 'Technology', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 78000, monthly_tds: 6500, pf_number: '1002 3456 7890', esi_number: '4400 1234 5678', pt_number: 'KL/PT/1234567', last_updated: '01 Oct 2026' },
+  { id: 5, employee_name: 'Nazia A', employee_id: 'EMP005', department: 'HR', tds: false, pf: true, esi: false, pt: true, status: 'Pending', tds_regime: 'New Regime', estimated_annual_tax: 0, monthly_tds: 0, pf_number: '1002 3456 7895', pt_number: 'KL/PT/1234505', last_updated: '28 Sep 2026' },
+  { id: 6, employee_name: 'Sameer K', employee_id: 'EMP006', department: 'Finance', tds: true, pf: true, esi: false, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 96000, monthly_tds: 8000, pf_number: '1002 3456 7896', pt_number: 'KL/PT/1234506', last_updated: '01 Oct 2026' },
+  { id: 7, employee_name: 'Devika L', employee_id: 'EMP007', department: 'Operations', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 54000, monthly_tds: 4500, pf_number: '1002 3456 7897', esi_number: '4400 1234 5672', pt_number: 'KL/PT/1234507', last_updated: '01 Oct 2026' },
+  { id: 8, employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 68000, monthly_tds: 5666, pf_number: '1002 3456 7898', esi_number: '4400 1234 5673', pt_number: 'KL/PT/1234508', last_updated: '01 Oct 2026' },
+  { id: 9, employee_name: 'Sana N', employee_id: 'EMP009', department: 'Marketing', tds: false, pf: true, esi: false, pt: true, status: 'Pending', tds_regime: 'New Regime', estimated_annual_tax: 0, monthly_tds: 0, pf_number: '1002 3456 7899', pt_number: 'KL/PT/1234509', last_updated: '26 Sep 2026' },
+  { id: 10, employee_name: 'Arjun R', employee_id: 'EMP010', department: 'Technology', tds: true, pf: true, esi: true, pt: true, status: 'Compliant', tds_regime: 'New Regime', estimated_annual_tax: 74000, monthly_tds: 6166, pf_number: '1002 3456 7900', esi_number: '4400 1234 5674', pt_number: 'KL/PT/1234510', last_updated: '01 Oct 2026' },
 ];
 
 // ==========================================
 // 7. OFF-CYCLE PAYROLL RUNS (Image 7)
 // ==========================================
 export const INITIAL_OFF_CYCLE_RUNS: OffCyclePaymentItem[] = [
-  { id: 1, run_id: 'OC-2024-012', employee_name: 'Amit Sharma', employee_id: 'EMP001', department: 'Operations', payment_type: 'Bonus', amount: 25000, processed_on: '28 May 2024', status: 'Paid', notes: 'Annual performance festival bonus' },
-  { id: 2, run_id: 'OC-2024-011', employee_name: 'Rahul Singh', employee_id: 'EMP002', department: 'Sales', payment_type: 'Incentive', amount: 18500, processed_on: '24 May 2024', status: 'Paid', notes: 'Q1 Top Sales Performer reward' },
-  { id: 3, run_id: 'OC-2024-010', employee_name: 'Priya Mehta', employee_id: 'EMP003', department: 'Marketing', payment_type: 'Arrears', amount: 12000, processed_on: '20 May 2024', status: 'Paid', notes: 'Grade revision retroactive adjustment' },
-  { id: 4, run_id: 'OC-2024-009', employee_name: 'Vikram Kumar', employee_id: 'EMP004', department: 'Technology', payment_type: 'Project Bonus', amount: 30000, processed_on: '15 May 2024', status: 'Paid', notes: 'Meta WhatsApp Cloud API v21 integration bonus' },
-  { id: 5, run_id: 'OC-2024-008', employee_name: 'Nazia A', employee_id: 'EMP005', department: 'HR', payment_type: 'Reimbursement', amount: 8750, processed_on: '10 May 2024', status: 'Paid', notes: 'Campus recruitment drive travel expenses' },
-  { id: 6, run_id: 'OC-2024-007', employee_name: 'Sameer K', employee_id: 'EMP006', department: 'Finance', payment_type: 'Retention Bonus', amount: 20000, processed_on: '05 May 2024', status: 'Paid', notes: 'Annual tenure milestone completion' },
-  { id: 7, run_id: 'OC-2024-006', employee_name: 'Devika L', employee_id: 'EMP007', department: 'Operations', payment_type: 'Overtime', amount: 7200, processed_on: '28 Apr 2024', status: 'Paid', notes: 'Emergency chiller maintenance shift' },
-  { id: 8, run_id: 'OC-2024-005', employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', payment_type: 'Commission', amount: 16500, processed_on: '22 Apr 2024', status: 'Paid', notes: 'Enterprise AMC contract deal bonus' },
-  { id: 9, run_id: 'OC-2024-004', employee_name: 'Sana N', employee_id: 'EMP009', department: 'Marketing', payment_type: 'Referral Bonus', amount: 10000, processed_on: '18 Apr 2024', status: 'Paid', notes: 'Successful senior technician hiring referral' },
-  { id: 10, run_id: 'OC-2024-003', employee_name: 'Arjun R', employee_id: 'EMP010', department: 'Technology', payment_type: 'Reimbursement', amount: 4500, processed_on: '12 Apr 2024', status: 'Paid', notes: 'Server SSL certifications invoice' },
+  { id: 1, run_id: 'OC-2026-012', employee_name: 'Amit Sharma', employee_id: 'EMP001', department: 'Operations', payment_type: 'Bonus', amount: 25000, processed_on: '02 Oct 2026', status: 'Paid', notes: 'Annual performance festival bonus' },
+  { id: 2, run_id: 'OC-2026-011', employee_name: 'Rahul Singh', employee_id: 'EMP002', department: 'Sales', payment_type: 'Incentive', amount: 18500, processed_on: '28 Sep 2026', status: 'Paid', notes: 'Q3 Top Sales Performer reward' },
+  { id: 3, run_id: 'OC-2026-010', employee_name: 'Priya Mehta', employee_id: 'EMP003', department: 'Marketing', payment_type: 'Arrears', amount: 12000, processed_on: '24 Sep 2026', status: 'Paid', notes: 'Grade revision retroactive adjustment' },
+  { id: 4, run_id: 'OC-2026-009', employee_name: 'Vikram Kumar', employee_id: 'EMP004', department: 'Technology', payment_type: 'Project Bonus', amount: 30000, processed_on: '20 Sep 2026', status: 'Paid', notes: 'Meta WhatsApp Cloud API v21 integration bonus' },
+  { id: 5, run_id: 'OC-2026-008', employee_name: 'Nazia A', employee_id: 'EMP005', department: 'HR', payment_type: 'Reimbursement', amount: 8750, processed_on: '15 Sep 2026', status: 'Paid', notes: 'Campus recruitment drive travel expenses' },
+  { id: 6, run_id: 'OC-2026-007', employee_name: 'Sameer K', employee_id: 'EMP006', department: 'Finance', payment_type: 'Retention Bonus', amount: 20000, processed_on: '10 Sep 2026', status: 'Paid', notes: 'Annual tenure milestone completion' },
+  { id: 7, run_id: 'OC-2026-006', employee_name: 'Devika L', employee_id: 'EMP007', department: 'Operations', payment_type: 'Overtime', amount: 7200, processed_on: '05 Sep 2026', status: 'Paid', notes: 'Emergency chiller maintenance shift' },
+  { id: 8, run_id: 'OC-2026-005', employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', payment_type: 'Commission', amount: 16500, processed_on: '28 Aug 2026', status: 'Paid', notes: 'Enterprise AMC contract deal bonus' },
+  { id: 9, run_id: 'OC-2026-004', employee_name: 'Sana N', employee_id: 'EMP009', department: 'Marketing', payment_type: 'Referral Bonus', amount: 10000, processed_on: '22 Aug 2026', status: 'Paid', notes: 'Successful senior technician hiring referral' },
+  { id: 10, run_id: 'OC-2026-003', employee_name: 'Arjun R', employee_id: 'EMP010', department: 'Technology', payment_type: 'Reimbursement', amount: 4500, processed_on: '15 Aug 2026', status: 'Paid', notes: 'Server SSL certifications invoice' },
 ];
 
 // ==========================================
 // 8. PAYROLL REPORTS (Image 8)
 // ==========================================
 export const INITIAL_PAYROLL_REPORTS: PayrollReportItem[] = [
-  { id: 1, name: 'Payroll Summary', type: 'Summary', period: 'May 2024', generated_on: '30 May 2024, 10:30 AM', generated_by: 'Faris Usman', status: 'Completed' },
-  { id: 2, name: 'Employee Salary Report', type: 'Employee-wise', period: 'May 2024', generated_on: '28 May 2024, 04:15 PM', generated_by: 'HR Team', status: 'Completed' },
-  { id: 3, name: 'Deductions Report', type: 'Deductions', period: 'May 2024', generated_on: '25 May 2024, 11:20 AM', generated_by: 'Faris Usman', status: 'Completed' },
-  { id: 4, name: 'Compliance Report', type: 'Compliance', period: 'May 2024', generated_on: '22 May 2024, 02:45 PM', generated_by: 'Finance Team', status: 'Completed' },
-  { id: 5, name: 'Reimbursement Report', type: 'Reimbursement', period: 'May 2024', generated_on: '20 May 2024, 09:10 AM', generated_by: 'HR Team', status: 'Completed' },
+  { id: 1, name: 'Payroll Summary', type: 'Summary', period: 'October 2026', generated_on: '02 Oct 2026, 10:30 AM', generated_by: 'Faris Usman', status: 'Completed' },
+  { id: 2, name: 'Employee Salary Report', type: 'Employee-wise', period: 'October 2026', generated_on: '01 Oct 2026, 04:15 PM', generated_by: 'HR Team', status: 'Completed' },
+  { id: 3, name: 'Deductions Report', type: 'Deductions', period: 'September 2026', generated_on: '28 Sep 2026, 11:20 AM', generated_by: 'Faris Usman', status: 'Completed' },
+  { id: 4, name: 'Compliance Report', type: 'Compliance', period: 'September 2026', generated_on: '25 Sep 2026, 02:45 PM', generated_by: 'Finance Team', status: 'Completed' },
+  { id: 5, name: 'Reimbursement Report', type: 'Reimbursement', period: 'September 2026', generated_on: '22 Sep 2026, 09:10 AM', generated_by: 'HR Team', status: 'Completed' },
 ];
 
 // ==========================================
@@ -300,7 +300,7 @@ export const INITIAL_PAYROLL_SETTINGS: PayrollSettingsState = {
   month_start: '1st of the month',
   cutoff_date: '25th of the month',
   credit_date: 'Last working day',
-  financial_year: 'April - March (FY 2024-25)',
+  financial_year: 'April - March (FY 2026-27)',
   include_new_joinees: true,
   calculate_partial_attendance: true,
   round_off_salary: false,

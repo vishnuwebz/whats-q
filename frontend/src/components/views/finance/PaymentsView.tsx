@@ -12,7 +12,7 @@ export const PaymentsView: React.FC = () => {
     amount: 3500,
     customer_name: 'Priya Sharma',
     phone: '+91 98765 43210',
-    note: 'Invoice #INV-2024-001 Advance'
+    note: 'Invoice #INV-2026-001 Advance'
   });
 
   const upiUri = `upi://pay?pa=qiyamsolutions@icici&pn=Qiyam+Ventures&am=${qrForm.amount}&cu=INR&tn=${encodeURIComponent(qrForm.note)}`;

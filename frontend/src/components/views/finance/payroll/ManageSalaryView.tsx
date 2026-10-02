@@ -98,8 +98,8 @@ export const ManageSalaryView: React.FC<Props> = ({
   // Single Employee Revision Modal
   const [reviseEmp, setReviseEmp] = useState<EmployeeSalaryAssignment | null>(null);
   const [newCtcInput, setNewCtcInput] = useState<number>(0);
-  const [revisionReasonInput, setRevisionReasonInput] = useState('Annual Appraisal 2024');
-  const [revisionDateInput, setRevisionDateInput] = useState('01 Jun 2024');
+  const [revisionReasonInput, setRevisionReasonInput] = useState('Annual Appraisal 2026');
+  const [revisionDateInput, setRevisionDateInput] = useState('01 Oct 2026');
 
   // Letter Preview Modal
   const [viewLetterItem, setViewLetterItem] = useState<RevisionHistoryItem | null>(null);
@@ -141,7 +141,7 @@ export const ManageSalaryView: React.FC<Props> = ({
   const [bulkDept, setBulkDept] = useState('All Departments');
   const [bulkHikeType, setBulkHikeType] = useState<'percent' | 'fixed'>('percent');
   const [bulkHikeValue, setBulkHikeValue] = useState<number>(10);
-  const [bulkEffectiveDate, setBulkEffectiveDate] = useState('01 Jul 2024');
+  const [bulkEffectiveDate, setBulkEffectiveDate] = useState('01 Oct 2026');
   const [bulkReason, setBulkReason] = useState('Mid-year Performance Increment');
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Record<string | number, boolean>>({});
 
@@ -216,11 +216,11 @@ export const ManageSalaryView: React.FC<Props> = ({
 
   // Revision History state
   const [revisionHistory, setRevisionHistory] = useState<RevisionHistoryItem[]>([
-    { id: 'r1', employee_id: 'EMP001', employee_name: 'Amit Sharma', department: 'Operations', previous_ctc: 38000, new_ctc: 42000, increment_percent: 10.5, effective_date: '01 Jan 2024', revision_type: 'Annual Appraisal', approved_by: 'Faris Usman (Director)', reason: 'Excellent client retention and field HVAC operations lead.' },
-    { id: 'r2', employee_id: 'EMP002', employee_name: 'Rahul Singh', department: 'Sales', previous_ctc: 42000, new_ctc: 48000, increment_percent: 14.3, effective_date: '01 Feb 2024', revision_type: 'Promotion', approved_by: 'Faris Usman (Director)', reason: 'Promotion to Senior Business Development Manager.' },
-    { id: 'r3', employee_id: 'EMP004', employee_name: 'Vikram Kumar', department: 'Technology', previous_ctc: 48000, new_ctc: 55000, increment_percent: 14.6, effective_date: '01 Mar 2024', revision_type: 'Market Correction', approved_by: 'HR Committee', reason: 'Full-stack WhatsApp Cloud API architectural delivery.' },
-    { id: 'r4', employee_id: 'EMP006', employee_name: 'Sameer K', department: 'Finance', previous_ctc: 50000, new_ctc: 55000, increment_percent: 10.0, effective_date: '01 Jan 2024', revision_type: 'Annual Appraisal', approved_by: 'Faris Usman (Director)', reason: 'Accurate compliance, audit closure, and tax savings.' },
-    { id: 'r5', employee_id: 'EMP008', employee_name: 'Irshad Rahman', department: 'Sales', previous_ctc: 40000, new_ctc: 45000, increment_percent: 12.5, effective_date: '01 Feb 2024', revision_type: 'Performance Increment', approved_by: 'Sales VP', reason: 'Surpassed Q4 institutional contract target.' },
+    { id: 'r1', employee_id: 'EMP001', employee_name: 'Amit Sharma', department: 'Operations', previous_ctc: 38000, new_ctc: 42000, increment_percent: 10.5, effective_date: '01 Jan 2026', revision_type: 'Annual Appraisal', approved_by: 'Faris Usman (Director)', reason: 'Excellent client retention and field HVAC operations lead.' },
+    { id: 'r2', employee_id: 'EMP002', employee_name: 'Rahul Singh', department: 'Sales', previous_ctc: 42000, new_ctc: 48000, increment_percent: 14.3, effective_date: '01 Feb 2026', revision_type: 'Promotion', approved_by: 'Faris Usman (Director)', reason: 'Promotion to Senior Business Development Manager.' },
+    { id: 'r3', employee_id: 'EMP004', employee_name: 'Vikram Kumar', department: 'Technology', previous_ctc: 48000, new_ctc: 55000, increment_percent: 14.6, effective_date: '01 Mar 2026', revision_type: 'Market Correction', approved_by: 'HR Committee', reason: 'Full-stack WhatsApp Cloud API architectural delivery.' },
+    { id: 'r4', employee_id: 'EMP006', employee_name: 'Sameer K', department: 'Finance', previous_ctc: 50000, new_ctc: 55000, increment_percent: 10.0, effective_date: '01 Jan 2026', revision_type: 'Annual Appraisal', approved_by: 'Faris Usman (Director)', reason: 'Accurate compliance, audit closure, and tax savings.' },
+    { id: 'r5', employee_name: 'Irshad Rahman', employee_id: 'EMP008', department: 'Sales', previous_ctc: 40000, new_ctc: 45000, increment_percent: 12.5, effective_date: '01 Feb 2026', revision_type: 'Performance Increment', approved_by: 'Sales VP', reason: 'Surpassed Q4 institutional contract target.' },
   ]);
 
   // Filtered Structures
@@ -326,7 +326,7 @@ export const ManageSalaryView: React.FC<Props> = ({
   const handleOpenReviseModal = (emp: EmployeeSalaryAssignment) => {
     setReviseEmp(emp);
     setNewCtcInput(Math.round(emp.current_ctc * 1.1));
-    setRevisionReasonInput('Annual Appraisal 2024');
+    setRevisionReasonInput('Annual Appraisal 2026');
     setRevisionDateInput(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
   };
 

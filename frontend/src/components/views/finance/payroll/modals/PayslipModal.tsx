@@ -9,7 +9,7 @@ interface Props {
   month?: string;
 }
 
-export const PayslipModal: React.FC<Props> = ({ isOpen, onClose, employee, month = 'May 2024' }) => {
+export const PayslipModal: React.FC<Props> = ({ isOpen, onClose, employee, month = 'October 2026' }) => {
   if (!isOpen || !employee) return null;
 
   const basic = Math.round(employee.gross_salary * 0.4);
@@ -280,7 +280,7 @@ export const PayslipModal: React.FC<Props> = ({ isOpen, onClose, employee, month
             </div>
             <div className="text-right text-[11px] text-emerald-800">
               <p className="font-semibold">Credited to Account</p>
-              <p className="text-[10px] text-emerald-700">Ref: SAL-2024-MAY-{employee.employee_id}</p>
+              <p className="text-[10px] text-emerald-700">Ref: SAL-{month.toUpperCase().replace(/\s+/g, '-')}-{employee.employee_id}</p>
             </div>
           </div>
 

@@ -316,8 +316,8 @@ export const ReimbursementsView: React.FC<Props> = ({
     openPdfEditor({
       type: 'voucher',
       title: `Tax Invoice & Cash Receipt - ${item.employee_name}`,
-      referenceNumber: `INV-2024-REC#${item.id}`,
-      invoiceNumber: `INV-2024-REC#${item.id}`,
+      referenceNumber: `INV-2026-REC#${item.id}`,
+      invoiceNumber: `INV-2026-REC#${item.id}`,
       recipientName: item.employee_name,
       recipientId: item.employee_id,
       department: item.department || 'Operations',
@@ -363,7 +363,7 @@ export const ReimbursementsView: React.FC<Props> = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Tax Invoice & Receipt - INV-2024-REC#${item.id}</title>
+          <title>Tax Invoice & Receipt - INV-2026-REC#${item.id}</title>
           <style>
             @page { size: A4; margin: 15mm; }
             * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -384,7 +384,7 @@ export const ReimbursementsView: React.FC<Props> = ({
               </div>
               <div style="text-align: right;">
                 <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 10px;">${item.status} CLAIM</span>
-                <div style="font-family: monospace; font-weight: 800; font-size: 13px; margin-top: 6px; color: #0f172a;">INV-2024-REC#${item.id}</div>
+                <div style="font-family: monospace; font-weight: 800; font-size: 13px; margin-top: 6px; color: #0f172a;">INV-2026-REC#${item.id}</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Date: <strong>${item.submitted_on}</strong></div>
               </div>
             </div>
@@ -516,7 +516,7 @@ export const ReimbursementsView: React.FC<Props> = ({
       </div>
       <div style="text-align: right;">
         <span class="badge ${item.status === 'Approved' ? 'badge-approved' : 'badge-pending'}">${item.status} CLAIM</span>
-        <div style="font-weight: 800; font-size: 14px; margin-top: 8px; font-family: monospace;">INV-2024-REC#${item.id}</div>
+        <div style="font-weight: 800; font-size: 14px; margin-top: 8px; font-family: monospace;">INV-2026-REC#${item.id}</div>
         <div style="font-size: 11px; color: #64748b;">Date: ${item.submitted_on}</div>
       </div>
     </div>
@@ -597,7 +597,7 @@ export const ReimbursementsView: React.FC<Props> = ({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Qiyam Business Solutions - Employee Reimbursement Policy FY 2024-25</title>
+  <title>Qiyam Business Solutions - Employee Reimbursement Policy FY 2026-27</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px; color: #0f172a; background: #f8fafc; }
     .policy-card { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
@@ -619,9 +619,9 @@ export const ReimbursementsView: React.FC<Props> = ({
     <div class="header">
       <div>
         <h1>Qiyam Business Solutions LLP</h1>
-        <div class="meta">Corporate Expense Reimbursement Policy • Document Ref: QBS-HR-EXP-2024-V2</div>
+        <div class="meta">Corporate Expense Reimbursement Policy • Document Ref: QBS-HR-EXP-2026-V2</div>
       </div>
-      <span class="tier-badge">Effective: FY 2024-25</span>
+      <span class="tier-badge">Effective: FY 2026-27</span>
     </div>
 
     <h2>1. Purpose & Scope</h2>
@@ -697,7 +697,7 @@ export const ReimbursementsView: React.FC<Props> = ({
 
   const handleDownloadPolicy = () => {
     const html = generatePolicyHtml();
-    triggerHtmlDownload(html, `qiyam_reimbursement_policy_fy2024_25.html`);
+    triggerHtmlDownload(html, `qiyam_reimbursement_policy_fy2026_27.html`);
     showToast('Downloaded Qiyam Employee Reimbursement Policy document!');
   };
 
@@ -1271,7 +1271,7 @@ export const ReimbursementsView: React.FC<Props> = ({
                 <Building2 className="w-3.5 h-3.5 text-slate-500" />
                 <span>Expense Policy Thresholds</span>
               </h3>
-              <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded">FY 2024-25</span>
+              <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded">FY 2026-27</span>
             </div>
 
             <div className="space-y-2 text-xs">
@@ -1395,7 +1395,7 @@ export const ReimbursementsView: React.FC<Props> = ({
           </div>
 
           <div className="pt-2 border-t border-slate-700 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Next Cycle: <strong>30 May 2024</strong></span>
+            <span>Next Cycle: <strong>31 October 2026</strong></span>
             <span className="text-emerald-400 font-bold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Compliant</span>
@@ -1652,7 +1652,7 @@ export const ReimbursementsView: React.FC<Props> = ({
                             {previewReceiptItem.status} CLAIM
                           </span>
                           <div className="font-mono font-bold text-slate-900 text-xs mt-1">
-                            INV-2024-REC#{previewReceiptItem.id}
+                            INV-2026-REC#{previewReceiptItem.id}
                           </div>
                           <div className="text-[11px] text-slate-500 flex items-center justify-end gap-1">
                             <Calendar className="w-3 h-3 text-slate-400" />

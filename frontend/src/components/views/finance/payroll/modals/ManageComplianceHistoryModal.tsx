@@ -47,22 +47,22 @@ export const ManageComplianceHistoryModal: React.FC<Props> = ({
       {
         id: `${record.id}-hist-1`,
         title: `Tax Regime Selected: ${record.tds_regime || 'New Regime'}`,
-        description: 'Opted on 01 Apr 2024 by employee',
-        date: '01 Apr 2024',
+        description: 'Opted on 01 Apr 2026 by employee',
+        date: '01 Apr 2026',
         type: 'regime',
       },
       {
         id: `${record.id}-hist-2`,
         title: 'EPFO UAN Linked & Seeded',
-        description: 'Verified with Aadhaar OTP on 15 Jan 2024',
-        date: '15 Jan 2024',
+        description: 'Verified with Aadhaar OTP on 15 Jan 2026',
+        date: '15 Jan 2026',
         type: 'pf',
       },
       {
         id: `${record.id}-hist-3`,
-        title: 'Form 24Q Q4 Return Filed',
+        title: 'Form 24Q Q2 Return Filed',
         description: 'TDS deducted successfully remitted to Traces',
-        date: '10 May 2024',
+        date: '02 Oct 2026',
         type: 'return',
       },
     ];
@@ -177,7 +177,7 @@ export const ManageComplianceHistoryModal: React.FC<Props> = ({
                 type="text"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                placeholder="e.g. 01 May 2024"
+                placeholder="e.g. 01 Oct 2026"
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-purple-500"
                 required
               />

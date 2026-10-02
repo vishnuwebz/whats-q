@@ -179,7 +179,7 @@ export const CreateTemplateView: React.FC = () => {
         updated[idx] = prev[idx] || (
           i === 0 ? 'Vikram Mehta' :
           i === 1 ? 'AC Service' :
-          i === 2 ? 'May 15, 2024' :
+          i === 2 ? 'October 05, 2026' :
           i === 3 ? '10:30 AM' :
           `Sample Value ${idx}`
         );

@@ -130,7 +130,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onLaunchApp })
       step: 4,
       title: 'Automated Invoicing & UPI Collection',
       chatSender: 'Qiyam Financial Bot',
-      chatText: 'Booking #JOB-1024 confirmed! 🛠️ Invoice INV-2024-0186 generated. Tap below to pay advance via UPI / GPay: https://upi.qiyam.link/pay/840',
+      chatText: 'Booking #JOB-1024 confirmed! 🛠️ Invoice INV-2026-0186 generated. Tap below to pay advance via UPI / GPay: https://upi.qiyam.link/pay/840',
       time: '10:32 AM',
       nodeState: 'Action: Reconcile Ledger & Update Accounting',
       crmStatus: 'Paid Advance • Customer Lifetime Value Updated',

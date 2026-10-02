@@ -240,9 +240,9 @@ const LAST_SEEN_OPTIONS = [
   '4 hours ago',
   'Yesterday 05:20 PM',
   'Yesterday 02:15 PM',
-  'May 30, 2024',
-  'May 29, 2024',
-  'May 28, 2024'
+  'Oct 02, 2026',
+  'Oct 01, 2026',
+  'Sep 30, 2026'
 ];
 
 function resolveCatalogForBranch(branchName: string, cityName: string): CityCatalog {
@@ -337,7 +337,7 @@ export function syncCustomersWithBranches(
         jobs_count: Number(bc.jobs_count || bc.orders_count || 1),
         orders_count: Number(bc.jobs_count || bc.orders_count || 1),
         avatar: bc.avatar || AVATARS[idx % AVATARS.length],
-        first_seen: bc.first_seen || 'May 1, 2024',
+        first_seen: bc.first_seen || 'Oct 01, 2026',
         last_contact_date: bc.last_contact_date || 'Recent',
         segment: 'Commercial'
       });
@@ -437,7 +437,7 @@ export function syncCustomersWithBranches(
         jobs_count: jobsCount,
         orders_count: jobsCount,
         avatar,
-        first_seen: 'May 1, 2024',
+        first_seen: 'Oct 01, 2026',
         last_contact_date: lastActive,
         segment
       });

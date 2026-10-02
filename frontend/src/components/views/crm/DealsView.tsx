@@ -21,7 +21,7 @@ export const DealsView: React.FC = () => {
     probability: 70,
     deal_owner: 'Rahul Mehta',
     source: 'Direct Referral',
-    expected_close_date: 'May 31, 2024',
+    expected_close_date: 'Oct 31, 2026',
     tags: ['Commercial'],
     notes: '',
   });
@@ -41,7 +41,7 @@ export const DealsView: React.FC = () => {
       probability: 70,
       deal_owner: 'Rahul Mehta',
       source: 'Direct Referral',
-      expected_close_date: 'May 31, 2024',
+      expected_close_date: 'Oct 31, 2026',
       tags: ['Commercial'],
       notes: '',
     });
@@ -424,7 +424,7 @@ export const DealsView: React.FC = () => {
                 <div className="text-[10px] text-slate-400 font-semibold">Win Probability</div>
                 <div className="font-bold text-slate-900 mt-1 flex items-center justify-between">
                   <span>{selectedDeal.probability}%</span>
-                  <span className="text-[10px] text-purple-600 font-semibold">Expected: {selectedDeal.expected_close_date || 'May 2024'}</span>
+                  <span className="text-[10px] text-purple-600 font-semibold">Expected: {selectedDeal.expected_close_date || 'October 2026'}</span>
                 </div>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">

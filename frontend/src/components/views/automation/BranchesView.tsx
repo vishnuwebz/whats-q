@@ -788,7 +788,7 @@ export const getBranchCustomers = (branch: BranchItem): BranchCustomerItem[] => 
       segment: 'Retail Client',
       totalSpent: '₹39,400',
       conversationsCount: 29,
-      lastActive: 'May 30, 2024',
+      lastActive: '02 Oct 2026',
       status: 'Contract Renewal',
       avatarInitials: 'CH',
     },
@@ -1717,7 +1717,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
 
                               {/* 7. Last Activity */}
                               <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap">
-                                {b.last_activity || 'May 31, 2024 10:30 AM'}
+                                {b.last_activity || '02 Oct 2026 10:30 AM'}
                               </td>
                             </>
                           ) : (
@@ -2122,7 +2122,7 @@ export const BranchesView: React.FC<BranchesViewProps> = ({ initialSubPage }) =>
                                   <span>{b.status || 'Active'}</span>
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || 'May 31, 2024 10:30 AM'}</td>
+                              <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">{b.last_activity || '02 Oct 2026 10:30 AM'}</td>
                               <td className="py-3.5 px-4 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button

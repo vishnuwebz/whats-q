@@ -37,7 +37,7 @@ export const GeneralSettings: React.FC = () => {
     () => localStorage.getItem('whatsq_timezone') || '(GMT+05:30) Asia/Kolkata (IST)'
   );
   const [dateFormat, setDateFormat] = useState(
-    () => localStorage.getItem('whatsq_dateformat') || 'May 31, 2024 (MMM DD, YYYY)'
+    () => localStorage.getItem('whatsq_dateformat') || 'October 02, 2026 (MMM DD, YYYY)'
   );
   const [currency, setCurrency] = useState(
     () => localStorage.getItem('whatsq_currency') || 'INR (₹) - Indian Rupee'
@@ -276,10 +276,10 @@ export const GeneralSettings: React.FC = () => {
               onChange={(e) => setDateFormat(e.target.value)}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 text-xs outline-none focus:border-emerald-500 transition"
             >
-              <option>May 31, 2024 (MMM DD, YYYY)</option>
-              <option>31/05/2024 (DD/MM/YYYY)</option>
-              <option>2024-05-31 (YYYY-MM-DD)</option>
-              <option>05/31/2024 (MM/DD/YYYY)</option>
+              <option>October 02, 2026 (MMM DD, YYYY)</option>
+              <option>02/10/2026 (DD/MM/YYYY)</option>
+              <option>2026-10-02 (YYYY-MM-DD)</option>
+              <option>10/02/2026 (MM/DD/YYYY)</option>
             </select>
           </div>
 

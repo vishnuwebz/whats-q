@@ -59,7 +59,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
       {
         id: 'item-3-1',
         type: 'message',
-        content: '📍 *Live Specialist Status & ETA*\nSenior Specialist Ramesh Kumar is en route 🛵.\nEstimated Arrival: 15-20 minutes.\nLive GPS Tracking: https://track.whatsq.in/QUO-2024-0037\nPriority Contact: +91 98471 23456'
+        content: '📍 *Live Specialist Status & ETA*\nSenior Specialist Ramesh Kumar is en route 🛵.\nEstimated Arrival: 15-20 minutes.\nLive GPS Tracking: https://track.whatsq.in/QUO-2026-0037\nPriority Contact: +91 98471 23456'
       },
       {
         id: 'item-3-2',
@@ -82,7 +82,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
       {
         id: 'item-4-1',
         type: 'message',
-        content: '📋 *Official Price Quotation: QUO-2024-0037*\n\n1. Inverter AC Sensor Board & PCB Testing (Qty: 1) - ₹5,500\n2. Full System Labor & Outdoor Unit Cleaning (Qty: 1) - ₹3,000\n\n💰 Subtotal: ₹8,500\n📊 GST / Tax: ₹1,530\n💎 Total Quoted Amount: ₹9,500\n📅 Valid Until: May 20, 2024\n📝 Terms: 50% advance upon confirmation. 50% on completion.'
+        content: '📋 *Official Price Quotation: QUO-2026-0037*\n\n1. Inverter AC Sensor Board & PCB Testing (Qty: 1) - ₹5,500\n2. Full System Labor & Outdoor Unit Cleaning (Qty: 1) - ₹3,000\n\n💰 Subtotal: ₹8,500\n📊 GST / Tax: ₹1,530\n💎 Total Quoted Amount: ₹9,500\n📅 Valid Until: October 20, 2026\n📝 Terms: 50% advance upon confirmation. 50% on completion.'
       },
       {
         id: 'item-4-2',
@@ -123,7 +123,7 @@ export const SERVICE_BOOKING_FLOW_GROUPS: FlowGroup[] = [
       {
         id: 'item-6-1',
         type: 'message',
-        content: '✅ *Booking Confirmed!*\nThank you for choosing {COMPANY_NAME}. Your service appointment is locked on our schedule.\n\nBooking ID: QUO-2024-0037\nAssigned Specialist: Ramesh Kumar\nOur certified technician will arrive on time.'
+        content: '✅ *Booking Confirmed!*\nThank you for choosing {COMPANY_NAME}. Your service appointment is locked on our schedule.\n\nBooking ID: QUO-2026-0037\nAssigned Specialist: Ramesh Kumar\nOur certified technician will arrive on time.'
       }
     ]
   },

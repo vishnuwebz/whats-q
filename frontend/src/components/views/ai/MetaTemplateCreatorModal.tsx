@@ -131,7 +131,7 @@ export const MetaTemplateCreatorModal: React.FC<MetaTemplateCreatorModalProps> =
         updated[idx] = prev[idx] || (
           i === 0 ? 'John Doe' :
           i === 1 ? 'Booking #1024' :
-          i === 2 ? 'May 15, 2024' :
+          i === 2 ? 'October 05, 2026' :
           `Sample Value ${idx}`
         );
       });

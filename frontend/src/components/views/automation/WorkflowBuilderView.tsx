@@ -658,7 +658,7 @@ export const WorkflowBuilderView: React.FC = () => {
     name: 'Ramesh Kumar',
     customer: 'Malabar Gold HQ',
     service: 'Inverter AC Servicing & Coil Wash',
-    quote_no: 'QUO-2024-0037',
+    quote_no: 'QUO-2026-0037',
   });
 
   // Create New Rule Modal
@@ -2101,7 +2101,7 @@ export const WorkflowBuilderView: React.FC = () => {
       name: 'Ramesh Kumar',
       customer: 'Malabar Gold HQ',
       service: 'Inverter AC Maintenance',
-      quote_no: 'QUO-2024-0037',
+      quote_no: 'QUO-2026-0037',
     };
     setSimulatedVars(initialVars);
 
