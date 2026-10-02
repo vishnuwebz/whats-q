@@ -63,26 +63,55 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
 ];
 
 export const INITIAL_LEADS: Lead[] = [
+  // ── OCTOBER 2026 ──
   { id: 1, name: 'Amit Verma', phone: '+91 98765 43210', service: 'AC Repair', location: 'Koyilandy, Kerala', value: 2800.0, stage: 'new', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'Oct 02, 2026', last_contact_str: 'Oct 02, 2026', notes: 'Customer needs AC repair tomorrow morning. Prefers 10 AM - 12 PM slot.', tags: ['AC Service', 'Urgent'] },
   { id: 2, name: 'Priya Sharma', phone: '+91 89213 56789', service: 'Home Cleaning', location: 'Kozhikode, Kerala', value: 1200.0, stage: 'new', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'Oct 02, 2026', last_contact_str: 'Oct 02, 2026', notes: 'Requested quotation for 3 BHK flat.', tags: ['Cleaning'] },
   { id: 3, name: 'Rahul Singh', phone: '+91 98764 11122', service: 'Electrical Work', location: 'Koyilandy, Kerala', value: 3500.0, stage: 'new', owner: 'Ramesh Kumar', source: 'Website', created_at_str: 'Oct 01, 2026', last_contact_str: 'Oct 01, 2026', notes: 'Full house wiring check.', tags: ['Electrical'] },
   { id: 4, name: 'Neha Patel', phone: '+91 96789 11223', service: 'Plumbing', location: 'Kozhikode, Kerala', value: 2200.0, stage: 'new', owner: 'Ramesh Kumar', source: 'Referral', created_at_str: 'Oct 01, 2026', last_contact_str: 'Oct 01, 2026', notes: 'Bathroom pipe leakage.', tags: ['Plumbing'] },
+
+  // ── SEPTEMBER 2026 ──
   { id: 5, name: 'Vikram Mehta', phone: '+91 90000 11123', service: 'AC Installation', location: 'Calicut, Kerala', value: 4500.0, stage: 'contacted', owner: 'Priya Sharma', source: 'WhatsApp', created_at_str: 'Sep 30, 2026', last_contact_str: 'Oct 02, 2026', notes: 'Discussed installation quote.', tags: ['AC Service'] },
-  { id: 6, name: 'Sneha Joshi', phone: '+91 96789 66771', service: 'Pest Control', location: 'Koyilandy, Kerala', value: 2000.0, stage: 'contacted', owner: 'Priya Sharma', source: 'Direct Call', created_at_str: 'Sep 30, 2026', last_contact_str: 'Oct 01, 2026', notes: 'Follow up scheduled for tomorrow.', tags: ['Pest Control'] },
-  { id: 7, name: 'Anita Singh', phone: '+91 98765 11199', service: 'AC Repair (Split Unit)', location: 'Koyilandy, Kerala', value: 2800.0, stage: 'qualified', owner: 'Anita Singh', source: 'WhatsApp', created_at_str: 'Sep 29, 2026', last_contact_str: 'Sep 30, 2026', notes: 'Gas refill verified.', tags: ['AC Service'] },
-  { id: 8, name: 'Deepak Patel', phone: '+91 85471 22330', service: 'AC Servicing (3 Units)', location: 'Calicut, Kerala', value: 5600.0, stage: 'proposal_sent', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'Sep 28, 2026', last_contact_str: 'Sep 30, 2026', notes: 'Proposal sent with 10% AMC discount.', tags: ['AC Service', 'AMC'] },
-  { id: 9, name: 'Kiran Kumar', phone: '+91 81234 55667', service: 'AC Installation + Ducting', location: 'Kozhikode, Kerala', value: 12000.0, stage: 'negotiation', owner: 'Rahul Mehta', source: 'Walk-in', created_at_str: 'Sep 27, 2026', last_contact_str: 'Sep 29, 2026', notes: 'Commercial site quotation under review.', tags: ['Commercial', 'High Value'] },
+  { id: 6, name: 'Sneha Joshi', phone: '+91 96789 66771', service: 'Pest Control', location: 'Koyilandy, Kerala', value: 2000.0, stage: 'contacted', owner: 'Priya Sharma', source: 'Direct Call', created_at_str: 'Sep 25, 2026', last_contact_str: 'Sep 28, 2026', notes: 'Follow up completed.', tags: ['Pest Control'] },
+  { id: 7, name: 'Anita Singh', phone: '+91 98765 11199', service: 'AC Repair (Split Unit)', location: 'Koyilandy, Kerala', value: 2800.0, stage: 'qualified', owner: 'Anita Singh', source: 'WhatsApp', created_at_str: 'Sep 18, 2026', last_contact_str: 'Sep 20, 2026', notes: 'Gas refill verified.', tags: ['AC Service'] },
+  { id: 8, name: 'Deepak Patel', phone: '+91 85471 22330', service: 'AC Servicing (3 Units)', location: 'Calicut, Kerala', value: 5600.0, stage: 'proposal_sent', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'Sep 10, 2026', last_contact_str: 'Sep 15, 2026', notes: 'Proposal sent with 10% AMC discount.', tags: ['AC Service', 'AMC'] },
+  { id: 9, name: 'Kiran Kumar', phone: '+91 81234 55667', service: 'AC Installation + Ducting', location: 'Kozhikode, Kerala', value: 12000.0, stage: 'negotiation', owner: 'Rahul Mehta', source: 'Walk-in', created_at_str: 'Sep 04, 2026', last_contact_str: 'Sep 06, 2026', notes: 'Commercial site quotation under review.', tags: ['Commercial', 'High Value'] },
+
+  // ── AUGUST 2026 ──
+  { id: 10, name: 'Rohan Varma', phone: '+91 98472 88771', service: 'HVAC Air Purification Unit', location: 'Beypore, Calicut', value: 8900.0, stage: 'qualified', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'Aug 22, 2026', last_contact_str: 'Aug 24, 2026', notes: 'Interested in hospital grade HEPA HVAC filter.', tags: ['HVAC', 'Purification'] },
+  { id: 11, name: 'Dr. Tariq Rahman', phone: '+91 98470 12345', service: 'Clinic AC Overhaul', location: 'Chakkorathukulam, Calicut', value: 28500.0, stage: 'won', owner: 'Priya Sharma', source: 'Referral', created_at_str: 'Aug 12, 2026', last_contact_str: 'Aug 16, 2026', notes: 'Clinic contract closed.', tags: ['Commercial'] },
+
+  // ── JULY 2026 ──
+  { id: 12, name: 'Malabar Gold HQ', phone: '+91 97456 78901', service: 'Ceiling Cassette AMC', location: 'Palayam, Calicut', value: 64000.0, stage: 'proposal_sent', owner: 'Rahul Mehta', source: 'Corporate Direct', created_at_str: 'Jul 19, 2026', last_contact_str: 'Jul 24, 2026', notes: 'Awaiting board approval for annual facility package.', tags: ['Corporate', 'High Value'] },
+  { id: 13, name: 'Zayan Malik', phone: '+91 98460 99887', service: 'Inverter Board Repair', location: 'Kallai, Calicut', value: 3400.0, stage: 'won', owner: 'Ramesh Kumar', source: 'WhatsApp', created_at_str: 'Jul 05, 2026', last_contact_str: 'Jul 08, 2026', notes: 'Repaired and warranty granted.', tags: ['AC Service'] },
+
+  // ── YEAR 2025 ──
+  { id: 14, name: 'Grand Calicut Hotel', phone: '+91 97470 11223', service: 'Chiller Central Plant', location: 'Mavoor Road, Kozhikode', value: 95000.0, stage: 'won', owner: 'Rahul Mehta', source: 'Inbound Tender', created_at_str: 'Nov 18, 2025', last_contact_str: 'Nov 25, 2025', notes: 'Annual hospitality central chiller maintenance.', tags: ['Commercial', 'AMC'] },
+  { id: 15, name: 'CyberPark Kerala Tech', phone: '+91 89432 10987', service: 'Server Room PAC System', location: 'Nellikode, Calicut', value: 115000.0, stage: 'won', owner: 'Priya Sharma', source: 'Government Tender', created_at_str: 'Sep 10, 2025', last_contact_str: 'Sep 15, 2025', notes: 'Precision cooling contract executed.', tags: ['Government', 'PAC'] },
+  { id: 16, name: 'George Thomas', phone: '+91 94473 88122', service: 'Dual Split AMC', location: 'Nadakkavu, Kozhikode', value: 4800.0, stage: 'won', owner: 'Ramesh Kumar', source: 'Referral', created_at_str: 'Apr 22, 2025', last_contact_str: 'Apr 25, 2025', notes: 'Satisfied customer renewing yearly.', tags: ['AMC'] },
 ];
 
 export const INITIAL_DEALS: Deal[] = [
+  // ── OCTOBER 2026 ──
   { id: 1, deal_name: 'AC Installation - Vikram Mehta', customer_name: 'Vikram Mehta', phone: '+91 90000 11123', amount: 12000.0, stage: 'proposal_sent', probability: 60, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'Oct 15, 2026', tags: ['AC Service', 'High Value'], notes: 'Customer interested in 1.5 ton inverter AC installation. Shared quotation.' },
   { id: 2, deal_name: 'AC Repair AMC - Pooja Iyer', customer_name: 'Pooja Iyer', phone: '+91 96789 12345', amount: 18000.0, stage: 'proposal_sent', probability: 75, deal_owner: 'Priya Sharma', source: 'Direct Call', expected_close_date: 'Oct 18, 2026', tags: ['AMC', 'VIP'], notes: 'Annual maintenance contract for 5 AC units.' },
   { id: 3, deal_name: 'Full Home Cleaning - Anil Gupta', customer_name: 'Anil Gupta', phone: '+91 98765 22334', amount: 15000.0, stage: 'negotiation', probability: 85, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'Oct 20, 2026', tags: ['Cleaning'], notes: 'Deep cleaning prior to house warming.' },
-  { id: 4, deal_name: 'AC Duct Cleaning - Kiran Kumar', customer_name: 'Kiran Kumar', phone: '+91 81234 55667', amount: 7200.0, stage: 'negotiation', probability: 80, deal_owner: 'Rahul Mehta', source: 'Referral', expected_close_date: 'Oct 22, 2026', tags: ['AC Service'], notes: 'Commercial office ducting.' },
-  { id: 5, deal_name: 'AC Repair - Deepak Patel', customer_name: 'Deepak Patel', phone: '+91 85471 22330', amount: 2800.0, stage: 'won', probability: 100, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'Oct 02, 2026', tags: ['AC Service'], notes: 'Service completed and invoice paid.' },
+  { id: 4, deal_name: 'AC Repair - Deepak Patel', customer_name: 'Deepak Patel', phone: '+91 85471 22330', amount: 2800.0, stage: 'won', probability: 100, deal_owner: 'Ramesh Kumar', source: 'WhatsApp', expected_close_date: 'Oct 02, 2026', tags: ['AC Service'], notes: 'Service completed and invoice paid.' },
+
+  // ── SEPTEMBER 2026 ──
+  { id: 5, deal_name: 'AC Duct Cleaning - Kiran Kumar', customer_name: 'Kiran Kumar', phone: '+91 81234 55667', amount: 7200.0, stage: 'won', probability: 100, deal_owner: 'Rahul Mehta', source: 'Referral', expected_close_date: 'Sep 25, 2026', tags: ['AC Service'], notes: 'Commercial office ducting completed.' },
+  { id: 6, deal_name: 'Showroom Overhaul - Malabar Gold', customer_name: 'Malabar Gold & Diamonds', phone: '+91 97456 78901', amount: 64000.0, stage: 'negotiation', probability: 80, deal_owner: 'Rahul Mehta', source: 'Corporate Direct', expected_close_date: 'Sep 30, 2026', tags: ['Corporate'], notes: '6 commercial cassettes overhaul.' },
+
+  // ── AUGUST 2026 ──
+  { id: 7, deal_name: 'Aster Clinic Multi-Split Project', customer_name: 'Dr. Tariq Rahman', phone: '+91 98470 12345', amount: 28500.0, stage: 'won', probability: 100, deal_owner: 'Priya Sharma', source: 'Referral', expected_close_date: 'Aug 24, 2026', tags: ['Commercial', 'HVAC'], notes: 'Multi-split overhaul paid in full.' },
+  { id: 8, deal_name: 'Cafe Refrigeration - Malabar Heritage', customer_name: 'Malabar Heritage Cafe', phone: '+91 97456 78901', amount: 16800.0, stage: 'won', probability: 100, deal_owner: 'Ramesh Kumar', source: 'Direct Call', expected_close_date: 'Aug 14, 2026', tags: ['Refrigeration'], notes: 'Cassette cooling overhaul and compressor replaced.' },
+
+  // ── YEAR 2025 ──
+  { id: 9, deal_name: 'CyberPark Precision PAC Cooling', customer_name: 'CyberPark Tech Space', phone: '+91 89432 10987', amount: 115000.0, stage: 'won', probability: 100, deal_owner: 'Rahul Mehta', source: 'Government Tender', expected_close_date: 'Dec 18, 2025', tags: ['PAC', 'High Value'], notes: 'Major government data center contract.' },
+  { id: 10, deal_name: 'Hilite Residency Bulk Pre-Monsoon AMC', customer_name: 'Hilite Residency Flat Owners', phone: '+91 94470 54321', amount: 42000.0, stage: 'won', probability: 100, deal_owner: 'Priya Sharma', source: 'Referral', expected_close_date: 'Oct 15, 2025', tags: ['Residential', 'AMC'], notes: '12 apartments seasonal servicing.' },
 ];
 
 export const INITIAL_JOBS: Job[] = [
+  // ── OCTOBER 2026 (Current Month & Real Today Oct 02, 2026) ──
   {
     id: 1,
     job_id_str: 'JOB-1024',
@@ -153,7 +182,7 @@ export const INITIAL_JOBS: Job[] = [
     customer_name: 'Sneha Joshi',
     phone: '+91 96789 66771',
     service: 'AC Maintenance (General Service)',
-    date_str: 'Oct 03, 2026',
+    date_str: 'Oct 01, 2026',
     time_str: '04:00 PM',
     assigned_to: 'Arjun Nair',
     status: 'completed',
@@ -164,7 +193,7 @@ export const INITIAL_JOBS: Job[] = [
     payment_status: 'paid',
     timeline: [
       { title: 'Job Created', timestamp: 'Sep 29, 10:00 AM', by: 'System', completed: true },
-      { title: 'Service Completed', timestamp: 'Oct 03, 05:00 PM', by: 'Arjun Nair', completed: true }
+      { title: 'Service Completed', timestamp: 'Oct 01, 05:00 PM', by: 'Arjun Nair', completed: true }
     ]
   },
   {
@@ -185,6 +214,378 @@ export const INITIAL_JOBS: Job[] = [
     timeline: [
       { title: 'Job Created', timestamp: 'Sep 28, 11:00 AM', by: 'System', completed: true },
       { title: 'Customer Cancelled', timestamp: 'Sep 28, 02:00 PM', by: 'Customer', completed: true }
+    ]
+  },
+  {
+    id: 6,
+    job_id_str: 'JOB-1025',
+    customer_name: 'Ananya Rao',
+    phone: '+91 98450 77112',
+    service: 'Inverter AC Coil Descaling',
+    date_str: 'Oct 02, 2026',
+    time_str: '03:30 PM',
+    assigned_to: 'Rahul Singh',
+    status: 'scheduled',
+    priority: 'high',
+    location: 'Cyberpark Suite 3B, Calicut',
+    amount: 3200.0,
+    advance_paid: 1000.0,
+    payment_status: 'advance_paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Oct 02, 09:30 AM', by: 'System', completed: true },
+      { title: 'Assigned to Rahul Singh', timestamp: 'Oct 02, 09:45 AM', by: 'System', completed: true }
+    ]
+  },
+
+  // ── SEPTEMBER 2026 ──
+  {
+    id: 7,
+    job_id_str: 'JOB-1018',
+    customer_name: 'Pooja Iyer',
+    phone: '+91 96789 12345',
+    service: 'AC Preventive Maintenance AMC',
+    date_str: 'Sep 28, 2026',
+    time_str: '02:00 PM',
+    assigned_to: 'Priya Sharma',
+    status: 'completed',
+    priority: 'medium',
+    location: 'Kakkanad Villa, Kerala',
+    amount: 4200.0,
+    advance_paid: 4200.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Sep 26, 11:00 AM', by: 'System', completed: true },
+      { title: 'Job Completed', timestamp: 'Sep 28, 03:45 PM', by: 'Priya Sharma', completed: true }
+    ]
+  },
+  {
+    id: 8,
+    job_id_str: 'JOB-1017',
+    customer_name: 'Anil Gupta',
+    phone: '+91 98765 22334',
+    service: 'Commercial Chiller Inspection',
+    date_str: 'Sep 20, 2026',
+    time_str: '11:00 AM',
+    assigned_to: 'Arjun Nair',
+    status: 'completed',
+    priority: 'high',
+    location: 'Industrial Estate, Calicut',
+    amount: 6500.0,
+    advance_paid: 6500.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Sep 18, 08:30 AM', by: 'System', completed: true },
+      { title: 'Job Completed', timestamp: 'Sep 20, 01:15 PM', by: 'Arjun Nair', completed: true }
+    ]
+  },
+  {
+    id: 9,
+    job_id_str: 'JOB-1016',
+    customer_name: 'Kiran Kumar',
+    phone: '+91 81234 55667',
+    service: 'Duct Cleaning & Sanitization',
+    date_str: 'Sep 12, 2026',
+    time_str: '09:30 AM',
+    assigned_to: 'Neha Patel',
+    status: 'completed',
+    priority: 'medium',
+    location: 'Kozhikode, Kerala',
+    amount: 3800.0,
+    advance_paid: 3800.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Sep 11, 10:00 AM', by: 'System', completed: true },
+      { title: 'Duct Cleared & Sanitized', timestamp: 'Sep 12, 12:30 PM', by: 'Neha Patel', completed: true }
+    ]
+  },
+  {
+    id: 10,
+    job_id_str: 'JOB-1015',
+    customer_name: 'Farooq Abdullah',
+    phone: '+91 97451 88990',
+    service: 'Split AC Gas Top-up & Flange Fix',
+    date_str: 'Sep 05, 2026',
+    time_str: '04:00 PM',
+    assigned_to: 'Rahul Singh',
+    status: 'completed',
+    priority: 'high',
+    location: 'Feroke Market, Calicut',
+    amount: 2900.0,
+    advance_paid: 2900.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Sep 04, 02:00 PM', by: 'System', completed: true },
+      { title: 'Gas Refilled & Tested', timestamp: 'Sep 05, 05:45 PM', by: 'Rahul Singh', completed: true }
+    ]
+  },
+
+  // ── AUGUST 2026 ──
+  {
+    id: 11,
+    job_id_str: 'JOB-1013',
+    customer_name: 'Aster Medcity Clinic',
+    phone: '+91 98470 12345',
+    service: 'VRV Central HVAC Multi-Split Overhaul',
+    date_str: 'Aug 24, 2026',
+    time_str: '10:00 AM',
+    assigned_to: 'Arjun Nair',
+    status: 'completed',
+    priority: 'high',
+    location: 'Chakkorathukulam, Calicut',
+    amount: 14500.0,
+    advance_paid: 14500.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Scheduled', timestamp: 'Aug 22, 11:00 AM', by: 'Clinic Admin', completed: true },
+      { title: 'VRV Overhaul Complete', timestamp: 'Aug 24, 04:00 PM', by: 'Arjun Nair', completed: true }
+    ]
+  },
+  {
+    id: 12,
+    job_id_str: 'JOB-1012',
+    customer_name: 'Malabar Heritage Cafe',
+    phone: '+91 97456 78901',
+    service: 'Cassette AC Compressor Replacement',
+    date_str: 'Aug 14, 2026',
+    time_str: '08:30 AM',
+    assigned_to: 'Amit Sharma',
+    status: 'completed',
+    priority: 'high',
+    location: 'Mananchira Square, Calicut',
+    amount: 8200.0,
+    advance_paid: 8200.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Diagnosis Dispatched', timestamp: 'Aug 13, 03:00 PM', by: 'System', completed: true },
+      { title: 'Compressor Replaced & Signed', timestamp: 'Aug 14, 12:30 PM', by: 'Amit Sharma', completed: true }
+    ]
+  },
+  {
+    id: 13,
+    job_id_str: 'JOB-1011',
+    customer_name: 'Shreya Nambiar',
+    phone: '+91 94471 22331',
+    service: 'Copper Piping & Dual Unit Installation',
+    date_str: 'Aug 04, 2026',
+    time_str: '02:00 PM',
+    assigned_to: 'Priya Sharma',
+    status: 'completed',
+    priority: 'medium',
+    location: 'Kallai Road, Kozhikode',
+    amount: 5400.0,
+    advance_paid: 5400.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Site Inspection', timestamp: 'Aug 03, 10:00 AM', by: 'Priya Sharma', completed: true },
+      { title: 'Installation Complete', timestamp: 'Aug 04, 05:00 PM', by: 'Priya Sharma', completed: true }
+    ]
+  },
+
+  // ── JULY 2026 ──
+  {
+    id: 14,
+    job_id_str: 'JOB-1010',
+    customer_name: 'K.V. Mohanan',
+    phone: '+91 90481 33445',
+    service: 'Monsoon PCB Moisture Treatment',
+    date_str: 'Jul 22, 2026',
+    time_str: '03:00 PM',
+    assigned_to: 'Neha Patel',
+    status: 'completed',
+    priority: 'low',
+    location: 'Chevayur, Calicut',
+    amount: 2700.0,
+    advance_paid: 2700.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Jul 21, 04:00 PM', by: 'System', completed: true },
+      { title: 'PCB Dried & Sealed', timestamp: 'Jul 22, 05:00 PM', by: 'Neha Patel', completed: true }
+    ]
+  },
+  {
+    id: 15,
+    job_id_str: 'JOB-1009',
+    customer_name: 'Harish Menon',
+    phone: '+91 98950 44556',
+    service: '3 BHK Full Home Deep Sanitization',
+    date_str: 'Jul 09, 2026',
+    time_str: '11:00 AM',
+    assigned_to: 'Amit Sharma',
+    status: 'completed',
+    priority: 'medium',
+    location: 'Medical College Junction, Calicut',
+    amount: 4900.0,
+    advance_paid: 4900.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Booked', timestamp: 'Jul 08, 01:00 PM', by: 'System', completed: true },
+      { title: 'Sanitization Finished', timestamp: 'Jul 09, 03:00 PM', by: 'Amit Sharma', completed: true }
+    ]
+  },
+
+  // ── MAY - JUNE 2026 ──
+  {
+    id: 16,
+    job_id_str: 'JOB-1008',
+    customer_name: 'Royal Bakery Central Facility',
+    phone: '+91 94460 55667',
+    service: 'Cold Storage Condenser Maintenance',
+    date_str: 'Jun 18, 2026',
+    time_str: '01:00 PM',
+    assigned_to: 'Arjun Nair',
+    status: 'completed',
+    priority: 'high',
+    location: 'West Hill Industrial Area',
+    amount: 11200.0,
+    advance_paid: 11200.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Scheduled AMC', timestamp: 'Jun 16, 09:00 AM', by: 'System', completed: true },
+      { title: 'Condensers Flushed', timestamp: 'Jun 18, 04:30 PM', by: 'Arjun Nair', completed: true }
+    ]
+  },
+  {
+    id: 17,
+    job_id_str: 'JOB-1007',
+    customer_name: 'Dr. Sujatha Nair',
+    phone: '+91 98471 66778',
+    service: 'Inverter Split AC Gas Refill & Filter Swap',
+    date_str: 'May 20, 2026',
+    time_str: '10:30 AM',
+    assigned_to: 'Priya Sharma',
+    status: 'completed',
+    priority: 'low',
+    location: 'PT Usha Road, Kozhikode',
+    amount: 3100.0,
+    advance_paid: 3100.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'May 19, 06:00 PM', by: 'System', completed: true },
+      { title: 'Service Completed', timestamp: 'May 20, 12:00 PM', by: 'Priya Sharma', completed: true }
+    ]
+  },
+
+  // ── YEAR 2025 (Multiple Historical Months) ──
+  {
+    id: 18,
+    job_id_str: 'JOB-1004',
+    customer_name: 'Grand Calicut Hotel',
+    phone: '+91 97470 11223',
+    service: 'Central VRF Plant Annual Maintenance Check',
+    date_str: 'Dec 15, 2025',
+    time_str: '10:00 AM',
+    assigned_to: 'Arjun Nair',
+    status: 'completed',
+    priority: 'high',
+    location: 'Mavoor Road, Kozhikode',
+    amount: 18900.0,
+    advance_paid: 18900.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Annual Check Initiated', timestamp: 'Dec 14, 09:00 AM', by: 'Facility Team', completed: true },
+      { title: 'Audit Signoff', timestamp: 'Dec 15, 05:00 PM', by: 'Arjun Nair', completed: true }
+    ]
+  },
+  {
+    id: 19,
+    job_id_str: 'JOB-1003',
+    customer_name: 'Meera Namboodiri',
+    phone: '+91 90480 99881',
+    service: 'Residential AC Indoor Unit Servicing',
+    date_str: 'Oct 14, 2025',
+    time_str: '02:00 PM',
+    assigned_to: 'Priya Sharma',
+    status: 'completed',
+    priority: 'medium',
+    location: 'Thiruvannur, Kozhikode',
+    amount: 3500.0,
+    advance_paid: 3500.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Booked', timestamp: 'Oct 13, 11:00 AM', by: 'System', completed: true },
+      { title: 'Maintenance Completed', timestamp: 'Oct 14, 04:30 PM', by: 'Priya Sharma', completed: true }
+    ]
+  },
+  {
+    id: 20,
+    job_id_str: 'JOB-1002',
+    customer_name: 'Crescent Tech Park Inc.',
+    phone: '+91 85930 22334',
+    service: 'Server Room Precision Air Conditioning Audit',
+    date_str: 'Jul 20, 2025',
+    time_str: '11:30 AM',
+    assigned_to: 'Amit Sharma',
+    status: 'completed',
+    priority: 'high',
+    location: 'Nellikode, Calicut',
+    amount: 16400.0,
+    advance_paid: 16400.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Audit Dispatched', timestamp: 'Jul 19, 02:00 PM', by: 'System', completed: true },
+      { title: 'Compliance Report Logged', timestamp: 'Jul 20, 03:00 PM', by: 'Amit Sharma', completed: true }
+    ]
+  },
+  {
+    id: 21,
+    job_id_str: 'JOB-1001',
+    customer_name: 'George Thomas',
+    phone: '+91 94473 88122',
+    service: 'Dual Split General Service & Copper Cleaning',
+    date_str: 'Mar 18, 2025',
+    time_str: '03:30 PM',
+    assigned_to: 'Rahul Singh',
+    status: 'completed',
+    priority: 'low',
+    location: 'Nadakkavu, Kozhikode',
+    amount: 2600.0,
+    advance_paid: 2600.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Job Created', timestamp: 'Mar 17, 10:00 AM', by: 'System', completed: true },
+      { title: 'Service Complete', timestamp: 'Mar 18, 05:00 PM', by: 'Rahul Singh', completed: true }
+    ]
+  },
+
+  // ── YEAR 2024 (Historical Baseline) ──
+  {
+    id: 22,
+    job_id_str: 'JOB-0999',
+    customer_name: 'Calicut Indoor Stadium Arena',
+    phone: '+91 98471 00991',
+    service: 'High-Volume Blower & Duct Inspection',
+    date_str: 'Nov 12, 2024',
+    time_str: '09:00 AM',
+    assigned_to: 'Amit Sharma',
+    status: 'completed',
+    priority: 'high',
+    location: 'Rajaji Road, Kozhikode',
+    amount: 15000.0,
+    advance_paid: 15000.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Project Inaugurated', timestamp: 'Nov 10, 09:00 AM', by: 'Sports Authority', completed: true },
+      { title: 'Commissioning Finished', timestamp: 'Nov 12, 02:00 PM', by: 'Amit Sharma', completed: true }
+    ]
+  },
+  {
+    id: 23,
+    job_id_str: 'JOB-0998',
+    customer_name: 'Suresh Babu',
+    phone: '+91 90371 44556',
+    service: 'Single Split AC Reinstallation & Gas Top-up',
+    date_str: 'May 18, 2024',
+    time_str: '02:00 PM',
+    assigned_to: 'Priya Sharma',
+    status: 'completed',
+    priority: 'medium',
+    location: 'West Hill, Calicut',
+    amount: 2400.0,
+    advance_paid: 2400.0,
+    payment_status: 'paid',
+    timeline: [
+      { title: 'Booking Received', timestamp: 'May 17, 04:00 PM', by: 'System', completed: true },
+      { title: 'Reinstallation Verified', timestamp: 'May 18, 04:30 PM', by: 'Priya Sharma', completed: true }
     ]
   },
 ];
@@ -333,13 +734,37 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
+  // ── OCTOBER 2026 (Current) ──
   { id: 1, date_str: 'Oct 02, 2026', tx_type: 'income', description: 'Payment from AC Services', category: 'AC Services', party: 'Amit Sharma', account: 'HDFC Bank - 1234', amount: 12500.0, payment_mode: 'UPI', reference_id: 'INV-2026-0521', status: 'completed' },
   { id: 2, date_str: 'Oct 01, 2026', tx_type: 'expense', description: 'Salary - September 2026', category: 'Salaries & Wages', party: 'Payroll', account: 'ICICI Bank - 5678', amount: 265000.0, payment_mode: 'Bank Transfer', reference_id: 'EXP-2026-0311', status: 'completed' },
+
+  // ── SEPTEMBER 2026 ──
   { id: 3, date_str: 'Sep 30, 2026', tx_type: 'income', description: 'Digital Marketing Project', category: 'Marketing', party: 'Digital Ads', account: 'HDFC Bank - 1234', amount: 18750.0, payment_mode: 'UPI', reference_id: 'INV-2026-0518', status: 'completed' },
   { id: 4, date_str: 'Sep 29, 2026', tx_type: 'expense', description: 'Office Rent - September', category: 'Rent & Utilities', party: 'Landlord', account: 'Axis Bank - 9012', amount: 55000.0, payment_mode: 'NEFT', reference_id: 'EXP-2026-0308', status: 'completed' },
   { id: 5, date_str: 'Sep 28, 2026', tx_type: 'income', description: 'Website Development', category: 'Web Services', party: 'Rahul Singh', account: 'HDFC Bank - 1234', amount: 75000.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2026-0512', status: 'completed' },
   { id: 6, date_str: 'Sep 27, 2026', tx_type: 'transfer', description: 'Branch Petty Cash Float Transfer', category: 'Account Transfer', party: 'Calicut Cyberpark Vault', account: 'HDFC Bank - 1234', amount: 15000.0, payment_mode: 'IMPS', reference_id: 'TRF-2026-0044', status: 'completed' },
   { id: 7, date_str: 'Sep 26, 2026', tx_type: 'refund', description: 'Customer Security Deposit Refund', category: 'Customer Refund', party: 'Priya Sharma', account: 'ICICI Bank - 5678', amount: 2500.0, payment_mode: 'UPI', reference_id: 'RFD-2026-0019', status: 'completed' },
+
+  // ── AUGUST 2026 ──
+  { id: 8, date_str: 'Aug 24, 2026', tx_type: 'income', description: 'Commercial AMC Contract - Aster Clinic', category: 'AC Services', party: 'Dr. Tariq Rahman', account: 'Federal Bank - Current', amount: 28500.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2026-0498', status: 'completed' },
+  { id: 9, date_str: 'Aug 14, 2026', tx_type: 'expense', description: 'Compressor Spares & R32 Refrigerant Bulk', category: 'Spare Parts & Inventory', party: 'CoolTech Spares Ltd', account: 'HDFC Bank - 1234', amount: 42000.0, payment_mode: 'Bank Transfer', reference_id: 'EXP-2026-0275', status: 'completed' },
+
+  // ── JULY 2026 ──
+  { id: 10, date_str: 'Jul 22, 2026', tx_type: 'income', description: 'Showroom Cassette Maintenance Overhaul', category: 'Commercial HVAC', party: 'Malabar Gold HQ', account: 'Federal Bank - Current', amount: 64000.0, payment_mode: 'NEFT', reference_id: 'INV-2026-0422', status: 'completed' },
+  { id: 11, date_str: 'Jul 05, 2026', tx_type: 'expense', description: 'Fleet Vehicles Monsoon Servicing & Tires', category: 'Fuel & Travel', party: 'Calicut Automotive Works', account: 'Axis Bank - 9012', amount: 23400.0, payment_mode: 'Corporate Card', reference_id: 'EXP-2026-0211', status: 'completed' },
+
+  // ── MAY - JUNE 2026 ──
+  { id: 12, date_str: 'Jun 19, 2026', tx_type: 'income', description: 'Cold Storage Plant Refurbishment', category: 'Commercial HVAC', party: 'Royal Bakery Central', account: 'HDFC Bank - 1234', amount: 112000.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2026-0388', status: 'completed' },
+  { id: 13, date_str: 'May 15, 2026', tx_type: 'expense', description: 'Statutory GST Q4 & TDS Traces Settlement', category: 'Tax & Compliance', party: 'Central Govt Account', account: 'Federal Bank - Current', amount: 89400.0, payment_mode: 'NetBanking', reference_id: 'TAX-2026-004', status: 'completed' },
+
+  // ── YEAR 2025 ──
+  { id: 14, date_str: 'Dec 18, 2025', tx_type: 'income', description: 'Precision Air Cooling (PAC) Annual AMC', category: 'Commercial HVAC', party: 'CyberPark Kerala Tech', account: 'Federal Bank - Current', amount: 115000.0, payment_mode: 'NEFT', reference_id: 'INV-2025-0912', status: 'completed' },
+  { id: 15, date_str: 'Oct 22, 2025', tx_type: 'income', description: 'VRV Chiller Overhaul - Grand Hotel', category: 'Commercial HVAC', party: 'Grand Calicut Hotel', account: 'HDFC Bank - 1234', amount: 95000.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2025-0780', status: 'completed' },
+  { id: 16, date_str: 'Jul 14, 2025', tx_type: 'expense', description: 'Annual Corporate Software Licenses', category: 'IT Infrastructure', party: 'Zoho & AWS Cloud', account: 'HDFC Bank - 1234', amount: 62000.0, payment_mode: 'Credit Card', reference_id: 'EXP-2025-0450', status: 'completed' },
+
+  // ── YEAR 2024 ──
+  { id: 17, date_str: 'Nov 15, 2024', tx_type: 'income', description: 'Indoor Stadium Air System Initial Install', category: 'Commercial HVAC', party: 'Calicut Sports Arena', account: 'Federal Bank - Current', amount: 150000.0, payment_mode: 'NEFT', reference_id: 'INV-2024-0320', status: 'completed' },
+  { id: 18, date_str: 'May 12, 2024', tx_type: 'income', description: 'Foundational HVAC Consulting Services', category: 'Consulting', party: 'Prestige Ventures', account: 'HDFC Bank - 1234', amount: 45000.0, payment_mode: 'Bank Transfer', reference_id: 'INV-2024-0105', status: 'completed' },
 ];
 
 export const INITIAL_EXPENSES: Expense[] = [
@@ -499,14 +924,185 @@ export const INITIAL_EXPENSES: Expense[] = [
     reference_no: 'SUB-2026-0419',
     notes: 'Monthly CRM user licenses and backend API server hosting.',
   },
+
+  // ── AUGUST 2026 ──
+  {
+    id: 13,
+    date_str: 'Aug 28, 2026',
+    description: 'Commercial Refrigerant R410A Cylinders (10 units)',
+    category: 'Spare Parts & Inventory',
+    vendor: 'Calicut Spares Mart',
+    amount: 42500.0,
+    payment_mode: 'UPI',
+    project: 'AC Field Operations',
+    status: 'paid',
+    reference_no: 'EXP-2026-0275',
+    notes: 'Refrigerant restock for pre-festival maintenance rush.',
+  },
+  {
+    id: 14,
+    date_str: 'Aug 15, 2026',
+    description: 'Monthly Technician Field Allowances & Tool Upkeep',
+    category: 'Operations',
+    vendor: 'Field Warehouse',
+    amount: 19500.0,
+    payment_mode: 'Bank Transfer',
+    project: 'Operations HQ',
+    status: 'paid',
+    reference_no: 'EXP-2026-0250',
+    notes: 'Bi-weekly allowance and specialized tool maintenance.',
+  },
+
+  // ── JULY 2026 ──
+  {
+    id: 15,
+    date_str: 'Jul 24, 2026',
+    description: 'Bulk Copper Piping and Brass Flare Couplers',
+    category: 'Spare Parts & Inventory',
+    vendor: 'MetalCraft Supplies',
+    amount: 31000.0,
+    payment_mode: 'Bank Transfer',
+    project: 'Warehouse Stock',
+    status: 'paid',
+    reference_no: 'EXP-2026-0210',
+    notes: 'Heavy duty copper tube rolls for split and duct installations.',
+  },
+  {
+    id: 16,
+    date_str: 'Jul 10, 2026',
+    description: 'Service Fleet Routine Maintenance & Oil Change',
+    category: 'Fuel & Travel',
+    vendor: 'AutoZone Calicut',
+    amount: 14800.0,
+    payment_mode: 'Corporate Debit Card',
+    project: 'Fleet Logistics',
+    status: 'paid',
+    reference_no: 'EXP-2026-0185',
+    notes: 'Regular 10,000km service for 3 field pickup vans.',
+  },
+
+  // ── MAY - JUNE 2026 ──
+  {
+    id: 17,
+    date_str: 'Jun 18, 2026',
+    description: 'Pre-Monsoon Heavy Safety Gear & Harnesses',
+    category: 'Operations',
+    vendor: 'SafeGrip Industrial Gear',
+    amount: 22400.0,
+    payment_mode: 'UPI',
+    project: 'Field Safety',
+    status: 'paid',
+    reference_no: 'EXP-2026-0160',
+    notes: 'Monsoon outdoor safety gear and rooftop anchor ropes.',
+  },
+  {
+    id: 18,
+    date_str: 'May 20, 2026',
+    description: 'High-Pressure Jet Washers Restock (4 Units)',
+    category: 'Equipment',
+    vendor: 'CoolTech Tools India',
+    amount: 36000.0,
+    payment_mode: 'Bank Transfer',
+    project: 'Service Tools',
+    status: 'paid',
+    reference_no: 'EXP-2026-0130',
+    notes: 'Commercial jet cleaning pumps for outdoor condenser servicing.',
+  },
+
+  // ── YEAR 2025 ──
+  {
+    id: 19,
+    date_str: 'Dec 15, 2025',
+    description: 'Annual Enterprise Cloud & AWS Server Hosting',
+    category: 'IT Infrastructure',
+    vendor: 'AWS Cloud Services',
+    amount: 54000.0,
+    payment_mode: 'Corporate Debit Card',
+    project: 'Cloud Backend',
+    status: 'paid',
+    reference_no: 'EXP-2025-0099',
+    notes: 'Annual upfront payment for high availability backend clusters.',
+  },
+  {
+    id: 20,
+    date_str: 'Oct 18, 2025',
+    description: 'Workshop Diagnostic Equipment Calibration',
+    category: 'Operations',
+    vendor: 'Precision Metrology Lab',
+    amount: 18000.0,
+    payment_mode: 'Bank Transfer',
+    project: 'Lab Certification',
+    status: 'paid',
+    reference_no: 'EXP-2025-0072',
+    notes: 'Annual calibration certificates for digital pressure manifolds.',
+  },
+  {
+    id: 21,
+    date_str: 'Jul 14, 2025',
+    description: 'Corporate Software Subscriptions & Licenses',
+    category: 'Operations',
+    vendor: 'Zoho Corporation',
+    amount: 28000.0,
+    payment_mode: 'Corporate Debit Card',
+    project: 'IT Infrastructure',
+    status: 'paid',
+    reference_no: 'EXP-2025-0045',
+    notes: 'Annual CRM license renewal for support team.',
+  },
+
+  // ── YEAR 2024 ──
+  {
+    id: 22,
+    date_str: 'Nov 20, 2024',
+    description: 'Initial Service Fleet Branding & Vehicle Wraps',
+    category: 'Marketing & WhatsApp Ads',
+    vendor: 'SignMaster Media',
+    amount: 35000.0,
+    payment_mode: 'Bank Transfer',
+    project: 'Brand Identity',
+    status: 'paid',
+    reference_no: 'EXP-2024-0020',
+    notes: 'Vinyl vehicle wrap branding across primary response vans.',
+  },
+  {
+    id: 23,
+    date_str: 'May 15, 2024',
+    description: 'Foundation Tools & Digital Manifold Gauges',
+    category: 'Equipment',
+    vendor: 'Industrial HVAC Tools',
+    amount: 48000.0,
+    payment_mode: 'Bank Transfer',
+    project: 'Operations Launch',
+    status: 'paid',
+    reference_no: 'EXP-2024-0005',
+    notes: 'Inaugural toolkit kit purchases for founding technician crew.',
+  },
 ];
 
 export const INITIAL_INVOICES: Invoice[] = [
+  // ── OCTOBER 2026 (Current) ──
   { id: 1, invoice_number: 'INV-2026-0186', customer_name: 'AC Services', customer_email: 'acservices@gmail.com', customer_phone: '+91 98765 43210', invoice_date: 'Oct 02, 2026', due_date: 'Oct 16, 2026', amount: 12500.0, status: 'paid', paid_amount: 12500.0, payment_method: 'UPI', payment_date: 'Oct 02, 2026', items: [{ description: 'AC Repair & Gas Refill', qty: 2, unitPrice: 6250, amount: 12500 }] },
   { id: 2, invoice_number: 'INV-2026-0185', customer_name: 'Digital Ads Pvt. Ltd.', customer_email: 'info@digitalads.com', customer_phone: '+91 98765 11122', invoice_date: 'Oct 01, 2026', due_date: 'Oct 15, 2026', amount: 18750.0, status: 'paid', paid_amount: 18750.0, payment_method: 'Bank Transfer', payment_date: 'Oct 01, 2026' },
+
+  // ── SEPTEMBER 2026 ──
   { id: 3, invoice_number: 'INV-2026-0184', customer_name: 'Zoho Corp', customer_email: 'accounts@zohocorp.com', customer_phone: '+91 85471 22330', invoice_date: 'Sep 30, 2026', due_date: 'Oct 14, 2026', amount: 4200.0, status: 'partial_paid', paid_amount: 2100.0, payment_method: 'Card' },
   { id: 4, invoice_number: 'INV-2026-0183', customer_name: 'Priya Sharma', customer_email: 'priya.sharma@gmail.com', customer_phone: '+91 89213 56789', invoice_date: 'Sep 29, 2026', due_date: 'Oct 13, 2026', amount: 32000.0, status: 'overdue', paid_amount: 0.0, payment_method: 'UPI' },
   { id: 5, invoice_number: 'INV-2026-0182', customer_name: 'Rahul Singh', customer_email: 'rahulsingh@gmail.com', customer_phone: '+91 96789 11223', invoice_date: 'Sep 28, 2026', due_date: 'Oct 12, 2026', amount: 7600.0, status: 'sent', paid_amount: 0.0, payment_method: 'UPI' },
+  { id: 6, invoice_number: 'INV-2026-0181', customer_name: 'Dr. Tariq Rahman', customer_email: 'dr.tariq@asterclinic.com', customer_phone: '+91 98470 12345', invoice_date: 'Sep 15, 2026', due_date: 'Sep 30, 2026', amount: 28500.0, status: 'paid', paid_amount: 28500.0, payment_method: 'Bank Transfer', payment_date: 'Sep 25, 2026' },
+
+  // ── AUGUST 2026 ──
+  { id: 7, invoice_number: 'INV-2026-0178', customer_name: 'Malabar Heritage Cafe', customer_email: 'cafe@malabarheritage.com', customer_phone: '+91 97456 78901', invoice_date: 'Aug 20, 2026', due_date: 'Sep 05, 2026', amount: 16800.0, status: 'paid', paid_amount: 16800.0, payment_method: 'UPI', payment_date: 'Aug 22, 2026' },
+  { id: 8, invoice_number: 'INV-2026-0175', customer_name: 'Shreya Nambiar', customer_email: 'shreya.n@gmail.com', customer_phone: '+91 94471 22331', invoice_date: 'Aug 08, 2026', due_date: 'Aug 22, 2026', amount: 5400.0, status: 'paid', paid_amount: 5400.0, payment_method: 'Card', payment_date: 'Aug 10, 2026' },
+
+  // ── JULY 2026 ──
+  { id: 9, invoice_number: 'INV-2026-0169', customer_name: 'Malabar Gold HQ', customer_email: 'procurement@malabargold.com', customer_phone: '+91 97456 78901', invoice_date: 'Jul 24, 2026', due_date: 'Aug 10, 2026', amount: 64000.0, status: 'paid', paid_amount: 64000.0, payment_method: 'Bank Transfer', payment_date: 'Jul 28, 2026' },
+
+  // ── YEAR 2025 ──
+  { id: 10, invoice_number: 'INV-2025-0142', customer_name: 'CyberPark Kerala Tech', customer_email: 'admin@cyberpark.kerala.gov.in', customer_phone: '+91 89432 10987', invoice_date: 'Dec 18, 2025', due_date: 'Jan 05, 2026', amount: 115000.0, status: 'paid', paid_amount: 115000.0, payment_method: 'Bank Transfer', payment_date: 'Dec 22, 2025' },
+  { id: 11, invoice_number: 'INV-2025-0118', customer_name: 'Grand Calicut Hotel', customer_email: 'accounts@grandcalicut.com', customer_phone: '+91 97470 11223', invoice_date: 'Oct 22, 2025', due_date: 'Nov 05, 2025', amount: 95000.0, status: 'paid', paid_amount: 95000.0, payment_method: 'Bank Transfer', payment_date: 'Oct 25, 2025' },
+
+  // ── YEAR 2024 ──
+  { id: 12, invoice_number: 'INV-2024-0088', customer_name: 'Calicut Indoor Stadium Arena', customer_email: 'sports@calicut.gov.in', customer_phone: '+91 98471 00991', invoice_date: 'Nov 15, 2024', due_date: 'Nov 30, 2024', amount: 150000.0, status: 'paid', paid_amount: 150000.0, payment_method: 'Bank Transfer', payment_date: 'Nov 18, 2024' },
 ];
 
 export const INITIAL_QUOTATIONS: Quotation[] = [
@@ -633,6 +1229,136 @@ export const INITIAL_QUOTATIONS: Quotation[] = [
     items: [
       { description: 'Inverter AC Sensor Board & PCB Testing', qty: 1, unitPrice: 5500, taxRate: 18, amount: 5500 },
       { description: 'Full System Labor & Outdoor Unit Cleaning', qty: 1, unitPrice: 3000, taxRate: 18, amount: 3000 },
+    ],
+  },
+
+  // ── AUGUST 2026 ──
+  {
+    id: 7,
+    quotation_number: 'QUO-2026-0034',
+    customer_name: 'Malabar Heritage Cafe',
+    customer_email: 'cafe@malabarheritage.com',
+    customer_phone: '+91 97456 78901',
+    quotation_date: 'Aug 18, 2026',
+    valid_until: 'Sep 02, 2026',
+    amount: 16800,
+    subtotal: 15000,
+    tax_amount: 2700,
+    discount_amount: 900,
+    status: 'converted',
+    converted_invoice_id: 'INV-2026-0178',
+    terms: 'Commercial dining hall HVAC upgrade. Converted to Invoice INV-2026-0178.',
+    notes: 'Dual cassette AC chemical washing and airflow duct dampers.',
+    items: [
+      { description: 'Commercial Dining Hall Cassette Clean (2 Units)', qty: 2, unitPrice: 6500, taxRate: 18, amount: 13000 },
+      { description: 'Duct Air Damper Acoustic Calibration', qty: 1, unitPrice: 2000, taxRate: 18, amount: 2000 },
+    ],
+  },
+  {
+    id: 8,
+    quotation_number: 'QUO-2026-0031',
+    customer_name: 'Shreya Nambiar',
+    customer_email: 'shreya.n@gmail.com',
+    customer_phone: '+91 94471 22331',
+    quotation_date: 'Aug 05, 2026',
+    valid_until: 'Aug 20, 2026',
+    amount: 5400,
+    subtotal: 5000,
+    tax_amount: 900,
+    discount_amount: 500,
+    status: 'converted',
+    converted_invoice_id: 'INV-2026-0175',
+    terms: 'Residential bedroom AC relocation. Converted to Invoice INV-2026-0175.',
+    notes: 'Indoor and outdoor unit uninstallation and remounting.',
+    items: [
+      { description: 'Split AC Relocation & Extra Copper Run', qty: 1, unitPrice: 5000, taxRate: 18, amount: 5000 },
+    ],
+  },
+
+  // ── JULY 2026 ──
+  {
+    id: 9,
+    quotation_number: 'QUO-2026-0028',
+    customer_name: 'Kozhikode Trade Centre',
+    customer_email: 'info@calicuttrade.com',
+    customer_phone: '+91 98471 33445',
+    quotation_date: 'Jul 18, 2026',
+    valid_until: 'Aug 05, 2026',
+    amount: 72000,
+    subtotal: 65000,
+    tax_amount: 11700,
+    discount_amount: 4700,
+    status: 'accepted',
+    converted_invoice_id: '',
+    terms: 'Annual trade exhibition pavilion cooling maintenance package.',
+    notes: 'Includes temporary portable chillers and stand-by technician.',
+    items: [
+      { description: 'Exhibition Hall Chiller Standby Support', qty: 1, unitPrice: 45000, taxRate: 18, amount: 45000 },
+      { description: 'Emergency Backup Air Handler Servicing', qty: 2, unitPrice: 10000, taxRate: 18, amount: 20000 },
+    ],
+  },
+
+  // ── YEAR 2025 ──
+  {
+    id: 10,
+    quotation_number: 'QUO-2025-0019',
+    customer_name: 'CyberPark Kerala Tech Space',
+    customer_email: 'admin@cyberpark.kerala.gov.in',
+    customer_phone: '+91 89432 10987',
+    quotation_date: 'Dec 10, 2025',
+    valid_until: 'Dec 25, 2025',
+    amount: 115000,
+    subtotal: 105000,
+    tax_amount: 18900,
+    discount_amount: 8900,
+    status: 'converted',
+    converted_invoice_id: 'INV-2025-0142',
+    terms: 'Precision cooling contract converted to Invoice INV-2025-0142.',
+    notes: 'Server room redundancy & airflow management contract.',
+    items: [
+      { description: 'Precision AC Annual Maintenance Overhaul', qty: 3, unitPrice: 35000, taxRate: 18, amount: 105000 },
+    ],
+  },
+  {
+    id: 11,
+    quotation_number: 'QUO-2025-0014',
+    customer_name: 'Grand Calicut Hotel',
+    customer_email: 'accounts@grandcalicut.com',
+    customer_phone: '+91 97470 11223',
+    quotation_date: 'Oct 15, 2025',
+    valid_until: 'Oct 30, 2025',
+    amount: 95000,
+    subtotal: 88000,
+    tax_amount: 15840,
+    discount_amount: 8840,
+    status: 'converted',
+    converted_invoice_id: 'INV-2025-0118',
+    terms: 'Banquet hall central AC overhaul converted to Invoice INV-2025-0118.',
+    notes: 'Banquet hall AHU condenser and cooling tower water chemical flush.',
+    items: [
+      { description: 'Central AHU Coil Descaling & Blower Servicing', qty: 4, unitPrice: 22000, taxRate: 18, amount: 88000 },
+    ],
+  },
+
+  // ── YEAR 2024 ──
+  {
+    id: 12,
+    quotation_number: 'QUO-2024-0008',
+    customer_name: 'Calicut Indoor Stadium Arena',
+    customer_email: 'sports@calicut.gov.in',
+    customer_phone: '+91 98471 00991',
+    quotation_date: 'Nov 05, 2024',
+    valid_until: 'Nov 20, 2024',
+    amount: 150000,
+    subtotal: 138000,
+    tax_amount: 24840,
+    discount_amount: 12840,
+    status: 'converted',
+    converted_invoice_id: 'INV-2024-0088',
+    terms: 'Inaugural arena ventilation project. Converted to Invoice INV-2024-0088.',
+    notes: 'Multi-zone industrial blower commissioning and duct balance.',
+    items: [
+      { description: 'High-Volume Blower System Commissioning', qty: 1, unitPrice: 138000, taxRate: 18, amount: 138000 },
     ],
   },
 ];
@@ -1163,6 +1889,62 @@ export const INITIAL_FOLLOWUPS: FollowUp[] = [
     status: 'overdue',
     priority: 'high',
     notes: 'Check if quotation was approved.'
+  },
+  {
+    id: 5,
+    title: 'Post-Service Feedback & AMC Offer',
+    related_to: 'AC Maintenance - Malabar Heritage Cafe DEAL-1011',
+    customer_name: 'Malabar Heritage Cafe',
+    phone: '+91 97456 78901',
+    follow_up_type: 'call',
+    assigned_to: 'Priya Sharma',
+    due_date: 'Aug 24, 2026',
+    due_time: '04:00 PM',
+    status: 'completed',
+    priority: 'medium',
+    notes: 'Client satisfied with cassette AC clean. Discussed annual maintenance contract.'
+  },
+  {
+    id: 6,
+    title: 'Warranty Certificate Delivery',
+    related_to: 'Split AC Relocation - Shreya Nambiar DEAL-1008',
+    customer_name: 'Shreya Nambiar',
+    phone: '+91 94471 22331',
+    follow_up_type: 'whatsapp',
+    assigned_to: 'Amit Sharma',
+    due_date: 'Jul 26, 2026',
+    due_time: '11:00 AM',
+    status: 'completed',
+    priority: 'low',
+    notes: 'Sent PDF digital warranty slip over WhatsApp.'
+  },
+  {
+    id: 7,
+    title: 'Annual Contract Renewal Discussion',
+    related_to: 'Server Room PAC - CyberPark Tech Space DEAL-1003',
+    customer_name: 'CyberPark Tech Space',
+    phone: '+91 89432 10987',
+    follow_up_type: 'meeting',
+    assigned_to: 'Amit Sharma',
+    due_date: 'Dec 15, 2025',
+    due_time: '03:00 PM',
+    status: 'completed',
+    priority: 'high',
+    notes: 'Quarterly review conducted with IT facility director.'
+  },
+  {
+    id: 8,
+    title: 'Post-Installation Inspection Signoff',
+    related_to: 'Blower Commissioning - Calicut Indoor Arena DEAL-1001',
+    customer_name: 'Calicut Indoor Stadium Arena',
+    phone: '+91 98471 00991',
+    follow_up_type: 'call',
+    assigned_to: 'Amit Sharma',
+    due_date: 'Nov 18, 2024',
+    due_time: '10:00 AM',
+    status: 'completed',
+    priority: 'medium',
+    notes: 'Sports officer confirmed stadium cooling and ventilation is operating at 100% capacity.'
   }
 ];
 

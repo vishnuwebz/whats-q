@@ -317,7 +317,20 @@ function getStoredCache<T>(key: string, fallback: T[]): T[] {
     const raw = localStorage.getItem(`whatsq_${key}_cache`);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const first = parsed[0];
+        if (first && typeof first === 'object' && 'id' in first) {
+          const map = new Map<string, any>();
+          fallback.forEach((item: any) => {
+            if (item && item.id !== undefined) map.set(String(item.id), item);
+          });
+          parsed.forEach((item: any) => {
+            if (item && item.id !== undefined) map.set(String(item.id), item);
+          });
+          return Array.from(map.values()) as T[];
+        }
+        return parsed;
+      }
     }
   } catch {}
   return fallback;
@@ -3718,22 +3731,65 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const conversations = safeVal(0, current.conversations, getStoredConversations(), 'conversations');
     const templates     = safeVal(1, current.templates, INITIAL_TEMPLATES, 'templates');
     const metaConfig    = (results[2].status === 'fulfilled' && (results[2] as any).value) || current.metaConfig || getStoredMetaConfig();
-    const leads         = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
-    const deals         = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
-    const followups     = safeVal(5, current.followups, INITIAL_FOLLOWUPS, 'followups');
+    const rawLeads      = safeVal(3, current.leads, INITIAL_LEADS, 'leads');
+    const leadMap = new Map<string, Lead>();
+    INITIAL_LEADS.forEach((l) => leadMap.set(String(l.id), l));
+    (rawLeads || []).forEach((l) => leadMap.set(String(l.id), l));
+    (current.leads || []).forEach((l) => leadMap.set(String(l.id), l));
+    const leads = Array.from(leadMap.values());
+    persistCache('leads', leads);
+
+    const rawDeals      = safeVal(4, current.deals, INITIAL_DEALS, 'deals');
+    const dealMap = new Map<string, Deal>();
+    INITIAL_DEALS.forEach((d) => dealMap.set(String(d.id), d));
+    (rawDeals || []).forEach((d) => dealMap.set(String(d.id), d));
+    (current.deals || []).forEach((d) => dealMap.set(String(d.id), d));
+    const deals = Array.from(dealMap.values());
+    persistCache('deals', deals);
+
+    const rawFollowups  = safeVal(5, current.followups, INITIAL_FOLLOWUPS, 'followups');
+    const fuMap = new Map<string, FollowUp>();
+    INITIAL_FOLLOWUPS.forEach((f) => fuMap.set(String(f.id), f));
+    (rawFollowups || []).forEach((f) => fuMap.set(String(f.id), f));
+    (current.followups || []).forEach((f) => fuMap.set(String(f.id), f));
+    const followups = Array.from(fuMap.values());
+    persistCache('followups', followups);
+
     const branches      = safeVal(23, current.branches, INITIAL_BRANCHES, 'branches');
     const rawCustomers  = safeVal(6, current.customers, [], 'customers');
     const customers     = syncCustomersWithBranches(rawCustomers, branches);
     persistCache('customers', customers);
-    const jobs          = safeVal(7, current.jobs, INITIAL_JOBS, 'jobs');
+
+    const rawJobs       = safeVal(7, current.jobs, INITIAL_JOBS, 'jobs');
+    const jobMap = new Map<string, Job>();
+    INITIAL_JOBS.forEach((j) => jobMap.set(String(j.id), j));
+    (rawJobs || []).forEach((j) => jobMap.set(String(j.id), j));
+    (current.jobs || []).forEach((j) => jobMap.set(String(j.id), j));
+    const jobs = Array.from(jobMap.values());
+    persistCache('jobs', jobs);
+
     const appointments  = safeVal(8, current.appointments, INITIAL_APPOINTMENTS, 'appointments');
     const employees     = safeVal(9, current.employees, INITIAL_EMPLOYEES, 'employees');
     const attendance    = safeVal(10, current.attendance, INITIAL_ATTENDANCE, 'attendance');
     const tasks         = safeVal(11, current.tasks, INITIAL_TASKS, 'tasks');
     const routes        = safeVal(12, current.routes, INITIAL_ROUTES, 'routes');
     const inventory     = safeVal(13, current.inventory, INITIAL_INVENTORY, 'inventory');
-    const transactions  = safeVal(14, current.transactions, INITIAL_TRANSACTIONS, 'transactions');
-    const invoices      = safeVal(15, current.invoices, INITIAL_INVOICES, 'invoices');
+
+    const rawTransactions = safeVal(14, current.transactions, INITIAL_TRANSACTIONS, 'transactions');
+    const txMap = new Map<string, Transaction>();
+    INITIAL_TRANSACTIONS.forEach((t) => txMap.set(String(t.id), t));
+    (rawTransactions || []).forEach((t) => txMap.set(String(t.id), t));
+    (current.transactions || []).forEach((t) => txMap.set(String(t.id), t));
+    const transactions = Array.from(txMap.values());
+    persistCache('transactions', transactions);
+
+    const rawInvoices   = safeVal(15, current.invoices, INITIAL_INVOICES, 'invoices');
+    const invMap = new Map<string, Invoice>();
+    INITIAL_INVOICES.forEach((i) => invMap.set(String(i.id), i));
+    (rawInvoices || []).forEach((i) => invMap.set(String(i.id), i));
+    (current.invoices || []).forEach((i) => invMap.set(String(i.id), i));
+    const invoices = Array.from(invMap.values());
+    persistCache('invoices', invoices);
     const rawExpenses   = safeVal(16, current.expenses, INITIAL_EXPENSES, 'expenses');
     const expMap = new Map<string, Expense>();
     INITIAL_EXPENSES.forEach((e) => expMap.set(String(e.id), e));

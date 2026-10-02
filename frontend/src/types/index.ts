@@ -407,7 +407,7 @@ export interface Job {
   amount: number;
   advance_paid: number;
   payment_status: 'paid' | 'advance_paid' | 'partially_paid' | 'pending';
-  timeline: {
+  timeline?: {
     title: string;
     timestamp: string;
     by: string;

@@ -64,6 +64,20 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   // Range selection state (click 1 = start, click 2 = end)
   const [hoverDate, setHoverDate] = useState<string | null>(null);
 
+  // Active selection target: 'start' | 'end'
+  const [activeTarget, setActiveTarget] = useState<'start' | 'end'>('start');
+  const [showMonthSelect, setShowMonthSelect] = useState(false);
+  const [fromInputText, setFromInputText] = useState(startDate);
+  const [toInputText, setToInputText] = useState(endDate);
+
+  useEffect(() => {
+    setFromInputText(startDate);
+  }, [startDate]);
+
+  useEffect(() => {
+    setToInputText(endDate);
+  }, [endDate]);
+
   // Sync state whenever modal opens or value changes
   useEffect(() => {
     if (isOpen) {
@@ -91,8 +105,6 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       setViewMonth(now.getMonth());
     }
   }, [isOpen, value?.startDate, value?.endDate, value?.label]);
-
-  if (!isOpen) return null;
 
   const presets = [
     { label: 'All Time', start: '2020-01-01', end: '2030-12-31' },
@@ -145,20 +157,6 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   const handleNextYear = () => {
     setViewYear((y) => y + 1);
   };
-
-  // Active selection target: 'start' | 'end'
-  const [activeTarget, setActiveTarget] = useState<'start' | 'end'>('start');
-  const [showMonthSelect, setShowMonthSelect] = useState(false);
-  const [fromInputText, setFromInputText] = useState(startDate);
-  const [toInputText, setToInputText] = useState(endDate);
-
-  useEffect(() => {
-    setFromInputText(startDate);
-  }, [startDate]);
-
-  useEffect(() => {
-    setToInputText(endDate);
-  }, [endDate]);
 
   // Generate calendar days for viewYear & viewMonth
   const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long' });
@@ -350,6 +348,8 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       }
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
