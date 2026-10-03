@@ -8,7 +8,8 @@ interface SendTemplateModalProps {
   onClose: () => void;
   templates: WhatsAppTemplateItem[];
   currentConversation?: Conversation | null;
-  onSendTemplate: (templateId: string | number, variables: Record<string, string>) => void;
+  onSendTemplate: (templateId: string | number, variables: Record<string, string>, senderDeviceId?: string | number) => void;
+  activeSenderDeviceId?: string | number;
 }
 
 export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
@@ -16,9 +17,19 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
   onClose,
   templates,
   currentConversation,
-  onSendTemplate
+  onSendTemplate,
+  activeSenderDeviceId,
 }) => {
-  const { metaConfig } = useQiyamStore();
+  const { metaConfig, linkedDevices, activeSenderDeviceId: storeSenderDeviceId } = useQiyamStore();
+  const effectiveSenderDeviceId = activeSenderDeviceId !== undefined ? activeSenderDeviceId : storeSenderDeviceId;
+  const isEmpDevice = effectiveSenderDeviceId && effectiveSenderDeviceId !== 'meta_cloud';
+  const empDevice = isEmpDevice
+    ? linkedDevices.find(d => String(d.id) === String(effectiveSenderDeviceId) || d.device_label === String(effectiveSenderDeviceId))
+    : null;
+
+  const senderPhoneDisplay = empDevice ? empDevice.phone_number : (metaConfig?.business_phone_display || '+91 94963 00233');
+  const senderLabelDisplay = empDevice ? empDevice.device_label : 'Meta Cloud API';
+
   const approvedTemplates = templates.filter(t => {
     const metaSt = (t.meta_status || '').toUpperCase();
     const st = (t.status || '').toLowerCase();
@@ -69,25 +80,45 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
       const vars: Record<string, string> = {};
       const templateVars = selectedTemplate.body_variables || {};
       const contactName = currentConversation?.contact_name || 'Customer';
-      const serviceNeeded = currentConversation?.service_needed || 'AC Repair';
+      const serviceNeeded = currentConversation?.service_needed || 'AC Repair & Service';
       const estValue = `₹${currentConversation?.estimated_value || 2800}`;
+      const staffName = currentConversation?.lead_owner && currentConversation.lead_owner !== 'Unassigned'
+        ? currentConversation.lead_owner
+        : 'Rahul Mehta';
 
-      Object.keys(templateVars).forEach((k, idx) => {
-        if (idx === 0) vars[k] = contactName;
-        else if (idx === 1) vars[k] = serviceNeeded;
-        else if (idx === 2) vars[k] = estValue;
-        else vars[k] = templateVars[k] || `Value ${k}`;
-      });
+      const bodyText = selectedTemplate.body_text || selectedTemplate.body || '';
+      const matches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
+      const distinctIndices = Array.from(new Set(matches.map(m => m.replace(/[{}]/g, ''))));
 
-      const matches = (selectedTemplate.body_text || selectedTemplate.body || '').match(/\{\{(\d+)\}\}/g) || [];
-      matches.forEach((m, idx) => {
-        const num = m.replace(/[{}]/g, '');
-        if (!vars[num]) {
-          if (idx === 0) vars[num] = contactName;
-          else if (idx === 1) vars[num] = serviceNeeded;
-          else vars[num] = `Sample ${num}`;
+      distinctIndices.forEach(num => {
+        const idx = parseInt(num, 10);
+        const pIndex = bodyText.indexOf(`{{${num}}}`);
+        const context = pIndex !== -1 ? bodyText.slice(Math.max(0, pIndex - 40), pIndex + 40).toLowerCase() : '';
+
+        if (context.includes('hello') || context.includes('hi ') || context.includes('dear') || context.includes('greetings') || idx === 1) {
+          vars[num] = contactName;
+        } else if (context.includes('service') || context.includes('booking for') || context.includes('appointment for') || idx === 2) {
+          vars[num] = serviceNeeded;
+        } else if (context.includes('amount') || context.includes('price') || context.includes('quotation') || context.includes('₹') || context.includes('total') || context.includes('invoice')) {
+          vars[num] = estValue;
+        } else if (context.includes('technician') || context.includes('specialist') || context.includes('professional') || context.includes('assigned')) {
+          vars[num] = staffName;
+        } else if (context.includes('date') || context.includes('on ') || context.includes('for ')) {
+          vars[num] = 'Tomorrow';
+        } else if (context.includes('time') || context.includes('at ')) {
+          vars[num] = '10:30 AM';
+        } else if (templateVars[num]) {
+          vars[num] = templateVars[num];
+        } else {
+          vars[num] = `Sample ${num}`;
         }
       });
+
+      // Header variable auto-fill
+      if (selectedTemplate.header_text && selectedTemplate.header_text.includes('{{')) {
+        vars['header_1'] = selectedTemplate.header_sample || metaConfig?.business_name || 'CoolFix AC Services';
+      }
+
       setVariables(vars);
     }
   }, [selectedTemplateId, currentConversation]);
@@ -96,7 +127,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
 
   const handleSend = () => {
     if (!selectedTemplate) return;
-    onSendTemplate(selectedTemplate.id, variables);
+    onSendTemplate(selectedTemplate.id, variables, effectiveSenderDeviceId);
     onClose();
   };
 
@@ -104,9 +135,24 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     if (!selectedTemplate) return '';
     let text = selectedTemplate.body_text || selectedTemplate.body || '';
     Object.keys(variables).forEach(k => {
-      text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), variables[k] || `{{${k}}}`);
+      if (k !== 'header_1') {
+        text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), variables[k] || `{{${k}}}`);
+      }
     });
     return text;
+  };
+
+  const renderHeaderPreview = () => {
+    if (!selectedTemplate?.header_text) return null;
+    let header = selectedTemplate.header_text;
+    Object.keys(variables).forEach(k => {
+      header = header.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), variables[k] || `{{${k}}}`);
+    });
+    if (header.includes('{{')) {
+      const hVal = variables['header_1'] || selectedTemplate.header_sample || metaConfig?.business_name || 'CoolFix AC Services';
+      header = header.replace(/\{\{(1|header_1|h1)\}\}/g, hVal);
+    }
+    return header;
   };
 
   const categoryColor = (cat?: string) => {
@@ -158,10 +204,10 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
                 <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                   <span>Sending From:</span>
                   <span className="font-mono text-emerald-800 font-extrabold bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                    {metaConfig?.business_phone_display || '+91 98765 43210'}
+                    {senderPhoneDisplay}
                   </span>
                   <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
-                    Meta Cloud API
+                    {senderLabelDisplay}
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500 mt-0.5">
@@ -209,7 +255,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
               <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180 text-emerald-500' : ''}`} />
             </button>
 
-            {/* Dropdown panel â€” position absolute, no overflow clipping */}
+            {/* Dropdown panel — position absolute, no overflow clipping */}
             {dropdownOpen && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[99999] overflow-hidden">
                 <div className="p-2.5 border-b border-slate-100">
@@ -266,8 +312,8 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Template Variables</span>
               {Object.keys(variables).map(k => (
                 <div key={k} className="flex items-center gap-2.5">
-                  <span className="w-12 text-center px-2 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg font-mono font-bold text-emerald-700 text-[10px] shrink-0">
-                    {`{{${k}}}`}
+                  <span className="w-24 text-center px-2 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg font-mono font-bold text-emerald-700 text-[10px] shrink-0 truncate">
+                    {k === 'header_1' ? 'Header Text' : `{{${k}}}`}
                   </span>
                   <input
                     type="text"
@@ -286,7 +332,9 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
             <div className="bg-[#EFEAE2] p-4 rounded-xl border border-slate-200 min-h-[80px]">
               <div className="bg-white rounded-2xl rounded-tl-none px-3.5 py-3 shadow-sm border border-slate-100 max-w-[85%] space-y-1.5">
                 {selectedTemplate?.header_text && (
-                  <div className="font-bold text-[11px] text-slate-900 border-b border-slate-100 pb-1.5">{selectedTemplate.header_text}</div>
+                  <div className="font-bold text-[11px] text-slate-900 border-b border-slate-100 pb-1.5">
+                    {renderHeaderPreview()}
+                  </div>
                 )}
                 <div className="text-[11px] text-slate-800 whitespace-pre-line leading-relaxed">
                   {renderPreview() || <span className="text-slate-400 italic">Select a template to preview...</span>}

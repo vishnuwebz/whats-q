@@ -3205,6 +3205,9 @@ export const ConversationsView: React.FC = () => {
                         // - Double Blue Tick ('read'): Recipient opened/read chat, replied after, or later outbound is marked read
                         // - Double Grey Tick ('delivered'): Recipient device received message (phone data/WiFi is ON)
                         // - Single Grey Tick ('sent'): Sent to WhatsApp network (phone data is OFF or in transit)
+                        const isFailed = msg.status === 'failed';
+                        const isSending = (msg.status as any) === 'sending' || msg.status === 'pending';
+
                         const hasLaterReadOutbound = allMessages.slice(msgIndex + 1).some(
                           (m) => m.sender !== 'customer' && m.status === 'read'
                         );
@@ -3212,13 +3215,13 @@ export const ConversationsView: React.FC = () => {
                           (m) => m.sender === 'customer'
                         );
 
-                        const isRead = !isCustomer && (
+                        const isRead = !isCustomer && !isFailed && !isSending && (
                           msg.status === 'read' ||
                           hasLaterReadOutbound ||
                           hasCustomerReplyAfter
                         );
 
-                        const isDelivered = !isCustomer && !isRead && msg.status === 'delivered';
+                        const isDelivered = !isCustomer && !isFailed && !isSending && !isRead && msg.status === 'delivered';
                         const tooltipStr = formatFullMessageTooltip(msg, currentConv);
 
                         const isQuotation = 
@@ -3272,11 +3275,14 @@ export const ConversationsView: React.FC = () => {
                                 phone = activeDev.phone_number;
                                 if (!deviceLabel) deviceLabel = activeDev.device_label;
                               }
+                            } else if (activeSenderDeviceId === 'meta_cloud') {
+                              phone = metaConfig?.business_phone_display || '+91 94963 00233';
+                              if (!deviceLabel) deviceLabel = 'Meta Cloud API';
                             }
                           }
 
-                          if (!phone && linkedDevices.length > 0) {
-                            const connectedDev = linkedDevices.find((d) => d.status === 'connected') || linkedDevices[0];
+                          if (!phone && activeSenderDeviceId !== 'meta_cloud' && linkedDevices.length > 0) {
+                            const connectedDev = linkedDevices.find((d) => d.status === 'connected');
                             if (connectedDev?.phone_number) {
                               phone = connectedDev.phone_number;
                               if (!deviceLabel) deviceLabel = connectedDev.device_label;
@@ -3606,7 +3612,14 @@ export const ConversationsView: React.FC = () => {
                               >
                                 <span>{msg.timestamp}</span>
                                 {!isCustomer && (
-                                  isRead ? (
+                                  isFailed ? (
+                                    <span
+                                      title={msg.error_details || "Message delivery failed on WhatsApp"}
+                                      className="inline-flex items-center text-rose-300 hover:text-white ml-0.5 cursor-help"
+                                    >
+                                      <AlertCircle className="w-3.5 h-3.5 stroke-[2.4]" />
+                                    </span>
+                                  ) : isRead ? (
                                     <span
                                       title="Read by recipient on WhatsApp (Double blue tick)"
                                       className="inline-flex items-center text-[#53bdeb] ml-0.5"
@@ -4205,8 +4218,9 @@ export const ConversationsView: React.FC = () => {
           onClose={() => setIsTemplateModalOpen(false)}
           templates={templates}
           currentConversation={currentConv}
-          onSendTemplate={(tmplId, vars) => {
-            sendTemplateMessage(currentConv.id, tmplId, vars);
+          activeSenderDeviceId={activeSenderDeviceId}
+          onSendTemplate={(tmplId, vars, senderDevId) => {
+            sendTemplateMessage(currentConv.id, tmplId, vars, senderDevId || activeSenderDeviceId);
           }}
         />
       )}

@@ -773,7 +773,7 @@ interface QiyamState {
       isVoiceNote?: boolean;
     }
   ) => Promise<void>;
-  sendTemplateMessage: (conversationId: string | number, templateId: string | number, variables: Record<string, string>) => Promise<void>;
+  sendTemplateMessage: (conversationId: string | number, templateId: string | number, variables: Record<string, string>, senderDeviceId?: string | number) => Promise<void>;
   startOutboundWhatsAppChat: (params: {
     name?: string;
     phone: string;
@@ -965,7 +965,7 @@ interface QiyamState {
   setClientTyping: (conversationId: string | number, isTyping: boolean) => void;
   onlineUsers: Record<string, { isOnline: boolean; lastSeen?: string }>;
   setClientPresence: (conversationId: string | number, isOnline: boolean, lastSeen?: string) => void;
-  applyMessageStatus: (conversationId: string | number, messageId: string | number, status: 'sent' | 'delivered' | 'read') => void;
+  applyMessageStatus: (conversationId: string | number, messageId: string | number, status: 'sent' | 'delivered' | 'read' | 'failed') => void;
   applyMessageReaction: (conversationId: string | number, messageId: string | number, emoji: string, from: 'customer' | 'agent' | 'bot' | 'system') => void;
   applyRealtimeMessage: (conversationId: string | number, message: WhatsAppMessage) => void;
   applyRealtimeConversation: (convUpdate: Partial<Conversation> & { id: string | number }) => void;
@@ -2544,13 +2544,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           return {
             ...c,
             messages: c.messages.map((m, idx) => {
-              // WhatsApp Monotonic Read Rule:
-              // When status is 'read', all preceding outbound messages in this chat are also read
-              if (status === 'read' && targetIndex !== -1 && idx <= targetIndex && m.sender !== 'customer') {
-                return { ...m, status: 'read' };
-              }
               if (String(m.id) === String(messageId) || (!m.id && m.sender !== 'customer')) {
                 return { ...m, status };
+              }
+              // WhatsApp Monotonic Read Rule:
+              // Only when status is 'read', all preceding outbound messages in this chat are also marked read (excluding failed)
+              if (status === 'read' && targetIndex !== -1 && idx < targetIndex && m.sender !== 'customer' && m.status !== 'failed') {
+                return { ...m, status: 'read' };
               }
               return m;
             }),
@@ -4667,7 +4667,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     get().addToast(res?.error || 'Failed to start WhatsApp conversation', 'error');
   },
 
-  sendTemplateMessage: async (conversationId, templateId, variables) => {
+  sendTemplateMessage: async (conversationId, templateId, variables, senderDeviceId) => {
     // 1. Resolve rendered template text immediately for instant display
     const template = get().templates.find((t) => String(t.id) === String(templateId));
     let renderedText = template?.body_text || template?.body || 'WhatsApp Template Message';
@@ -4677,17 +4677,68 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       });
     }
 
-    const tempId = Date.now();
+    if (template?.header_text) {
+      let headerStr = template.header_text;
+      if (variables) {
+        Object.keys(variables).forEach((k) => {
+          headerStr = headerStr.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(variables[k] || `{{${k}}}`));
+        });
+      }
+      if (headerStr.includes('{{')) {
+        const hVal = variables?.['header_1'] || variables?.['h1'] || template.header_sample || 'CoolFix AC Services';
+        headerStr = headerStr.replace(/\{\{(1|header_1|h1)\}\}/g, String(hVal));
+      }
+      renderedText = `*${headerStr.trim()}*\n\n${renderedText.trim()}`;
+    }
+
+    const tempId = `msg-tmpl-${Date.now()}`;
     const nowTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
+
+    const targetDeviceId = senderDeviceId !== undefined ? senderDeviceId : get().activeSenderDeviceId;
+    const isEmployeeDevice = targetDeviceId && targetDeviceId !== 'meta_cloud';
+    const employeeDevice = isEmployeeDevice
+      ? get().linkedDevices.find((d) => String(d.id) === String(targetDeviceId) || d.device_label === String(targetDeviceId))
+      : null;
+
+    const activeBusinessPhone = (() => {
+      try {
+        const stored = localStorage.getItem('whatsq_waba_numbers');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const primary = parsed.find((n: any) => n.isPrimary) || parsed[0];
+            const raw = (primary?.phone || '').trim();
+            if (raw && !raw.includes('9876543210')) return raw;
+          }
+        }
+      } catch {}
+      const configPhone = (get().metaConfig?.business_phone_display || '').trim();
+      if (configPhone && !configPhone.includes('9876543210')) return configPhone;
+      return '+91 94963 00233';
+    })();
+
+    const resolvedSenderPhone = employeeDevice
+      ? employeeDevice.phone_number
+      : (activeBusinessPhone || '+91 94963 00233');
+
+    const resolvedSenderDevice = employeeDevice
+      ? employeeDevice.device_label
+      : 'Meta Cloud API';
 
     const targetConv = get().conversations.find((c) => String(c.id) === String(conversationId));
     const activeWf = targetConv?.active_workflow || 'Service Booking Flow';
     const assignedStaff = targetConv?.lead_owner && targetConv.lead_owner !== 'Unassigned' ? targetConv.lead_owner : null;
 
+    const resolvedSenderName = isEmployeeDevice && employeeDevice
+      ? (employeeDevice.employee_name || employeeDevice.device_label)
+      : (assignedStaff ? `${assignedStaff} (Template)` : 'Support Desk (Template)');
+
     const optimisticMsg: WhatsAppMessage = {
       id: tempId,
       sender: 'agent',
-      senderName: assignedStaff ? `${assignedStaff} (Template)` : 'Support Desk (Template)',
+      senderName: resolvedSenderName,
+      sender_device: resolvedSenderDevice,
+      sender_phone: resolvedSenderPhone,
       text: renderedText,
       timestamp: nowTime,
       created_at: new Date().toISOString(),
@@ -4729,6 +4780,8 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       const res = await apiClient.post(`/conversations/threads/${conversationId}/send_template/`, {
         template_id: templateId,
         variables,
+        sender_device_id: targetDeviceId || 'meta_cloud',
+        sender_phone: resolvedSenderPhone,
       });
 
       if (res && res.id && res.success !== false) {
@@ -4738,16 +4791,53 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             return {
               ...c,
               messages: c.messages.map((m) =>
-                m.id === tempId ? { ...m, id: res.id, status: res.status || 'sent', meta_message_id: res.meta_message_id } : m
+                m.id === tempId ? {
+                  ...m,
+                  id: res.id,
+                  status: res.status || 'sent',
+                  meta_message_id: res.meta_message_id,
+                  sender_device: res.sender_device || resolvedSenderDevice,
+                  sender_phone: res.sender_phone || resolvedSenderPhone,
+                } : m
               ),
             };
           }),
         }));
       } else if (res?.success === false || res?.error) {
-        get().addToast(res.error || 'Template send failed via Meta', 'error');
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (String(c.id) !== String(conversationId)) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === tempId ? {
+                  ...m,
+                  status: 'failed',
+                  error_details: res.error || 'Failed to dispatch template on WhatsApp',
+                } : m
+              ),
+            };
+          }),
+        }));
+        get().addToast(res.error || 'Template send failed via Meta Cloud API', 'error');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('[Store] Background send_template notice:', e);
+      set((state) => ({
+        conversations: state.conversations.map((c) => {
+          if (String(c.id) !== String(conversationId)) return c;
+          return {
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === tempId ? {
+                ...m,
+                status: 'failed',
+                error_details: e?.message || 'Network error sending template',
+              } : m
+            ),
+          };
+        }),
+      }));
     }
   },
 
@@ -5975,8 +6065,9 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           });
         }
 
-        set({ bulkTemplates: mapped });
+        set({ bulkTemplates: mapped, templates: rawList });
         persistCache('bulk_templates', mapped);
+        persistCache('templates', rawList);
       }
     } catch (err) {
       console.warn('[fetchBulkTemplates] failed:', err);
