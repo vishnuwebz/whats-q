@@ -1,4 +1,5 @@
 import { useQiyamStore, removeDeletedConversationId, addDeletedConversationId } from '../store/useQiyamStore';
+import { addDeletedMessageId, addDeletedForEveryoneMessageId } from '../utils/deletedMessagesStorage';
 import { mapMessage } from './mappers';
 import { API_BASE } from './client';
 
@@ -334,6 +335,50 @@ class RealtimeSyncManager {
         if (conversation_id && message) {
           const mapped = mapMessage(message);
           store.applyRealtimeMessage(conversation_id, mapped);
+        }
+        break;
+      }
+
+      case 'message.deleted': {
+        const { conversation_id, message_id, scope } = event.data || {};
+        if (conversation_id && message_id) {
+          const strMid = String(message_id);
+          const strCid = String(conversation_id);
+          if (scope === 'me') {
+            addDeletedMessageId(strMid);
+            useQiyamStore.setState((state) => ({
+              conversations: state.conversations.map((c) => {
+                if (String(c.id) !== strCid) return c;
+                return {
+                  ...c,
+                  messages: c.messages.filter((m) => String(m.id) !== strMid),
+                };
+              }),
+            }));
+          } else {
+            addDeletedForEveryoneMessageId(strMid);
+            useQiyamStore.setState((state) => ({
+              conversations: state.conversations.map((c) => {
+                if (String(c.id) !== strCid) return c;
+                return {
+                  ...c,
+                  messages: c.messages.map((m) => {
+                    if (String(m.id) !== strMid) return m;
+                    return {
+                      ...m,
+                      text: 'This message was deleted',
+                      deletedScope: 'everyone' as const,
+                      isVoiceNote: false,
+                      audioUrl: undefined,
+                      waveform: undefined,
+                      richCard: undefined,
+                      reactions: undefined,
+                    };
+                  }),
+                };
+              }),
+            }));
+          }
         }
         break;
       }

@@ -3,6 +3,10 @@ import type {
   Conversation,
   WhatsAppMessage,
 } from '../types';
+import {
+  getDeletedMessageIds,
+  getDeletedForEveryoneMessageIds,
+} from '../utils/deletedMessagesStorage';
 
 export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
   const status = String(raw.status || 'sent').toLowerCase() as WhatsAppMessage['status'];
@@ -20,7 +24,14 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     ? (Object.fromEntries(Object.entries(richCardRaw).filter(([k]) => k !== 'reactions')) as WhatsAppMessage['richCard'])
     : undefined;
   const rawText = String(raw.text || '');
-  const isVoice = Boolean(
+
+  const isDeletedForEveryone =
+    raw.deletedScope === 'everyone' ||
+    richCardRaw?.deleted_scope === 'everyone' ||
+    rawText === 'This message was deleted' ||
+    getDeletedForEveryoneMessageIds().includes(String(raw.id));
+
+  const isVoice = !isDeletedForEveryone && Boolean(
     raw.isVoiceNote ||
     raw.is_voice_note ||
     richCardRaw?.type === 'voice_note' ||
@@ -28,7 +39,7 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     rawText.includes('🎙️') ||
     rawText.toLowerCase().includes('voice note')
   );
-  const audioDuration =
+  const audioDuration = isDeletedForEveryone ? undefined : (
     (raw.audioDuration as number) ||
     (raw.audio_duration as number) ||
     (richCardRaw?.duration as number) ||
@@ -36,7 +47,8 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     (() => {
       const match = rawText.match(/\((\d+)\s*s(?:\s+audio)?\)/i);
       return match ? parseInt(match[1], 10) : undefined;
-    })();
+    })()
+  );
 
   return {
     id: raw.id as string | number,
@@ -47,22 +59,26 @@ export function mapMessage(raw: Record<string, unknown>): WhatsAppMessage {
     recipient_phone: (raw.recipient_phone as string) || (raw.recipientPhone as string) || undefined,
     isTemplate: Boolean(raw.is_template || raw.isTemplate),
     workflowName: (raw.workflow_name as string) || (raw.workflowName as string) || undefined,
-    text: rawText,
+    text: isDeletedForEveryone ? 'This message was deleted' : rawText,
     timestamp: String(raw.timestamp || ''),
     created_at: raw.created_at ? String(raw.created_at) : undefined,
     status: ['sent', 'delivered', 'read', 'pending'].includes(status) ? status : 'sent',
     isVoiceNote: isVoice,
-    audioUrl: (raw.audioUrl as string) || (raw.audio_url as string) || (richCardRaw?.audioUrl as string) || (richCardRaw?.audio_url as string) || undefined,
+    audioUrl: isDeletedForEveryone ? undefined : ((raw.audioUrl as string) || (raw.audio_url as string) || (richCardRaw?.audioUrl as string) || (richCardRaw?.audio_url as string) || undefined),
     audioDuration,
-    waveform: (raw.waveform as number[]) || (richCardRaw?.waveform as number[]) || undefined,
-    richCard,
-    reactions,
+    waveform: isDeletedForEveryone ? undefined : ((raw.waveform as number[]) || (richCardRaw?.waveform as number[]) || undefined),
+    deletedScope: isDeletedForEveryone ? 'everyone' : ((raw.deletedScope as any) || (richCardRaw?.deleted_scope as any) || undefined),
+    richCard: isDeletedForEveryone ? undefined : richCard,
+    reactions: isDeletedForEveryone ? undefined : reactions,
   };
 }
 
 export function mapConversation(raw: Record<string, unknown>): Conversation {
+  const deletedMsgIds = getDeletedMessageIds();
   const messages = Array.isArray(raw.messages)
-    ? raw.messages.map((m) => mapMessage(m as Record<string, unknown>))
+    ? raw.messages
+        .filter((m) => !deletedMsgIds.includes(String((m as Record<string, unknown>)?.id)))
+        .map((m) => mapMessage(m as Record<string, unknown>))
     : [];
   return {
     ...(raw as unknown as Conversation),

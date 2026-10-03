@@ -39,6 +39,10 @@ import {
   parseAnyDate,
 } from '@/utils/chatRecency';
 import { normalizeToFlowGroups, SERVICE_BOOKING_FLOW_GROUPS } from '@/utils/serviceBookingFlow';
+import {
+  getDeletedMessageIds,
+  getDeletedForEveryoneMessageIds,
+} from '@/utils/deletedMessagesStorage';
 
 export const ConversationsView: React.FC = () => {
   const {
@@ -3179,8 +3183,14 @@ export const ConversationsView: React.FC = () => {
                         const isCustomer = msg.sender === 'customer';
                         const isBot = msg.sender === 'bot';
 
-                        // Hide messages deleted 'for me' — they should be invisible locally
-                        if (msg.deletedScope === 'me') return null;
+                        // Hide messages deleted 'for me' — permanently invisible locally
+                        const isDeletedForMe = msg.deletedScope === 'me' || getDeletedMessageIds().includes(String(msg.id));
+                        if (isDeletedForMe) return null;
+
+                        const isDeletedForEveryone =
+                          msg.deletedScope === 'everyone' ||
+                          msg.text === 'This message was deleted' ||
+                          getDeletedForEveryoneMessageIds().includes(String(msg.id));
 
                         const allMessages = currentConv.messages || [];
                         const msgIndex = allMessages.findIndex((m) => m.id === msg.id);
@@ -3322,28 +3332,31 @@ export const ConversationsView: React.FC = () => {
                             key={msg.id}
                             className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'} group/msgrow relative`}
                             onContextMenu={(e) => {
+                              if (isDeletedForEveryone) return;
                               e.preventDefault();
                               setMsgContextMenu({ messageId: msg.id, x: e.clientX, y: e.clientY, isCustomer });
                             }}
                           >
                             {/* Hover ⋮ action button — appears beside the bubble on hover */}
-                            <div className={`absolute top-2 ${isCustomer ? '-right-7' : '-left-7'} opacity-0 group-hover/msgrow:opacity-100 transition-opacity z-20`}>
-                              <button
-                                type="button"
-                                title="Message options"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setMsgContextMenu({ messageId: msg.id, x: rect.left, y: rect.bottom + 4, isCustomer });
-                                }}
-                                className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                              </button>
-                            </div>
+                            {!isDeletedForEveryone && (
+                              <div className={`absolute top-2 ${isCustomer ? '-right-7' : '-left-7'} opacity-0 group-hover/msgrow:opacity-100 transition-opacity z-20`}>
+                                <button
+                                  type="button"
+                                  title="Message options"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setMsgContextMenu({ messageId: msg.id, x: rect.left, y: rect.bottom + 4, isCustomer });
+                                  }}
+                                  className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                </button>
+                              </div>
+                            )}
 
                             {/* Deleted-for-everyone: show WhatsApp placeholder */}
-                            {msg.deletedScope === 'everyone' && (
+                            {isDeletedForEveryone && (
                               <div className={`max-w-md px-4 py-2.5 rounded-2xl shadow-sm text-xs flex items-center gap-2 italic select-none ${
                                 isCustomer
                                   ? 'bg-white text-slate-400 border border-slate-200 rounded-tl-sm'
@@ -3355,7 +3368,7 @@ export const ConversationsView: React.FC = () => {
                             )}
 
                             {/* Normal bubble — hidden when deleted for everyone */}
-                            {msg.deletedScope !== 'everyone' && (
+                            {!isDeletedForEveryone && (
                               <>
                                 <div
                                   title={tooltipStr}
@@ -4490,7 +4503,7 @@ export const ConversationsView: React.FC = () => {
               type="button"
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
               onClick={() => {
-                const cid = selectedConversationId;
+                const cid = selectedConversationId || currentConv?.id;
                 const mid = msgContextMenu.messageId;
                 setMsgContextMenu(null);
                 if (cid) deleteMessage(cid, mid, 'me');
@@ -4505,7 +4518,7 @@ export const ConversationsView: React.FC = () => {
                 type="button"
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors text-left border-t border-slate-100"
                 onClick={() => {
-                  const cid = selectedConversationId;
+                  const cid = selectedConversationId || currentConv?.id;
                   const mid = msgContextMenu.messageId;
                   setMsgContextMenu(null);
                   if (cid) deleteMessage(cid, mid, 'everyone');

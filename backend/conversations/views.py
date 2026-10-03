@@ -172,6 +172,14 @@ class MessageSerializer(serializers.ModelSerializer):
         ret['senderName'] = ret.get('sender_name', '')
         rc = ret.get('rich_card')
         if isinstance(rc, dict):
+            if rc.get('deleted_scope') == 'everyone' or ret.get('text') == 'This message was deleted':
+                ret['deletedScope'] = 'everyone'
+                ret['text'] = 'This message was deleted'
+                ret['isVoiceNote'] = False
+                ret['audioUrl'] = None
+                return ret
+            if rc.get('deleted_scope') == 'me':
+                ret['deletedScope'] = 'me'
             is_voice = rc.get('type') == 'voice_note' or rc.get('is_voice')
             if is_voice:
                 ret['isVoiceNote'] = True
@@ -2145,36 +2153,53 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def delete_message(self, request, pk=None):
         """
-        Delete a message for 'me' (local dashboard hide) or 'everyone' (Meta recall).
+        Delete a message for 'me' (local dashboard hide / permanent remove) or 'everyone' (Meta recall & mark deleted).
         Body: { "message_id": <id or meta_message_id>, "scope": "me" | "everyone" }
         """
-        conversation = self.get_object()
+        conversation = None
+        try:
+            conversation = self.get_object()
+        except Exception:
+            pass
+        if not conversation and pk:
+            if str(pk).isdigit():
+                conversation = Conversation.objects.filter(pk=int(pk)).first()
+            if not conversation:
+                conversation = Conversation.objects.filter(contact_name=pk).first() or Conversation.objects.filter(phone_number=pk).first()
+
         message_id = request.data.get('message_id')
         scope = request.data.get('scope', 'me')  # 'me' | 'everyone'
 
         if not message_id:
             return Response({'error': 'message_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Try to find by pk first, then by meta_message_id
+        # Robust lookup: direct ID, then conversation scoped, then meta_message_id
         msg = None
-        try:
-            msg = Message.objects.get(id=message_id, conversation=conversation)
-        except (Message.DoesNotExist, ValueError):
-            msg = Message.objects.filter(
-                conversation=conversation,
-                meta_message_id=str(message_id)
-            ).first()
+        str_mid = str(message_id)
+        if str_mid.isdigit():
+            msg = Message.objects.filter(id=int(str_mid)).first()
+        if not msg and conversation:
+            msg = Message.objects.filter(conversation=conversation, id=message_id).first()
+        if not msg:
+            msg = Message.objects.filter(meta_message_id=str_mid).first()
+        if not msg and conversation:
+            msg = conversation.messages.filter(meta_message_id=str_mid).first()
 
         if not msg:
-            return Response({'error': 'Message not found'}, status=status.HTTP_404_NOT_FOUND)
+            # If message is not found on server (e.g. was temporary optimistic id or already deleted),
+            # return success so frontend doesn't revert local deletion
+            return Response({
+                'success': True,
+                'message_id': message_id,
+                'scope': scope,
+                'already_deleted': True
+            })
 
+        saved_id = msg.id
+        conv_id = msg.conversation_id
         recall_result = {'success': True}
 
         if scope == 'everyone':
-            # Only outbound (agent/bot) messages can be recalled via Meta
-            if msg.sender not in ('agent', 'bot'):
-                return Response({'error': 'Only outbound messages can be deleted for everyone'}, status=status.HTTP_400_BAD_REQUEST)
-
             wamid = msg.meta_message_id or ''
             if wamid and not wamid.startswith('wa-out-'):
                 # Has a real WAMID — attempt Meta Graph API recall
@@ -2192,26 +2217,30 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         recall_result = {'success': False, 'error': 'Meta API config not found'}
                 except Exception as e:
                     recall_result = {'success': False, 'error': str(e)}
-            else:
-                # No real WAMID yet (still pending/sending) — cannot recall on WhatsApp
-                # Still hide it locally
-                recall_result = {'success': False, 'error': 'Message has no WhatsApp ID yet; hiding locally only'}
-                scope = 'me'
 
-        # Mark message as deleted in DB (soft delete)
-        msg.error_details = (msg.error_details or '') + f'[DELETED:{scope}]'
-        msg.save(update_fields=['error_details'])
+            # Permanently update the message in DB:
+            msg.text = 'This message was deleted'
+            rc = msg.rich_card if isinstance(msg.rich_card, dict) else {}
+            rc['deleted_scope'] = 'everyone'
+            rc.pop('audioUrl', None)
+            rc.pop('audio_url', None)
+            rc.pop('waveform', None)
+            msg.rich_card = rc
+            msg.save(update_fields=['text', 'rich_card'])
+        else:
+            # 'Delete for me': permanently remove message row from database
+            msg.delete()
 
         # Broadcast real-time event to all dashboard clients
         emit_event('message.deleted', {
-            'conversation_id': conversation.id,
-            'message_id': msg.id,
+            'conversation_id': conversation.id if conversation else conv_id,
+            'message_id': saved_id,
             'scope': scope,
         })
 
         return Response({
             'success': True,
-            'message_id': msg.id,
+            'message_id': saved_id,
             'scope': scope,
             'recall': recall_result,
         })

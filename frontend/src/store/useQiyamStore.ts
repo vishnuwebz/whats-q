@@ -58,6 +58,18 @@ import {
   INITIAL_ROLES
 } from './rolesData';
 import { forceHardRefresh, startOtaCountdown, stopOtaCountdown } from '../utils/otaUpdater';
+import {
+  getDeletedMessageIds,
+  addDeletedMessageId,
+  getDeletedForEveryoneMessageIds,
+  addDeletedForEveryoneMessageId,
+} from '../utils/deletedMessagesStorage';
+export {
+  getDeletedMessageIds,
+  addDeletedMessageId,
+  getDeletedForEveryoneMessageIds,
+  addDeletedForEveryoneMessageId,
+};
 import { getInitialActiveTab, persistActiveTab } from '../utils/tabRouting';
 import { calculateDutyHours } from '../utils/dutyHours';
 import { playApprovalChime, sendDesktopNotification } from '../utils/approvalNotification';
@@ -2548,19 +2560,48 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
   },
 
   deleteMessage: async (conversationId, messageId, scope) => {
-    // Optimistically mark as deleted in UI immediately for snappy feel
-    set((state) => ({
-      conversations: state.conversations.map((c) => {
-        if (String(c.id) !== String(conversationId)) return c;
-        return {
-          ...c,
-          messages: c.messages.map((m) => {
-            if (String(m.id) !== String(messageId)) return m;
-            return { ...m, deletedScope: scope };
-          }),
-        };
-      }),
-    }));
+    const strMid = String(messageId);
+    const strCid = String(conversationId);
+
+    if (scope === 'me') {
+      addDeletedMessageId(strMid);
+      set((state) => {
+        const nextConvs = state.conversations.map((c) => {
+          if (String(c.id) !== strCid) return c;
+          return {
+            ...c,
+            messages: c.messages.filter((m) => String(m.id) !== strMid),
+          };
+        });
+        persistConversations(nextConvs);
+        return { conversations: nextConvs };
+      });
+    } else {
+      addDeletedForEveryoneMessageId(strMid);
+      set((state) => {
+        const nextConvs = state.conversations.map((c) => {
+          if (String(c.id) !== strCid) return c;
+          return {
+            ...c,
+            messages: c.messages.map((m) => {
+              if (String(m.id) !== strMid) return m;
+              return {
+                ...m,
+                text: 'This message was deleted',
+                deletedScope: 'everyone' as const,
+                isVoiceNote: false,
+                audioUrl: undefined,
+                waveform: undefined,
+                richCard: undefined,
+                reactions: undefined,
+              };
+            }),
+          };
+        });
+        persistConversations(nextConvs);
+        return { conversations: nextConvs };
+      });
+    }
 
     try {
       await apiClient.post(`/conversations/threads/${conversationId}/delete_message/`, {
@@ -2568,23 +2609,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         scope,
       });
     } catch (_err) {
-      // On error: revert 'everyone' delete (can't recall on WhatsApp), keep 'me' hidden (local only)
-      if (scope === 'everyone') {
-        set((state) => ({
-          conversations: state.conversations.map((c) => {
-            if (String(c.id) !== String(conversationId)) return c;
-            return {
-              ...c,
-              messages: c.messages.map((m) => {
-                if (String(m.id) !== String(messageId)) return m;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { deletedScope, ...rest } = m as typeof m & { deletedScope?: string };
-                return rest as typeof m;
-              }),
-            };
-          }),
-        }));
-      }
+      console.warn('[Store] delete_message API call error:', _err);
     }
   },
 
@@ -4134,13 +4159,48 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       );
       if (filteredServerConvs && filteredServerConvs.length > 0) {
         set((state) => {
+          const deletedMsgIds = getDeletedMessageIds();
+          const deletedForEveryoneMsgIds = getDeletedForEveryoneMessageIds();
+
           // Merge optimistic messages that might be pending locally
           const merged = filteredServerConvs.map((sConv) => {
             const localConv = state.conversations.find((c) => String(c.id) === String(sConv.id));
-            if (!localConv) return sConv;
+
+            const cleanServerMessages = (sConv.messages || [])
+              .filter((m) => !deletedMsgIds.includes(String(m.id)))
+              .map((m) => {
+                const localMsg = localConv?.messages.find((lm) => String(lm.id) === String(m.id));
+                const isForEveryone =
+                  deletedForEveryoneMsgIds.includes(String(m.id)) ||
+                  m.deletedScope === 'everyone' ||
+                  localMsg?.deletedScope === 'everyone' ||
+                  m.text === 'This message was deleted';
+                if (isForEveryone) {
+                  return {
+                    ...m,
+                    text: 'This message was deleted',
+                    deletedScope: 'everyone' as const,
+                    isVoiceNote: false,
+                    audioUrl: undefined,
+                    waveform: undefined,
+                    richCard: undefined,
+                    reactions: undefined,
+                  };
+                }
+                return m;
+              });
+
+            if (!localConv) {
+              return {
+                ...sConv,
+                messages: cleanServerMessages,
+              };
+            }
 
             const optimisticMsgs = localConv.messages.filter((m) =>
-              String(m.id).startsWith('msg-') && !sConv.messages.some((sm) => sm.text === m.text && sm.sender === m.sender)
+              String(m.id).startsWith('msg-') &&
+              !deletedMsgIds.includes(String(m.id)) &&
+              !sConv.messages.some((sm) => sm.text === m.text && sm.sender === m.sender)
             );
 
             // Preserve local historical last_contact_date if server returned empty or non-explicit (time-only) date
@@ -4152,7 +4212,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
             return {
               ...sConv,
               last_contact_date: preservedLastContact,
-              messages: [...sConv.messages, ...optimisticMsgs],
+              messages: [...cleanServerMessages, ...optimisticMsgs],
             };
           });
 
