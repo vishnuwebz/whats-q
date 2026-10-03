@@ -1979,6 +1979,7 @@ export const ConversationsView: React.FC = () => {
                         onChange={(val) => setFilterCustomStart(val)}
                         placeholder="Start date"
                         compact
+                        direction="up"
                       />
                     </div>
                     <div>
@@ -1990,6 +1991,7 @@ export const ConversationsView: React.FC = () => {
                         minDate={filterCustomStart}
                         compact
                         align="right"
+                        direction="up"
                       />
                     </div>
                   </div>

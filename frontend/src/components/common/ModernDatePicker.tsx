@@ -13,6 +13,7 @@ interface ModernDatePickerProps {
   disabled?: boolean;
   required?: boolean;
   align?: 'left' | 'right';
+  direction?: 'up' | 'down' | 'auto';
 }
 
 export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
@@ -27,10 +28,39 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
   disabled = false,
   required = false,
   align = 'left',
+  direction = 'auto',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [showMonthSelect, setShowMonthSelect] = useState(false);
+  const [isUpward, setIsUpward] = useState(false);
+
+  // Compute direction
+  const updateDirection = () => {
+    if (direction === 'up') {
+      setIsUpward(true);
+      return;
+    }
+    if (direction === 'down') {
+      setIsUpward(false);
+      return;
+    }
+    // auto calculation based on viewport space
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      setIsUpward(spaceBelow < 320 && spaceAbove > 240);
+    }
+  };
+
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      updateDirection();
+    }
+    setIsOpen(!isOpen);
+  };
 
   // Today's Date
   const today = useMemo(() => new Date(), []);
@@ -55,16 +85,20 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
   // Sync view when opened
   useEffect(() => {
     if (isOpen) {
+      updateDirection();
       setShowMonthSelect(false);
       if (value && !isNaN(Date.parse(value))) {
         const d = new Date(value);
         setViewYear(d.getFullYear());
         setViewMonth(d.getMonth());
       }
+      const handleResize = () => updateDirection();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
     }
-  }, [isOpen, value]);
+  }, [isOpen, value, direction]);
 
-  // Click outside listener
+  // Click outside listener & Escape key handler
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -72,11 +106,19 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
         setShowMonthSelect(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        setShowMonthSelect(false);
+      }
+    };
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
@@ -92,10 +134,10 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
     };
 
     return [
-      { label: 'Today', date: todayStr },
-      { label: 'Tomorrow', date: addDays(1) },
-      { label: 'In 3 Days', date: addDays(3) },
-      { label: 'Next Week', date: addDays(7) },
+      { label: 'Today', shortLabel: 'Today', date: todayStr },
+      { label: 'Tomorrow', shortLabel: 'Tmrw', date: addDays(1) },
+      { label: 'In 3 Days', shortLabel: '+3 Days', date: addDays(3) },
+      { label: 'Next Week', shortLabel: 'Next Wk', date: addDays(7) },
     ];
   }, [todayStr]);
 
@@ -251,7 +293,7 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         className={`w-full bg-white hover:bg-slate-50/80 border border-slate-200 rounded-xl flex items-center justify-between text-left transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer group shadow-2xs ${
           compact ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-2 text-xs'
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''} ${
@@ -274,7 +316,9 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
       {/* Modern Popover Calendar */}
       {isOpen && (
         <div
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 text-xs w-76 animate-in fade-in zoom-in-95 duration-150`}
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${
+            isUpward ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'
+          } z-50 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-3 text-xs w-[272px] sm:w-[280px] max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150`}
         >
           {/* Quick Presets */}
           <div className="grid grid-cols-4 gap-1 mb-2.5 pb-2.5 border-b border-slate-100">
@@ -285,13 +329,14 @@ export const ModernDatePicker: React.FC<ModernDatePickerProps> = ({
                   key={p.label}
                   type="button"
                   onClick={() => handleSelectDay(p.date)}
-                  className={`py-1 px-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer text-center ${
+                  title={p.label}
+                  className={`py-1 px-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer text-center truncate ${
                     isSelected
                       ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                       : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
                   }`}
                 >
-                  {p.label}
+                  {p.shortLabel}
                 </button>
               );
             })}
