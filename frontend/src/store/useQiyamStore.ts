@@ -3796,7 +3796,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     (current.jobs || []).forEach((j) => {
       if (!deletedJobIds.has(String(j.id))) jobMap.set(String(j.id), j);
     });
-    const jobs = Array.from(jobMap.values());
+    const jobs = Array.from(jobMap.values()).map((j) => {
+      // Auto-heal corrupt partial phone numbers like "+91" or numbers with fewer than 7 digits
+      if (j.assigned_phone && j.assigned_phone.replace(/\D/g, '').length < 7) {
+        return { ...j, assigned_phone: undefined };
+      }
+      return j;
+    });
     persistCache('jobs', jobs);
 
     const appointments  = safeVal(8, current.appointments, INITIAL_APPOINTMENTS, 'appointments');
@@ -7167,7 +7173,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     };
     try {
       const res = await apiClient.post('/operations/jobs/', item);
-      const created = (res?.id && res.success !== false) ? (res as Job) : item;
+      const created: Job = (res?.id && res.success !== false)
+        ? {
+            ...item,
+            ...(res as Job),
+            assigned_phone: item.assigned_phone || (res as any).assigned_phone,
+          }
+        : item;
       set((state) => ({ jobs: [created, ...state.jobs] }));
       get().addToast(`Job dispatch "${created.job_id_str}" scheduled!`, 'success');
       return created;
@@ -7189,7 +7201,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     try {
       const res = await apiClient.put(`/operations/jobs/${jobId}/`, updatedJob);
       if (res?.id && res.success !== false) {
-        const finalJob = res as Job;
+        const finalJob: Job = {
+          ...updatedJob,
+          ...(res as Job),
+          assigned_phone: (updatedJob.assigned_phone && updatedJob.assigned_phone.replace(/\D/g, '').length >= 7)
+            ? updatedJob.assigned_phone
+            : (res as any).assigned_phone || updatedJob.assigned_phone,
+        };
         set((state) => ({
           jobs: state.jobs.map((j) => (String(j.id) === String(jobId) ? finalJob : j)),
         }));

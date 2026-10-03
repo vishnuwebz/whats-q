@@ -10,7 +10,7 @@ import {
   List, Table as TableIcon, Edit2, Trash2
 } from 'lucide-react';
 import { CountryPhoneInput } from '@/components/common/CountryPhoneInput';
-import { TechnicianSelectDropdown } from '@/components/common/TechnicianSelectDropdown';
+import { TechnicianSelectDropdown, resolveTechnicianPhone } from '@/components/common/TechnicianSelectDropdown';
 
 export const JobsView: React.FC = () => {
   const {
@@ -46,6 +46,7 @@ export const JobsView: React.FC = () => {
   const handleOpenEdit = (job: Job, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEditingJob(job);
+    const techPhone = getTechnicianPhone(job.assigned_to, job);
     setEditJobForm({
       id: job.id,
       job_id_str: job.job_id_str,
@@ -53,7 +54,7 @@ export const JobsView: React.FC = () => {
       phone: job.phone,
       service: job.service,
       assigned_to: job.assigned_to,
-      assigned_phone: job.assigned_phone || getTechnicianPhone(job.assigned_to, job),
+      assigned_phone: techPhone,
       date_str: job.date_str,
       time_str: job.time_str,
       priority: job.priority,
@@ -71,7 +72,15 @@ export const JobsView: React.FC = () => {
     if (!editingJob || !editJobForm.customer_name?.trim()) return;
     setIsSavingEdit(true);
     try {
-      const updated = await updateJob(editingJob.id, editJobForm);
+      const resolvedPhone = getTechnicianPhone(editJobForm.assigned_to || editingJob.assigned_to, {
+        ...editingJob,
+        assigned_phone: editJobForm.assigned_phone,
+      });
+      const payloadToSave = {
+        ...editJobForm,
+        assigned_phone: resolvedPhone || editJobForm.assigned_phone,
+      };
+      const updated = await updateJob(editingJob.id, payloadToSave);
       if (updated) {
         if (selectedJob && String(selectedJob.id) === String(editingJob.id)) {
           setSelectedJob(updated);
@@ -110,26 +119,7 @@ export const JobsView: React.FC = () => {
   };
 
   const getTechnicianPhone = (techName: string, job?: Job): string => {
-    if (job?.assigned_phone) return job.assigned_phone;
-    if (!techName) return '';
-    const clean = techName.trim().toLowerCase();
-    const match = employees.find(
-      (e) => e.name.trim().toLowerCase() === clean || clean.includes(e.name.trim().toLowerCase())
-    );
-    if (match?.phone) return match.phone;
-    const DEMO_STAFF_PHONES: Record<string, string> = {
-      'habeebu': '+91 80895 64046',
-      'amit sharma': '+91 90000 11123',
-      'priya sharma': '+91 89213 56789',
-      'rahul singh': '+91 98764 11122',
-      'neha patel': '+91 96789 11223',
-      'arjun nair': '+91 85471 22330',
-      'sneha joshi': '+91 96789 66771',
-      'sunil joseph': '+91 90321 45000',
-      'arshil pk': '+91 80895 64046',
-      'arshil': '+91 80895 64046',
-    };
-    return DEMO_STAFF_PHONES[clean] || '';
+    return resolveTechnicianPhone(techName, job?.assigned_phone, employees);
   };
 
   const [newJobForm, setNewJobForm] = useState({
@@ -351,7 +341,7 @@ export const JobsView: React.FC = () => {
                 <div className="font-bold text-slate-900 text-sm truncate">{selectedJob.assigned_to}</div>
                 <div className="text-slate-600 font-mono text-xs flex items-center gap-1.5 mt-0.5">
                   <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
-                  {assignedPhone ? (
+                  {assignedPhone && assignedPhone.replace(/\D/g, '').length >= 7 ? (
                     <a
                       href={`tel:${assignedPhone.replace(/\s+/g, '')}`}
                       className="hover:text-emerald-700 hover:underline font-semibold text-emerald-800"
@@ -364,7 +354,7 @@ export const JobsView: React.FC = () => {
                 </div>
               </div>
             </div>
-            {assignedPhone && (
+            {assignedPhone && assignedPhone.replace(/\D/g, '').length >= 7 && (
               <a
                 href={`tel:${assignedPhone.replace(/\s+/g, '')}`}
                 className="p-2 bg-white hover:bg-blue-100 text-blue-700 rounded-xl border border-blue-200 shadow-2xs transition-colors shrink-0 cursor-pointer"
@@ -662,7 +652,7 @@ export const JobsView: React.FC = () => {
                       <div className="flex items-center gap-1.5 text-slate-700 truncate min-w-0">
                         <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                         <span className="font-medium text-slate-900 truncate">{job.assigned_to}</span>
-                        {techPhone && (
+                        {techPhone && techPhone.replace(/\D/g, '').length >= 7 && (
                           <a
                             href={`tel:${techPhone.replace(/\s+/g, '')}`}
                             onClick={(e) => e.stopPropagation()}
@@ -740,7 +730,7 @@ export const JobsView: React.FC = () => {
                           <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                           <span className="font-bold text-xs text-slate-900">{job.assigned_to}</span>
                         </div>
-                        {techPhone ? (
+                        {techPhone && techPhone.replace(/\D/g, '').length >= 7 ? (
                           <a
                             href={`tel:${techPhone.replace(/\s+/g, '')}`}
                             onClick={(e) => e.stopPropagation()}
@@ -844,7 +834,7 @@ export const JobsView: React.FC = () => {
                               <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                               <span>{job.assigned_to}</span>
                             </div>
-                            {techPhone ? (
+                            {techPhone && techPhone.replace(/\D/g, '').length >= 7 ? (
                               <a
                                 href={`tel:${techPhone.replace(/\s+/g, '')}`}
                                 onClick={(e) => e.stopPropagation()}

@@ -20,9 +20,9 @@ interface TechnicianSelectDropdownProps {
   className?: string;
 }
 
-const DEFAULT_TECHNICIANS: TechnicianOption[] = [
+export const DEFAULT_TECHNICIANS: TechnicianOption[] = [
   { id: 'tech-1', name: 'Amit Sharma', phone: '+91 90000 11123', role: 'Field Technician', department: 'AC Services', status: 'on_duty' },
-  { id: 'tech-2', name: 'habeebu', phone: '+91 80895 64046', role: 'Specialist Technician', department: 'Watch & Electronics', status: 'on_duty' },
+  { id: 'tech-2', name: 'habeebu', phone: '+91 96456 50506', role: 'Specialist Technician', department: 'Watch & Electronics', status: 'on_duty' },
   { id: 'tech-3', name: 'Priya Sharma', phone: '+91 89213 56789', role: 'Customer Support Lead', department: 'Support', status: 'active' },
   { id: 'tech-4', name: 'Rahul Singh', phone: '+91 98764 11122', role: 'Plumbing Specialist', department: 'Plumbing', status: 'on_duty' },
   { id: 'tech-5', name: 'Neha Patel', phone: '+91 96789 11223', role: 'Housekeeping Lead', department: 'Cleaning', status: 'active' },
@@ -30,6 +30,69 @@ const DEFAULT_TECHNICIANS: TechnicianOption[] = [
   { id: 'tech-7', name: 'Sneha Joshi', phone: '+91 96789 66771', role: 'General Maintenance Specialist', department: 'Maintenance', status: 'active' },
   { id: 'tech-8', name: 'arshil pk', phone: '+91 80895 64046', role: 'Field Operations Specialist', department: 'Field Operations', status: 'active' },
 ];
+
+/**
+ * Robustly resolves a technician's valid phone number.
+ * Guarantees that partial country-code artifacts like "+91" are never returned,
+ * falling back to live store employees, verified default technicians, or system catalog.
+ */
+export const resolveTechnicianPhone = (
+  techName?: string,
+  assignedPhone?: string,
+  employeesList: Array<{ name?: string; phone?: string }> = []
+): string => {
+  // If assignedPhone has at least 7 real digits (not just a country code prefix like "+91")
+  if (assignedPhone) {
+    const digits = assignedPhone.replace(/\D/g, '');
+    if (digits.length >= 7) {
+      return assignedPhone;
+    }
+  }
+
+  const clean = (techName || '').trim().toLowerCase();
+  if (!clean) return '';
+
+  // 1. Check store employees (matching by name and requiring valid phone)
+  const empMatch = (employeesList || []).find((e) => {
+    if (!e.name || !e.name.trim()) return false;
+    const n = e.name.trim().toLowerCase();
+    const digits = (e.phone || '').replace(/\D/g, '');
+    if (digits.length < 7) return false;
+    return n === clean || clean.startsWith(n) || n.startsWith(clean);
+  });
+  if (empMatch?.phone) return empMatch.phone;
+
+  // 2. Check DEFAULT_TECHNICIANS
+  const defMatch = DEFAULT_TECHNICIANS.find((t) => {
+    const n = t.name.toLowerCase();
+    return n === clean || clean.startsWith(n) || n.startsWith(clean);
+  });
+  if (defMatch?.phone) return defMatch.phone;
+
+  // 3. Fallback phone dictionary
+  const FALLBACK_PHONES: Record<string, string> = {
+    'habeebu': '+91 96456 50506',
+    'habeeb': '+91 96456 50506',
+    'amit sharma': '+91 90000 11123',
+    'amit': '+91 90000 11123',
+    'priya sharma': '+91 89213 56789',
+    'priya': '+91 89213 56789',
+    'rahul singh': '+91 98764 11122',
+    'rahul': '+91 98764 11122',
+    'neha patel': '+91 96789 11223',
+    'neha': '+91 96789 11223',
+    'arjun nair': '+91 85471 22330',
+    'arjun': '+91 85471 22330',
+    'sneha joshi': '+91 96789 66771',
+    'sneha': '+91 96789 66771',
+    'sunil joseph': '+91 90321 45000',
+    'sunil': '+91 90321 45000',
+    'arshil pk': '+91 80895 64046',
+    'arshil': '+91 80895 64046',
+  };
+
+  return FALLBACK_PHONES[clean] || '';
+};
 
 const getAvatarColor = (name: string) => {
   const colors = [
