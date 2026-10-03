@@ -55,6 +55,92 @@ const getInitials = (name: string) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+// Helper component to highlight matched letters or numbers
+const HighlightMatch: React.FC<{ text: string; query: string; isPhone?: boolean }> = ({ text, query, isPhone }) => {
+  const trimmed = query.trim();
+  if (!trimmed || !text) return <>{text}</>;
+
+  if (isPhone) {
+    const qDigits = trimmed.replace(/\D/g, '');
+    if (!qDigits) return <>{text}</>;
+
+    // Direct substring match
+    const lowerText = text.toLowerCase();
+    const lowerTrimmed = trimmed.toLowerCase();
+    const directIdx = lowerText.indexOf(lowerTrimmed);
+    if (directIdx !== -1) {
+      return (
+        <>
+          {text.slice(0, directIdx)}
+          <mark className="bg-amber-200/90 text-amber-950 font-bold px-0.5 rounded">{text.slice(directIdx, directIdx + trimmed.length)}</mark>
+          {text.slice(directIdx + trimmed.length)}
+        </>
+      );
+    }
+
+    // Match digits across non-digit characters in formatted phone
+    const digitsOnly = text.replace(/\D/g, '');
+    const dIdx = digitsOnly.indexOf(qDigits);
+    if (dIdx !== -1) {
+      let digitCount = 0;
+      let startChar = -1;
+      let endChar = -1;
+      for (let i = 0; i < text.length; i++) {
+        if (/\d/.test(text[i])) {
+          if (digitCount === dIdx && startChar === -1) {
+            startChar = i;
+          }
+          digitCount++;
+          if (digitCount === dIdx + qDigits.length) {
+            endChar = i + 1;
+            break;
+          }
+        }
+      }
+      if (startChar !== -1 && endChar !== -1) {
+        return (
+          <>
+            {text.slice(0, startChar)}
+            <mark className="bg-amber-200/90 text-amber-950 font-bold px-0.5 rounded">{text.slice(startChar, endChar)}</mark>
+            {text.slice(endChar)}
+          </>
+        );
+      }
+    }
+    return <>{text}</>;
+  }
+
+  // Letters match
+  const lowerText = text.toLowerCase();
+  const lowerQuery = trimmed.toLowerCase();
+  const idx = lowerText.indexOf(lowerQuery);
+  if (idx === -1) {
+    // Check individual words if multi-word query
+    const words = lowerQuery.split(/\s+/).filter((w) => w.length > 1);
+    for (const w of words) {
+      const wIdx = lowerText.indexOf(w);
+      if (wIdx !== -1) {
+        return (
+          <>
+            {text.slice(0, wIdx)}
+            <mark className="bg-amber-200/90 text-amber-950 font-bold px-0.5 rounded">{text.slice(wIdx, wIdx + w.length)}</mark>
+            {text.slice(wIdx + w.length)}
+          </>
+        );
+      }
+    }
+    return <>{text}</>;
+  }
+
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-amber-200/90 text-amber-950 font-bold px-0.5 rounded">{text.slice(idx, idx + trimmed.length)}</mark>
+      {text.slice(idx + trimmed.length)}
+    </>
+  );
+};
+
 export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> = ({
   value,
   phoneValue,
@@ -66,6 +152,7 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
   const { employees } = useQiyamStore();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,18 +197,95 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
     );
   }, [uniqueTechnicians, value]);
 
-  // Filtered list based on search query
+  // Filtered and dynamically sorted list based on search query (letters or numbers)
   const filteredTechnicians = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return uniqueTechnicians;
-    return uniqueTechnicians.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
-        t.role.toLowerCase().includes(q) ||
-        t.department.toLowerCase().includes(q)
-    );
+    const raw = search.trim();
+    if (!raw) return uniqueTechnicians;
+
+    const q = raw.toLowerCase();
+    const qDigits = raw.replace(/\D/g, '');
+    const hasDigits = qDigits.length > 0;
+    const qWords = q.split(/\s+/).filter(Boolean);
+
+    const scored = uniqueTechnicians
+      .map((tech) => {
+        let score = 0;
+        const nameLower = tech.name.toLowerCase();
+        const phoneClean = tech.phone.replace(/\D/g, '');
+        const roleLower = (tech.role || '').toLowerCase();
+        const deptLower = (tech.department || '').toLowerCase();
+        const nameWords = nameLower.split(/\s+/).filter(Boolean);
+
+        // --- 1. Letter / Text Matching ---
+        if (nameLower === q) {
+          score += 10000; // Exact full name match
+        } else if (nameLower.startsWith(q)) {
+          // Starts with query (e.g. "habeeb" -> "habeebu")
+          // Shorter surplus length gets higher priority
+          score += 5000 + Math.max(0, 100 - (nameLower.length - q.length));
+        } else if (nameWords.some((w) => w.startsWith(q))) {
+          // Word inside name starts with query (e.g. "sharma" in "Amit Sharma", "pk" in "arshil pk")
+          score += 4000;
+        } else if (nameLower.includes(q)) {
+          score += 2500;
+        } else if (qWords.length > 1 && qWords.every((w) => nameLower.includes(w))) {
+          score += 3000;
+        }
+
+        // --- 2. Number / Phone Matching ---
+        // ONLY triggers if user explicitly typed digits
+        if (hasDigits) {
+          if (phoneClean === qDigits) {
+            score += 9500; // Exact phone digits
+          } else if (phoneClean.endsWith(qDigits)) {
+            // Typing the last 4, 5, or 6 digits of mobile
+            score += 7500 + Math.min(1000, qDigits.length * 200);
+          } else if (phoneClean.startsWith(qDigits)) {
+            score += 6000 + Math.min(500, qDigits.length * 100);
+          } else if (qDigits.length >= 3 && phoneClean.includes(qDigits)) {
+            score += 4000;
+          } else if (qDigits.length < 3 && phoneClean.includes(qDigits) && !/[a-z]/i.test(raw)) {
+            score += 500;
+          }
+
+          // Formatted match (e.g. "+91 808" or "80895")
+          if (tech.phone.toLowerCase().includes(q)) {
+            score += 1500;
+          }
+        }
+
+        // --- 3. Role & Department Matching ---
+        if (roleLower === q || deptLower === q) {
+          score += 3500;
+        } else if (roleLower.startsWith(q) || deptLower.startsWith(q)) {
+          score += 2200;
+        } else if (roleLower.includes(q) || deptLower.includes(q)) {
+          score += 1200;
+        }
+
+        // --- 4. Availability Tie-Breaker ---
+        if (score > 0 && tech.status === 'on_duty') {
+          score += 50;
+        }
+
+        return { tech, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (a.tech.status === 'on_duty' && b.tech.status !== 'on_duty') return -1;
+        if (b.tech.status === 'on_duty' && a.tech.status !== 'on_duty') return 1;
+        return a.tech.name.localeCompare(b.tech.name);
+      })
+      .map((item) => item.tech);
+
+    return scored;
   }, [uniqueTechnicians, search]);
+
+  // Reset active index whenever search query changes
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [search]);
 
   // Close on outside click
   useEffect(() => {
@@ -146,12 +310,32 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
       }, 50);
     } else {
       setSearch('');
+      setActiveIndex(0);
     }
   }, [isOpen]);
 
   const handleSelect = (tech: TechnicianOption) => {
     onChange(tech.name, tech.phone);
     setIsOpen(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1 < filteredTechnicians.length ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 >= 0 ? prev - 1 : Math.max(0, filteredTechnicians.length - 1)));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredTechnicians.length > 0) {
+        const target = filteredTechnicians[activeIndex] || filteredTechnicians[0];
+        handleSelect(target);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -224,7 +408,8 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search technician by name, phone, or skill..."
+                onKeyDown={handleKeyDown}
+                placeholder="Search technician by letters or numbers..."
                 className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-400"
               />
               {search && (
@@ -238,7 +423,14 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
               )}
             </div>
             <div className="text-[10px] text-slate-400 mt-1 px-1 flex items-center justify-between">
-              <span>{filteredTechnicians.length} technician(s) available</span>
+              {search.trim() ? (
+                <span className="text-amber-700 font-semibold flex items-center gap-1">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  {filteredTechnicians.length} match{filteredTechnicians.length === 1 ? '' : 'es'} dynamically sorted
+                </span>
+              ) : (
+                <span>{filteredTechnicians.length} technician(s) available</span>
+              )}
               <span className="text-emerald-600 font-semibold flex items-center gap-1">
                 <ShieldCheck className="w-2.5 h-2.5" />
                 Verified Field Staff
@@ -249,18 +441,22 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
           {/* Technicians List */}
           <div className="max-h-60 overflow-y-auto p-1.5 space-y-1">
             {filteredTechnicians.length > 0 ? (
-              filteredTechnicians.map((tech) => {
+              filteredTechnicians.map((tech, idx) => {
                 const isSelected = tech.name.toLowerCase().trim() === (value || '').toLowerCase().trim();
                 const isOnDuty = tech.status === 'on_duty';
+                const isFocused = idx === activeIndex;
 
                 return (
                   <button
                     key={tech.id}
                     type="button"
                     onClick={() => handleSelect(tech)}
+                    onMouseEnter={() => setActiveIndex(idx)}
                     className={`w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-left transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-amber-50/80 text-amber-950 font-semibold'
+                        ? 'bg-amber-50/90 text-amber-950 font-semibold ring-1 ring-amber-300'
+                        : isFocused
+                        ? 'bg-slate-100/90 text-slate-900 ring-1 ring-slate-200'
                         : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   >
@@ -274,7 +470,9 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 truncate text-xs">{tech.name}</span>
+                          <span className="font-bold text-slate-900 truncate text-xs">
+                            <HighlightMatch text={tech.name} query={search} />
+                          </span>
                           <span
                             className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-full shrink-0 ${
                               isOnDuty
@@ -288,10 +486,12 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
                         <div className="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
                           <span className="font-mono text-emerald-700 flex items-center gap-1">
                             <Phone className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                            {tech.phone}
+                            <HighlightMatch text={tech.phone} query={search} isPhone />
                           </span>
                           <span className="text-slate-300">•</span>
-                          <span className="truncate">{tech.department || tech.role}</span>
+                          <span className="truncate">
+                            <HighlightMatch text={tech.department || tech.role} query={search} />
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -305,7 +505,7 @@ export const TechnicianSelectDropdown: React.FC<TechnicianSelectDropdownProps> =
               <div className="py-6 text-center text-slate-400">
                 <User className="w-6 h-6 mx-auto mb-1 text-slate-300" />
                 <p className="text-xs">No technicians matching "{search}"</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Try searching by mobile number or trade</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Try searching by letters, numbers, or trade</p>
               </div>
             )}
           </div>

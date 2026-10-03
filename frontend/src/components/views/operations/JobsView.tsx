@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQiyamStore } from '@/store/useQiyamStore';
 import { Header } from '@/components/layout/Header';
 import { Job } from '@/types';
@@ -186,39 +186,100 @@ export const JobsView: React.FC = () => {
     });
   };
 
-  const filteredJobs = jobs.filter((j) => {
-    // 1. Date Interval Filtering
-    if (!isDateWithinInterval(j.date_str, globalDateInterval)) return false;
+  const filteredJobs = useMemo(() => {
+    const list = jobs.filter((j) => {
+      // 1. Date Interval Filtering
+      if (!isDateWithinInterval(j.date_str, globalDateInterval)) return false;
 
-    // 2. Status Filtering (Global & Local)
-    if (globalFilter.status && globalFilter.status !== 'all') {
-      if (globalFilter.status === 'open' && j.status !== 'scheduled') return false;
-      if (globalFilter.status === 'in_progress' && j.status !== 'in_progress') return false;
-      if (globalFilter.status === 'completed' && j.status !== 'completed') return false;
-      if (globalFilter.status === 'overdue' && j.status !== 'overdue') return false;
-      if (['scheduled', 'in_progress', 'completed', 'cancelled', 'overdue'].includes(globalFilter.status) && j.status !== globalFilter.status) return false;
-    } else if (activeStatus !== 'all' && j.status !== activeStatus) {
-      return false;
+      // 2. Status Filtering (Global & Local)
+      if (globalFilter.status && globalFilter.status !== 'all') {
+        if (globalFilter.status === 'open' && j.status !== 'scheduled') return false;
+        if (globalFilter.status === 'in_progress' && j.status !== 'in_progress') return false;
+        if (globalFilter.status === 'completed' && j.status !== 'completed') return false;
+        if (globalFilter.status === 'overdue' && j.status !== 'overdue') return false;
+        if (['scheduled', 'in_progress', 'completed', 'cancelled', 'overdue'].includes(globalFilter.status) && j.status !== globalFilter.status) return false;
+      } else if (activeStatus !== 'all' && j.status !== activeStatus) {
+        return false;
+      }
+
+      // 3. Priority Filtering
+      if (globalFilter.priority && globalFilter.priority !== 'all' && j.priority !== globalFilter.priority) {
+        return false;
+      }
+
+      // 4. Keyword Query Filtering (letters or numbers)
+      if (globalFilter.query) {
+        const q = globalFilter.query.toLowerCase().trim();
+        const qDigits = q.replace(/\D/g, '');
+        const phoneMatch = qDigits.length >= 2 && j.phone.replace(/\D/g, '').includes(qDigits);
+        return (
+          j.job_id_str.toLowerCase().includes(q) ||
+          j.customer_name.toLowerCase().includes(q) ||
+          j.phone.toLowerCase().includes(q) ||
+          phoneMatch ||
+          j.service.toLowerCase().includes(q) ||
+          j.assigned_to.toLowerCase().includes(q) ||
+          (j.location && j.location.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+
+    // When search query is present, dynamically sort jobs by relevance score
+    if (globalFilter.query && globalFilter.query.trim()) {
+      const q = globalFilter.query.toLowerCase().trim();
+      const qDigits = q.replace(/\D/g, '');
+
+      return [...list].sort((a, b) => {
+        const score = (job: Job) => {
+          let s = 0;
+          const id = job.job_id_str.toLowerCase();
+          const name = job.customer_name.toLowerCase();
+          const phone = job.phone.replace(/\D/g, '');
+          const service = (job.service || '').toLowerCase();
+          const tech = (job.assigned_to || '').toLowerCase();
+          const loc = (job.location || '').toLowerCase();
+
+          // Exact ID match
+          if (id === q) s += 10000;
+          else if (id.startsWith(q)) s += 7000;
+          else if (id.includes(q)) s += 4000;
+
+          // Customer Name match
+          if (name === q) s += 8000;
+          else if (name.startsWith(q)) s += 6000;
+          else if (name.includes(q)) s += 3000;
+
+          // Phone match (only if digits searched)
+          if (qDigits.length > 0) {
+            if (phone === qDigits) s += 9000;
+            else if (phone.endsWith(qDigits)) s += 6500;
+            else if (phone.includes(qDigits)) s += 3500;
+          }
+
+          // Service match
+          if (service.startsWith(q)) s += 5000;
+          else if (service.includes(q)) s += 2500;
+
+          // Technician match
+          if (tech.startsWith(q)) s += 4500;
+          else if (tech.includes(q)) s += 2000;
+
+          // Location match
+          if (loc.includes(q)) s += 1000;
+
+          return s;
+        };
+
+        const scoreA = score(a);
+        const scoreB = score(b);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return 0;
+      });
     }
 
-    // 3. Priority Filtering
-    if (globalFilter.priority && globalFilter.priority !== 'all' && j.priority !== globalFilter.priority) {
-      return false;
-    }
-
-    // 4. Keyword Query Filtering
-    if (globalFilter.query) {
-      const q = globalFilter.query.toLowerCase();
-      return (
-        j.job_id_str.toLowerCase().includes(q) ||
-        j.customer_name.toLowerCase().includes(q) ||
-        j.phone.includes(q) ||
-        j.service.toLowerCase().includes(q) ||
-        j.assigned_to.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+    return list;
+  }, [jobs, globalDateInterval, globalFilter, activeStatus]);
 
   const renderJobDetailsContent = () => {
     if (!selectedJob) return null;
