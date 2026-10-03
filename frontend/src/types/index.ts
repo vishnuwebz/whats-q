@@ -251,7 +251,8 @@ export interface WhatsAppMessage {
   text: string;
   timestamp: string;
   created_at?: string;
-  status: 'sent' | 'delivered' | 'read' | 'pending';
+  status: 'sent' | 'delivered' | 'read' | 'pending' | 'failed';
+  error_details?: string;
   isTemplate?: boolean;
   workflowName?: string;
   isVoiceNote?: boolean;

@@ -1552,6 +1552,16 @@ class ConversationViewSet(viewsets.ModelViewSet):
             if not conversation:
                 conversation = Conversation.objects.filter(contact_name=pk).first() or Conversation.objects.filter(phone_number=pk).first()
             if not conversation:
+                req_phone = request.data.get('phone_number')
+                if req_phone:
+                    clean_p = re.sub(r'\D', '', str(req_phone))
+                    if len(clean_p) >= 10:
+                        conversation = Conversation.objects.filter(phone_number__endswith=clean_p[-10:]).first()
+            if not conversation:
+                req_name = request.data.get('contact_name')
+                if req_name:
+                    conversation = Conversation.objects.filter(contact_name__iexact=str(req_name).strip()).first()
+            if not conversation:
                 c_name = request.data.get('contact_name') or f"Customer {pk}"
                 c_phone = request.data.get('phone_number') or "+91 98765 00000"
                 conversation = Conversation.objects.create(
@@ -1734,13 +1744,14 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     cfg = MetaWhatsAppConfig.objects.first()
                     if cfg and cfg.access_token and cfg.phone_number_id and cfg.connection_status == 'connected':
                         m_res = None
+                        err_msg = None
                         # 1. If voice_info has audio bytes, upload directly to Meta Media API
                         if is_voice and v_info and v_info.get('audio_bytes'):
                             upload_res = MetaWhatsAppService.upload_whatsapp_audio(
                                 phone_number_id=cfg.phone_number_id,
                                 access_token=cfg.access_token,
                                 audio_bytes=v_info['audio_bytes'],
-                                mime_type='audio/ogg',
+                                mime_type=v_info.get('mime_type') or 'audio/ogg',
                                 api_version=cfg.api_version
                             )
                             if upload_res.get('success') and upload_res.get('media_id'):
@@ -1754,10 +1765,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
                                     api_version=cfg.api_version
                                 )
                             else:
-                                logger.warning(f"[Meta Cloud API] Voice note upload failed: {upload_res.get('error')}")
+                                err_msg = upload_res.get('error', 'Audio upload to Meta failed')
+                                logger.warning(f"[Meta Cloud API] Voice note upload failed: {err_msg}")
 
                         # 2. If not uploaded via bytes, check if public http url exists
-                        if not m_res and is_voice and audio_url and str(audio_url).startswith('http'):
+                        if not (m_res and m_res.get('success')) and is_voice and audio_url and str(audio_url).startswith('http'):
                             m_res = MetaWhatsAppService.send_whatsapp_audio(
                                 phone_number_id=cfg.phone_number_id,
                                 access_token=cfg.access_token,
@@ -1767,21 +1779,26 @@ class ConversationViewSet(viewsets.ModelViewSet):
                             )
 
                         # 3. Fallback to text message if audio couldn't be sent
-                        if not m_res:
+                        if not (m_res and m_res.get('success')):
+                            fallback_text = msg_text or "🎙️ Voice note"
                             m_res = MetaWhatsAppService.send_whatsapp_text(
                                 phone_number_id=cfg.phone_number_id,
                                 access_token=cfg.access_token,
                                 to_phone=phone,
-                                text=msg_text,
+                                text=fallback_text,
                                 api_version=cfg.api_version
                             )
 
-                        if m_res.get('success'):
+                        if m_res and m_res.get('success'):
                             remote_id = m_res.get('message_id', '')
                             final_status = 'sent'
+                            err_msg = None
                         else:
-                            logger.warning(f"[Meta Cloud API] Async dispatch failed: {m_res.get('error')}")
+                            err_msg = (m_res.get('error') if m_res else None) or err_msg or 'Failed to dispatch via Meta Cloud API'
+                            logger.warning(f"[Meta Cloud API] Async dispatch failed: {err_msg}")
+                            final_status = 'failed'
                 else:
+                    err_msg = None
                     clean_recipient = re.sub(r'[^\d]', '', phone or '')
                     baileys_payload = {
                         'accountId': dev_acc_id,
@@ -1791,7 +1808,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     }
                     if is_voice:
                         baileys_payload['isVoice'] = True
+                        baileys_payload['ptt'] = True
                         baileys_payload['mediaType'] = 'audio'
+                        baileys_payload['mimetype'] = 'audio/ogg; codecs=opus'
                         if v_info and v_info.get('file_path'):
                             baileys_payload['mediaUrl'] = v_info['file_path']
                         elif audio_url:
@@ -1804,27 +1823,31 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         res_obj = baileys_res.get('result', {})
                         remote_id = res_obj.get('messageId') or f"wa-emp-{dev_pk}-{int(time.time() * 1000)}"
                         final_status = 'sent'
+                        err_msg = None
                     else:
                         remote_id = f"wa-emp-{dev_pk}-{int(time.time() * 1000)}"
-                        final_status = 'sent'
-
+                        final_status = 'failed'
+                        err_msg = baileys_res.get('error', 'Device dispatch failed')
 
                 if remote_id or final_status:
                     Message.objects.filter(id=message_id).update(
                         meta_message_id=remote_id or temp_meta_id,
-                        status=final_status
+                        status=final_status,
+                        error_details=err_msg if final_status == 'failed' else None
                     )
                     emit_event('message.status_updated', {
                         'conversation_id': conv_id,
                         'message_id': message_id,
                         'status': final_status,
                         'meta_message_id': remote_id or temp_meta_id,
+                        'error_details': err_msg if final_status == 'failed' else None,
                     })
                     emit_event('message.status', {
                         'conversation_id': conv_id,
                         'message_id': message_id,
                         'status': final_status,
                         'meta_message_id': remote_id or temp_meta_id,
+                        'error_details': err_msg if final_status == 'failed' else None,
                     })
             except Exception as e:
                 logger.error(f"[Async Dispatch Error]: {e}")
@@ -1846,6 +1869,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
             )
             t.start()
 
+        msg_data['conversation_id'] = conversation.id
+        msg_data['conversation'] = conversation.id
         return Response(msg_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])

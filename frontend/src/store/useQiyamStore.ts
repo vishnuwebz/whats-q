@@ -4328,11 +4328,13 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       });
       if (res && res.id && res.success !== false) {
         // Update optimistic message with real backend message ID and status
+        const resolvedConvId = res.conversation_id || res.conversation;
         set((state) => ({
           conversations: state.conversations.map((c) => {
-            if (String(c.id) !== String(conversationId)) return c;
+            if (String(c.id) !== String(conversationId) && String(c.id) !== String(resolvedConvId)) return c;
             return {
               ...c,
+              id: resolvedConvId || c.id,
               active_line_device: res.active_line_device || c.active_line_device,
               active_line_phone: res.active_line_phone || c.active_line_phone,
               active_employee_name: res.active_employee_name || c.active_employee_name,
@@ -4349,7 +4351,28 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
               ),
             };
           }),
+          ...(resolvedConvId && String(state.selectedConversationId) === String(conversationId)
+            ? { selectedConversationId: resolvedConvId }
+            : {}),
         }));
+      } else if (res && res.success === false) {
+        // Update optimistic message as failed with error details and notify user
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (String(c.id) !== String(conversationId)) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === tempId ? {
+                  ...m,
+                  status: 'failed' as const,
+                  error_details: res.error || 'Failed to dispatch message',
+                } : m
+              ),
+            };
+          }),
+        }));
+        get().addToast(res.error || 'Failed to send message on WhatsApp line', 'error');
       }
     } catch (e) {
       console.warn('Backend send message notice:', e);

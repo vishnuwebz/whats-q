@@ -1147,6 +1147,8 @@ export const ConversationsView: React.FC = () => {
           audioStreamRef.current.getTracks().forEach((track) => track.stop());
           audioStreamRef.current = null;
         }
+        mediaRecorderRef.current = null;
+        audioChunksRef.current = [];
       };
       try {
         mediaRecorderRef.current.stop();
@@ -1158,6 +1160,8 @@ export const ConversationsView: React.FC = () => {
         audioStreamRef.current.getTracks().forEach((track) => track.stop());
         audioStreamRef.current = null;
       }
+      mediaRecorderRef.current = null;
+      audioChunksRef.current = [];
       finalizeAndSend();
     }
   };

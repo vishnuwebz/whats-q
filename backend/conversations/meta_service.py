@@ -599,12 +599,17 @@ class MetaWhatsAppService:
         }
 
         # Meta accepts audio/ogg, audio/mp4, audio/aac, audio/amr, audio/mpeg
+        # Clean mime_type (Meta rejects parameters like codecs=opus in type form field)
+        clean_mime = (mime_type or 'audio/ogg').split(';')[0].strip()
+        if not clean_mime:
+            clean_mime = 'audio/ogg'
+        filename = 'voice_note.ogg' if 'ogg' in clean_mime else ('voice_note.mp4' if 'mp4' in clean_mime else 'voice_note.mp3')
         files = {
-            'file': ('voice_note.ogg', audio_bytes, mime_type or 'audio/ogg')
+            'file': (filename, audio_bytes, clean_mime)
         }
         data = {
             'messaging_product': 'whatsapp',
-            'type': mime_type or 'audio/ogg'
+            'type': clean_mime
         }
 
         try:
