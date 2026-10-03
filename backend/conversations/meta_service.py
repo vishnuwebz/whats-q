@@ -17,6 +17,42 @@ class MetaWhatsAppService:
 
     DEFAULT_API_VERSION = "v21.0"
     GRAPH_BASE_URL = "https://graph.facebook.com"
+    _session = None
+
+    @classmethod
+    def get_session(cls):
+        """
+        Returns a persistent requests.Session with connection pooling and HTTP Keep-Alive.
+        Eliminates TLS/SSL handshake latency on repeated calls to Meta Graph API.
+        """
+        if cls._session is None:
+            import requests
+            from requests.adapters import HTTPAdapter
+            from urllib3.util.retry import Retry
+            
+            s = requests.Session()
+            adapter = HTTPAdapter(
+                pool_connections=25,
+                pool_maxsize=25,
+                max_retries=Retry(
+                    total=2,
+                    backoff_factor=0.05,
+                    status_forcelist=[502, 503, 504],
+                    raise_on_status=False
+                )
+            )
+            s.mount("https://", adapter)
+            s.mount("http://", adapter)
+            cls._session = s
+        return cls._session
+
+    @classmethod
+    def prewarm_connection(cls):
+        """Pre-warms DNS and TLS connection in the background for instant dispatch"""
+        try:
+            cls.get_session().head("https://graph.facebook.com", timeout=3)
+        except Exception:
+            pass
 
     @classmethod
     def clean_phone_number(cls, phone: str) -> str:
@@ -535,7 +571,7 @@ class MetaWhatsAppService:
         }
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            resp = cls.get_session().post(url, headers=headers, json=payload, timeout=10)
             data = resp.json()
             if resp.status_code in [200, 201]:
                 msg_id = data.get("messages", [{}])[0].get("id")
@@ -573,7 +609,7 @@ class MetaWhatsAppService:
         }
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            resp = cls.get_session().post(url, headers=headers, json=payload, timeout=10)
             data = resp.json()
             if resp.status_code in [200, 201]:
                 msg_id = data.get("messages", [{}])[0].get("id")
@@ -722,7 +758,7 @@ class MetaWhatsAppService:
             payload["template"]["components"] = components
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            resp = cls.get_session().post(url, headers=headers, json=payload, timeout=10)
             data = resp.json()
             if resp.status_code in [200, 201]:
                 msg_id = data.get("messages", [{}])[0].get("id")
@@ -786,7 +822,7 @@ class MetaWhatsAppService:
         }
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            resp = cls.get_session().post(url, headers=headers, json=payload, timeout=10)
             data = resp.json()
             if resp.status_code in [200, 201]:
                 msg_id = data.get("messages", [{}])[0].get("id")

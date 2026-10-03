@@ -3205,22 +3205,11 @@ export const ConversationsView: React.FC = () => {
                         // - Double Blue Tick ('read'): Recipient opened/read chat, replied after, or later outbound is marked read
                         // - Double Grey Tick ('delivered'): Recipient device received message (phone data/WiFi is ON)
                         // - Single Grey Tick ('sent'): Sent to WhatsApp network (phone data is OFF or in transit)
-                        const isFailed = msg.status === 'failed';
+                        const isFailed = msg.status === 'failed' || Boolean(msg.error_details);
+                        const isOptimistic = String(msg.id).startsWith('msg-') || String(msg.id).startsWith('wa-tmpl-');
                         const isSending = (msg.status as any) === 'sending' || msg.status === 'pending';
 
-                        const hasLaterReadOutbound = allMessages.slice(msgIndex + 1).some(
-                          (m) => m.sender !== 'customer' && m.status === 'read'
-                        );
-                        const hasCustomerReplyAfter = allMessages.slice(msgIndex + 1).some(
-                          (m) => m.sender === 'customer'
-                        );
-
-                        const isRead = !isCustomer && !isFailed && !isSending && (
-                          msg.status === 'read' ||
-                          hasLaterReadOutbound ||
-                          hasCustomerReplyAfter
-                        );
-
+                        const isRead = !isCustomer && !isFailed && !isSending && !isOptimistic && msg.status === 'read';
                         const isDelivered = !isCustomer && !isFailed && !isSending && !isRead && msg.status === 'delivered';
                         const tooltipStr = formatFullMessageTooltip(msg, currentConv);
 

@@ -4777,17 +4777,22 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
 
     // 3. Asynchronous non-blocking background dispatch (no UI freeze or lag)
     try {
+      const convForDispatch = get().conversations.find((c) => String(c.id) === String(conversationId));
       const res = await apiClient.post(`/conversations/threads/${conversationId}/send_template/`, {
         template_id: templateId,
+        template_name: template?.name,
         variables,
         sender_device_id: targetDeviceId || 'meta_cloud',
         sender_phone: resolvedSenderPhone,
+        phone_number: convForDispatch?.phone_number,
+        contact_name: convForDispatch?.contact_name,
       });
 
       if (res && res.id && res.success !== false) {
+        const resolvedConvId = res.conversation || res.conversation_id || conversationId;
         set((state) => ({
           conversations: state.conversations.map((c) => {
-            if (String(c.id) !== String(conversationId)) return c;
+            if (String(c.id) !== String(conversationId) && String(c.id) !== String(resolvedConvId)) return c;
             return {
               ...c,
               messages: c.messages.map((m) =>
@@ -4838,6 +4843,7 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
           };
         }),
       }));
+      get().addToast(e?.message || 'Network error sending template', 'error');
     }
   },
 

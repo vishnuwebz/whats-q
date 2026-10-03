@@ -2020,7 +2020,44 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def send_template(self, request, pk=None):
-        conversation = self.get_object()
+        try:
+            conversation = self.get_object()
+        except Exception:
+            conversation = None
+
+        if not conversation and pk and str(pk).isdigit():
+            conversation = Conversation.objects.filter(pk=int(pk)).first()
+        if not conversation and pk and str(pk).startswith('conv-') and str(pk)[5:].isdigit():
+            conversation = Conversation.objects.filter(pk=int(str(pk)[5:])).first()
+        if not conversation and pk:
+            conversation = Conversation.objects.filter(contact_name=pk).first() or Conversation.objects.filter(phone_number=pk).first()
+        if not conversation:
+            req_phone = request.data.get('phone_number') or request.data.get('recipient_phone')
+            if req_phone:
+                clean_p = re.sub(r'\D', '', str(req_phone))
+                if len(clean_p) >= 10:
+                    conversation = Conversation.objects.filter(phone_number__endswith=clean_p[-10:]).first()
+        if not conversation:
+            req_name = request.data.get('contact_name')
+            if req_name:
+                conversation = Conversation.objects.filter(contact_name__iexact=str(req_name).strip()).first()
+        if not conversation and pk:
+            digits = re.sub(r'\D', '', str(pk))
+            if len(digits) >= 10:
+                conversation = Conversation.objects.filter(phone_number__endswith=digits[-10:]).first()
+        if not conversation:
+            c_name = request.data.get('contact_name') or f"Customer {pk}"
+            c_phone = request.data.get('phone_number') or request.data.get('recipient_phone') or "+91 94963 00233"
+            conversation = Conversation.objects.create(
+                contact_name=c_name,
+                phone_number=c_phone,
+                category='Customer',
+            )
+
+        if conversation and getattr(conversation, 'is_deleted', False):
+            conversation.is_deleted = False
+            conversation.deleted_at = None
+            conversation.save(update_fields=['is_deleted', 'deleted_at'])
 
         # Suppression Defense (WhatsApp Policy & Quality Score Protection)
         if (conversation.is_opted_out or conversation.is_blocked) and not request.data.get('force', False):
@@ -2030,21 +2067,24 @@ class ConversationViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         template_id = request.data.get('template_id')
+        template_name = request.data.get('template_name')
         variables = request.data.get('variables', {})
         sender_device_id = request.data.get('sender_device_id')
         sender_phone_req = request.data.get('sender_phone')
 
-        try:
-            if str(template_id).isdigit():
-                template = WhatsAppTemplate.objects.filter(pk=int(template_id)).first()
-            else:
-                template = WhatsAppTemplate.objects.filter(name=str(template_id)).first()
-            if not template and str(template_id).isdigit():
-                template = WhatsAppTemplate.objects.get(pk=int(template_id))
-            elif not template:
-                template = WhatsAppTemplate.objects.get(name=str(template_id))
-        except (WhatsAppTemplate.DoesNotExist, Exception):
-            return Response({'error': f'Template {template_id} not found in verified template repository'}, status=status.HTTP_404_NOT_FOUND)
+        template = None
+        if template_id and str(template_id).isdigit():
+            template = WhatsAppTemplate.objects.filter(pk=int(template_id)).first()
+        if not template and template_id:
+            template = WhatsAppTemplate.objects.filter(name=str(template_id)).first()
+        if not template and template_name:
+            template = WhatsAppTemplate.objects.filter(name=str(template_name)).first()
+        if not template and (template_id or template_name):
+            cand_name = str(template_name or template_id).strip()
+            template = WhatsAppTemplate.objects.filter(name__iexact=cand_name).first()
+
+        if not template:
+            return Response({'error': f'Template "{template_id or template_name}" not found in verified template repository'}, status=status.HTTP_404_NOT_FOUND)
 
         # Resolve Sender Device, Phone Number and Identity
         is_employee_device = False
@@ -2283,15 +2323,22 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     known_en_us = {
                         'service_booking_confirmed', 'service_appointment_confirmation',
                         'festival_sale_promo_test', 'habeebu_services', 'system_status_alert',
-                        'exclusive_seasonal_offer_v1', 'service_providing', 'habeebu_swayam_sahaya_sangam'
+                        'exclusive_seasonal_offer_v1', 'service_providing', 'habeebu_swayam_sahaya_sangam',
+                        'hello_world'
                     }
-                    if tmpl.name in known_en_us or lang.lower() == 'english':
+                    if tmpl.name in known_en_us:
                         lang = 'en_US'
+                    elif tmpl.name.startswith(('roopam_', 'qiyam_', 'qiyammart_', 'insta_', 'template')):
+                        lang = 'en'
+                    elif str(lang).lower() in ['english', 'en_us']:
+                        lang = 'en_US' if tmpl.name in known_en_us else 'en'
+
+                    clean_dest_phone = re.sub(r'\D', '', str(phone))
 
                     meta_res = MetaWhatsAppService.send_whatsapp_template(
                         phone_number_id=cfg.phone_number_id,
                         access_token=cfg.access_token,
-                        to_phone=phone,
+                        to_phone=clean_dest_phone,
                         template_name=tmpl.name,
                         language_code=lang,
                         components=components if components else None,
@@ -4126,7 +4173,7 @@ class WhatsAppWebhookView(APIView):
                         })
 
                         # -------------------------------------------------------------
-                        # Automated Contextual Response Engine (100% Automated CRM Flow)
+                        # Automated Contextual Response Engine (Super Fast Non-blocking)
                         # Only runs for official Meta Cloud API messages, NOT personal employee lines!
                         # -------------------------------------------------------------
                         if (
@@ -4136,102 +4183,120 @@ class WhatsAppWebhookView(APIView):
                             and not matched_employee_device
                             and getattr(conv, 'active_workflow', '') != 'Paused'
                         ):
-                            # 1. Query CRM / Operational Context for this Customer
-                            last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
-                            apt = None
-                            job = None
-                            if Appointment:
-                                apt = Appointment.objects.filter(phone__icontains=last_10).order_by('-id').first()
-                                if not apt and conv.contact_name:
-                                    apt = Appointment.objects.filter(customer_name__icontains=conv.contact_name).order_by('-id').first()
-                            if Job:
-                                job = Job.objects.filter(phone__icontains=last_10).order_by('-id').first()
-                                if not job and conv.contact_name:
-                                    job = Job.objects.filter(customer_name__icontains=conv.contact_name).order_by('-id').first()
+                            def async_auto_reply_worker(conv_id, sender_phone_clean, user_msg_text, p_name):
+                                try:
+                                    import django
+                                    django.db.connections.close_all()
+                                    from conversations.models import Conversation, Message, MetaWhatsAppConfig
+                                    from conversations.meta_service import MetaWhatsAppService
+                                    from conversations.serializers import MessageSerializer
+                                    from core.events import emit_event
+                                    import time, datetime
 
-                            # Extract individualized variables
-                            cust_name = conv.contact_name if conv.contact_name and conv.contact_name != 'WhatsApp Customer' else (profile_name if profile_name != 'WhatsApp Customer' else 'Valued Customer')
-                            service_name = conv.service_needed or (apt.service if apt else (job.service if job else ''))
-                            booking_id = apt.apt_id_str if apt else (job.job_id_str if job else '')
-                            technician_name = apt.employee if apt else (job.assigned_to if job else (conv.lead_owner or 'Support Desk'))
+                                    c_obj = Conversation.objects.filter(id=conv_id).first()
+                                    if not c_obj:
+                                        return
+                                    cfg_obj = MetaWhatsAppConfig.objects.first()
+                                    if not (cfg_obj and cfg_obj.auto_reply_enabled and cfg_obj.connection_status == 'connected'):
+                                        return
 
-                            tech_phone = '+91 98471 23456'
-                            if Employee:
-                                emp = Employee.objects.filter(name__icontains=technician_name).first()
-                                if emp and emp.phone:
-                                    tech_phone = emp.phone
+                                    last_10_d = sender_phone_clean[-10:] if len(sender_phone_clean) >= 10 else sender_phone_clean
+                                    apt = None
+                                    job = None
+                                    if Appointment:
+                                        apt = Appointment.objects.filter(phone__icontains=last_10_d).order_by('-id').first()
+                                        if not apt and c_obj.contact_name:
+                                            apt = Appointment.objects.filter(customer_name__icontains=c_obj.contact_name).order_by('-id').first()
+                                    if Job:
+                                        job = Job.objects.filter(phone__icontains=last_10_d).order_by('-id').first()
+                                        if not job and c_obj.contact_name:
+                                            job = Job.objects.filter(customer_name__icontains=c_obj.contact_name).order_by('-id').first()
 
-                            slot_time = f"{apt.date_str} at {apt.time_str}" if apt else "Tomorrow at 10:30 AM"
-                            est_val_num = int(conv.estimated_value) if conv.estimated_value else (int(apt.amount) if apt else 2800)
-                            est_price = f"₹{est_val_num:,}"
+                                    c_name = c_obj.contact_name if c_obj.contact_name and c_obj.contact_name != 'WhatsApp Customer' else (p_name if p_name != 'WhatsApp Customer' else 'Valued Customer')
+                                    s_name = c_obj.service_needed or (apt.service if apt else (job.service if job else ''))
+                                    b_id = apt.apt_id_str if apt else (job.job_id_str if job else '')
+                                    tech_name = apt.employee if apt else (job.assigned_to if job else (c_obj.lead_owner or 'Support Desk'))
+                                    t_phone = '+91 98471 23456'
+                                    if Employee:
+                                        e_rec = Employee.objects.filter(name__icontains=tech_name).first()
+                                        if e_rec and e_rec.phone:
+                                            t_phone = e_rec.phone
+                                    s_slot = f"{apt.date_str} at {apt.time_str}" if apt else "Tomorrow at 10:30 AM"
+                                    e_val = int(c_obj.estimated_value) if c_obj.estimated_value else (int(apt.amount) if apt else 2800)
+                                    e_price_str = f"₹{e_val:,}"
 
-                            # 2. Intent Classification & Context Injection via Automated Workflow Engine
-                            reply_text, rich_card, step_name = evaluate_workflow_response(
-                                text_body=text_body,
-                                conv=conv,
-                                cust_name=cust_name,
-                                service_name=service_name,
-                                booking_id=booking_id,
-                                slot_time=slot_time,
-                                technician_name=technician_name,
-                                tech_phone=tech_phone,
-                                est_price=est_price,
-                                est_val_num=est_val_num
-                            )
-
-                            # 3. Dispatch to WhatsApp via Meta Cloud API (Only if non-empty reply_text)
-                            if reply_text and reply_text.strip():
-                                meta_bot_msg_id = ''
-                                if config.connection_status == 'connected' and config.access_token and config.phone_number_id:
-                                    meta_reply_res = MetaWhatsAppService.send_whatsapp_text(
-                                        phone_number_id=config.phone_number_id,
-                                        access_token=config.access_token,
-                                        to_phone=clean_sender,
-                                        text=reply_text,
-                                        api_version=config.api_version
+                                    r_text, r_card, step_name = evaluate_workflow_response(
+                                        text_body=user_msg_text,
+                                        conv=c_obj,
+                                        cust_name=c_name,
+                                        service_name=s_name,
+                                        booking_id=b_id,
+                                        slot_time=s_slot,
+                                        technician_name=tech_name,
+                                        tech_phone=t_phone,
+                                        est_price=e_price_str,
+                                        est_val_num=e_val
                                     )
-                                    if meta_reply_res.get('success'):
-                                        meta_bot_msg_id = meta_reply_res.get('message_id', '')
-                                        logger.info(f"[Meta Webhook Auto-Reply] Sent to {clean_sender}: {meta_bot_msg_id}")
-                                    else:
-                                        logger.warning(f"[Meta Webhook Auto-Reply] Meta send failed: {meta_reply_res.get('error')}")
 
-                                # 4. Save Bot Message in DB & Stream via SSE
-                                bot_msg = Message.objects.create(
-                                    conversation=conv,
-                                    sender='bot',
-                                    sender_name='WhatsQ AI Assistant',
-                                    text=reply_text,
-                                    timestamp=now_time,
-                                    status='sent' if meta_bot_msg_id else 'delivered',
-                                    meta_message_id=meta_bot_msg_id,
-                                    rich_card=rich_card
-                                )
+                                    if r_text and r_text.strip():
+                                        m_bot_id = ''
+                                        m_reply = MetaWhatsAppService.send_whatsapp_text(
+                                            phone_number_id=cfg_obj.phone_number_id,
+                                            access_token=cfg_obj.access_token,
+                                            to_phone=sender_phone_clean,
+                                            text=r_text,
+                                            api_version=cfg_obj.api_version
+                                        )
+                                        if m_reply.get('success'):
+                                            m_bot_id = m_reply.get('message_id', '')
+                                            logger.info(f"[Meta Fast Auto-Reply] Sent to {sender_phone_clean}: {m_bot_id}")
+                                        else:
+                                            logger.warning(f"[Meta Fast Auto-Reply] Meta send error: {m_reply.get('error')}")
 
-                                conv.last_contact_date = now_full
-                                conv.save()
+                                        n_time = datetime.datetime.now().strftime('%I:%M %p')
+                                        n_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
+                                        b_msg = Message.objects.create(
+                                            conversation=c_obj,
+                                            sender='bot',
+                                            sender_name='WhatsQ AI Assistant',
+                                            text=r_text,
+                                            timestamp=n_time,
+                                            status='sent' if m_bot_id else 'delivered',
+                                            meta_message_id=m_bot_id,
+                                            rich_card=r_card
+                                        )
+                                        c_obj.last_contact_date = n_full
+                                        c_obj.save(update_fields=['last_contact_date'])
 
-                                bot_msg_payload = MessageSerializer(bot_msg).data
-                                emit_event('message.created', {
-                                    'conversation_id': conv.id,
-                                    'message': bot_msg_payload
-                                })
-                                emit_event('conversation.updated', {
-                                    'id': conv.id,
-                                    'last_message': reply_text,
-                                    'last_contact_date': now_full,
-                                    'unread_count': conv.unread_count
-                                })
-                                emit_event('notification.new', {
-                                    'id': int(time.time() * 1000),
-                                    'title': f"WhatsQ Auto-Reply to {cust_name}",
-                                    'text': reply_text[:80],
-                                    'time': 'Just now',
-                                    'unread': True,
-                                    'target': 'conversations',
-                                    'itemId': conv.id,
-                                    'itemType': 'conversation'
-                                })
+                                        b_payload = MessageSerializer(b_msg).data
+                                        emit_event('message.created', {
+                                            'conversation_id': c_obj.id,
+                                            'message': b_payload
+                                        })
+                                        emit_event('conversation.updated', {
+                                            'id': c_obj.id,
+                                            'last_message': r_text,
+                                            'last_contact_date': n_full,
+                                            'unread_count': c_obj.unread_count
+                                        })
+                                        emit_event('notification.new', {
+                                            'id': int(time.time() * 1000),
+                                            'title': f"WhatsQ Auto-Reply to {c_name}",
+                                            'text': r_text[:80],
+                                            'time': 'Just now',
+                                            'unread': True,
+                                            'target': 'conversations',
+                                            'itemId': c_obj.id,
+                                            'itemType': 'conversation'
+                                        })
+                                except Exception as reply_worker_err:
+                                    logger.error(f"[Async Auto-Reply Error]: {reply_worker_err}", exc_info=True)
+
+                            threading.Thread(
+                                target=async_auto_reply_worker,
+                                args=(conv.id, clean_sender, text_body, profile_name),
+                                daemon=True
+                            ).start()
 
                     # Message status updates (sent, delivered, read, failed)
                     statuses = value.get('statuses', [])
