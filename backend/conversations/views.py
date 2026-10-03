@@ -1284,10 +1284,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         msg_count = conv.messages.count()
         conv.messages.all().delete()
-        conv.last_message = ''
         conv.unread_count = 0
-        conv.active_workflow = 'Paused'
-        conv.save(update_fields=['last_message', 'unread_count', 'active_workflow'])
+        conv.active_workflow = 'Service Booking Flow'
+        conv.save(update_fields=['unread_count', 'active_workflow'])
 
         conv_data = ConversationSerializer(conv).data
 
@@ -4176,12 +4175,17 @@ class WhatsAppWebhookView(APIView):
                         # Automated Contextual Response Engine (Super Fast Non-blocking)
                         # Only runs for official Meta Cloud API messages, NOT personal employee lines!
                         # -------------------------------------------------------------
+                        is_greeting_or_start = bool(re.match(r'^(hi|hello|hey|start|menu|hola|namaste|good\s*(morning|afternoon|evening))\b', (text_body or '').strip().lower()))
+                        if conv and getattr(conv, 'active_workflow', '') == 'Paused' and is_greeting_or_start:
+                            conv.active_workflow = 'Service Booking Flow'
+                            conv.save(update_fields=['active_workflow'])
+
                         if (
                             config
                             and config.auto_reply_enabled
                             and resolved_line_type != 'employee'
                             and not matched_employee_device
-                            and getattr(conv, 'active_workflow', '') != 'Paused'
+                            and (getattr(conv, 'active_workflow', '') != 'Paused' or is_greeting_or_start)
                         ):
                             def async_auto_reply_worker(conv_id, sender_phone_clean, user_msg_text, p_name):
                                 try:
@@ -4189,28 +4193,43 @@ class WhatsAppWebhookView(APIView):
                                     django.db.connections.close_all()
                                     from conversations.models import Conversation, Message, MetaWhatsAppConfig
                                     from conversations.meta_service import MetaWhatsAppService
-                                    from conversations.serializers import MessageSerializer
                                     from core.events import emit_event
                                     import time, datetime
+
+                                    try:
+                                        from operations.models import Appointment, Job, Employee
+                                    except Exception:
+                                        Appointment, Job, Employee = None, None, None
 
                                     c_obj = Conversation.objects.filter(id=conv_id).first()
                                     if not c_obj:
                                         return
                                     cfg_obj = MetaWhatsAppConfig.objects.first()
-                                    if not (cfg_obj and cfg_obj.auto_reply_enabled and cfg_obj.connection_status == 'connected'):
+                                    if not (cfg_obj and cfg_obj.auto_reply_enabled and cfg_obj.phone_number_id and cfg_obj.access_token):
+                                        logger.warning("[Meta Fast Auto-Reply] Aborted: auto_reply_enabled is False or credentials missing")
                                         return
+
+                                    if getattr(c_obj, 'active_workflow', '') == 'Paused':
+                                        c_obj.active_workflow = 'Service Booking Flow'
+                                        c_obj.save(update_fields=['active_workflow'])
 
                                     last_10_d = sender_phone_clean[-10:] if len(sender_phone_clean) >= 10 else sender_phone_clean
                                     apt = None
                                     job = None
                                     if Appointment:
-                                        apt = Appointment.objects.filter(phone__icontains=last_10_d).order_by('-id').first()
-                                        if not apt and c_obj.contact_name:
-                                            apt = Appointment.objects.filter(customer_name__icontains=c_obj.contact_name).order_by('-id').first()
+                                        try:
+                                            apt = Appointment.objects.filter(phone__icontains=last_10_d).order_by('-id').first()
+                                            if not apt and c_obj.contact_name:
+                                                apt = Appointment.objects.filter(customer_name__icontains=c_obj.contact_name).order_by('-id').first()
+                                        except Exception as apt_err:
+                                            logger.warning(f"[Meta Auto-Reply] Appointment lookup error: {apt_err}")
                                     if Job:
-                                        job = Job.objects.filter(phone__icontains=last_10_d).order_by('-id').first()
-                                        if not job and c_obj.contact_name:
-                                            job = Job.objects.filter(customer_name__icontains=c_obj.contact_name).order_by('-id').first()
+                                        try:
+                                            job = Job.objects.filter(phone__icontains=last_10_d).order_by('-id').first()
+                                            if not job and c_obj.contact_name:
+                                                job = Job.objects.filter(customer_name__icontains=c_obj.contact_name).order_by('-id').first()
+                                        except Exception as job_err:
+                                            logger.warning(f"[Meta Auto-Reply] Job lookup error: {job_err}")
 
                                     c_name = c_obj.contact_name if c_obj.contact_name and c_obj.contact_name != 'WhatsApp Customer' else (p_name if p_name != 'WhatsApp Customer' else 'Valued Customer')
                                     s_name = c_obj.service_needed or (apt.service if apt else (job.service if job else ''))
@@ -4218,9 +4237,12 @@ class WhatsAppWebhookView(APIView):
                                     tech_name = apt.employee if apt else (job.assigned_to if job else (c_obj.lead_owner or 'Support Desk'))
                                     t_phone = '+91 98471 23456'
                                     if Employee:
-                                        e_rec = Employee.objects.filter(name__icontains=tech_name).first()
-                                        if e_rec and e_rec.phone:
-                                            t_phone = e_rec.phone
+                                        try:
+                                            e_rec = Employee.objects.filter(name__icontains=tech_name).first()
+                                            if e_rec and e_rec.phone:
+                                                t_phone = e_rec.phone
+                                        except Exception as emp_err:
+                                            logger.warning(f"[Meta Auto-Reply] Employee lookup error: {emp_err}")
                                     s_slot = f"{apt.date_str} at {apt.time_str}" if apt else "Tomorrow at 10:30 AM"
                                     e_val = int(c_obj.estimated_value) if c_obj.estimated_value else (int(apt.amount) if apt else 2800)
                                     e_price_str = f"₹{e_val:,}"
@@ -4239,6 +4261,7 @@ class WhatsAppWebhookView(APIView):
                                     )
 
                                     if r_text and r_text.strip():
+                                        logger.info(f"[Meta Fast Auto-Reply] Generated reply for {sender_phone_clean}: '{r_text[:60]}' (step: {step_name})")
                                         m_bot_id = ''
                                         m_reply = MetaWhatsAppService.send_whatsapp_text(
                                             phone_number_id=cfg_obj.phone_number_id,
@@ -4249,9 +4272,9 @@ class WhatsAppWebhookView(APIView):
                                         )
                                         if m_reply.get('success'):
                                             m_bot_id = m_reply.get('message_id', '')
-                                            logger.info(f"[Meta Fast Auto-Reply] Sent to {sender_phone_clean}: {m_bot_id}")
+                                            logger.info(f"[Meta Fast Auto-Reply] Successfully sent to {sender_phone_clean}: {m_bot_id}")
                                         else:
-                                            logger.warning(f"[Meta Fast Auto-Reply] Meta send error: {m_reply.get('error')}")
+                                            logger.warning(f"[Meta Fast Auto-Reply] Meta send error: {m_reply.get('error')} details={m_reply.get('details')}")
 
                                         n_time = datetime.datetime.now().strftime('%I:%M %p')
                                         n_full = datetime.datetime.now().strftime('%b %d, %Y %I:%M %p')
@@ -4268,6 +4291,7 @@ class WhatsAppWebhookView(APIView):
                                         c_obj.last_contact_date = n_full
                                         c_obj.save(update_fields=['last_contact_date'])
 
+                                        # Use serializer directly from views
                                         b_payload = MessageSerializer(b_msg).data
                                         emit_event('message.created', {
                                             'conversation_id': c_obj.id,
