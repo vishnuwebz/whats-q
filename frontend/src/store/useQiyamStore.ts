@@ -314,6 +314,15 @@ function persistConversations(convs: Conversation[]) {
 function getStoredCache<T>(key: string, fallback: T[]): T[] {
   if (typeof window === 'undefined') return fallback;
   try {
+    const deletedIds = (() => {
+      try {
+        const dRaw = localStorage.getItem(`whatsq_deleted_${key}_cache`);
+        return new Set<string>(dRaw ? JSON.parse(dRaw) : []);
+      } catch {
+        return new Set<string>();
+      }
+    })();
+
     const raw = localStorage.getItem(`whatsq_${key}_cache`);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -322,16 +331,21 @@ function getStoredCache<T>(key: string, fallback: T[]): T[] {
         if (first && typeof first === 'object' && 'id' in first) {
           const map = new Map<string, any>();
           fallback.forEach((item: any) => {
-            if (item && item.id !== undefined) map.set(String(item.id), item);
+            if (item && item.id !== undefined && !deletedIds.has(String(item.id))) {
+              map.set(String(item.id), item);
+            }
           });
           parsed.forEach((item: any) => {
-            if (item && item.id !== undefined) map.set(String(item.id), item);
+            if (item && item.id !== undefined && !deletedIds.has(String(item.id))) {
+              map.set(String(item.id), item);
+            }
           });
           return Array.from(map.values()) as T[];
         }
-        return parsed;
+        return parsed.filter((item: any) => !item || item.id === undefined || !deletedIds.has(String(item.id)));
       }
     }
+    return fallback.filter((item: any) => !item || item.id === undefined || !deletedIds.has(String(item.id)));
   } catch {}
   return fallback;
 }
@@ -845,6 +859,8 @@ interface QiyamState {
   updateDeal: (id: string | number, patch: Partial<Deal>) => Promise<void>;
   deleteDeal: (id: string | number) => Promise<void>;
   addJob: (job: Partial<Job>) => Promise<Job>;
+  updateJob: (jobId: string | number, updates: Partial<Job>) => Promise<Job | null>;
+  deleteJob: (jobId: string | number) => Promise<boolean>;
   addInvoice: (inv: Partial<Invoice>) => Promise<Invoice>;
   addAppointment: (apt: Partial<Appointment>) => Promise<Appointment>;
   openConversationForAppointment: (
@@ -3760,11 +3776,26 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     const customers     = syncCustomersWithBranches(rawCustomers, branches);
     persistCache('customers', customers);
 
+    const deletedJobIds = (() => {
+      try {
+        const dRaw = localStorage.getItem('whatsq_deleted_jobs_cache');
+        return new Set<string>(dRaw ? JSON.parse(dRaw) : []);
+      } catch {
+        return new Set<string>();
+      }
+    })();
+
     const rawJobs       = safeVal(7, current.jobs, INITIAL_JOBS, 'jobs');
     const jobMap = new Map<string, Job>();
-    INITIAL_JOBS.forEach((j) => jobMap.set(String(j.id), j));
-    (rawJobs || []).forEach((j) => jobMap.set(String(j.id), j));
-    (current.jobs || []).forEach((j) => jobMap.set(String(j.id), j));
+    INITIAL_JOBS.forEach((j) => {
+      if (!deletedJobIds.has(String(j.id))) jobMap.set(String(j.id), j);
+    });
+    (rawJobs || []).forEach((j) => {
+      if (!deletedJobIds.has(String(j.id))) jobMap.set(String(j.id), j);
+    });
+    (current.jobs || []).forEach((j) => {
+      if (!deletedJobIds.has(String(j.id))) jobMap.set(String(j.id), j);
+    });
     const jobs = Array.from(jobMap.values());
     persistCache('jobs', jobs);
 
@@ -7144,6 +7175,59 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
       set((state) => ({ jobs: [item, ...state.jobs] }));
       get().addToast(`Job dispatch "${item.job_id_str}" scheduled`, 'success');
       return item;
+    }
+  },
+
+  updateJob: async (jobId, updates) => {
+    const job = get().jobs.find((j) => String(j.id) === String(jobId));
+    if (!job) return null;
+    const updatedJob: Job = { ...job, ...updates };
+    set((state) => ({
+      jobs: state.jobs.map((j) => (String(j.id) === String(jobId) ? updatedJob : j)),
+    }));
+    persistCache('jobs', get().jobs);
+    try {
+      const res = await apiClient.put(`/operations/jobs/${jobId}/`, updatedJob);
+      if (res?.id && res.success !== false) {
+        const finalJob = res as Job;
+        set((state) => ({
+          jobs: state.jobs.map((j) => (String(j.id) === String(jobId) ? finalJob : j)),
+        }));
+        persistCache('jobs', get().jobs);
+        get().addToast(`Job "${finalJob.job_id_str}" updated`, 'success');
+        return finalJob;
+      }
+      get().addToast(`Job "${updatedJob.job_id_str}" updated`, 'success');
+      return updatedJob;
+    } catch {
+      get().addToast(`Job "${updatedJob.job_id_str}" updated`, 'success');
+      return updatedJob;
+    }
+  },
+
+  deleteJob: async (jobId) => {
+    const job = get().jobs.find((j) => String(j.id) === String(jobId));
+    const label = job?.job_id_str || 'Job';
+    try {
+      const delRaw = localStorage.getItem('whatsq_deleted_jobs_cache');
+      const delList: string[] = delRaw ? JSON.parse(delRaw) : [];
+      if (!delList.includes(String(jobId))) {
+        delList.push(String(jobId));
+        localStorage.setItem('whatsq_deleted_jobs_cache', JSON.stringify(delList));
+      }
+    } catch {}
+
+    set((state) => ({
+      jobs: state.jobs.filter((j) => String(j.id) !== String(jobId)),
+    }));
+    persistCache('jobs', get().jobs);
+    try {
+      await apiClient.delete(`/operations/jobs/${jobId}/`);
+      get().addToast(`Job "${label}" deleted`, 'info');
+      return true;
+    } catch {
+      get().addToast(`Job "${label}" deleted`, 'info');
+      return true;
     }
   },
 
