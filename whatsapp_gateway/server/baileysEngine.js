@@ -1166,6 +1166,38 @@ export class BaileysEngine {
     throw new Error(errorMsg);
   }
 
+  async deleteMessage(accountId, recipientPhone, messageId, senderPhone = null) {
+    const normalizedPhone = normalizeWhatsAppNumber(recipientPhone);
+    const jid = `${normalizedPhone}@s.whatsapp.net`;
+
+    let targetSession = this.sessions.get(accountId);
+    if (!targetSession || targetSession.status !== 'online') {
+      const allOnlineSessions = Array.from(this.sessions.values()).filter((s) => s.status === 'online' && s.sock);
+      if (senderPhone) {
+        const cleanSender = String(senderPhone).replace(/\D/g, '');
+        targetSession = allOnlineSessions.find(
+          (s) => s.phoneNumber && s.phoneNumber.replace(/\D/g, '').endsWith(cleanSender.slice(-10))
+        );
+      }
+      if (!targetSession && allOnlineSessions.length > 0) {
+        targetSession = allOnlineSessions[0];
+      }
+    }
+
+    if (!targetSession || !targetSession.sock) {
+      throw new Error('No active WhatsApp phone line connected via QR code to revoke message');
+    }
+
+    const key = {
+      remoteJid: jid,
+      fromMe: true,
+      id: messageId,
+    };
+
+    console.log(`[Baileys Engine] Revoking message on WhatsApp: jid=${jid}, id=${messageId}`);
+    return await targetSession.sock.sendMessage(jid, { delete: key });
+  }
+
   async disconnectSession(accountId) {
     let targets = [];
     if (accountId && accountId !== 'all' && accountId !== 'any') {

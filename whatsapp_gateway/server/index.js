@@ -397,6 +397,18 @@ app.post('/api/messages/send-direct', async (req, res) => {
   }
 });
 
+// 4b. Direct WhatsApp Message Revoke/Delete API (Baileys Socket)
+app.post('/api/messages/delete-direct', async (req, res) => {
+  const { accountId, recipientPhone, messageId, senderPhone } = req.body;
+  try {
+    const result = await baileysEngine.deleteMessage(accountId, recipientPhone, messageId, senderPhone);
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error('[Baileys Delete Error]:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 // 5. Delivery Logs & Telemetry API
 app.get('/api/campaigns/logs', (req, res) => {

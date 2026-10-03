@@ -63,12 +63,14 @@ import {
   addDeletedMessageId,
   getDeletedForEveryoneMessageIds,
   addDeletedForEveryoneMessageId,
+  removeDeletedForEveryoneMessageId,
 } from '../utils/deletedMessagesStorage';
 export {
   getDeletedMessageIds,
   addDeletedMessageId,
   getDeletedForEveryoneMessageIds,
   addDeletedForEveryoneMessageId,
+  removeDeletedForEveryoneMessageId,
 };
 import { getInitialActiveTab, persistActiveTab } from '../utils/tabRouting';
 import { calculateDutyHours } from '../utils/dutyHours';
@@ -2604,12 +2606,44 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
     }
 
     try {
-      await apiClient.post(`/conversations/threads/${conversationId}/delete_message/`, {
+      const resp = await apiClient.post(`/conversations/threads/${conversationId}/delete_message/`, {
         message_id: messageId,
         scope,
       });
-    } catch (_err) {
-      console.warn('[Store] delete_message API call error:', _err);
+      if (resp.data?.success === false) {
+        throw new Error(resp.data?.error || 'Failed to recall message on WhatsApp network');
+      }
+    } catch (_err: any) {
+      const errorMsg = _err?.response?.data?.error || _err?.message || 'Remote deletion failed';
+      console.warn('[Store] delete_message API call error:', errorMsg);
+
+      if (scope === 'everyone') {
+        // Revert local deleted-for-everyone optimistic state because remote recall failed or is unsupported
+        removeDeletedForEveryoneMessageId(strMid);
+        set((state) => {
+          const nextConvs = state.conversations.map((c) => {
+            if (String(c.id) !== strCid) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) => {
+                if (String(m.id) !== strMid) return m;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { deletedScope, ...rest } = m;
+                return rest as typeof m;
+              }),
+            };
+          });
+          persistConversations(nextConvs);
+          return { conversations: nextConvs };
+        });
+
+        get().addToast(
+          errorMsg.includes('Meta Cloud API')
+            ? "Meta WhatsApp Cloud API does not allow deleting sent messages on customer phones. Use 'Delete for me' instead."
+            : errorMsg,
+          'warning'
+        );
+      }
     }
   },
 

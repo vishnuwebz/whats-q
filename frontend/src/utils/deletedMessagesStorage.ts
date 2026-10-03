@@ -48,3 +48,15 @@ export function addDeletedForEveryoneMessageId(id: string | number): void {
     // Ignore storage error
   }
 }
+
+export function removeDeletedForEveryoneMessageId(id: string | number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = getDeletedForEveryoneMessageIds();
+    const strId = String(id);
+    const updated = list.filter((item) => item !== strId);
+    localStorage.setItem(DELETED_FOR_EVERYONE_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore storage error
+  }
+}

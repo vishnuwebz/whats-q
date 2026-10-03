@@ -2197,28 +2197,55 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         saved_id = msg.id
         conv_id = msg.conversation_id
-        recall_result = {'success': True}
+        recall_result = {'success': False}
+        remote_revoked = False
 
         if scope == 'everyone':
             wamid = msg.meta_message_id or ''
-            if wamid and not wamid.startswith('wa-out-'):
-                # Has a real WAMID — attempt Meta Graph API recall
+            clean_recipient = re.sub(r'\D', '', conversation.phone_number if conversation else '')
+
+            # 1. Try Baileys socket revocation first (works for any linked WhatsApp Web phone line)
+            if clean_recipient and wamid:
+                try:
+                    baileys_res = call_baileys_gateway('/api/messages/delete-direct', method='POST', data={
+                        'recipientPhone': clean_recipient,
+                        'messageId': wamid,
+                        'senderPhone': msg.sender_phone or '',
+                    }, timeout=5)
+                    if baileys_res.get('success'):
+                        remote_revoked = True
+                        recall_result = {'success': True, 'engine': 'baileys_socket'}
+                except Exception as b_err:
+                    logger.info(f"[Delete] Baileys delete attempt: {b_err}")
+
+            # 2. If not revoked via Baileys, try Meta Graph API
+            if not remote_revoked and wamid and not wamid.startswith('wa-out-'):
                 try:
                     from .meta_service import MetaWhatsAppService
                     from .models import MetaAPIConfig
                     cfg = MetaAPIConfig.objects.filter(is_active=True).first()
                     if cfg and cfg.phone_number_id and cfg.access_token:
-                        recall_result = MetaWhatsAppService.recall_message(
+                        m_res = MetaWhatsAppService.recall_message(
                             phone_number_id=cfg.phone_number_id,
                             wamid=wamid,
                             access_token=cfg.access_token,
                         )
-                    else:
-                        recall_result = {'success': False, 'error': 'Meta API config not found'}
+                        if m_res.get('success'):
+                            remote_revoked = True
+                            recall_result = {'success': True, 'engine': 'meta_cloud'}
                 except Exception as e:
-                    recall_result = {'success': False, 'error': str(e)}
+                    logger.warning(f"[Delete] Meta recall error: {e}")
 
-            # Permanently update the message in DB:
+            # 3. If remote revocation is not supported by Meta Cloud API and no active linked socket could revoke it:
+            if not remote_revoked:
+                return Response({
+                    'success': False,
+                    'error': 'Meta Cloud API does not support deleting messages from customer phones once delivered. Use "Delete for me" to remove from your chat screen, or link your phone line via QR code for native WhatsApp delete.',
+                    'meta_unsupported': True,
+                    'can_delete_for_me': True,
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Successfully revoked on WhatsApp network -> update in DB
             msg.text = 'This message was deleted'
             rc = msg.rich_card if isinstance(msg.rich_card, dict) else {}
             rc['deleted_scope'] = 'everyone'
