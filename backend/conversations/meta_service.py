@@ -893,4 +893,97 @@ class MetaWhatsAppService:
             logger.warning(f"[Meta] recall_message exception: {e}")
             return {"success": False, "error": str(e)}
 
+    @classmethod
+    def mark_message_as_read(cls, phone_number_id: str, access_token: str, message_id: str, api_version: str = DEFAULT_API_VERSION, with_typing: bool = True) -> dict:
+        """
+        Marks an incoming customer message as READ on WhatsApp.
+        Triggers instant DOUBLE BLUE TICKS on the sender's phone!
+        Optionally attaches typing_indicator so sender sees 'typing...'.
+        POST /{PHONE_NUMBER_ID}/messages
+        """
+        if not access_token or not phone_number_id or not message_id:
+            return {"success": False, "error": "Missing required parameters"}
+
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
+        headers = cls.get_headers(access_token)
+
+        # 1. Attempt with typing indicator first if requested
+        if with_typing:
+            payload = {
+                "messaging_product": "whatsapp",
+                "status": "read",
+                "message_id": message_id.strip(),
+                "typing_indicator": {
+                    "type": "text"
+                }
+            }
+            try:
+                resp = cls.get_session().post(url, headers=headers, json=payload, timeout=6)
+                data = resp.json() if resp.content else {}
+                if resp.status_code in [200, 201] and data.get("success"):
+                    logger.info(f"[Meta Read Receipt] Blue tick & typing indicator dispatched for {message_id}")
+                    return {"success": True, "raw": data}
+            except Exception as e:
+                logger.warning(f"[Meta Read Receipt] Typing indicator attempt notice: {e}")
+
+        # 2. Standard status: read (guaranteed for double blue tick)
+        payload = {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": message_id.strip()
+        }
+        try:
+            resp = cls.get_session().post(url, headers=headers, json=payload, timeout=6)
+            data = resp.json() if resp.content else {}
+            if resp.status_code in [200, 201] and data.get("success"):
+                logger.info(f"[Meta Read Receipt] Blue tick dispatched successfully for {message_id}")
+                return {"success": True, "raw": data}
+            else:
+                err_msg = data.get("error", {}).get("message", "Read receipt failed")
+                logger.warning(f"[Meta Read Receipt] Meta returned error for {message_id}: {err_msg}")
+                return {"success": False, "error": err_msg, "details": data}
+        except Exception as e:
+            logger.warning(f"[Meta Read Receipt] Network error: {e}")
+            return {"success": False, "error": str(e)}
+
+    @classmethod
+    def send_whatsapp_reaction(cls, phone_number_id: str, access_token: str, to_phone: str, message_id: str, emoji: str = "👀", api_version: str = DEFAULT_API_VERSION) -> dict:
+        """
+        Sends an emoji reaction to a customer's WhatsApp message.
+        Provides immediate visual acknowledgment on the user's phone before the bot reply arrives.
+        POST /{PHONE_NUMBER_ID}/messages
+        """
+        if not access_token or not phone_number_id or not to_phone or not message_id:
+            return {"success": False, "error": "Missing required parameters"}
+
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id.strip()}/messages"
+        headers = cls.get_headers(access_token)
+        clean_phone = cls.clean_phone_number(to_phone)
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_phone,
+            "type": "reaction",
+            "reaction": {
+                "message_id": message_id.strip(),
+                "emoji": emoji
+            }
+        }
+        try:
+            resp = cls.get_session().post(url, headers=headers, json=payload, timeout=6)
+            data = resp.json() if resp.content else {}
+            if resp.status_code in [200, 201]:
+                logger.info(f"[Meta Reaction] Reaction '{emoji}' sent to message {message_id} on {clean_phone}")
+                return {"success": True, "raw": data}
+            else:
+                err_msg = data.get("error", {}).get("message", "Reaction failed")
+                logger.warning(f"[Meta Reaction] Reaction error: {err_msg}")
+                return {"success": False, "error": err_msg, "details": data}
+        except Exception as e:
+            logger.warning(f"[Meta Reaction] Network error sending reaction: {e}")
+            return {"success": False, "error": str(e)}
+
 

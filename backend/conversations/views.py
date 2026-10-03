@@ -2815,6 +2815,46 @@ class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all().order_by('created_at')
     serializer_class = MessageSerializer
 
+    @action(detail=True, methods=['post'])
+    def react(self, request, pk=None):
+        """
+        Sends or removes an emoji reaction to a WhatsApp message (both in DB and to Meta Cloud API).
+        """
+        msg = self.get_object()
+        emoji = request.data.get('emoji', '👍')
+
+        rc = msg.rich_card or {}
+        reactions = rc.get('reactions', [])
+        reactions = [r for r in reactions if r.get('from') != 'agent']
+        if emoji:
+            reactions.append({'emoji': emoji, 'from': 'agent', 'time': datetime.datetime.now().strftime('%I:%M %p')})
+        rc['reactions'] = reactions
+        msg.rich_card = rc
+        msg.save(update_fields=['rich_card'])
+
+        if msg.meta_message_id and str(msg.meta_message_id).startswith('wamid'):
+            config = MetaWhatsAppConfig.objects.first()
+            if config and config.access_token and config.phone_number_id:
+                to_phone = msg.conversation.phone_number
+                MetaWhatsAppService.send_whatsapp_reaction(
+                    phone_number_id=config.phone_number_id,
+                    access_token=config.access_token,
+                    to_phone=to_phone,
+                    message_id=msg.meta_message_id,
+                    emoji=emoji,
+                    api_version=config.api_version
+                )
+
+        emit_event('message.reaction', {
+            'conversation_id': msg.conversation_id,
+            'message_id': msg.id,
+            'emoji': emoji,
+            'from': 'agent'
+        })
+        emit_event('conversation.updated', ConversationSerializer(msg.conversation).data)
+
+        return Response({'success': True, 'emoji': emoji, 'reactions': reactions})
+
 class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
     queryset = WhatsAppTemplate.objects.all().order_by('-usage_count', '-id')
     serializer_class = WhatsAppTemplateSerializer
@@ -4156,10 +4196,55 @@ class WhatsAppWebhookView(APIView):
                             'is_blocked': conv.is_blocked,
                             'suppression_reason': conv.suppression_reason
                         })
+                        # -------------------------------------------------------------
+                        # Instant WhatsApp Feedback Engine (Blue Tick + Typing + Reaction)
+                        # Immediately turns grey ticks to DOUBLE BLUE TICKS on the user's phone,
+                        # displays 'typing...' in WhatsApp header, and attaches a reaction emoji!
+                        # -------------------------------------------------------------
+                        if (
+                            msg_id
+                            and str(msg_id).startswith('wamid')
+                            and config
+                            and config.access_token
+                            and config.phone_number_id
+                            and resolved_line_type != 'employee'
+                        ):
+                            def _instant_whatsapp_feedback_worker(p_id, token, m_id, sender_p, v_ver):
+                                try:
+                                    # 1. Instant Double Blue Tick & WhatsApp 'typing...' indicator
+                                    MetaWhatsAppService.mark_message_as_read(
+                                        phone_number_id=p_id,
+                                        access_token=token,
+                                        message_id=m_id,
+                                        api_version=v_ver,
+                                        with_typing=True
+                                    )
+                                    # 2. Instant Emoji Reaction on customer's incoming message
+                                    MetaWhatsAppService.send_whatsapp_reaction(
+                                        phone_number_id=p_id,
+                                        access_token=token,
+                                        to_phone=sender_p,
+                                        message_id=m_id,
+                                        emoji="👀",
+                                        api_version=v_ver
+                                    )
+                                except Exception as fb_err:
+                                    logger.warning(f"[Instant WhatsApp Feedback Error]: {fb_err}")
+
+                            threading.Thread(
+                                target=_instant_whatsapp_feedback_worker,
+                                args=(config.phone_number_id, config.access_token, msg_id, clean_sender, config.api_version),
+                                daemon=True
+                            ).start()
+
+                        # Emit real-time typing indicator to web dashboard UI
                         emit_event('conversation.typing', {
                             'conversation_id': conv.id,
-                            'is_typing': False
+                            'is_typing': True,
+                            'sender': 'bot',
+                            'user': 'WhatsQ AI Assistant'
                         })
+
                         emit_event('notification.new', {
                             'id': int(time.time() * 1000),
                             'title': f"New message from {conv.contact_name}",
@@ -4187,7 +4272,7 @@ class WhatsAppWebhookView(APIView):
                             and not matched_employee_device
                             and (getattr(conv, 'active_workflow', '') != 'Paused' or is_greeting_or_start)
                         ):
-                            def async_auto_reply_worker(conv_id, sender_phone_clean, user_msg_text, p_name):
+                            def async_auto_reply_worker(conv_id, sender_phone_clean, user_msg_text, p_name, user_msg_id=None):
                                 try:
                                     import django
                                     django.db.connections.close_all()
@@ -4273,6 +4358,19 @@ class WhatsAppWebhookView(APIView):
                                         if m_reply.get('success'):
                                             m_bot_id = m_reply.get('message_id', '')
                                             logger.info(f"[Meta Fast Auto-Reply] Successfully sent to {sender_phone_clean}: {m_bot_id}")
+                                            # Update reaction on customer's message to robot / checkmark
+                                            if user_msg_id and str(user_msg_id).startswith('wamid'):
+                                                try:
+                                                    MetaWhatsAppService.send_whatsapp_reaction(
+                                                        phone_number_id=cfg_obj.phone_number_id,
+                                                        access_token=cfg_obj.access_token,
+                                                        to_phone=sender_phone_clean,
+                                                        message_id=user_msg_id,
+                                                        emoji="🤖",
+                                                        api_version=cfg_obj.api_version
+                                                    )
+                                                except Exception:
+                                                    pass
                                         else:
                                             logger.warning(f"[Meta Fast Auto-Reply] Meta send error: {m_reply.get('error')} details={m_reply.get('details')}")
 
@@ -4315,10 +4413,16 @@ class WhatsAppWebhookView(APIView):
                                         })
                                 except Exception as reply_worker_err:
                                     logger.error(f"[Async Auto-Reply Error]: {reply_worker_err}", exc_info=True)
+                                finally:
+                                    # Always clear typing indicator when worker finishes
+                                    emit_event('conversation.typing', {
+                                        'conversation_id': conv_id,
+                                        'is_typing': False
+                                    })
 
                             threading.Thread(
                                 target=async_auto_reply_worker,
-                                args=(conv.id, clean_sender, text_body, profile_name),
+                                args=(conv.id, clean_sender, text_body, profile_name, msg_id),
                                 daemon=True
                             ).start()
 
