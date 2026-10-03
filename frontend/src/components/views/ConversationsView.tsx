@@ -87,6 +87,7 @@ export const ConversationsView: React.FC = () => {
     assignStaffToConversation,
     addEmployee,
     refreshConversations,
+    deleteMessage,
   } = useQiyamStore();
 
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'open' | 'in_progress' | 'waiting' | 'resolved' | 'ai_handled' | 'spam' | 'deleted'>('all');
@@ -118,6 +119,14 @@ export const ConversationsView: React.FC = () => {
     }
   });
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+
+  // Message context menu (right-click / long-press delete menu — WhatsApp style)
+  const [msgContextMenu, setMsgContextMenu] = useState<{
+    messageId: string | number;
+    x: number;
+    y: number;
+    isCustomer: boolean;
+  } | null>(null);
 
   const toggleHeaderActions = () => {
     setIsHeaderActionsMinimized((prev) => {
@@ -3169,6 +3178,10 @@ export const ConversationsView: React.FC = () => {
                       {group.messages.map((msg) => {
                         const isCustomer = msg.sender === 'customer';
                         const isBot = msg.sender === 'bot';
+
+                        // Hide messages deleted 'for me' — they should be invisible locally
+                        if (msg.deletedScope === 'me') return null;
+
                         const allMessages = currentConv.messages || [];
                         const msgIndex = allMessages.findIndex((m) => m.id === msg.id);
 
@@ -3307,18 +3320,55 @@ export const ConversationsView: React.FC = () => {
                         return (
                           <div
                             key={msg.id}
-                            className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'}`}
+                            className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'} group/msgrow relative`}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setMsgContextMenu({ messageId: msg.id, x: e.clientX, y: e.clientY, isCustomer });
+                            }}
                           >
-                            <div
-                              title={tooltipStr}
-                              className={`max-w-md p-3.5 rounded-2xl shadow-sm text-xs leading-relaxed ${
+                            {/* Hover ⋮ action button — appears beside the bubble on hover */}
+                            <div className={`absolute top-2 ${isCustomer ? '-right-7' : '-left-7'} opacity-0 group-hover/msgrow:opacity-100 transition-opacity z-20`}>
+                              <button
+                                type="button"
+                                title="Message options"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setMsgContextMenu({ messageId: msg.id, x: rect.left, y: rect.bottom + 4, isCustomer });
+                                }}
+                                className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                              </button>
+                            </div>
+
+                            {/* Deleted-for-everyone: show WhatsApp placeholder */}
+                            {msg.deletedScope === 'everyone' && (
+                              <div className={`max-w-md px-4 py-2.5 rounded-2xl shadow-sm text-xs flex items-center gap-2 italic select-none ${
                                 isCustomer
-                                  ? 'bg-white text-slate-800 rounded-tl-sm border border-slate-200'
-                                  : isBot
-                                  ? 'bg-emerald-700 text-white rounded-tr-sm shadow-md'
-                                  : 'bg-emerald-600 text-white rounded-tr-sm'
-                              }`}
-                            >
+                                  ? 'bg-white text-slate-400 border border-slate-200 rounded-tl-sm'
+                                  : 'bg-emerald-600/50 text-emerald-100 rounded-tr-sm'
+                              }`}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                <span>This message was deleted</span>
+                              </div>
+                            )}
+
+                            {/* Normal bubble — hidden when deleted for everyone */}
+                            {msg.deletedScope !== 'everyone' && (
+                              <>
+                                <div
+                                  title={tooltipStr}
+                                  className={`max-w-md p-3.5 rounded-2xl shadow-sm text-xs leading-relaxed ${
+                                    isCustomer
+                                      ? 'bg-white text-slate-800 rounded-tl-sm border border-slate-200'
+                                      : isBot
+                                      ? 'bg-emerald-700 text-white rounded-tr-sm shadow-md'
+                                      : 'bg-emerald-600 text-white rounded-tr-sm'
+                                  }`}
+                                >
+                                  {/* EXISTING BUBBLE CONTENT BELOW — DO NOT MODIFY */}
+
                               {/* 1. Header: Incoming Customer Message Received Channel */}
                               {isCustomer && incomingRecipient && (
                                 <div className="flex items-center justify-between gap-2 pb-1.5 mb-2.5 border-b border-slate-100 text-[10.5px]">
@@ -3540,29 +3590,33 @@ export const ConversationsView: React.FC = () => {
                               </div>
                             </div>
 
-                            {/* WhatsApp-style Emoji Reaction Bubbles */}
-                            {msg.reactions && msg.reactions.length > 0 && (
-                              <div className={`flex gap-1 mt-0.5 ${isCustomer ? 'justify-start pl-1' : 'justify-end pr-1'}`}>
-                                {Object.entries(
-                                  msg.reactions.reduce((acc, r) => {
-                                    acc[r.emoji] = (acc[r.emoji] || 0) + 1;
-                                    return acc;
-                                  }, {} as Record<string, number>)
-                                ).map(([emoji, count]) => (
-                                  <span
-                                    key={emoji}
-                                    className="inline-flex items-center gap-0.5 bg-white border border-slate-200 shadow-sm rounded-full px-1.5 py-0.5 text-sm leading-none select-none"
-                                    title={`${count} reaction${count > 1 ? 's' : ''}`}
-                                  >
-                                    <span>{emoji}</span>
-                                    {count > 1 && <span className="text-[10px] font-semibold text-slate-500">{count}</span>}
-                                  </span>
-                                ))}
-                              </div>
+
+                                {/* Emoji Reaction Bubbles */}
+                                {msg.reactions && msg.reactions.length > 0 && (
+                                  <div className={`flex gap-1 mt-0.5 ${isCustomer ? 'justify-start pl-1' : 'justify-end pr-1'}`}>
+                                    {Object.entries(
+                                      msg.reactions.reduce((acc, r) => {
+                                        acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                                        return acc;
+                                      }, {} as Record<string, number>)
+                                    ).map(([emoji, count]) => (
+                                      <span
+                                        key={emoji}
+                                        className="inline-flex items-center gap-0.5 bg-white border border-slate-200 shadow-sm rounded-full px-1.5 py-0.5 text-sm leading-none select-none"
+                                        title={`${count} reaction${count > 1 ? 's' : ''}`}
+                                      >
+                                        <span>{emoji}</span>
+                                        {count > 1 && <span className="text-[10px] font-semibold text-slate-500">{count}</span>}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         );
                       })}
+
                     </div>
                   ))
                 )}
@@ -4414,6 +4468,57 @@ export const ConversationsView: React.FC = () => {
           }}
         />
       )}
+
+      {/* WhatsApp-Style Message Context Menu (Delete for Me / Delete for Everyone) */}
+      {msgContextMenu && (
+        <>
+          {/* Backdrop to close on click outside */}
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setMsgContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setMsgContextMenu(null); }}
+          />
+          <div
+            className="fixed z-[9999] min-w-[180px] bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              top: Math.min(msgContextMenu.y, window.innerHeight - 180),
+              left: Math.min(msgContextMenu.x, window.innerWidth - 200),
+            }}
+          >
+            {/* Delete for Me — always available */}
+            <button
+              type="button"
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+              onClick={() => {
+                const cid = selectedConversationId;
+                const mid = msgContextMenu.messageId;
+                setMsgContextMenu(null);
+                if (cid) deleteMessage(cid, mid, 'me');
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              <span>Delete for me</span>
+            </button>
+            {/* Delete for Everyone — only for agent/bot outbound messages */}
+            {!msgContextMenu.isCustomer && (
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors text-left border-t border-slate-100"
+                onClick={() => {
+                  const cid = selectedConversationId;
+                  const mid = msgContextMenu.messageId;
+                  setMsgContextMenu(null);
+                  if (cid) deleteMessage(cid, mid, 'everyone');
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                <span>Delete for everyone</span>
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
     </div>
   );
 };

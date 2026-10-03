@@ -959,6 +959,7 @@ interface QiyamState {
   applyRealtimeLead: (leadUpdate: Partial<Lead> & { id: string | number }) => void;
   applyRealtimeJob: (jobUpdate: Partial<Job> & { id: string | number }) => void;
   applyRealtimeTemplateStatus: (data: { name: string; status: string; reason?: string }) => void;
+  deleteMessage: (conversationId: string | number, messageId: string | number, scope: 'me' | 'everyone') => Promise<void>;
 }
 
 const INITIAL_NOTIFICATIONS: QNotification[] = [
@@ -2544,6 +2545,47 @@ Welcome aboard to the Qiyam Engineering & Operations team!` : docType === 'compe
         return c;
       }),
     }));
+  },
+
+  deleteMessage: async (conversationId, messageId, scope) => {
+    // Optimistically mark as deleted in UI immediately for snappy feel
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (String(c.id) !== String(conversationId)) return c;
+        return {
+          ...c,
+          messages: c.messages.map((m) => {
+            if (String(m.id) !== String(messageId)) return m;
+            return { ...m, deletedScope: scope };
+          }),
+        };
+      }),
+    }));
+
+    try {
+      await apiClient.post(`/conversations/threads/${conversationId}/delete_message/`, {
+        message_id: messageId,
+        scope,
+      });
+    } catch (_err) {
+      // On error: revert 'everyone' delete (can't recall on WhatsApp), keep 'me' hidden (local only)
+      if (scope === 'everyone') {
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (String(c.id) !== String(conversationId)) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) => {
+                if (String(m.id) !== String(messageId)) return m;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { deletedScope, ...rest } = m as typeof m & { deletedScope?: string };
+                return rest as typeof m;
+              }),
+            };
+          }),
+        }));
+      }
+    }
   },
 
   applyMessageReaction: (conversationId, messageId, emoji, from) => {

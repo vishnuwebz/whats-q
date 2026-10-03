@@ -241,11 +241,23 @@ def process_outbound_voice_payload(audio_base64: str) -> dict:
             r"C:\ffmpeg\ffmpeg-2025-10-30-git-00c23bafb0-full_build\bin\ffmpeg.EXE",
             r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
             r"C:\ffmpeg\bin\ffmpeg.exe",
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            '/usr/local/ffmpeg/bin/ffmpeg',
+            '/opt/ffmpeg/bin/ffmpeg',
         ]
         for p in known_ffmpeg_paths:
             if os.path.exists(p):
                 ffmpeg_bin = p
                 break
+        # Ultimate fallback: imageio_ffmpeg bundled binary (works on any OS/architecture)
+        if not ffmpeg_bin:
+            try:
+                import imageio_ffmpeg
+                ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+                logger.info(f"Using imageio_ffmpeg bundled binary: {ffmpeg_bin}")
+            except Exception as _ie:
+                logger.warning(f"imageio_ffmpeg not available: {_ie}")
 
     final_bytes = raw_bytes
     final_filename = f"raw_{ts}{ext}"
@@ -2129,6 +2141,80 @@ class ConversationViewSet(viewsets.ModelViewSet):
             'all_prior': True
         })
         return Response({'success': True, 'id': conversation.id, 'unread_count': 0})
+
+    @action(detail=True, methods=['post'])
+    def delete_message(self, request, pk=None):
+        """
+        Delete a message for 'me' (local dashboard hide) or 'everyone' (Meta recall).
+        Body: { "message_id": <id or meta_message_id>, "scope": "me" | "everyone" }
+        """
+        conversation = self.get_object()
+        message_id = request.data.get('message_id')
+        scope = request.data.get('scope', 'me')  # 'me' | 'everyone'
+
+        if not message_id:
+            return Response({'error': 'message_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Try to find by pk first, then by meta_message_id
+        msg = None
+        try:
+            msg = Message.objects.get(id=message_id, conversation=conversation)
+        except (Message.DoesNotExist, ValueError):
+            msg = Message.objects.filter(
+                conversation=conversation,
+                meta_message_id=str(message_id)
+            ).first()
+
+        if not msg:
+            return Response({'error': 'Message not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        recall_result = {'success': True}
+
+        if scope == 'everyone':
+            # Only outbound (agent/bot) messages can be recalled via Meta
+            if msg.sender not in ('agent', 'bot'):
+                return Response({'error': 'Only outbound messages can be deleted for everyone'}, status=status.HTTP_400_BAD_REQUEST)
+
+            wamid = msg.meta_message_id or ''
+            if wamid and not wamid.startswith('wa-out-'):
+                # Has a real WAMID — attempt Meta Graph API recall
+                try:
+                    from .meta_service import MetaWhatsAppService
+                    from .models import MetaAPIConfig
+                    cfg = MetaAPIConfig.objects.filter(is_active=True).first()
+                    if cfg and cfg.phone_number_id and cfg.access_token:
+                        recall_result = MetaWhatsAppService.recall_message(
+                            phone_number_id=cfg.phone_number_id,
+                            wamid=wamid,
+                            access_token=cfg.access_token,
+                        )
+                    else:
+                        recall_result = {'success': False, 'error': 'Meta API config not found'}
+                except Exception as e:
+                    recall_result = {'success': False, 'error': str(e)}
+            else:
+                # No real WAMID yet (still pending/sending) — cannot recall on WhatsApp
+                # Still hide it locally
+                recall_result = {'success': False, 'error': 'Message has no WhatsApp ID yet; hiding locally only'}
+                scope = 'me'
+
+        # Mark message as deleted in DB (soft delete)
+        msg.error_details = (msg.error_details or '') + f'[DELETED:{scope}]'
+        msg.save(update_fields=['error_details'])
+
+        # Broadcast real-time event to all dashboard clients
+        emit_event('message.deleted', {
+            'conversation_id': conversation.id,
+            'message_id': msg.id,
+            'scope': scope,
+        })
+
+        return Response({
+            'success': True,
+            'message_id': msg.id,
+            'scope': scope,
+            'recall': recall_result,
+        })
 
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):

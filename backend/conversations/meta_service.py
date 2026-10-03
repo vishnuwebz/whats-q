@@ -822,3 +822,39 @@ class MetaWhatsAppService:
             logger.warning(f"[Dual-Workspace Proxy] Forwarding to {target_url} failed: {str(e)}")
             return {"success": False, "error": str(e)}
 
+    @classmethod
+    def recall_message(cls, phone_number_id: str, wamid: str, access_token: str, api_version: str = DEFAULT_API_VERSION) -> dict:
+        """
+        Recalls (unsends) a WhatsApp message for everyone via Meta Graph API.
+        Requires the real WhatsApp Message ID (WAMID) from the message status webhook.
+        Only outbound messages sent within the last 60 seconds are guaranteed to be recallable;
+        Meta may still allow recall up to ~7 minutes on some accounts.
+        """
+        if not access_token or not phone_number_id or not wamid:
+            return {"success": False, "error": "Missing required parameters"}
+
+        version = api_version or cls.DEFAULT_API_VERSION
+        url = f"{cls.GRAPH_BASE_URL}/{version}/{phone_number_id}/messages"
+        headers = cls.get_headers(access_token)
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "status": "deleted",
+            "message_id": wamid,
+        }
+
+        try:
+            resp = requests.delete(url, json=payload, headers=headers, timeout=15)
+            data = resp.json() if resp.content else {}
+            if resp.status_code in [200, 204]:
+                logger.info(f"[Meta] Message recalled: wamid={wamid}")
+                return {"success": True}
+            else:
+                error_msg = data.get("error", {}).get("message", resp.text[:200])
+                logger.warning(f"[Meta] Recall failed for {wamid}: {error_msg}")
+                return {"success": False, "error": error_msg}
+        except Exception as e:
+            logger.warning(f"[Meta] recall_message exception: {e}")
+            return {"success": False, "error": str(e)}
+
+

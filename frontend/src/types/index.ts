@@ -260,6 +260,7 @@ export interface WhatsAppMessage {
   audioDuration?: number;
   waveform?: number[];
   reactions?: { emoji: string; from: 'customer' | 'agent' | 'bot' | 'system' }[];
+  deletedScope?: 'me' | 'everyone';
   richCard?: {
     type: 'booking' | 'payment' | 'quotation' | 'voice_note' | string;
     title?: string;
