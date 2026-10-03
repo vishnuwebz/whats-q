@@ -7,7 +7,7 @@ import {
   ReceiptText, Bot, Sparkles, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Tag,
   FileText, ExternalLink, ArrowRight, UserPlus, ArrowLeft, X,
   MessageSquare, Camera, Sun, Sunset, Moon, RotateCcw, CalendarDays, Calendar,
-  SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle,
+  SlidersHorizontal, Trash2, Ban, AlertOctagon, ShieldAlert, CheckCircle, AlertCircle,
   Zap, Play, Pause, GitBranch, Edit3, Edit2, QrCode, Smartphone, RefreshCw, Trophy
 } from 'lucide-react';
 
@@ -130,6 +130,12 @@ export const ConversationsView: React.FC = () => {
     x: number;
     y: number;
     isCustomer: boolean;
+    isWithinDeleteWindow: boolean;
+    isMetaCloudLine: boolean;
+  } | null>(null);
+
+  const [metaCloudDeleteModal, setMetaCloudDeleteModal] = useState<{
+    messageId: string | number;
   } | null>(null);
 
   const toggleHeaderActions = () => {
@@ -3285,6 +3291,7 @@ export const ConversationsView: React.FC = () => {
                           return {
                             phone,
                             deviceLabel: deviceLabel || (isBot ? 'Qiyam AI Assistant' : 'WhatsApp Line'),
+                            lineType: (deviceLabel?.includes('Meta') || phone?.includes('94963')) ? ('meta_cloud' as const) : ('employee' as const),
                           };
                         })() : null;
 
@@ -3327,33 +3334,57 @@ export const ConversationsView: React.FC = () => {
                           };
                         })() : null;
 
+                        const msgAgeMs = (() => {
+                          if (msg.created_at) {
+                            const t = new Date(msg.created_at).getTime();
+                            if (!isNaN(t)) return Math.max(0, Date.now() - t);
+                          }
+                          return 0;
+                        })();
+
+                        // WhatsApp Official Delete for Everyone limit: 60 hours (2 days 12 hours = 216,000,000 ms)
+                        const WHATSAPP_DELETE_FOR_EVERYONE_LIMIT_MS = 60 * 60 * 60 * 1000;
+                        const isWithinDeleteWindow = msgAgeMs <= WHATSAPP_DELETE_FOR_EVERYONE_LIMIT_MS;
+                        const isMetaCloudLine = !outgoingSender || outgoingSender.lineType === 'meta_cloud';
+
                         return (
                           <div
                             key={msg.id}
                             className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'} group/msgrow relative`}
                             onContextMenu={(e) => {
-                              if (isDeletedForEveryone) return;
                               e.preventDefault();
-                              setMsgContextMenu({ messageId: msg.id, x: e.clientX, y: e.clientY, isCustomer });
+                              setMsgContextMenu({
+                                messageId: msg.id,
+                                x: e.clientX,
+                                y: e.clientY,
+                                isCustomer,
+                                isWithinDeleteWindow,
+                                isMetaCloudLine,
+                              });
                             }}
                           >
                             {/* Hover ⋮ action button — appears beside the bubble on hover */}
-                            {!isDeletedForEveryone && (
-                              <div className={`absolute top-2 ${isCustomer ? '-right-7' : '-left-7'} opacity-0 group-hover/msgrow:opacity-100 transition-opacity z-20`}>
-                                <button
-                                  type="button"
-                                  title="Message options"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    setMsgContextMenu({ messageId: msg.id, x: rect.left, y: rect.bottom + 4, isCustomer });
-                                  }}
-                                  className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                                </button>
-                              </div>
-                            )}
+                            <div className={`absolute top-2 ${isCustomer ? '-right-7' : '-left-7'} opacity-0 group-hover/msgrow:opacity-100 transition-opacity z-20`}>
+                              <button
+                                type="button"
+                                title="Message options"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setMsgContextMenu({
+                                    messageId: msg.id,
+                                    x: rect.left,
+                                    y: rect.bottom + 4,
+                                    isCustomer,
+                                    isWithinDeleteWindow,
+                                    isMetaCloudLine,
+                                  });
+                                }}
+                                className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                              </button>
+                            </div>
 
                             {/* Deleted-for-everyone: show WhatsApp placeholder */}
                             {isDeletedForEveryone && (
@@ -4512,24 +4543,84 @@ export const ConversationsView: React.FC = () => {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               <span>Delete for me</span>
             </button>
-            {/* Delete for Everyone — only for agent/bot outbound messages */}
+            {/* Delete for Everyone — only for agent/bot outbound messages within official WhatsApp 60-hour limit */}
             {!msgContextMenu.isCustomer && (
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors text-left border-t border-slate-100"
-                onClick={() => {
-                  const cid = selectedConversationId || currentConv?.id;
-                  const mid = msgContextMenu.messageId;
-                  setMsgContextMenu(null);
-                  if (cid) deleteMessage(cid, mid, 'everyone');
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                <span>Delete for everyone</span>
-              </button>
+              msgContextMenu.isWithinDeleteWindow ? (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors text-left border-t border-slate-100"
+                  onClick={() => {
+                    const cid = selectedConversationId || currentConv?.id;
+                    const mid = msgContextMenu.messageId;
+                    const isMeta = msgContextMenu.isMetaCloudLine;
+                    setMsgContextMenu(null);
+                    if (isMeta) {
+                      setMetaCloudDeleteModal({ messageId: mid });
+                    } else if (cid) {
+                      deleteMessage(cid, mid, 'everyone');
+                    }
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                  <span>Delete for everyone</span>
+                </button>
+              ) : (
+                <div
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[11px] text-slate-400 bg-slate-50 border-t border-slate-100 cursor-not-allowed select-none"
+                  title="WhatsApp's official Delete for Everyone limit (60 hours) has passed for this message."
+                >
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Delete for everyone expired (&gt;60h)</span>
+                </div>
+              )
             )}
           </div>
         </>
+      )}
+
+      {/* Meta Cloud API Delete Limitation Modal */}
+      {metaCloudDeleteModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Cannot Delete on Recipient's Phone</h3>
+                <p className="text-[11px] text-slate-500">Official Meta WhatsApp Cloud API Limitation</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed mb-3">
+              This message was sent via <strong>Meta WhatsApp Cloud API (+91 94963 00233)</strong>. Meta's official WhatsApp Business Cloud API strictly does not permit deleting or recalling messages from customer phones once delivered.
+            </p>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 mb-5 leading-relaxed">
+              💡 <strong>How to get real "Delete for Everyone"?</strong>
+              <p className="mt-1 text-slate-500">Link your phone in <strong>Connected Phones</strong> (via QR code). WhatsApp Web protocol supports real native "Delete for Everyone" within 60 hours.</p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMetaCloudDeleteModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const mid = metaCloudDeleteModal.messageId;
+                  const cid = selectedConversationId || currentConv?.id;
+                  setMetaCloudDeleteModal(null);
+                  if (cid && mid) deleteMessage(cid, mid, 'me');
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+              >
+                Delete for me only
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
